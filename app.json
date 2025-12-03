@@ -13,18 +13,46 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.guidera.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera for AR navigation",
+        "NSLocationWhenInUseUsageDescription": "This app needs your location for navigation",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs your location for navigation"
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyAQ88Ge0rJ9W0SpmBKoOQ9o_6wAUwpO_ns"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "package": "com.guidera.app",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAQ88Ge0rJ9W0SpmBKoOQ9o_6wAUwpO_ns"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-camera",
+      "expo-location"
+    ],
+    "experiments": {
+      "typedRoutes": true
     }
   }
 }
