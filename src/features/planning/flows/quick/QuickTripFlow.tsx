@@ -27,6 +27,9 @@ import { FlowHeader } from '@/features/booking/components/shared';
 import { usePlanningStore } from '../../stores/usePlanningStore';
 import { QUICK_TRIP_STEPS } from '../../config/planning.config';
 
+// Background image for Quick Trip flow
+const QUICK_TRIP_BG = require('../../../../../assets/images/quicktripbg.png');
+
 // Import steps
 import DestinationStep from './steps/DestinationStep';
 import DatesStep from './steps/DatesStep';
@@ -203,7 +206,7 @@ export default function QuickTripFlow({
     >
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <Animated.View style={[styles.container, containerStyle]}>
-        {/* Header */}
+        {/* Header with background image */}
         {showHeader && (
           <FlowHeader
             title={currentStep?.title || 'Quick Trip'}
@@ -213,6 +216,7 @@ export default function QuickTripFlow({
             onBack={handleBack}
             onClose={handleClose}
             showConfirmOnClose={showConfirmOnClose}
+            backgroundImage={QUICK_TRIP_BG}
           />
         )}
         

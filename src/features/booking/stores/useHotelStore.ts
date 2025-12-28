@@ -423,7 +423,11 @@ export const useHotelStore = create<HotelState & HotelActions>()(
       getNights: () => {
         const { checkIn, checkOut } = get().searchParams;
         if (!checkIn || !checkOut) return 0;
-        const diffTime = checkOut.getTime() - checkIn.getTime();
+        // Handle both Date objects and string dates (from persistence)
+        const checkInDate = checkIn instanceof Date ? checkIn : new Date(checkIn);
+        const checkOutDate = checkOut instanceof Date ? checkOut : new Date(checkOut);
+        if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) return 0;
+        const diffTime = checkOutDate.getTime() - checkInDate.getTime();
         return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       },
       

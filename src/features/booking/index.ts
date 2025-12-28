@@ -43,7 +43,7 @@ export {
 // ============================================
 // FLOWS
 // ============================================
-export { FlightBookingFlow, HotelBookingFlow, PackageBookingFlow, CarRentalFlow, ExperienceFlow } from './flows';
+export { FlightBookingFlow, HotelBookingFlow, PackageBookingFlow, CarBookingFlow, ExperienceFlow } from './flows';
 
 // ============================================
 // SCREENS (will be added as we build them)

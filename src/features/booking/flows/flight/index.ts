@@ -1,17 +1,20 @@
 /**
  * FLIGHT BOOKING FLOW
  * 
- * Exports for the flight booking feature.
+ * Streamlined 3-screen flight booking:
+ * 1. Search - Single page with bottom sheet modals
+ * 2. Results - Flight list with filters and date scroll
+ * 3. Checkout - Combined seats, extras, travelers, payment
  */
 
+// Main Flow
 export { default as FlightBookingFlow } from './FlightBookingFlow';
 
-// Steps (for direct access if needed)
-export { default as SearchStep } from './steps/SearchStep';
-export { default as ResultsStep } from './steps/ResultsStep';
-export { default as FlightDetailStep } from './steps/FlightDetailStep';
-export { default as SeatSelectionStep } from './steps/SeatSelectionStep';
-export { default as ExtrasStep } from './steps/ExtrasStep';
-export { default as TravelerInfoStep } from './steps/TravelerInfoStep';
-export { default as PaymentStep } from './steps/PaymentStep';
-export { default as ConfirmationStep } from './steps/ConfirmationStep';
+// Screens
+export * from './screens';
+
+// Components
+export * from './components';
+
+// Bottom Sheets
+export * from './sheets';

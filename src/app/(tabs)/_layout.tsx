@@ -1,69 +1,175 @@
-import { Tabs } from 'expo-router';
-import { colors, typography } from '@/styles';
-import { Home2, Airplane, Scan, People, User } from 'iconsax-react-native';
-import CurvedTabBar from '@/components/common/navigation/CurvedTabBar';
+import { Tabs, useRouter } from 'expo-router';
+import { useState } from 'react';
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import * as Haptics from 'expo-haptics';
+import { colors } from '@/styles';
+import { Home2, Airplane, Category, People, User } from 'iconsax-react-native';
+import ScanBottomSheet, { ScanActionType } from '@/components/features/ar/ScanBottomSheet';
+
+// Custom Tab Bar with launcher button and bottom sheet
+function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const [showScanSheet, setShowScanSheet] = useState(false);
+
+  // Define the order of visible tabs (excluding hidden ones like saved, inbox)
+  const visibleTabNames = ['index', 'trips', 'ar', 'community', 'account'];
+  
+  // Filter and sort routes to match our desired order
+  const visibleRoutes = visibleTabNames
+    .map(name => state.routes.find(route => route.name === name))
+    .filter(Boolean) as typeof state.routes;
+
+  const handleScanAction = (action: ScanActionType) => {
+    setShowScanSheet(false);
+    router.push({ pathname: '/(tabs)/ar', params: { action } });
+  };
+
+  const icons: Record<string, (color: string, focused: boolean) => React.ReactNode> = {
+    index: (color, focused) => <Home2 size={24} color={color} variant={focused ? 'Bold' : 'Outline'} />,
+    trips: (color, focused) => <Airplane size={24} color={color} variant={focused ? 'Bold' : 'Outline'} />,
+    ar: () => null, // Handled separately
+    community: (color, focused) => <People size={24} color={color} variant={focused ? 'Bold' : 'Outline'} />,
+    account: (color, focused) => <User size={24} color={color} variant={focused ? 'Bold' : 'Outline'} />,
+  };
+
+  const labels: Record<string, string> = {
+    index: 'Explore',
+    trips: 'Trips',
+    ar: '',
+    community: 'Community',
+    account: 'Profile',
+  };
+
+  return (
+    <>
+      <View style={[styles.tabBar, { paddingBottom: insets.bottom || 8 }]}>
+        {visibleRoutes.map((route, index) => {
+          const isFocused = state.index === state.routes.findIndex(r => r.key === route.key);
+          const isLauncher = route.name === 'ar';
+
+          const onPress = () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+            if (isLauncher) {
+              // Show bottom sheet instead of navigating
+              setShowScanSheet(true);
+              return;
+            }
+
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
+
+          if (isLauncher) {
+            return (
+              <TouchableOpacity
+                key={route.key}
+                style={styles.tabItem}
+                onPress={onPress}
+                activeOpacity={0.8}
+              >
+                <View style={styles.launcherContainer}>
+                  <View style={styles.launcherButton}>
+                    <Category size={24} color={colors.white} variant="Bold" />
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          }
+
+          const color = isFocused ? colors.primary : colors.gray400;
+
+          return (
+            <TouchableOpacity
+              key={route.key}
+              style={styles.tabItem}
+              onPress={onPress}
+              activeOpacity={0.7}
+            >
+              {icons[route.name]?.(color, isFocused)}
+              <Text style={[styles.tabLabel, { color }]}>{labels[route.name]}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Scan Bottom Sheet - renders as overlay */}
+      <ScanBottomSheet
+        visible={showScanSheet}
+        onClose={() => setShowScanSheet(false)}
+        onSelectAction={handleScanAction}
+      />
+    </>
+  );
+}
 
 export default function TabsLayout() {
   return (
     <Tabs
-      tabBar={(props) => <CurvedTabBar {...props} />}
+      tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.white,
-        tabBarShowLabel: false,
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, focused }) => (
-            <Home2 size={24} color={color} variant={focused ? 'Bold' : 'Outline'} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="trips"
-        options={{
-          title: 'Trips',
-          tabBarIcon: ({ color, focused }) => (
-            <Airplane size={24} color={color} variant={focused ? 'Bold' : 'Outline'} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="ar"
-        options={{
-          title: 'AR',
-          tabBarIcon: ({ color, focused }) => (
-            <Scan size={24} color={color} variant={focused ? 'Bold' : 'Outline'} />
-          ),
-          tabBarStyle: { display: 'none' },
-        }}
-      />
-      <Tabs.Screen
-        name="community"
-        options={{
-          title: 'Community',
-          tabBarIcon: ({ color, focused }) => (
-            <People size={24} color={color} variant={focused ? 'Bold' : 'Outline'} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="account"
-        options={{
-          title: 'Account',
-          tabBarIcon: ({ color, focused }) => (
-            <User size={24} color={color} variant={focused ? 'Bold' : 'Outline'} />
-          ),
-        }}
-      />
-      {/* Hidden tabs - no longer in navigation */}
+      <Tabs.Screen name="index" />
+      <Tabs.Screen name="trips" />
+      <Tabs.Screen name="ar" />
+      <Tabs.Screen name="community" />
+      <Tabs.Screen name="account" />
+      {/* Hidden tabs */}
       <Tabs.Screen name="saved" options={{ href: null }} />
       <Tabs.Screen name="inbox" options={{ href: null }} />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray200,
+    paddingTop: 8,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  launcherContainer: {
+    position: 'relative',
+    top: -20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  launcherButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+});
 

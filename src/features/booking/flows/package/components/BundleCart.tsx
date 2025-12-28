@@ -38,6 +38,7 @@ interface BundleCartProps {
   onContinue: () => void;
   onCategoryPress: (category: PackageCategory) => void;
   showContinue?: boolean;
+  bottomInset?: number;
 }
 
 const CATEGORY_CONFIG: Record<PackageCategory, { icon: any; label: string; color: string }> = {
@@ -51,6 +52,7 @@ export default function BundleCart({
   onContinue, 
   onCategoryPress,
   showContinue = true,
+  bottomInset = 0,
 }: BundleCartProps) {
   const {
     tripSetup,
@@ -82,9 +84,13 @@ export default function BundleCart({
     switch (category) {
       case 'flight':
         if (selections.flight.outbound) {
-          const airline = selections.flight.outbound.segments[0]?.airline;
+          // Support both FlightCardData format and legacy Flight format
+          const flight = selections.flight.outbound as any;
+          const airlineName = flight.airlineName 
+            || flight.segments?.[0]?.airline?.name 
+            || 'Flight';
           return {
-            title: airline?.name || 'Flight',
+            title: airlineName,
             subtitle: isComplete ? 'Round trip' : 'One way selected',
             price: pricing.flight,
           };
@@ -126,7 +132,7 @@ export default function BundleCart({
   return (
     <Animated.View 
       entering={FadeInUp.duration(400).springify()}
-      style={styles.container}
+      style={[styles.container, { paddingBottom: spacing.lg + bottomInset }]}
     >
       {/* Selected Items Only */}
       <View style={styles.itemsContainer}>
@@ -231,11 +237,16 @@ export default function BundleCart({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.white,
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
+    borderTopLeftRadius: borderRadius.lg, // 24px for consistency
+    borderTopRightRadius: borderRadius.lg, // 24px for consistency
     paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    ...shadows.lg,
+    // paddingBottom is applied dynamically with bottomInset
+    // Strong shadow for elevation
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 20,
   },
   itemsContainer: {
     paddingHorizontal: spacing.md,

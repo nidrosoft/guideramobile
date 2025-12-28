@@ -3,5 +3,6 @@
  */
 
 export { default as PackageBookingFlow } from './PackageBookingFlow';
-export * from './steps';
+export * from './screens';
+export * from './sheets';
 export * from './components';

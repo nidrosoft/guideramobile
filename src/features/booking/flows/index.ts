@@ -14,7 +14,7 @@ export { HotelBookingFlow } from './hotel';
 export { PackageBookingFlow } from './package';
 
 // Car Rental
-export { CarRentalFlow } from './car';
+export { CarBookingFlow } from './car';
 
 // Experience Booking
 export { ExperienceFlow } from './experience';

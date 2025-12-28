@@ -258,3 +258,178 @@ export interface PlanningStep {
   subtitle?: string;
   optional?: boolean;
 }
+
+// ============================================
+// ADVANCED TRIP TYPES
+// ============================================
+
+// Trip Type for Advanced Flow
+export type AdvancedTripType = 'roundtrip' | 'oneway' | 'multicity';
+
+// Date Flexibility
+export type DateFlexibility = 'exact' | '3days' | '1week';
+
+// Spending Style
+export type SpendingStyle = 'budget' | 'midrange' | 'luxury';
+
+// Budget Priority
+export type BudgetPriority = 'accommodation' | 'experiences' | 'food' | 'balanced';
+
+// Trip Pace
+export type TripPace = 'relaxed' | 'moderate' | 'packed';
+
+// Time Preference
+export type TimePreference = 'early' | 'flexible' | 'night';
+
+// Accommodation Type
+export type AccommodationType = 'hotel' | 'airbnb' | 'resort' | 'hostel' | 'mix' | 'skip';
+
+// Location Priority
+export type LocationPriority = 'city_center' | 'near_attractions' | 'quiet' | 'near_transport';
+
+// Transportation Mode
+export type TransportMode = 'flight' | 'train' | 'drive' | 'skip';
+
+// Local Transport
+export type LocalTransport = 'public' | 'rental' | 'rideshare' | 'walking' | 'mix';
+
+// Flight Class
+export type FlightClass = 'economy' | 'business' | 'first';
+
+// Flight Stops
+export type FlightStops = 'direct' | '1stop' | 'any';
+
+// Flight Time Preference
+export type FlightTimePreference = 'morning' | 'afternoon' | 'evening' | 'any';
+
+// Interest Category
+export type InterestCategory = 
+  | 'museums'
+  | 'nature'
+  | 'art'
+  | 'food'
+  | 'nightlife'
+  | 'sports'
+  | 'photography'
+  | 'shopping'
+  | 'wellness'
+  | 'beach'
+  | 'adventure'
+  | 'music';
+
+// Destination with nights
+export interface DestinationWithNights {
+  location: Location | null;
+  nights: number;
+}
+
+// Traveler Details
+export interface TravelerDetails {
+  adults: number;
+  children: number[];  // Array of ages
+  infants: number;
+}
+
+// Special Requirements
+export interface SpecialRequirements {
+  wheelchairAccessible: boolean;
+  travelingWithPet: boolean;
+  dietaryRestrictions: string[];
+}
+
+// Budget Info
+export interface BudgetInfo {
+  amount: number;
+  currency: string;
+}
+
+// Flight Preferences
+export interface FlightPreferences {
+  class: FlightClass;
+  stops: FlightStops;
+  timePreference: FlightTimePreference;
+}
+
+// Accommodation Preferences
+export interface AccommodationPreferences {
+  type: AccommodationType;
+  starRating: number[];
+  locationPriority: LocationPriority;
+  amenities: string[];
+}
+
+// Transportation Preferences
+export interface TransportationPreferences {
+  gettingThere: TransportMode;
+  flightPreferences: FlightPreferences | null;
+  gettingAround: LocalTransport;
+}
+
+// Advanced Trip Form Data
+export interface AdvancedTripFormData {
+  // Step 1: Trip Type
+  tripType: AdvancedTripType;
+  
+  // Step 2: Destinations
+  origin: Location | null;
+  destinations: DestinationWithNights[];
+  
+  // Step 3: Dates
+  departureDate: Date | null;
+  returnDate: Date | null;
+  flexibility: DateFlexibility;
+  blackoutDates: Date[];
+  
+  // Step 4: Travelers
+  travelers: TravelerDetails;
+  specialRequirements: SpecialRequirements;
+  
+  // Step 5: Budget
+  budget: BudgetInfo;
+  spendingStyle: SpendingStyle;
+  budgetPriority: BudgetPriority;
+  
+  // Step 6: Interests
+  interests: InterestCategory[];
+  pace: TripPace;
+  timePreference: TimePreference;
+  
+  // Step 7: Accommodation
+  accommodation: AccommodationPreferences;
+  skipAccommodation: boolean;
+  
+  // Step 8: Transportation
+  transportation: TransportationPreferences;
+  skipTransportation: boolean;
+  
+  // Step 9: Bookings (linked during flow)
+  linkedBookings: {
+    flightIds: string[];
+    hotelIds: string[];
+    carIds: string[];
+    experienceIds: string[];
+  };
+}
+
+// Interest Option
+export interface InterestOption {
+  id: InterestCategory;
+  label: string;
+  emoji: string;
+  description: string;
+}
+
+// Amenity Option
+export interface AmenityOption {
+  id: string;
+  label: string;
+  icon: string;
+}
+
+// Trip Type Option
+export interface TripTypeOption {
+  id: AdvancedTripType;
+  label: string;
+  description: string;
+  icon: string;
+}

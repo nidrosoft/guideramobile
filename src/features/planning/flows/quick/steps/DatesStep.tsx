@@ -2,30 +2,27 @@
  * DATES STEP
  * 
  * Step 2: When are you traveling?
- * Duration presets, date picker, and flexibility toggle.
+ * Duration presets, date picker sheet, and flexibility toggle.
+ * Uses the DatePickerSheet from the flight flow for consistency.
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   FadeInDown,
   FadeInUp,
-  FadeIn,
 } from 'react-native-reanimated';
 import {
   Calendar,
   ArrowRight2,
   TickCircle,
-  ArrowLeft2,
-  ArrowRight,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -33,20 +30,14 @@ import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
 import { usePlanningStore } from '../../../stores/usePlanningStore';
 import { DURATION_PRESETS } from '../../../config/planning.config';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// Import the DatePickerSheet from flight flow
+import { DatePickerSheet } from '@/features/booking/flows/flight/sheets';
 
 interface DatesStepProps {
   onNext: () => void;
   onBack: () => void;
   onClose: () => void;
 }
-
-// Simple calendar component
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-];
 
 export default function DatesStep({
   onNext,
@@ -63,63 +54,16 @@ export default function DatesStep({
     isDatesValid,
   } = usePlanningStore();
   
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectingEndDate, setSelectingEndDate] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   
-  // Generate calendar days
-  const calendarDays = useMemo(() => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDay = firstDay.getDay();
-    
-    const days: (Date | null)[] = [];
-    
-    // Add empty slots for days before the first day of the month
-    for (let i = 0; i < startingDay; i++) {
-      days.push(null);
+  // Handle date selection from DatePickerSheet
+  const handleDateSelect = useCallback((departure: Date, returnDate?: Date) => {
+    setStartDate(departure);
+    if (returnDate) {
+      setEndDate(returnDate);
     }
-    
-    // Add all days of the month
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(new Date(year, month, i));
-    }
-    
-    return days;
-  }, [currentMonth]);
-  
-  const handlePrevMonth = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
-  };
-  
-  const handleNextMonth = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
-  };
-  
-  const handleSelectDate = useCallback((date: Date) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
-    if (!selectingEndDate) {
-      setStartDate(date);
-      setSelectingEndDate(true);
-      
-      // Auto-set end date based on duration preset
-      const days = DURATION_PRESETS.find(p => p.id === quickTripData.durationPreset)?.days || 3;
-      const endDate = new Date(date);
-      endDate.setDate(endDate.getDate() + days - 1);
-      setEndDate(endDate);
-    } else {
-      if (quickTripData.startDate && date >= quickTripData.startDate) {
-        setEndDate(date);
-        setSelectingEndDate(false);
-      }
-    }
-  }, [selectingEndDate, quickTripData.startDate, quickTripData.durationPreset, setStartDate, setEndDate]);
+    setShowDatePicker(false);
+  }, [setStartDate, setEndDate]);
   
   const handleDurationPreset = useCallback((presetId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -145,22 +89,10 @@ export default function DatesStep({
     onNext();
   }, [isDatesValid, onNext]);
   
-  const isDateSelected = (date: Date) => {
-    if (!date) return false;
-    const start = quickTripData.startDate;
-    const end = quickTripData.endDate;
-    
-    if (start && date.toDateString() === new Date(start).toDateString()) return 'start';
-    if (end && date.toDateString() === new Date(end).toDateString()) return 'end';
-    if (start && end && date > new Date(start) && date < new Date(end)) return 'between';
-    return false;
-  };
-  
-  const isDateDisabled = (date: Date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return date < today;
-  };
+  const handleOpenDatePicker = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowDatePicker(true);
+  }, []);
   
   const formatDate = (date: Date | null) => {
     if (!date) return 'Select';
@@ -251,72 +183,23 @@ export default function DatesStep({
           )}
         </Animated.View>
         
-        {/* Calendar */}
+        {/* Open Calendar Button */}
         <Animated.View 
           entering={FadeInDown.duration(400).delay(200)}
-          style={styles.calendarContainer}
         >
-          {/* Month Navigation */}
-          <View style={styles.calendarHeader}>
-            <TouchableOpacity onPress={handlePrevMonth} style={styles.monthNavButton}>
-              <ArrowLeft2 size={20} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <Text style={styles.monthTitle}>
-              {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+          <TouchableOpacity
+            style={styles.openCalendarButton}
+            onPress={handleOpenDatePicker}
+            activeOpacity={0.7}
+          >
+            <Calendar size={24} color={colors.primary} variant="Bold" />
+            <Text style={styles.openCalendarText}>
+              {quickTripData.startDate && quickTripData.endDate 
+                ? 'Change Dates' 
+                : 'Select Dates on Calendar'}
             </Text>
-            <TouchableOpacity onPress={handleNextMonth} style={styles.monthNavButton}>
-              <ArrowRight size={20} color={colors.textPrimary} />
-            </TouchableOpacity>
-          </View>
-          
-          {/* Day Headers */}
-          <View style={styles.dayHeaders}>
-            {DAYS.map((day) => (
-              <Text key={day} style={styles.dayHeader}>{day}</Text>
-            ))}
-          </View>
-          
-          {/* Calendar Grid */}
-          <View style={styles.calendarGrid}>
-            {calendarDays.map((date, index) => {
-              if (!date) {
-                return <View key={`empty-${index}`} style={styles.dayCell} />;
-              }
-              
-              const selection = isDateSelected(date);
-              const disabled = isDateDisabled(date);
-              const isStartOrEnd = selection === 'start' || selection === 'end';
-              
-              return (
-                <TouchableOpacity
-                  key={date.toISOString()}
-                  style={[
-                    styles.dayCell,
-                    selection === 'start' && styles.dayCellStart,
-                    selection === 'end' && styles.dayCellEnd,
-                    selection === 'between' && styles.dayCellBetween,
-                  ]}
-                  onPress={() => !disabled && handleSelectDate(date)}
-                  disabled={disabled}
-                  activeOpacity={0.7}
-                >
-                  <View style={[
-                    styles.dayCircle,
-                    isStartOrEnd && styles.dayCircleSelected,
-                    disabled && styles.dayCellDisabled,
-                  ]}>
-                    <Text style={[
-                      styles.dayText,
-                      isStartOrEnd && styles.dayTextSelected,
-                      disabled && styles.dayTextDisabled,
-                    ]}>
-                      {date.getDate()}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+            <ArrowRight2 size={20} color={colors.primary} />
+          </TouchableOpacity>
         </Animated.View>
         
         {/* Flexibility Toggle */}
@@ -373,6 +256,16 @@ export default function DatesStep({
           </LinearGradient>
         </TouchableOpacity>
       </Animated.View>
+      
+      {/* Date Picker Sheet - Reused from flight flow */}
+      <DatePickerSheet
+        visible={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        onSelect={handleDateSelect}
+        tripType="round-trip"
+        departureDate={quickTripData.startDate}
+        returnDate={quickTripData.endDate}
+      />
     </View>
   );
 }
@@ -486,86 +379,25 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   
-  // Calendar - Larger container gets slightly more radius
-  calendarContainer: {
+  // Open Calendar Button - Opens DatePickerSheet
+  openCalendarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.white,
-    borderRadius: 16, // Slightly larger for bigger container
+    borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.lg,
+    borderWidth: 2,
+    borderColor: colors.primary + '30',
+    borderStyle: 'dashed',
+    gap: spacing.md,
     ...shadows.sm,
   },
-  calendarHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  monthNavButton: {
-    padding: spacing.sm,
-  },
-  monthTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  dayHeaders: {
-    flexDirection: 'row',
-    marginBottom: spacing.sm,
-  },
-  dayHeader: {
+  openCalendarText: {
     flex: 1,
-    textAlign: 'center',
-    fontSize: typography.fontSize.xs,
+    fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textSecondary,
-  },
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  dayCell: {
-    width: `${100 / 7}%`,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dayCellStart: {
-    backgroundColor: colors.primary + '15',
-    borderTopLeftRadius: 22,
-    borderBottomLeftRadius: 22,
-  },
-  dayCellEnd: {
-    backgroundColor: colors.primary + '15',
-    borderTopRightRadius: 22,
-    borderBottomRightRadius: 22,
-  },
-  dayCellBetween: {
-    backgroundColor: colors.primary + '15',
-  },
-  dayCellDisabled: {
-    opacity: 0.3,
-  },
-  dayCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dayCircleSelected: {
-    backgroundColor: colors.primary,
-  },
-  dayText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textPrimary,
-    textAlign: 'center',
-  },
-  dayTextSelected: {
-    color: colors.white,
-    fontWeight: typography.fontWeight.bold,
-  },
-  dayTextDisabled: {
-    color: colors.textSecondary,
+    color: colors.primary,
   },
   
   // Flexibility

@@ -14,11 +14,14 @@ import ARPluginSelector from './ARPluginSelector';
 
 interface ARContainerProps {
   onClose: () => void;
+  initialPlugin?: string;
 }
 
-export default function ARContainer({ onClose }: ARContainerProps) {
+export default function ARContainer({ onClose, initialPlugin }: ARContainerProps) {
   const [viewMode, setViewMode] = useState<ARViewMode>('camera');
-  const [activePlugin, setActivePlugin] = useState<ARPluginId | null>(null);
+  const [activePlugin, setActivePlugin] = useState<ARPluginId | null>(
+    (initialPlugin as ARPluginId) || null
+  );
   const [sidePanelVisible, setSidePanelVisible] = useState(true);
 
   const handlePluginSelect = (pluginId: ARPluginId) => {

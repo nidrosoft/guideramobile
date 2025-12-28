@@ -1,6 +1,5 @@
 /**
- * CAR RENTAL FLOW INDEX
+ * CAR BOOKING FLOW EXPORTS
  */
 
-export { default as CarRentalFlow } from './CarRentalFlow';
-export * from './steps';
+export { default as CarBookingFlow } from './CarBookingFlow';

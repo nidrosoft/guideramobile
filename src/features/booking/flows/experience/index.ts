@@ -1,8 +1,8 @@
 /**
- * EXPERIENCE FLOW INDEX
- * 
- * Export experience booking flow and steps.
+ * EXPERIENCE BOOKING FLOW
  */
 
-export { default as ExperienceFlow } from './ExperienceFlow';
-export * from './steps';
+export { default as ExperienceBookingFlow } from './ExperienceBookingFlow';
+
+// Legacy export for backward compatibility
+export { default as ExperienceFlow } from './ExperienceBookingFlow';

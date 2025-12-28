@@ -13,7 +13,7 @@ import { SearchNormal1, Setting4 } from 'iconsax-react-native';
 import TripReminder from '@/components/features/home/TripReminder';
 import SectionRenderer from '@/components/features/home/SectionRenderer';
 import PlanBottomSheet from '@/components/features/home/PlanBottomSheet';
-import { FlightBookingFlow, HotelBookingFlow, PackageBookingFlow, CarRentalFlow, ExperienceFlow } from '@/features/booking';
+import { FlightBookingFlow, HotelBookingFlow, PackageBookingFlow, CarBookingFlow, ExperienceFlow } from '@/features/booking';
 import { categories } from '@/data/categories';
 import { SECTIONS_CONFIG } from '@/config/sections.config';
 
@@ -110,8 +110,11 @@ export default function Home() {
                 style={styles.categoryItem}
                 onPress={() => handleCategoryPress(category.name)}
               >
-                <View style={styles.categoryCircle}>
-                  <Icon size={24} color={colors.primary} variant="Outline" />
+                <View style={[
+                  styles.categoryCircle,
+                  { backgroundColor: category.bgColor, borderColor: category.color }
+                ]}>
+                  <Icon size={24} color={category.color} variant="Bold" />
                 </View>
                 <Text style={styles.categoryText}>{category.name}</Text>
               </TouchableOpacity>
@@ -157,7 +160,7 @@ export default function Home() {
       />
 
       {/* Car Rental Flow */}
-      <CarRentalFlow
+      <CarBookingFlow
         visible={isCarRentalVisible}
         onClose={() => setIsCarRentalVisible(false)}
       />
@@ -289,6 +292,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.gray200,
   },
   categoryText: {
     fontSize: typography.fontSize.xs,

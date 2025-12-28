@@ -1,116 +1,60 @@
 /**
  * PACKAGE BOOKING FLOW
  * 
- * Main orchestrator for the package booking process.
- * Manages step navigation with smooth animations.
+ * Screen-based orchestrator for package booking.
+ * Follows the same pattern as Flight/Hotel/Car/Experience flows.
+ * 
+ * Screens:
+ * 1. search - Package type, destination, dates, travelers
+ * 2. build - Select flights, hotels, cars, experiences with category tabs
+ * 3. checkout - Review, traveler details, extras, payment
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
-import {
-  View,
-  StyleSheet,
-  Modal,
-  Dimensions,
-  StatusBar,
-} from 'react-native';
+import { View, StyleSheet, Modal, StatusBar } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withSpring,
   runOnJS,
-  Easing,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/styles';
 import { usePackageStore } from '../../stores/usePackageStore';
 import { useBookingStore } from '../../stores/useBookingStore';
-import { useBookingFlow } from '../../hooks/useBookingFlow';
-import { PACKAGE_BOOKING_STEPS } from '../../config/steps.config';
-import { FlowHeader } from '../../components/shared';
 
-// Import steps
-import TripSetupStep from './steps/TripSetupStep';
-import BundleBuilderStep from './steps/BundleBuilderStep';
-import ReviewStep from './steps/ReviewStep';
-import TravelerStep from './steps/TravelerStep';
-import ExtrasStep from './steps/ExtrasStep';
-import PaymentStep from './steps/PaymentStep';
-import ConfirmationStep from './steps/ConfirmationStep';
+// Import screens
+import PackageSearchScreen from './screens/PackageSearchScreen';
+import PackageBuildScreen from './screens/PackageBuildScreen';
+import PackageCheckoutScreen from './screens/PackageCheckoutScreen';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// Screen types
+type PackageScreen = 'search' | 'build' | 'checkout';
 
 interface PackageBookingFlowProps {
   visible: boolean;
   onClose: () => void;
-  initialStep?: string;
 }
-
-// Step component mapping
-const STEP_COMPONENTS: Record<string, React.ComponentType<any>> = {
-  setup: TripSetupStep,
-  builder: BundleBuilderStep,
-  review: ReviewStep,
-  travelers: TravelerStep,
-  extras: ExtrasStep,
-  payment: PaymentStep,
-  confirmation: ConfirmationStep,
-};
-
-// Step titles for the header
-const STEP_TITLES: Record<string, { title: string; subtitle?: string }> = {
-  setup: { title: 'Plan Your Trip', subtitle: 'Where & when' },
-  builder: { title: 'Build Package', subtitle: 'Select your bundle' },
-  review: { title: 'Review', subtitle: 'Check your selections' },
-  travelers: { title: 'Travelers', subtitle: 'Enter details' },
-  extras: { title: 'Extras', subtitle: 'Add-ons & insurance' },
-  payment: { title: 'Payment', subtitle: 'Secure checkout' },
-  confirmation: { title: 'Confirmed!', subtitle: 'Booking complete' },
-};
 
 export default function PackageBookingFlow({
   visible,
   onClose,
-  initialStep = 'setup',
 }: PackageBookingFlowProps) {
   const packageStore = usePackageStore();
   const bookingStore = useBookingStore();
   
+  const [currentScreen, setCurrentScreen] = useState<PackageScreen>('search');
+  const [screenHistory, setScreenHistory] = useState<PackageScreen[]>(['search']);
+  
   // Animation values
-  const slideAnim = useSharedValue(0);
   const fadeAnim = useSharedValue(0);
   const scaleAnim = useSharedValue(0.95);
-  
-  // Track previous step for animation direction
-  const [previousStepIndex, setPreviousStepIndex] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
-  
-  // Flow management
-  const {
-    currentStep,
-    currentStepIndex,
-    totalSteps,
-    progress,
-    isFirstStep,
-    isLastStep,
-    goNext,
-    goBack,
-    goToStep,
-    reset,
-  } = useBookingFlow({
-    steps: PACKAGE_BOOKING_STEPS,
-    initialStep,
-    onStepChange: (step, index) => {
-      // Animate step transition
-      const direction = index > previousStepIndex ? 1 : -1;
-      animateStepTransition(direction);
-      setPreviousStepIndex(index);
-    },
-  });
   
   // Animate modal entrance
   useEffect(() => {
     if (visible) {
+      bookingStore.startBookingSession('package');
       fadeAnim.value = withTiming(1, { duration: 300 });
       scaleAnim.value = withSpring(1, { damping: 20, stiffness: 300 });
     } else {
@@ -119,17 +63,67 @@ export default function PackageBookingFlow({
     }
   }, [visible]);
   
-  // Step transition animation
-  const animateStepTransition = useCallback((direction: number) => {
-    setIsAnimating(true);
-    slideAnim.value = direction * SCREEN_WIDTH;
-    slideAnim.value = withTiming(0, {
-      duration: 300,
-      easing: Easing.out(Easing.cubic),
-    }, () => {
-      runOnJS(setIsAnimating)(false);
+  // Reset on mount
+  useEffect(() => {
+    if (visible) {
+      packageStore.reset();
+      setCurrentScreen('search');
+      setScreenHistory(['search']);
+    }
+  }, [visible]);
+  
+  const handleClose = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    fadeAnim.value = withTiming(0, { duration: 200 });
+    scaleAnim.value = withTiming(0.95, { duration: 200 }, () => {
+      runOnJS(onClose)();
+      runOnJS(resetFlow)();
     });
+  }, [onClose]);
+  
+  const resetFlow = () => {
+    setCurrentScreen('search');
+    setScreenHistory(['search']);
+    packageStore.reset();
+    bookingStore.endBookingSession();
+  };
+  
+  // Navigation helpers
+  const navigateTo = useCallback((screen: PackageScreen) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setScreenHistory(prev => [...prev, screen]);
+    setCurrentScreen(screen);
   }, []);
+  
+  const goBack = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (screenHistory.length > 1) {
+      const newHistory = [...screenHistory];
+      newHistory.pop();
+      setScreenHistory(newHistory);
+      setCurrentScreen(newHistory[newHistory.length - 1]);
+    } else {
+      handleClose();
+    }
+  }, [screenHistory, handleClose]);
+  
+  // Screen handlers
+  const handleSearchComplete = useCallback(() => {
+    navigateTo('build');
+  }, [navigateTo]);
+  
+  const handleBuildComplete = useCallback(() => {
+    navigateTo('checkout');
+  }, [navigateTo]);
+  
+  const handleCheckoutComplete = useCallback(() => {
+    // Generate booking reference and confirm
+    const reference = `PKG${Date.now().toString(36).toUpperCase()}`;
+    packageStore.setBookingReference(reference);
+    packageStore.confirmBooking();
+    // Close flow on success
+    handleClose();
+  }, [handleClose, packageStore]);
   
   // Animated styles
   const containerStyle = useAnimatedStyle(() => ({
@@ -137,75 +131,48 @@ export default function PackageBookingFlow({
     transform: [{ scale: scaleAnim.value }],
   }));
   
-  const stepStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: slideAnim.value }],
-  }));
-  
-  // Handlers
-  const handleNext = useCallback(() => {
-    if (isAnimating) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    goNext();
-  }, [isAnimating, goNext]);
-  
-  const handleBack = useCallback(() => {
-    if (isAnimating || isFirstStep) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    goBack();
-  }, [isAnimating, isFirstStep, goBack]);
-  
-  const handleClose = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
-    // Reset state if not confirmed
-    if (!packageStore.isBookingConfirmed) {
-      packageStore.reset();
+  // Render current screen
+  const renderScreen = () => {
+    switch (currentScreen) {
+      case 'search':
+        return (
+          <PackageSearchScreen
+            onContinue={handleSearchComplete}
+            onClose={handleClose}
+          />
+        );
+      case 'build':
+        return (
+          <PackageBuildScreen
+            onContinue={handleBuildComplete}
+            onBack={goBack}
+            onClose={handleClose}
+          />
+        );
+      case 'checkout':
+        return (
+          <PackageCheckoutScreen
+            onComplete={handleCheckoutComplete}
+            onBack={goBack}
+            onClose={handleClose}
+          />
+        );
+      default:
+        return null;
     }
-    
-    reset();
-    onClose();
-  }, [packageStore, reset, onClose]);
-  
-  // Get current step component
-  const stepId = currentStep?.id || 'setup';
-  const StepComponent = STEP_COMPONENTS[stepId] || TripSetupStep;
-  const stepInfo = STEP_TITLES[stepId] || { title: 'Package', subtitle: '' };
-  
-  // Hide header on confirmation step
-  const showHeader = stepId !== 'confirmation';
+  };
   
   return (
     <Modal
       visible={visible}
       animationType="none"
       presentationStyle="fullScreen"
+      statusBarTranslucent
       onRequestClose={handleClose}
     >
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <Animated.View style={[styles.container, containerStyle]}>
-        {/* Header */}
-        {showHeader && (
-          <FlowHeader
-            title={stepInfo.title}
-            subtitle={stepInfo.subtitle}
-            currentStep={currentStepIndex + 1}
-            totalSteps={totalSteps}
-            onBack={handleBack}
-            onClose={handleClose}
-            showConfirmOnClose={!packageStore.isBookingConfirmed}
-          />
-        )}
-        
-        {/* Step Content */}
-        <Animated.View style={[styles.stepContainer, stepStyle]}>
-          <StepComponent
-            onNext={handleNext}
-            onBack={handleBack}
-            onClose={handleClose}
-            stepIndex={currentStepIndex}
-            totalSteps={totalSteps}
-          />
-        </Animated.View>
+        {renderScreen()}
       </Animated.View>
     </Modal>
   );
@@ -215,8 +182,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  stepContainer: {
-    flex: 1,
   },
 });

@@ -1,8 +1,10 @@
 /**
  * FLIGHT BOOKING FLOW
  * 
- * Main orchestrator for the flight booking process.
- * Manages step navigation with smooth animations.
+ * Streamlined 3-screen flight booking:
+ * 1. Search - Single page with bottom sheet modals
+ * 2. Results - Flight list with filters and date scroll
+ * 3. Checkout - Combined seats, extras, travelers, payment
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -10,7 +12,6 @@ import {
   View,
   StyleSheet,
   Modal,
-  Dimensions,
   StatusBar,
 } from 'react-native';
 import Animated, {
@@ -19,104 +20,40 @@ import Animated, {
   withTiming,
   withSpring,
   runOnJS,
-  Easing,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/styles';
 import { useFlightStore } from '../../stores/useFlightStore';
 import { useBookingStore } from '../../stores/useBookingStore';
-import { useBookingFlow } from '../../hooks/useBookingFlow';
-import { FLIGHT_BOOKING_STEPS } from '../../config/steps.config';
-import { FlowHeader } from '../../components/shared';
+import { Flight } from '../../types/flight.types';
 
-// Import steps
-import SearchStep from './steps/SearchStep';
-import ResultsStep from './steps/ResultsStep';
-import FlightDetailStep from './steps/FlightDetailStep';
-import SeatSelectionStep from './steps/SeatSelectionStep';
-import ExtrasStep from './steps/ExtrasStep';
-import TravelerInfoStep from './steps/TravelerInfoStep';
-import PaymentStep from './steps/PaymentStep';
-import ConfirmationStep from './steps/ConfirmationStep';
+// Import new screens
+import FlightSearchScreen from './screens/FlightSearchScreen';
+import FlightSearchLoadingScreen from './screens/FlightSearchLoadingScreen';
+import FlightResultsScreen from './screens/FlightResultsScreen';
+import FlightCheckoutScreen from './screens/FlightCheckoutScreen';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// Screen types
+type FlightScreen = 'search' | 'loading' | 'results' | 'checkout';
 
 interface FlightBookingFlowProps {
   visible: boolean;
   onClose: () => void;
-  initialStep?: string;
 }
-
-const STEP_COMPONENTS: Record<string, React.ComponentType<any>> = {
-  search: SearchStep,
-  results: ResultsStep,
-  detail: FlightDetailStep,
-  seats: SeatSelectionStep,
-  extras: ExtrasStep,
-  travelers: TravelerInfoStep,
-  payment: PaymentStep,
-  confirmation: ConfirmationStep,
-};
-
-// Step titles for the header
-const STEP_TITLES: Record<string, { title: string; subtitle?: string }> = {
-  search: { title: 'Search Flights', subtitle: 'Find the best deals' },
-  results: { title: 'Available Flights', subtitle: 'Select your flight' },
-  detail: { title: 'Flight Details', subtitle: 'Review your selection' },
-  seats: { title: 'Select Seats', subtitle: 'Choose your seats' },
-  extras: { title: 'Add Extras', subtitle: 'Enhance your trip' },
-  travelers: { title: 'Traveler Details', subtitle: 'Enter passenger info' },
-  payment: { title: 'Payment', subtitle: 'Secure checkout' },
-  confirmation: { title: 'Confirmed!', subtitle: 'Booking complete' },
-};
 
 export default function FlightBookingFlow({
   visible,
   onClose,
-  initialStep = 'search',
 }: FlightBookingFlowProps) {
   const flightStore = useFlightStore();
   const bookingStore = useBookingStore();
   
+  const [currentScreen, setCurrentScreen] = useState<FlightScreen>('search');
+  const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
+  
   // Animation values
-  const slideAnim = useSharedValue(0);
   const fadeAnim = useSharedValue(0);
   const scaleAnim = useSharedValue(0.95);
-  
-  // Track previous step for animation direction
-  const [previousStepIndex, setPreviousStepIndex] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
-  
-  // Flow management
-  const {
-    currentStep,
-    currentStepIndex,
-    totalSteps,
-    progress,
-    isFirstStep,
-    isLastStep,
-    goNext,
-    goBack,
-    goToStep,
-    reset,
-  } = useBookingFlow({
-    steps: FLIGHT_BOOKING_STEPS,
-    initialStep,
-    onStepChange: (stepId, index) => {
-      // Animate step transition
-      const direction = index > previousStepIndex ? 1 : -1;
-      animateStepTransition(direction);
-      setPreviousStepIndex(index);
-      flightStore.setCurrentStep(stepId);
-    },
-    onComplete: () => {
-      // Booking completed
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    },
-    onCancel: () => {
-      handleClose();
-    },
-  });
   
   // Animate modal entrance
   useEffect(() => {
@@ -130,62 +67,50 @@ export default function FlightBookingFlow({
     }
   }, [visible]);
   
-  const animateStepTransition = (direction: number) => {
-    setIsAnimating(true);
-    
-    // Slide out current step
-    slideAnim.value = withTiming(
-      -direction * SCREEN_WIDTH,
-      { duration: 250, easing: Easing.bezier(0.4, 0, 0.2, 1) },
-      () => {
-        // Reset position instantly
-        slideAnim.value = direction * SCREEN_WIDTH;
-        // Slide in new step
-        slideAnim.value = withTiming(
-          0,
-          { duration: 300, easing: Easing.bezier(0.0, 0, 0.2, 1) },
-          () => {
-            runOnJS(setIsAnimating)(false);
-          }
-        );
-      }
-    );
-    
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-  
   const handleClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     fadeAnim.value = withTiming(0, { duration: 200 });
     scaleAnim.value = withTiming(0.95, { duration: 200 }, () => {
       runOnJS(onClose)();
-      runOnJS(reset)();
-      runOnJS(flightStore.reset)();
-      runOnJS(bookingStore.endBookingSession)();
+      runOnJS(resetFlow)();
     });
-  }, [onClose, reset, flightStore, bookingStore]);
+  }, [onClose]);
   
-  const handleNext = useCallback(() => {
-    if (isAnimating) return;
-    goNext();
-  }, [goNext, isAnimating]);
+  const resetFlow = () => {
+    setCurrentScreen('search');
+    setSelectedFlight(null);
+    flightStore.reset();
+    bookingStore.endBookingSession();
+  };
   
-  const handleBack = useCallback(() => {
-    if (isAnimating) return;
-    if (isFirstStep) {
-      handleClose();
-    } else {
-      goBack();
-    }
-  }, [goBack, isFirstStep, handleClose, isAnimating]);
+  // Navigation handlers
+  const handleSearch = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Show loading screen
+    setCurrentScreen('loading');
+  }, []);
   
-  const handleSkip = useCallback(() => {
-    if (isAnimating) return;
-    // Skip optional steps
-    if (currentStep?.optional) {
-      goNext();
-    }
-  }, [currentStep, goNext, isAnimating]);
+  const handleLoadingComplete = useCallback(() => {
+    // Transition to results after loading animation
+    setCurrentScreen('results');
+  }, []);
+  
+  const handleSelectFlight = useCallback((flight: Flight) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedFlight(flight);
+    flightStore.selectOutboundFlight(flight);
+    setCurrentScreen('checkout');
+  }, []);
+  
+  const handleBackFromResults = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCurrentScreen('search');
+  }, []);
+  
+  const handleBackFromCheckout = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCurrentScreen('results');
+  }, []);
   
   // Animated styles
   const containerStyle = useAnimatedStyle(() => ({
@@ -193,35 +118,45 @@ export default function FlightBookingFlow({
     transform: [{ scale: scaleAnim.value }],
   }));
   
-  const contentStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: slideAnim.value }],
-  }));
-  
-  // Get current step info for header
-  const stepInfo = STEP_TITLES[currentStep?.id || 'search'];
-  
-  // Render current step
-  const renderStep = () => {
-    const StepComponent = STEP_COMPONENTS[currentStep?.id || 'search'];
-    
-    if (!StepComponent) return null;
-    
-    return (
-      <StepComponent
-        onNext={handleNext}
-        onBack={handleBack}
-        onClose={handleClose}
-        onSkip={currentStep?.optional ? handleSkip : undefined}
-        stepIndex={currentStepIndex}
-        totalSteps={totalSteps}
-        isFirstStep={isFirstStep}
-        isLastStep={isLastStep}
-      />
-    );
+  // Render current screen
+  const renderScreen = () => {
+    switch (currentScreen) {
+      case 'search':
+        return (
+          <FlightSearchScreen
+            onSearch={handleSearch}
+            onBack={handleClose}
+          />
+        );
+      case 'loading':
+        return (
+          <FlightSearchLoadingScreen
+            origin={flightStore.searchParams.origin?.code}
+            destination={flightStore.searchParams.destination?.code}
+            onComplete={handleLoadingComplete}
+          />
+        );
+      case 'results':
+        return (
+          <FlightResultsScreen
+            onSelectFlight={handleSelectFlight}
+            onBack={handleBackFromResults}
+            onClose={handleClose}
+          />
+        );
+      case 'checkout':
+        return selectedFlight ? (
+          <FlightCheckoutScreen
+            flight={selectedFlight}
+            onComplete={handleClose}
+            onBack={handleBackFromCheckout}
+            onClose={handleClose}
+          />
+        ) : null;
+      default:
+        return null;
+    }
   };
-  
-  // Don't show header on confirmation step
-  const showHeader = currentStep?.id !== 'confirmation';
   
   return (
     <Modal
@@ -231,25 +166,9 @@ export default function FlightBookingFlow({
       statusBarTranslucent
       onRequestClose={handleClose}
     >
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <Animated.View style={[styles.container, containerStyle]}>
-        {/* Gradient Header with Segmented Progress */}
-        {showHeader && (
-          <FlowHeader
-            title={stepInfo.title}
-            subtitle={stepInfo.subtitle}
-            currentStep={currentStepIndex + 1}
-            totalSteps={totalSteps}
-            onBack={handleBack}
-            onClose={handleClose}
-            showConfirmOnClose={currentStep?.id !== 'confirmation'}
-          />
-        )}
-        
-        {/* Step Content */}
-        <Animated.View style={[styles.content, contentStyle]}>
-          {renderStep()}
-        </Animated.View>
+        {renderScreen()}
       </Animated.View>
     </Modal>
   );
@@ -259,8 +178,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  content: {
-    flex: 1,
   },
 });

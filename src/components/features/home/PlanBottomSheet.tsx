@@ -4,7 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { colors, typography, spacing, borderRadius } from '@/styles';
 import { Flash, Airplane, Briefcase } from 'iconsax-react-native';
 import ImportTripFlow from '@/features/trip-import/components/ImportTripFlow';
-import { QuickTripFlow } from '@/features/planning';
+import { QuickTripFlow, AdvancedTripFlow } from '@/features/planning';
 
 interface PlanBottomSheetProps {
   visible: boolean;
@@ -15,6 +15,7 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showImportFlow, setShowImportFlow] = useState(false);
   const [showQuickTripFlow, setShowQuickTripFlow] = useState(false);
+  const [showAdvancedTripFlow, setShowAdvancedTripFlow] = useState(false);
 
   // Reset selection when bottom sheet opens
   useEffect(() => {
@@ -38,10 +39,9 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
     
     // Handle advanced trip option
     if (option === 'advanced') {
-      // TODO: Open advanced trip flow
       setTimeout(() => {
         onClose();
-        // setShowAdvancedTripFlow(true);
+        setShowAdvancedTripFlow(true);
       }, 300);
     }
     
@@ -197,6 +197,17 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
       onComplete={(planId) => {
         setShowQuickTripFlow(false);
         console.log('Quick trip created:', planId);
+        // TODO: Navigate to trip detail or trips list
+      }}
+    />
+    
+    {/* Advanced Trip Flow */}
+    <AdvancedTripFlow
+      visible={showAdvancedTripFlow}
+      onClose={() => setShowAdvancedTripFlow(false)}
+      onComplete={(planId) => {
+        setShowAdvancedTripFlow(false);
+        console.log('Advanced trip created:', planId);
         // TODO: Navigate to trip detail or trips list
       }}
     />

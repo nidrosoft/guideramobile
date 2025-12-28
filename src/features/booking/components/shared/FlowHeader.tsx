@@ -20,6 +20,8 @@ import {
   Dimensions,
   Platform,
   Modal,
+  ImageBackground,
+  ImageSourcePropType,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -48,6 +50,7 @@ interface FlowHeaderProps {
   onBack?: () => void;
   onClose: () => void;  // Required - always need a way to close
   showConfirmOnClose?: boolean;  // Show confirmation modal before closing
+  backgroundImage?: ImageSourcePropType;  // Optional background image instead of gradient
 }
 
 interface SegmentedProgressProps {
@@ -100,6 +103,7 @@ export default function FlowHeader({
   onBack,
   onClose,
   showConfirmOnClose = true,
+  backgroundImage,
 }: FlowHeaderProps) {
   const insets = useSafeAreaInsets();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -143,72 +147,96 @@ export default function FlowHeader({
     ? typography.fontSize.xs 
     : typography.fontSize.sm;
   
-  return (
+  // Header content component to avoid duplication
+  const HeaderContent = () => (
     <>
-      <LinearGradient
-        colors={[colors.gradientStart, colors.gradientEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[
-          styles.container,
-          { paddingTop: insets.top + spacing.sm },
-        ]}
-      >
-        {/* Header Row */}
-        <View style={styles.headerRow}>
-          {/* Back Button - only show on step 2+ */}
-          {showBackButton ? (
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={handleBack}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              activeOpacity={0.7}
-            >
-              <ArrowLeft size={isSmallScreen ? 20 : 24} color={colors.white} />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.iconPlaceholder} />
-          )}
-          
-          {/* Title Section */}
-          <View style={styles.titleContainer}>
-            <Text 
-              style={[styles.title, { fontSize: titleSize }]}
-              numberOfLines={1}
-            >
-              {title}
-            </Text>
-            {subtitle && (
-              <Text 
-                style={[styles.subtitle, { fontSize: subtitleSize }]}
-                numberOfLines={1}
-              >
-                {subtitle}
-              </Text>
-            )}
-          </View>
-          
-          {/* Close Button - always visible */}
+      {/* Header Row */}
+      <View style={styles.headerRow}>
+        {/* Back Button - only show on step 2+ */}
+        {showBackButton ? (
           <TouchableOpacity
             style={styles.iconButton}
-            onPress={handleClosePress}
+            onPress={handleBack}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             activeOpacity={0.7}
           >
-            <CloseCircle size={isSmallScreen ? 20 : 24} color={colors.white} variant="Bold" />
+            <ArrowLeft size={isSmallScreen ? 20 : 24} color={colors.white} />
           </TouchableOpacity>
-        </View>
+        ) : (
+          <View style={styles.iconPlaceholder} />
+        )}
         
-        {/* Step Counter */}
-        <View style={styles.stepCounterContainer}>
-          <Text style={styles.stepCounter}>
-            Step {currentStep} of {totalSteps}
+        {/* Title Section */}
+        <View style={styles.titleContainer}>
+          <Text 
+            style={[styles.title, { fontSize: titleSize }]}
+            numberOfLines={1}
+          >
+            {title}
           </Text>
+          {subtitle && (
+            <Text 
+              style={[styles.subtitle, { fontSize: subtitleSize }]}
+              numberOfLines={1}
+            >
+              {subtitle}
+            </Text>
+          )}
         </View>
         
-        {/* Segmented Progress Bar */}
-        <SegmentedProgress currentStep={currentStep} totalSteps={totalSteps} />
-      </LinearGradient>
+        {/* Close Button - always visible */}
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={handleClosePress}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          activeOpacity={0.7}
+        >
+          <CloseCircle size={isSmallScreen ? 20 : 24} color={colors.white} variant="Bold" />
+        </TouchableOpacity>
+      </View>
+      
+      {/* Step Counter */}
+      <View style={styles.stepCounterContainer}>
+        <Text style={styles.stepCounter}>
+          Step {currentStep} of {totalSteps}
+        </Text>
+      </View>
+      
+      {/* Segmented Progress Bar */}
+      <SegmentedProgress currentStep={currentStep} totalSteps={totalSteps} />
+    </>
+  );
+  
+  return (
+    <>
+      {backgroundImage ? (
+        // Image background with overlay
+        <ImageBackground
+          source={backgroundImage}
+          style={[
+            styles.container,
+            { paddingTop: insets.top + spacing.sm },
+          ]}
+          resizeMode="cover"
+        >
+          {/* Dark overlay for better text readability */}
+          <View style={styles.imageOverlay} />
+          <HeaderContent />
+        </ImageBackground>
+      ) : (
+        // Default gradient background
+        <LinearGradient
+          colors={[colors.gradientStart, colors.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[
+            styles.container,
+            { paddingTop: insets.top + spacing.sm },
+          ]}
+        >
+          <HeaderContent />
+        </LinearGradient>
+      )}
       
       {/* Confirmation Modal */}
       <Modal
@@ -258,6 +286,10 @@ export default function FlowHeader({
 const styles = StyleSheet.create({
   container: {
     paddingBottom: spacing.md,
+  },
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
   },
   headerRow: {
     flexDirection: 'row',

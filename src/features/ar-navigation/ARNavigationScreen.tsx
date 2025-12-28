@@ -17,9 +17,10 @@ import * as ExpoLocation from 'expo-location';
 interface ARNavigationScreenProps {
   visible: boolean;
   onClose: () => void;
+  initialPlugin?: string;
 }
 
-export default function ARNavigationScreen({ visible, onClose }: ARNavigationScreenProps) {
+export default function ARNavigationScreen({ visible, onClose, initialPlugin }: ARNavigationScreenProps) {
   const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
   const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
   const [isRequesting, setIsRequesting] = useState(false);
@@ -110,7 +111,7 @@ export default function ARNavigationScreen({ visible, onClose }: ARNavigationScr
 
   return (
     <View style={styles.container}>
-      <ARContainer onClose={onClose} />
+      <ARContainer onClose={onClose} initialPlugin={initialPlugin} />
     </View>
   );
 }

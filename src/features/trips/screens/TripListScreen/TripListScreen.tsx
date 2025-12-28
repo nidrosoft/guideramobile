@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { useTripStore } from '../../stores/trip.store';
 import { TripState } from '../../types/trip.types';
 import ComprehensiveTripCard from '../../components/TripCard/ComprehensiveTripCard';
+import PlanBottomSheet from '@/components/features/home/PlanBottomSheet';
 import { colors, spacing, typography } from '@/styles';
 import { Add, Airplane } from 'iconsax-react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -25,6 +26,7 @@ const TABS = [
 export default function TripListScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TripState>(TripState.UPCOMING);
+  const [showPlanSheet, setShowPlanSheet] = useState(false);
   const animatedValue = useState(new Animated.Value(0))[0];
   
   const { trips, fetchTrips, filterByState, isLoading } = useTripStore();
@@ -42,9 +44,10 @@ export default function TripListScreen() {
     router.push(`/trip/${tripId}`);
   };
   
-  // Handle create trip
+  // Handle create trip - opens the plan bottom sheet
   const handleCreateTrip = () => {
-    router.push('/trip/create');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setShowPlanSheet(true);
   };
   
   // Handle tab change with haptic feedback and animation
@@ -146,6 +149,12 @@ export default function TripListScreen() {
         }
       />
       </View>
+      
+      {/* Plan Bottom Sheet */}
+      <PlanBottomSheet
+        visible={showPlanSheet}
+        onClose={() => setShowPlanSheet(false)}
+      />
     </SafeAreaView>
   );
 }
