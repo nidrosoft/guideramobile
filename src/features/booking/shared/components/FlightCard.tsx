@@ -43,6 +43,10 @@ export interface FlightCardData {
   seatsAvailable?: number;
   facilities?: string[];
   cabinClass?: 'economy' | 'premium' | 'business' | 'first';
+  // Provider info
+  provider?: string;
+  refundable?: boolean;
+  changeable?: boolean;
 }
 
 interface FlightCardProps {
@@ -105,6 +109,11 @@ const getAirlineInitials = (airlineName: string): string => {
   return airlineName.substring(0, 2).toUpperCase();
 };
 
+// Get airline logo URL from Kiwi CDN
+const getAirlineLogoUrl = (airlineCode: string): string => {
+  return `https://images.kiwi.com/airlines/64/${airlineCode}.png`;
+};
+
 export default function FlightCard({
   flight,
   index = 0,
@@ -115,9 +124,12 @@ export default function FlightCard({
   onPress,
   onViewDetails,
 }: FlightCardProps) {
-  const facilities = flight.facilities || ['WiFi', 'Meals', '23kg'];
+  // Only show facilities if explicitly provided (from API), otherwise empty
+  const facilities = flight.facilities || [];
   const airlineColors = getAirlineColors(flight.airlineName);
   const airlineInitials = getAirlineInitials(flight.airlineName);
+  const airlineLogoUrl = getAirlineLogoUrl(flight.airlineCode);
+  const [logoError, setLogoError] = React.useState(false);
 
   return (
     <Animated.View entering={FadeInDown.duration(400).delay(index * 100)}>
@@ -130,10 +142,10 @@ export default function FlightCard({
         onPress={onPress}
         activeOpacity={0.9}
       >
-        {/* Premium Badge with Gradient */}
+        {/* Premium Badge with Gradient - Green for both Best Deal and Recommended */}
         {(isRecommended || isBestDeal) && !compact && (
           <LinearGradient
-            colors={isRecommended ? ['#10B981', '#059669'] : [colors.primary, colors.primaryDark]}
+            colors={['#059669', '#047857']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.badge}
@@ -147,18 +159,29 @@ export default function FlightCard({
 
         {/* Header: Airline Info + Price */}
         <View style={styles.header}>
-          {/* Airline Logo with Gradient */}
+          {/* Airline Logo - Real image with fallback to initials */}
           <View style={styles.airlineSection}>
-            <LinearGradient
-              colors={[airlineColors.primary, airlineColors.secondary]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.airlineLogo, compact && styles.airlineLogoCompact]}
-            >
-              <Text style={[styles.airlineInitials, compact && styles.airlineInitialsCompact]}>
-                {airlineInitials}
-              </Text>
-            </LinearGradient>
+            {!logoError ? (
+              <View style={[styles.airlineLogo, compact && styles.airlineLogoCompact, { backgroundColor: '#F3F4F6' }]}>
+                <Image
+                  source={{ uri: airlineLogoUrl }}
+                  style={styles.airlineLogoImage}
+                  resizeMode="contain"
+                  onError={() => setLogoError(true)}
+                />
+              </View>
+            ) : (
+              <LinearGradient
+                colors={[airlineColors.primary, airlineColors.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.airlineLogo, compact && styles.airlineLogoCompact]}
+              >
+                <Text style={[styles.airlineInitials, compact && styles.airlineInitialsCompact]}>
+                  {airlineInitials}
+                </Text>
+              </LinearGradient>
+            )}
             <View style={styles.airlineInfo}>
               <Text style={[styles.airlineName, compact && styles.airlineNameCompact]} numberOfLines={1}>
                 {flight.airlineName}
@@ -248,11 +271,11 @@ export default function FlightCard({
               </View>
               <View style={[
                 styles.stopsBadge,
-                flight.stops === 0 && styles.directBadge
+                flight.stops === 0 ? styles.directBadge : styles.stopsBadgeBlue
               ]}>
                 <Text style={[
                   styles.stopsText,
-                  flight.stops === 0 && styles.directText
+                  flight.stops === 0 ? styles.directText : styles.stopsTextBlue
                 ]}>
                   {flight.stops === 0 ? 'Direct' : `${flight.stops} stop${flight.stops > 1 ? 's' : ''}`}
                 </Text>
@@ -275,8 +298,15 @@ export default function FlightCard({
 
         {/* Facilities Row - Only in full mode */}
         {!compact && (
-          <View style={styles.facilitiesRow}>
-            {facilities.slice(0, 4).map((facility, i) => {
+          <>
+            {/* Dotted Divider Line */}
+            <View style={styles.dottedDivider}>
+              {[...Array(40)].map((_, i) => (
+                <View key={i} style={styles.dot} />
+              ))}
+            </View>
+            <View style={styles.facilitiesRow}>
+              {facilities.slice(0, 4).map((facility, i) => {
               const config = FACILITY_CONFIG[facility] || {
                 icon: Star1,
                 bg: colors.gray50,
@@ -293,7 +323,8 @@ export default function FlightCard({
                 </View>
               );
             })}
-          </View>
+            </View>
+          </>
         )}
 
         {/* Selection Indicator */}
@@ -317,11 +348,11 @@ const styles = StyleSheet.create({
   // Card Container - Premium with depth
   card: {
     backgroundColor: colors.white,
-    borderRadius: borderRadius.lg, // Use design system: 24px
+    borderRadius: borderRadius.lg + 4, // Increased by 4px for more rounded corners
     padding: spacing.lg,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray200, // Use design system border color
+    borderColor: colors.gray200,
     // Premium shadow with depth
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -385,6 +416,10 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 10,
     marginRight: spacing.sm,
+  },
+  airlineLogoImage: {
+    width: 32,
+    height: 32,
   },
   airlineInitials: {
     fontSize: typography.fontSize.base,
@@ -558,9 +593,14 @@ const styles = StyleSheet.create({
   },
   stopsBadge: {
     paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 10,
     backgroundColor: colors.gray100,
+  },
+  stopsBadgeBlue: {
+    backgroundColor: '#EBF5FF',
+    borderWidth: 1,
+    borderColor: '#3B82F6',
   },
   directBadge: {
     backgroundColor: `${colors.success}15`,
@@ -570,19 +610,35 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: typography.fontWeight.medium,
   },
+  stopsTextBlue: {
+    color: '#2563EB',
+    fontWeight: typography.fontWeight.semibold,
+  },
   directText: {
     color: colors.success,
     fontWeight: typography.fontWeight.semibold,
+  },
+
+  // Dotted Divider Line
+  dottedDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.xs,
+  },
+  dot: {
+    width: 4,
+    height: 1,
+    backgroundColor: colors.gray300,
+    borderRadius: 1,
   },
 
   // Facilities Row
   facilitiesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    marginTop: spacing.sm,
     gap: spacing.sm,
   },
   facilityChip: {

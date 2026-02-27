@@ -19,20 +19,37 @@ import { CloseCircle, TickCircle, Airplane } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 
+// Seat data from API
+export interface APISeat {
+  number: string;
+  available: boolean;
+  price?: number;
+  characteristics?: string[];
+}
+
+export interface APISeatMap {
+  rows: string[];
+  columns: string[];
+  seats: APISeat[];
+  defaultPrice: number;
+}
+
 interface SeatSelectionSheetProps {
   visible: boolean;
   onClose: () => void;
   selectedSeats: string[];
   onSelectSeats: (seats: string[]) => void;
   pricePerSeat?: number;
+  // Real API seat map data - optional for backwards compatibility
+  seatMap?: APISeatMap;
 }
 
-// Mock seat data - in real app this would come from API
-const ROWS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
-const COLUMNS = ['A', 'B', 'C', 'D', 'E', 'F'];
+// Default seat layout (used when API data not available)
+const DEFAULT_ROWS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+const DEFAULT_COLUMNS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
-// Taken seats (mock)
-const TAKEN_SEATS = ['1A', '1B', '2C', '3D', '4A', '5F', '6B', '7C', '8A', '9E', '10B', '11D', '12A', '12F'];
+// Default taken seats (mock - used when no API data)
+const DEFAULT_TAKEN_SEATS = ['1A', '1B', '2C', '3D', '4A', '5F', '6B', '7C', '8A', '9E', '10B', '11D', '12A', '12F'];
 
 export default function SeatSelectionSheet({
   visible,
@@ -40,11 +57,24 @@ export default function SeatSelectionSheet({
   selectedSeats,
   onSelectSeats,
   pricePerSeat = 25,
+  seatMap,
 }: SeatSelectionSheetProps) {
   const insets = useSafeAreaInsets();
   const [localSelectedSeats, setLocalSelectedSeats] = useState<string[]>(selectedSeats);
 
-  const isSeatTaken = (seat: string) => TAKEN_SEATS.includes(seat);
+  // Use API seat map or defaults
+  const ROWS = seatMap?.rows || DEFAULT_ROWS;
+  const COLUMNS = seatMap?.columns || DEFAULT_COLUMNS;
+  const seatPrice = seatMap?.defaultPrice || pricePerSeat;
+  
+  // Build taken seats set from API data or use defaults
+  const takenSeatsSet = new Set(
+    seatMap?.seats
+      ? seatMap.seats.filter(s => !s.available).map(s => s.number)
+      : DEFAULT_TAKEN_SEATS
+  );
+
+  const isSeatTaken = (seat: string) => takenSeatsSet.has(seat);
   const isSeatSelected = (seat: string) => localSelectedSeats.includes(seat);
 
   const handleSeatPress = (seat: string) => {

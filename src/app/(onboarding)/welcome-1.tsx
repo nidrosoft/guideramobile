@@ -20,11 +20,6 @@ export default function Welcome1() {
     router.push('/(auth)/landing' as any);
   };
 
-  const handleDevShortcut = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/(tabs)' as any);
-  };
-
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
@@ -76,14 +71,6 @@ export default function Welcome1() {
             <Text style={styles.nextButtonText}>Next</Text>
           </TouchableOpacity>
 
-          {/* Dev Shortcut Button */}
-          <TouchableOpacity
-            style={styles.devButton}
-            onPress={handleDevShortcut}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.devButtonText}>🚀 Go to Home (Dev)</Text>
-          </TouchableOpacity>
         </View>
       </BlurView>
     </View>
@@ -180,21 +167,5 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
     color: colors.white,
-  },
-  devButton: {
-    height: 48,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    borderRadius: borderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: spacing.md,
-    borderWidth: 2,
-    borderColor: colors.gray300,
-    borderStyle: 'dashed',
-  },
-  devButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textSecondary,
   },
 });

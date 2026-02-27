@@ -37,17 +37,31 @@ export interface HotelCardData {
   starRating: number;
   userRating: number;
   reviewCount?: number;
+  reviewSentiment?: string;  // 'excellent', 'very_good', 'good', 'fair'
   location: {
     city?: string;
     neighborhood?: string;
     address?: string;
+    coordinates?: { lat: number; lng: number };
+    distanceFromCenter?: number;
   };
   pricePerNight: number;
+  originalPrice?: number;  // For strikethrough pricing
   totalPrice?: number;
+  currency?: string;
   images?: string[];
   amenities?: string[];
   isPopular?: boolean;
   isBestValue?: boolean;
+  // Booking.com specific fields
+  isFreeCancellable?: boolean;
+  freeCancellationDeadline?: string;
+  hasBreakfast?: boolean;
+  roomsRemaining?: number;
+  propertyType?: string;
+  checkInTime?: string;
+  checkOutTime?: string;
+  deepLink?: string;
 }
 
 interface HotelCardProps {
@@ -237,6 +251,29 @@ export default function HotelCard({
             </View>
           )}
           
+          {/* Policy Badges - Refundable, Breakfast, Urgency */}
+          {!compact && (
+            <View style={styles.policyBadgesRow}>
+              {hotel.isFreeCancellable && (
+                <View style={styles.refundableBadge}>
+                  <TickCircle size={12} color="#10B981" variant="Bold" />
+                  <Text style={styles.refundableText}>Free cancellation</Text>
+                </View>
+              )}
+              {hotel.hasBreakfast && (
+                <View style={styles.breakfastBadge}>
+                  <Coffee size={12} color="#D97706" variant="Bold" />
+                  <Text style={styles.breakfastText}>Breakfast included</Text>
+                </View>
+              )}
+              {hotel.roomsRemaining && hotel.roomsRemaining <= 5 && (
+                <View style={styles.urgencyBadge}>
+                  <Text style={styles.urgencyText}>Only {hotel.roomsRemaining} left!</Text>
+                </View>
+              )}
+            </View>
+          )}
+          
           {/* Divider */}
           <View style={styles.divider} />
           
@@ -247,7 +284,7 @@ export default function HotelCard({
               <View style={styles.priceValue}>
                 <Text style={[styles.priceCurrency, isSelected && styles.priceSelected]}>$</Text>
                 <Text style={[styles.price, isSelected && styles.priceSelected]}>
-                  {hotel.pricePerNight}
+                  {Math.round(hotel.pricePerNight)}
                 </Text>
                 <Text style={styles.priceUnit}>/night</Text>
               </View>
@@ -262,7 +299,7 @@ export default function HotelCard({
                   end={{ x: 1, y: 0 }}
                   style={styles.totalBadge}
                 >
-                  <Text style={styles.totalPrice}>${totalPrice}</Text>
+                  <Text style={styles.totalPrice}>${Math.round(totalPrice)}</Text>
                 </LinearGradient>
               </View>
             )}
@@ -487,6 +524,53 @@ const styles = StyleSheet.create({
   amenityText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
+  },
+
+  // Policy Badges
+  policyBadgesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  refundableBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  refundableText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: '#10B981',
+  },
+  breakfastBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  breakfastText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: '#D97706',
+  },
+  urgencyBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  urgencyText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.bold,
+    color: '#DC2626',
   },
 
   // Divider

@@ -72,12 +72,18 @@ export type PropertyType =
 // ROOM
 // ============================================
 
+export interface RoomOccupancy {
+  adults: number;
+  children: number;
+  total: number;
+}
+
 export interface Room {
   id: string;
   name: string;
   description: string;
   images: string[];
-  maxOccupancy: number;
+  maxOccupancy: number | RoomOccupancy;  // Can be number or object from different providers
   maxAdults: number;
   maxChildren: number;
   bedConfiguration: BedConfiguration[];

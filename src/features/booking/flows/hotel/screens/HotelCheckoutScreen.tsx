@@ -34,7 +34,7 @@ import { useHotelStore } from '../../../stores/useHotelStore';
 // Import sheets - reuse flight sheets for consistency
 import GuestDetailsSheet from '../sheets/GuestDetailsSheet';
 import HotelBookingSummarySheet from '../sheets/HotelBookingSummarySheet';
-import PaymentSheet from '../../flight/sheets/PaymentSheet';
+import PaymentSheet from '../sheets/PaymentSheet';
 import { CancelBookingModal } from '../../shared';
 import { styles } from './HotelCheckoutScreen.styles';
 

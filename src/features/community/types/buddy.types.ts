@@ -4,7 +4,23 @@
  * Type definitions for the travel buddy matching feature.
  */
 
-export type TravelStyle = 'backpacker' | 'budget' | 'mid_range' | 'luxury' | 'adventure' | 'relaxation';
+export type TravelStyle = 
+  | 'backpacker' 
+  | 'budget' 
+  | 'mid_range' 
+  | 'luxury' 
+  | 'adventure' 
+  | 'relaxation'
+  | 'photography'
+  | 'foodie'
+  | 'cultural'
+  | 'solo'
+  | 'wellness'
+  | 'nightlife'
+  | 'nature'
+  | 'beach'
+  | 'city'
+  | 'road_trip';
 export type ConnectionStatus = 'none' | 'pending_sent' | 'pending_received' | 'connected' | 'declined' | 'blocked';
 export type VerificationLevel = 'none' | 'email' | 'phone' | 'id' | 'full';
 

@@ -25,6 +25,7 @@ export default function LanguageScreen() {
       currentStep={6}
       totalSteps={10}
       nextRoute="/(onboarding)/emergency-contact"
+      fieldName="language"
     />
   );
 }

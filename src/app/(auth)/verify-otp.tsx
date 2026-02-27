@@ -1,17 +1,25 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState, useRef, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import { ShieldTick } from 'iconsax-react-native';
 import CloseIcon from '@/components/common/icons/CloseIcon';
 import { colors, typography, spacing, borderRadius } from '@/styles';
+import { useSignUp, useSignIn } from '@clerk/clerk-expo';
 
 export default function VerifyOTP() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ phone: string; mode: 'signup' | 'signin' }>();
+  const { isLoaded: isSignUpLoaded, signUp, setActive: setSignUpActive } = useSignUp();
+  const { isLoaded: isSignInLoaded, signIn, setActive: setSignInActive } = useSignIn();
+  
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(59);
-  const [phoneNumber] = useState('+16464649944');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [error, setError] = useState('');
+  const phoneNumber = params.phone || '';
+  const mode = params.mode || 'signup';
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
   useEffect(() => {
@@ -22,7 +30,20 @@ export default function VerifyOTP() {
   }, []);
 
   const handleOtpChange = (value: string, index: number) => {
-    if (value.length > 1) return;
+    // Handle paste of full OTP code (e.g. from SMS auto-fill)
+    if (value.length > 1) {
+      const digits = value.replace(/\D/g, '').slice(0, 6).split('');
+      if (digits.length > 0) {
+        const newOtp = ['', '', '', '', '', ''];
+        digits.forEach((d, i) => { newOtp[i] = d; });
+        setOtp(newOtp);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        // Focus last filled input
+        const lastIndex = Math.min(digits.length - 1, 5);
+        inputRefs.current[lastIndex]?.focus();
+      }
+      return;
+    }
     
     const newOtp = [...otp];
     newOtp[index] = value;
@@ -39,6 +60,13 @@ export default function VerifyOTP() {
     }
   };
 
+  // Auto-submit when all digits are filled
+  useEffect(() => {
+    if (otp.every(d => d !== '') && !isVerifying) {
+      handleVerify();
+    }
+  }, [otp]);
+
   const handleKeyPress = (e: any, index: number) => {
     if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
@@ -50,19 +78,94 @@ export default function VerifyOTP() {
     router.back();
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     const otpCode = otp.join('');
     if (otpCode.length !== 6) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // TODO: Verify OTP
-    router.push('/(onboarding)/intro' as any);
+    setIsVerifying(true);
+    setError('');
+
+    try {
+      if (mode === 'signup' && isSignUpLoaded) {
+        const attempt = await signUp.attemptPhoneNumberVerification({ code: otpCode });
+        
+        if (attempt.status === 'complete') {
+          await setSignUpActive({ session: attempt.createdSessionId });
+          router.replace('/(onboarding)/intro');
+          return;
+        } else if (attempt.status === 'missing_requirements') {
+          // Check if there's already a session we can activate
+          if (attempt.createdSessionId) {
+            await setSignUpActive({ session: attempt.createdSessionId });
+            router.replace('/(onboarding)/intro');
+            return;
+          }
+          // Missing fields are optional — try to complete anyway
+          console.log('[VerifyOTP] missing_requirements, missingFields:', JSON.stringify(attempt));
+          setError('Sign up incomplete. Please try signing up with email instead.');
+        } else {
+          setError('Verification incomplete. Please try again.');
+          console.error(JSON.stringify(attempt, null, 2));
+        }
+      } else if (mode === 'signin' && isSignInLoaded) {
+        const attempt = await signIn.attemptFirstFactor({
+          strategy: 'phone_code',
+          code: otpCode,
+        });
+
+        if (attempt.status === 'complete') {
+          await setSignInActive({ session: attempt.createdSessionId });
+          router.replace('/(tabs)');
+          return;
+        } else {
+          setError('Verification incomplete. Please try again.');
+          console.error(JSON.stringify(attempt, null, 2));
+        }
+      }
+    } catch (err: any) {
+      const errCode = err?.errors?.[0]?.code;
+      // If already verified, the session is active — just navigate
+      if (errCode === 'verification_already_verified') {
+        if (mode === 'signup') {
+          router.replace('/(onboarding)/intro');
+        } else {
+          router.replace('/(tabs)');
+        }
+        return;
+      }
+      const clerkError = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err.message || 'Verification failed';
+      setError(clerkError);
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
+    if (timer > 0) return;
+    
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // TODO: Resend OTP
-    console.log('Resend OTP');
+    setError('');
+    
+    try {
+      if (mode === 'signup' && isSignUpLoaded) {
+        await signUp.preparePhoneNumberVerification({ strategy: 'phone_code' });
+      } else if (mode === 'signin' && isSignInLoaded && signIn.supportedFirstFactors) {
+        const phoneFactor = signIn.supportedFirstFactors.find(
+          (f: any) => f.strategy === 'phone_code'
+        );
+        if (phoneFactor && 'phoneNumberId' in phoneFactor) {
+          await signIn.prepareFirstFactor({
+            strategy: 'phone_code',
+            phoneNumberId: phoneFactor.phoneNumberId,
+          });
+        }
+      }
+      setTimer(59);
+    } catch (err: any) {
+      const clerkError = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || 'Failed to resend code';
+      setError(clerkError);
+    }
   };
 
   const isComplete = otp.every(digit => digit !== '');
@@ -102,29 +205,43 @@ export default function VerifyOTP() {
                 onChangeText={(value) => handleOtpChange(value, index)}
                 onKeyPress={(e) => handleKeyPress(e, index)}
                 keyboardType="number-pad"
-                maxLength={1}
+                maxLength={index === 0 ? 6 : 1}
                 selectTextOnFocus
+                textContentType={index === 0 ? 'oneTimeCode' : 'none'}
+                autoComplete={index === 0 ? 'sms-otp' : 'off'}
               />
             </View>
           ))}
         </View>
 
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
         {/* Timer */}
         <View style={styles.timerContainer}>
           <Text style={styles.timerText}>Didn't get a code?</Text>
-          <Text style={styles.timerCount}> ⏱ {timer}s</Text>
+          {timer > 0 ? (
+            <Text style={styles.timerCount}> ⏱ {timer}s</Text>
+          ) : (
+            <TouchableOpacity onPress={handleResend}>
+              <Text style={styles.resendText}> Resend</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Verify Button - Always Visible */}
         <TouchableOpacity
-          style={[styles.verifyButton, !isComplete && styles.verifyButtonDisabled]}
+          style={[styles.verifyButton, (!isComplete || isVerifying) && styles.verifyButtonDisabled]}
           onPress={handleVerify}
-          disabled={!isComplete}
+          disabled={!isComplete || isVerifying}
           activeOpacity={0.8}
         >
-          <Text style={[styles.verifyButtonText, !isComplete && styles.verifyButtonTextDisabled]}>
-            →
-          </Text>
+          {isVerifying ? (
+            <ActivityIndicator color={colors.white} size="small" />
+          ) : (
+            <Text style={[styles.verifyButtonText, !isComplete && styles.verifyButtonTextDisabled]}>
+              →
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -213,6 +330,16 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: '#FF4458',
     fontWeight: typography.fontWeight.semibold,
+  },
+  resendText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  errorText: {
+    fontSize: typography.fontSize.sm,
+    color: '#EF4444',
+    marginBottom: spacing.sm,
   },
   verifyButton: {
     width: 64,

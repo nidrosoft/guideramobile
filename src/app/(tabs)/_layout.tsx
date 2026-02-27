@@ -1,10 +1,12 @@
 import { Tabs, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/styles';
+import { useTranslation } from 'react-i18next';
+import { colors as staticColors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Home2, Airplane, Category, People, User } from 'iconsax-react-native';
 import ScanBottomSheet, { ScanActionType } from '@/components/features/ar/ScanBottomSheet';
 
@@ -13,6 +15,20 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [showScanSheet, setShowScanSheet] = useState(false);
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+
+  // Dynamic styles based on theme
+  const dynamicStyles = useMemo(() => ({
+    tabBar: {
+      backgroundColor: colors.white,
+      borderTopColor: colors.gray200,
+    },
+    launcherButton: {
+      backgroundColor: colors.primary,
+      shadowColor: colors.primary,
+    },
+  }), [colors]);
 
   // Define the order of visible tabs (excluding hidden ones like saved, inbox)
   const visibleTabNames = ['index', 'trips', 'ar', 'community', 'account'];
@@ -35,17 +51,18 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     account: (color, focused) => <User size={24} color={color} variant={focused ? 'Bold' : 'Outline'} />,
   };
 
+  // Tab labels using translations
   const labels: Record<string, string> = {
-    index: 'Explore',
-    trips: 'Trips',
+    index: t('tabs.explore'),
+    trips: t('tabs.trips'),
     ar: '',
-    community: 'Community',
-    account: 'Profile',
+    community: t('tabs.community'),
+    account: t('tabs.profile'),
   };
 
   return (
     <>
-      <View style={[styles.tabBar, { paddingBottom: insets.bottom || 8 }]}>
+      <View style={[styles.tabBar, dynamicStyles.tabBar, { paddingBottom: insets.bottom || 8 }]}>
         {visibleRoutes.map((route, index) => {
           const isFocused = state.index === state.routes.findIndex(r => r.key === route.key);
           const isLauncher = route.name === 'ar';
@@ -79,8 +96,8 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 activeOpacity={0.8}
               >
                 <View style={styles.launcherContainer}>
-                  <View style={styles.launcherButton}>
-                    <Category size={24} color={colors.white} variant="Bold" />
+                  <View style={[styles.launcherButton, dynamicStyles.launcherButton]}>
+                    <Category size={24} color={staticColors.white} variant="Bold" />
                   </View>
                 </View>
               </TouchableOpacity>
@@ -136,9 +153,7 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
     borderTopWidth: 1,
-    borderTopColor: colors.gray200,
     paddingTop: 8,
   },
   tabItem: {
@@ -162,10 +177,8 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

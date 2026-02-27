@@ -1,18 +1,51 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useState, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import { colors, typography, spacing, borderRadius, shadows } from '@/styles';
+import { useSSO } from '@clerk/clerk-expo';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
+
+const useWarmUpBrowser = () => {
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    void WebBrowser.warmUpAsync();
+    return () => {
+      void WebBrowser.coolDownAsync();
+    };
+  }, []);
+};
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function SignUp() {
+  useWarmUpBrowser();
   const router = useRouter();
+  const { startSSOFlow } = useSSO();
+  const [error, setError] = useState('');
 
-  const handleSocialSignUp = (provider: string) => {
+  const handleSocialSignUp = async (provider: 'oauth_apple' | 'oauth_google' | 'oauth_facebook') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    console.log(`Sign up with ${provider}`);
-    // TODO: Implement social sign up
-    // After successful sign up, go to intro screen
-    router.push('/(onboarding)/intro');
+    setError('');
+
+    try {
+      const { createdSessionId, setActive, signIn, signUp } = await startSSOFlow({
+        strategy: provider,
+        redirectUrl: AuthSession.makeRedirectUri(),
+      });
+
+      if (createdSessionId && setActive) {
+        await setActive({ session: createdSessionId });
+        // AuthGuard will redirect based on onboarding status
+      } else {
+        console.log('[SignUp SSO] No session created. signUp status:', signUp?.status, 'signIn status:', signIn?.status);
+      }
+    } catch (err: any) {
+      const clerkError = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err.message || 'Social sign up failed';
+      setError(clerkError);
+    }
   };
 
   const handlePhoneSignUp = () => {
@@ -34,14 +67,14 @@ export default function SignUp() {
         <View style={styles.socialButtons}>
           <TouchableOpacity
             style={[styles.socialButton, styles.appleButton]}
-            onPress={() => handleSocialSignUp('Apple')}
+            onPress={() => handleSocialSignUp('oauth_apple')}
           >
             <Text style={styles.socialButtonText}>Continue with Apple</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.socialButton, styles.googleButton]}
-            onPress={() => handleSocialSignUp('Google')}
+            onPress={() => handleSocialSignUp('oauth_google')}
           >
             <Text style={[styles.socialButtonText, styles.googleButtonText]}>
               Continue with Google
@@ -50,11 +83,13 @@ export default function SignUp() {
 
           <TouchableOpacity
             style={[styles.socialButton, styles.facebookButton]}
-            onPress={() => handleSocialSignUp('Facebook')}
+            onPress={() => handleSocialSignUp('oauth_facebook')}
           >
             <Text style={styles.socialButtonText}>Continue with Facebook</Text>
           </TouchableOpacity>
         </View>
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {/* Divider */}
         <View style={styles.divider}>
@@ -112,6 +147,11 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: typography.fontSize.lg,
     color: colors.textSecondary,
+  },
+  errorText: {
+    fontSize: typography.fontSize.sm,
+    color: '#EF4444',
+    marginTop: spacing.sm,
   },
   socialButtons: {
     gap: spacing.md,

@@ -4,32 +4,55 @@
  */
 
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Animated, SafeAreaView } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useTripStore } from '../../stores/trip.store';
 import { TripState } from '../../types/trip.types';
 import ComprehensiveTripCard from '../../components/TripCard/ComprehensiveTripCard';
 import PlanBottomSheet from '@/components/features/home/PlanBottomSheet';
-import { colors, spacing, typography } from '@/styles';
+import { spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Add, Airplane } from 'iconsax-react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 
-const TABS = [
-  { id: TripState.UPCOMING, label: 'Upcoming' },
-  { id: TripState.ONGOING, label: 'Ongoing' },
-  { id: TripState.PAST, label: 'Past' },
-  { id: TripState.CANCELLED, label: 'Cancelled' },
-  { id: TripState.DRAFT, label: 'Draft' },
+// Tab labels will be translated in the component
+const TAB_IDS = [
+  TripState.UPCOMING,
+  TripState.ONGOING,
+  TripState.PAST,
+  TripState.CANCELLED,
+  TripState.DRAFT,
 ];
 
 export default function TripListScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TripState>(TripState.UPCOMING);
   const [showPlanSheet, setShowPlanSheet] = useState(false);
   const animatedValue = useState(new Animated.Value(0))[0];
   
   const { trips, fetchTrips, filterByState, isLoading } = useTripStore();
+  
+  // Dynamic styles based on theme
+  const dynamicStyles = useMemo(() => ({
+    safeArea: { backgroundColor: colors.gray50 },
+    container: { backgroundColor: colors.gray50 },
+    header: { backgroundColor: colors.gray50 },
+    headerTitle: { color: colors.gray900 },
+    createButton: { backgroundColor: `${colors.primary}1A` },
+    tabsContainer: { borderBottomColor: colors.gray100, backgroundColor: colors.gray50 },
+    tabText: { color: colors.gray500 },
+    tabTextActive: { color: colors.primary },
+    tabIndicator: { backgroundColor: colors.primary },
+    emptyIconContainer: { backgroundColor: colors.gray100 },
+    emptyTitle: { color: colors.gray900 },
+    emptyText: { color: colors.gray600 },
+    emptyButton: { backgroundColor: colors.primary },
+    emptyButtonText: { color: colors.white },
+  }), [colors]);
   
   // Fetch trips on mount
   useEffect(() => {
@@ -72,15 +95,15 @@ export default function TripListScreen() {
   };
   
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" translucent={false} backgroundColor={colors.gray50} />
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, dynamicStyles.safeArea]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} translucent={false} backgroundColor={colors.gray50} />
+      <View style={[styles.container, dynamicStyles.container]}>
       
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Trips</Text>
+      <View style={[styles.header, dynamicStyles.header]}>
+        <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>{t('trips.title')}</Text>
         <TouchableOpacity
-          style={styles.createButton}
+          style={[styles.createButton, dynamicStyles.createButton]}
           onPress={handleCreateTrip}
           activeOpacity={0.7}
         >
@@ -89,22 +112,23 @@ export default function TripListScreen() {
       </View>
       
       {/* Inline Tabs */}
-      <View style={styles.tabsContainer}>
-        {TABS.map((tab) => {
-          const count = filterByState(tab.id).length;
-          const isActive = activeTab === tab.id;
+      <View style={[styles.tabsContainer, dynamicStyles.tabsContainer]}>
+        {TAB_IDS.map((tabId) => {
+          const count = filterByState(tabId).length;
+          const isActive = activeTab === tabId;
+          const tabLabel = t(`trips.tabs.${tabId}`);
           
           return (
             <TouchableOpacity
-              key={tab.id}
+              key={tabId}
               style={styles.tab}
-              onPress={() => handleTabChange(tab.id)}
+              onPress={() => handleTabChange(tabId)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                {tab.label}
+              <Text style={[styles.tabText, dynamicStyles.tabText, isActive && dynamicStyles.tabTextActive]}>
+                {tabLabel}
               </Text>
-              {isActive && <View style={styles.tabIndicator} />}
+              {isActive && <View style={[styles.tabIndicator, dynamicStyles.tabIndicator]} />}
             </TouchableOpacity>
           );
         })}
@@ -124,25 +148,27 @@ export default function TripListScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <View style={styles.emptyIconContainer}>
+            <View style={[styles.emptyIconContainer, dynamicStyles.emptyIconContainer]}>
               <Airplane size={64} color={colors.gray300} variant="Bulk" />
             </View>
-            <Text style={styles.emptyTitle}>No {activeTab} trips</Text>
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>
+              {t('trips.empty.noTrips', { type: t(`trips.tabs.${activeTab}`).toLowerCase() })}
+            </Text>
+            <Text style={[styles.emptyText, dynamicStyles.emptyText]}>
               {activeTab === TripState.DRAFT
-                ? 'Start planning your next adventure'
+                ? t('trips.empty.startPlanning')
                 : activeTab === TripState.UPCOMING
-                ? 'Create a trip to get started'
-                : 'No trips in this category yet'}
+                ? t('trips.empty.createTrip')
+                : t('trips.empty.noTrips', { type: '' })}
             </Text>
             {(activeTab === TripState.DRAFT || activeTab === TripState.UPCOMING) && (
               <TouchableOpacity
-                style={styles.emptyButton}
+                style={[styles.emptyButton, dynamicStyles.emptyButton]}
                 onPress={handleCreateTrip}
                 activeOpacity={0.7}
               >
                 <Add size={20} color={colors.white} variant="Bold" />
-                <Text style={styles.emptyButtonText}>Create Trip</Text>
+                <Text style={[styles.emptyButtonText, dynamicStyles.emptyButtonText]}>{t('trips.createTrip')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -162,11 +188,9 @@ export default function TripListScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.gray50,
   },
   container: {
     flex: 1,
-    backgroundColor: colors.gray50,
   },
   header: {
     flexDirection: 'row',
@@ -175,18 +199,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
-    backgroundColor: colors.gray50,
   },
   headerTitle: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: '700',
-    color: colors.gray900,
   },
   createButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: `${colors.primary}1A`,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -196,8 +217,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
-    backgroundColor: colors.gray50,
   },
   tab: {
     flex: 1,
@@ -208,11 +227,6 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray500,
-  },
-  tabTextActive: {
-    color: colors.primary,
-    fontWeight: '700',
   },
   tabIndicator: {
     position: 'absolute',
@@ -220,7 +234,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 3,
-    backgroundColor: colors.primary,
     borderRadius: 2,
   },
   listContent: {
@@ -237,7 +250,6 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: colors.gray100,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xl,
@@ -245,12 +257,10 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: '600',
-    color: colors.gray900,
     marginBottom: spacing.xs,
   },
   emptyText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
     textAlign: 'center',
     marginBottom: spacing.xl,
   },
@@ -261,11 +271,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: 100,
-    backgroundColor: colors.primary,
   },
   emptyButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.white,
   },
 });

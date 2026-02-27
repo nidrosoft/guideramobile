@@ -47,13 +47,19 @@ export default function RoomCard({
   isSelected,
   onSelect,
 }: RoomCardProps) {
-  const totalPrice = room.price.amount * nights;
-  const mainImage = room.images[0] || 'https://via.placeholder.com/300x150';
+  // Safely access price - handle both object and number formats
+  const priceAmount = typeof room.price === 'object' ? room.price?.amount : (room.price || 0);
+  const totalPrice = (priceAmount || 0) * nights;
   
-  // Format bed configuration
-  const bedConfig = room.bedConfiguration
-    .map(b => `${b.count} ${b.type}`)
-    .join(', ');
+  // Safely access images
+  const images = room.images || [];
+  const mainImage = images[0] || 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400';
+  
+  // Format bed configuration - handle undefined
+  const bedConfiguration = room.bedConfiguration || [];
+  const bedConfig = bedConfiguration.length > 0
+    ? bedConfiguration.map(b => `${b.count} ${b.type}`).join(', ')
+    : 'Standard bed';
 
   return (
     <TouchableOpacity
@@ -82,12 +88,14 @@ export default function RoomCard({
         <View style={styles.detailsRow}>
           <View style={styles.detail}>
             <People size={14} color={colors.textSecondary} />
-            <Text style={styles.detailText}>Up to {room.maxOccupancy} guests</Text>
+            <Text style={styles.detailText}>Up to {typeof room.maxOccupancy === 'object' ? (room.maxOccupancy?.total || room.maxOccupancy?.adults || 2) : (room.maxOccupancy || 2)} guests</Text>
           </View>
-          <View style={styles.detail}>
-            <Maximize size={14} color={colors.textSecondary} />
-            <Text style={styles.detailText}>{room.size} m²</Text>
-          </View>
+          {room.size ? (
+            <View style={styles.detail}>
+              <Maximize size={14} color={colors.textSecondary} />
+              <Text style={styles.detailText}>{room.size} m²</Text>
+            </View>
+          ) : null}
         </View>
         
         {/* Bed Config */}
@@ -95,7 +103,7 @@ export default function RoomCard({
         
         {/* Amenities */}
         <View style={styles.amenitiesRow}>
-          {room.amenities.slice(0, 4).map((amenity, index) => {
+          {(room.amenities || []).slice(0, 4).map((amenity, index) => {
             const colorScheme = getAmenityColor(amenity);
             return (
               <View 
@@ -129,13 +137,13 @@ export default function RoomCard({
         <View style={styles.priceRow}>
           <View>
             <Text style={styles.price}>
-              ${room.price.amount}
+              ${Math.round(priceAmount)}
               <Text style={styles.priceUnit}>/night</Text>
             </Text>
           </View>
           <View style={styles.totalContainer}>
             <Text style={styles.totalLabel}>{nights} nights total</Text>
-            <Text style={styles.totalPrice}>${totalPrice}</Text>
+            <Text style={styles.totalPrice}>${Math.round(totalPrice)}</Text>
           </View>
         </View>
       </View>

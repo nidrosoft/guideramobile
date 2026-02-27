@@ -4,7 +4,20 @@
  * Type definitions for community events and meetups.
  */
 
-export type EventType = 'meetup' | 'virtual' | 'activity' | 'trip';
+export type EventType = 
+  | 'meetup' 
+  | 'virtual' 
+  | 'activity' 
+  | 'trip'
+  | 'food_drink'
+  | 'sightseeing'
+  | 'outdoor'
+  | 'cultural'
+  | 'nightlife'
+  | 'sports'
+  | 'workshop'
+  | 'coworking'
+  | 'other';
 export type EventStatus = 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
 export type RSVPStatus = 'going' | 'maybe' | 'not_going' | 'none';
 

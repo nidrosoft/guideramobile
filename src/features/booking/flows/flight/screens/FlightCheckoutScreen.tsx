@@ -1,222 +1,463 @@
 /**
- * FLIGHT CHECKOUT SCREEN
+ * FLIGHT CHECKOUT SCREEN V3
  * 
- * Combined checkout page with expandable sections:
- * - Flight Summary
- * - Seat Selection
- * - Extras (Baggage, Meals)
- * - Traveler Details
- * - Payment
+ * Clean checkout flow with:
+ * - Real Amadeus data only (baggage, seats, fare rules)
+ * - Stripe payment integration
+ * - Direct booking to database
+ * - No mock data
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
-  Text,
   ScrollView,
   TouchableOpacity,
   ImageBackground,
+  Text,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import {
-  ArrowLeft,
-  ArrowDown2,
-  ArrowUp2,
-  Airplane,
-  Briefcase,
-  Reserve,
-  User,
-  Card,
-  TickCircle,
-  ArrowRight2,
-  CloseCircle,
-} from 'iconsax-react-native';
+import { ArrowLeft, CloseCircle, Reserve, Briefcase, User, Card, TickCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
+import { useStripe } from '@stripe/stripe-react-native';
 import { colors, spacing } from '@/styles';
-import { useFlightStore } from '../../../stores/useFlightStore';
-import { Flight } from '../../../types/flight.types';
-import SeatSelectionSheet from '../sheets/SeatSelectionSheet';
-import ExtrasSheet from '../sheets/ExtrasSheet';
-import TravelerDetailsSheet from '../sheets/TravelerDetailsSheet';
-import FlightDetailSheet from '../sheets/FlightDetailSheet';
-import PaymentSheet from '../sheets/PaymentSheet';
+
+// Components
+import {
+  CheckoutSection,
+  FlightSummaryCard,
+  PriceChangeAlert,
+  CheckoutLoadingState,
+  CheckoutBottomBar,
+} from '../components/checkout';
 import { CancelBookingModal } from '../../shared';
+
+// Sheets
+import SeatSelectionSheet from '../sheets/SeatSelectionSheet';
+import BaggageSheet from '../sheets/BaggageSheet';
+import TravelerDetailsSheet from '../sheets/TravelerDetailsSheet';
+import FlightDetailSheetDark from '../sheets/FlightDetailSheetDark';
+
+// Services
+import { stripeService } from '@/services/stripe.service';
+import { bookingService } from '@/services/booking.service';
+import { confirmFlightPrice, TravelerCount } from '@/services/flight-offer-price.service';
+
+// Context
+import { useAuth } from '@/context/AuthContext';
+
+// Styles
 import { styles } from './FlightCheckoutScreen.styles';
 
+// ============================================
+// TYPES
+// ============================================
+
 interface FlightCheckoutScreenProps {
-  flight: Flight;
-  onComplete: () => void;
+  flight: any;
+  onComplete: (bookingData: { tripId: string; bookingReference: string }) => void;
   onBack: () => void;
   onClose: () => void;
+  travelers?: TravelerCount;
 }
 
-// Section component for expandable areas
-interface SectionProps {
-  title: string;
-  icon: React.ReactNode;
-  expanded: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-  completed?: boolean;
+interface TravelerForm {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  dateOfBirth: Date | null;
+  passport: string;
 }
 
-const Section = ({ title, icon, expanded, onToggle, children, completed }: SectionProps) => (
-  <Animated.View entering={FadeInDown.duration(300)} style={styles.section}>
-    <TouchableOpacity 
-      style={styles.sectionHeader} 
-      onPress={onToggle}
-      activeOpacity={0.7}
-    >
-      <View style={styles.sectionHeaderLeft}>
-        <View style={[styles.sectionIcon, completed && styles.sectionIconCompleted]}>
-          {completed ? (
-            <TickCircle size={20} color={colors.white} variant="Bold" />
-          ) : (
-            icon
-          )}
-        </View>
-        <Text style={styles.sectionTitle}>{title}</Text>
-      </View>
-      {expanded ? (
-        <ArrowUp2 size={20} color={colors.gray400} />
-      ) : (
-        <ArrowDown2 size={20} color={colors.gray400} />
-      )}
-    </TouchableOpacity>
-    {expanded && <View style={styles.sectionContent}>{children}</View>}
-  </Animated.View>
-);
+// ============================================
+// MAIN COMPONENT
+// ============================================
 
-export default function FlightCheckoutScreen({
+// Default traveler count - defined outside component to maintain stable reference
+const DEFAULT_TRAVELER_COUNT: TravelerCount = { adults: 1 };
+
+export default function FlightCheckoutScreenV3({
   flight,
   onComplete,
   onBack,
   onClose,
+  travelers: travelerCountProp,
 }: FlightCheckoutScreenProps) {
   const insets = useSafeAreaInsets();
-  const flightStore = useFlightStore();
+  const { user } = useAuth();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+
+  // Memoize traveler count to prevent reference changes
+  const travelerCount = useMemo(() => 
+    travelerCountProp || DEFAULT_TRAVELER_COUNT, 
+    [travelerCountProp?.adults, travelerCountProp?.children, travelerCountProp?.infants]
+  );
   
-  // Bottom sheet visibility states
+  const totalTravelerCount = useMemo(() => 
+    (travelerCount.adults || 1) + (travelerCount.children || 0) + (travelerCount.infants || 0),
+    [travelerCount]
+  );
+
+  // Loading states
+  const [isLoadingPrice, setIsLoadingPrice] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Price confirmation from API
+  const [priceConfirmation, setPriceConfirmation] = useState<any>(null);
+  const [priceChanged, setPriceChanged] = useState(false);
+
+  // Sheet visibility
   const [showFlightDetailSheet, setShowFlightDetailSheet] = useState(false);
   const [showSeatSheet, setShowSeatSheet] = useState(false);
-  const [showExtrasSheet, setShowExtrasSheet] = useState(false);
+  const [showBaggageSheet, setShowBaggageSheet] = useState(false);
   const [showTravelerSheet, setShowTravelerSheet] = useState(false);
-  const [showPaymentSheet, setShowPaymentSheet] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
-  // Close confirmation handlers
-  const handleClosePress = () => {
+  // Selections
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const [selectedBaggage, setSelectedBaggage] = useState(0);
+  const [baggagePrice, setBaggagePrice] = useState(0);
+  
+  // Initialize travelers with stable initial value
+  const [travelers, setTravelers] = useState<TravelerForm[]>(() => {
+    const count = (travelerCountProp?.adults || 1) + (travelerCountProp?.children || 0) + (travelerCountProp?.infants || 0);
+    return Array.from({ length: count }, (_, i) => ({
+      id: `traveler-${i}`,
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      dateOfBirth: null,
+      passport: '',
+    }));
+  });
+
+  // Track if price confirmation has been loaded
+  const priceLoadedRef = React.useRef(false);
+  
+  // Load price confirmation only once on mount
+  useEffect(() => {
+    if (priceLoadedRef.current) return;
+    priceLoadedRef.current = true;
+    
+    loadPriceConfirmation();
+  }, []);
+
+  const loadPriceConfirmation = async () => {
+    try {
+      setIsLoadingPrice(true);
+      setError(null);
+
+      const result = await confirmFlightPrice(
+        flight,
+        travelerCount,
+        { includeSeatMap: true }
+      );
+
+      setPriceConfirmation(result);
+
+      // Check if price changed
+      const originalPrice = parseFloat(flight.price?.total || '0');
+      if (result.priceChanged && Math.abs(result.confirmedPrice - originalPrice) > 0.01) {
+        setPriceChanged(true);
+      }
+    } catch (err) {
+      console.error('Price confirmation error:', err);
+      setError('Failed to confirm flight price. Please try again.');
+    } finally {
+      setIsLoadingPrice(false);
+    }
+  };
+
+  // Extract flight info - memoized to prevent infinite re-renders
+  // Supports: 1) Flat format from results screen, 2) NormalizedFlight (outbound), 3) UnifiedFlight (slices), 4) Raw Amadeus
+  const flightInfo = useMemo(() => {
+    // Check if this is a flat format (from FlightResultsScreen MockFlight)
+    // These have direct properties like airlineName, originCode, etc.
+    const isFlatFormat = flight.airlineName !== undefined || flight.originCode !== undefined;
+    
+    if (isFlatFormat) {
+      // Flat format from results screen
+      return {
+        id: flight.id || '',
+        provider: 'provider-manager',
+        airlineName: flight.airlineName || 'Airline',
+        airlineCode: flight.airlineCode || '',
+        flightNumber: flight.flightNumber || '',
+        originCode: flight.originCode || '',
+        destCode: flight.destCode || '',
+        departureTime: flight.departureTime instanceof Date 
+          ? flight.departureTime.toISOString() 
+          : (flight.departureTime || ''),
+        arrivalTime: flight.arrivalTime instanceof Date 
+          ? flight.arrivalTime.toISOString() 
+          : (flight.arrivalTime || ''),
+        duration: flight.duration || 0,
+        stops: flight.stops ?? 0,
+        price: typeof flight.price === 'number' ? flight.price : (flight.price?.amount || 0),
+        currency: flight.currency || 'USD',
+        cabinClass: flight.cabinClass || 'ECONOMY',
+        refundable: flight.refundable ?? false,
+        changeable: flight.changeable ?? false,
+      };
+    }
+    
+    // Check if this is NormalizedFlight format (has outbound with segments)
+    const isNormalizedFlight = flight.outbound && flight.outbound.segments;
+    
+    if (isNormalizedFlight) {
+      // NormalizedFlight format from provider-manager adapters
+      const outbound = flight.outbound;
+      const firstSegment = outbound.segments?.[0] || {};
+      const lastSegment = outbound.segments?.[outbound.segments.length - 1] || firstSegment;
+      
+      return {
+        id: flight.id || '',
+        provider: flight.provider?.name || 'provider-manager',
+        airlineName: firstSegment.carrier?.name || firstSegment.carrier?.code || 'Airline',
+        airlineCode: firstSegment.carrier?.code || '',
+        flightNumber: firstSegment.flightNumber || '',
+        originCode: outbound.departure?.airport || '',
+        destCode: outbound.arrival?.airport || '',
+        departureTime: outbound.departure?.time || '',
+        arrivalTime: outbound.arrival?.time || '',
+        duration: flight.totalDurationMinutes || outbound.duration || 0,
+        stops: flight.totalStops ?? outbound.stops ?? 0,
+        price: flight.price?.amount || 0,
+        currency: flight.price?.currency || 'USD',
+        cabinClass: firstSegment.cabinClass || 'ECONOMY',
+        refundable: flight.refundable ?? false,
+        changeable: flight.changeable ?? false,
+      };
+    }
+    
+    // Check if this is a UnifiedFlight (has slices) or raw Amadeus (has itineraries)
+    const isUnifiedFlight = flight.slices && Array.isArray(flight.slices);
+    
+    if (isUnifiedFlight) {
+      // UnifiedFlight format from provider-manager
+      const firstSlice = flight.slices?.[0];
+      const firstSegment = firstSlice?.segments?.[0];
+      const lastSegment = firstSlice?.segments?.[firstSlice.segments.length - 1];
+      
+      return {
+        id: flight.id || '',
+        provider: flight.provider?.name || 'amadeus',
+        airlineName: firstSegment?.marketingCarrier?.name || firstSegment?.marketingCarrier?.code || 'Airline',
+        airlineCode: firstSegment?.marketingCarrier?.code || '',
+        flightNumber: firstSegment?.flightNumber || '',
+        originCode: firstSlice?.origin?.code || firstSegment?.origin?.code || '',
+        destCode: firstSlice?.destination?.code || lastSegment?.destination?.code || '',
+        departureTime: firstSlice?.departureAt || firstSegment?.departureAt || '',
+        arrivalTime: firstSlice?.arrivalAt || lastSegment?.arrivalAt || '',
+        duration: flight.totalDurationMinutes || firstSlice?.durationMinutes || 0,
+        stops: flight.totalStops ?? (firstSlice?.stops ?? 0),
+        price: flight.price?.total || 0,
+        currency: flight.price?.currency || 'USD',
+        cabinClass: firstSegment?.cabinClass || 'ECONOMY',
+        refundable: flight.isRefundable ?? false,
+        changeable: flight.isChangeable ?? false,
+      };
+    } else {
+      // Raw Amadeus format (legacy)
+      const itinerary = flight.itineraries?.[0];
+      const firstSegment = itinerary?.segments?.[0];
+      const lastSegment = itinerary?.segments?.[itinerary?.segments?.length - 1];
+      
+      // Parse duration string (e.g., "PT2H30M") to minutes
+      const parseDuration = (dur: string): number => {
+        if (!dur) return 0;
+        const match = dur.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+        if (!match) return 0;
+        return (parseInt(match[1] || '0') * 60) + parseInt(match[2] || '0');
+      };
+      
+      return {
+        id: flight.id || '',
+        provider: 'amadeus',
+        airlineName: flight.validatingAirlineCodes?.[0] || firstSegment?.carrierCode || 'Airline',
+        airlineCode: firstSegment?.carrierCode || '',
+        flightNumber: `${firstSegment?.carrierCode || ''}${firstSegment?.number || ''}`,
+        originCode: firstSegment?.departure?.iataCode || '',
+        destCode: lastSegment?.arrival?.iataCode || '',
+        departureTime: firstSegment?.departure?.at || '',
+        arrivalTime: lastSegment?.arrival?.at || '',
+        duration: parseDuration(itinerary?.duration),
+        stops: (itinerary?.segments?.length || 1) - 1,
+        price: parseFloat(flight.price?.total || '0'),
+        currency: flight.price?.currency || 'USD',
+        cabinClass: flight.travelerPricings?.[0]?.fareDetailsBySegment?.[0]?.cabin || 'ECONOMY',
+        refundable: false,
+        changeable: false,
+      };
+    }
+  }, [flight]);
+
+  // Calculate total price
+  const calculateTotal = () => {
+    const basePrice = priceConfirmation?.confirmedPrice || flightInfo.price;
+    return basePrice + baggagePrice;
+  };
+
+  // Handlers
+  const handleClosePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setShowCloseConfirm(true);
-  };
+  }, []);
 
-  const handleConfirmClose = () => {
+  const handleConfirmClose = useCallback(() => {
     setShowCloseConfirm(false);
-    setTimeout(() => {
-      onClose();
-    }, 100);
-  };
+    setTimeout(onClose, 100);
+  }, [onClose]);
 
-  const handleCancelClose = () => {
+  const handleCancelClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setShowCloseConfirm(false);
-  };
-  
-  // Form states
-  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
-  const [extras, setExtras] = useState({
-    checkedBags: 0,
-    meal: null as string | null,
-    priorityBoarding: false,
-    wifi: false,
-    entertainment: false,
-    insurance: false,
-  });
-  const [travelers, setTravelers] = useState<Array<{
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-    dateOfBirth: Date | null;
-    passport: string;
-  }>>([]);
-  const [paymentInfo, setPaymentInfo] = useState({
-    cardNumber: '',
-    cardHolder: '',
-    expiryDate: '',
-    cvv: '',
-  });
-  
-  // Get flight display info - handle both real Flight type and mock data
-  const flightData = flight as any;
-  const hasSegments = flightData.segments && flightData.segments.length > 0;
-  
-  // Extract flight info from either format
-  const flightInfo = hasSegments ? {
-    airlineName: flightData.segments[0]?.airline?.name || 'Airline',
-    originCode: flightData.segments[0]?.origin?.code || 'DEP',
-    destCode: flightData.segments[flightData.segments.length - 1]?.destination?.code || 'ARR',
-    departureTime: flightData.segments[0]?.departureTime,
-    arrivalTime: flightData.segments[flightData.segments.length - 1]?.arrivalTime,
-    duration: flightData.totalDuration || 180,
-    stops: flightData.stops || 0,
-    price: flightData.price?.amount || 200,
-  } : {
-    airlineName: flightData.airlineName || 'Airline',
-    originCode: flightData.originCode || 'DEP',
-    destCode: flightData.destCode || 'ARR',
-    departureTime: flightData.departureTime,
-    arrivalTime: flightData.arrivalTime,
-    duration: flightData.duration || 180,
-    stops: flightData.stops || 0,
-    price: flightData.price || 200,
-  };
-  
-  const formatTime = (date: Date | string | undefined) => {
-    if (!date) return '--:--';
-    const dateObj = date instanceof Date ? date : new Date(date);
-    if (isNaN(dateObj.getTime())) return '--:--';
-    return dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-  };
-  
-  // Calculate extras total
-  const calculateExtrasTotal = () => {
-    let total = 0;
-    total += extras.checkedBags * 35;
-    if (extras.meal) total += 15;
-    if (extras.priorityBoarding) total += 15;
-    if (extras.wifi) total += 12;
-    if (extras.entertainment) total += 8;
-    if (extras.insurance) total += 25;
-    return total;
-  };
-  
-  // Calculate total price
-  const basePrice = flightInfo.price;
-  const seatPrice = selectedSeats.length * 25;
-  const extrasTotal = calculateExtrasTotal();
-  const totalPrice = basePrice + seatPrice + extrasTotal;
-  
-  const handleComplete = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onComplete();
-  };
-  
-  // Check if sections are completed
-  const isTravelerComplete = travelers.length > 0 && travelers.every(t => t.firstName && t.lastName && t.email);
-  const hasExtras = extras.checkedBags > 0 || extras.meal || extras.priorityBoarding || extras.wifi || extras.entertainment || extras.insurance;
-  const isPaymentComplete = !!(
-    paymentInfo.cardNumber.replace(/\s/g, '').length >= 16 &&
-    paymentInfo.cardHolder &&
-    paymentInfo.expiryDate.length >= 5 &&
-    paymentInfo.cvv.length >= 3
-  );
+  }, []);
+
+  const handleAcceptPriceChange = useCallback(() => {
+    setPriceChanged(false);
+  }, []);
+
+  const handleBaggageSelect = useCallback((bags: number, price: number) => {
+    setSelectedBaggage(bags);
+    setBaggagePrice(price);
+  }, []);
+
+  const handleSaveTravelers = useCallback((updatedTravelers: TravelerForm[]) => {
+    setTravelers(updatedTravelers);
+    setShowTravelerSheet(false);
+  }, []);
+
+  // Process payment with Stripe
+  const handlePayment = useCallback(async () => {
+    if (!user?.id) {
+      Alert.alert('Error', 'Please sign in to complete booking');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      setError(null);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      const totalAmount = calculateTotal();
+      const amountInCents = stripeService.toCents(totalAmount);
+
+      // 1. Create payment intent
+      const paymentIntent = await stripeService.createPaymentIntent({
+        amount: amountInCents,
+        currency: priceConfirmation?.currency || 'USD',
+        userId: user.id,
+        metadata: {
+          flightOfferId: flight.id,
+          travelers: JSON.stringify(travelers.map(t => ({ firstName: t.firstName, lastName: t.lastName }))),
+        },
+      });
+
+      if (!paymentIntent.success || !paymentIntent.clientSecret) {
+        throw new Error(paymentIntent.error || 'Failed to create payment');
+      }
+
+      // 2. Initialize Stripe payment sheet
+      const { error: initError } = await initPaymentSheet({
+        paymentIntentClientSecret: paymentIntent.clientSecret,
+        merchantDisplayName: 'Guidera Travel',
+        style: 'automatic',
+      });
+
+      if (initError) {
+        throw new Error(initError.message);
+      }
+
+      // 3. Present payment sheet
+      const { error: presentError } = await presentPaymentSheet();
+
+      if (presentError) {
+        if (presentError.code === 'Canceled') {
+          // User cancelled - not an error
+          setIsProcessing(false);
+          return;
+        }
+        throw new Error(presentError.message);
+      }
+
+      // 4. Payment successful - create booking
+      const bookingResult = await bookingService.createFlightBooking({
+        userId: user.id,
+        paymentIntentId: paymentIntent.paymentIntentId!,
+        flightOffer: flight,
+        travelers: travelers.map(t => ({
+          firstName: t.firstName,
+          lastName: t.lastName,
+          email: t.email,
+          phone: t.phone,
+          dateOfBirth: t.dateOfBirth?.toISOString().split('T')[0],
+          passportNumber: t.passport,
+        })),
+        selectedSeats,
+        selectedBaggage,
+        baggagePrice,
+        totalPrice: totalAmount,
+        currency: priceConfirmation?.currency || 'USD',
+      });
+
+      if (bookingResult.error || !bookingResult.data) {
+        throw new Error(bookingResult.error?.message || 'Failed to create booking');
+      }
+
+      // 5. Success!
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      onComplete({
+        tripId: bookingResult.data.tripId,
+        bookingReference: bookingResult.data.bookingReference,
+      });
+
+    } catch (err) {
+      console.error('Payment error:', err);
+      setError(err instanceof Error ? err.message : 'Payment failed');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [user, flight, travelers, selectedSeats, selectedBaggage, baggagePrice, priceConfirmation, initPaymentSheet, presentPaymentSheet, onComplete]);
+
+  // Computed values
+  const isTravelerComplete = travelers.length > 0 && 
+    travelers.every(t => t.firstName && t.lastName && t.email);
+
+  const isSeatSelectionAvailable = priceConfirmation?.seatMap?.available && 
+    priceConfirmation.seatMap.decks?.length > 0;
+
+  const canBook = isTravelerComplete;
+
+  // Loading state
+  if (isLoadingPrice) {
+    return <CheckoutLoadingState message="Confirming flight price..." />;
+  }
+
+  // Price change alert
+  if (priceChanged && priceConfirmation) {
+    return (
+      <PriceChangeAlert
+        visible={true}
+        originalPrice={flightInfo.price}
+        newPrice={priceConfirmation.confirmedPrice}
+        currency={priceConfirmation.currency}
+        onAccept={handleAcceptPriceChange}
+        onCancel={onBack}
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
-      {/* Header with flight background */}
+      {/* Header */}
       <ImageBackground
         source={require('../../../../../../assets/images/flightbg.png')}
         style={[styles.header, { paddingTop: insets.top + spacing.md }]}
@@ -229,203 +470,198 @@ export default function FlightCheckoutScreen({
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
             <Text style={styles.headerTitle}>Checkout</Text>
-            <Text style={styles.headerSubtitle}>{flightInfo.originCode} → {flightInfo.destCode}</Text>
+            <Text style={styles.headerSubtitle}>
+              {flightInfo.originCode} → {flightInfo.destCode}
+            </Text>
           </View>
           <TouchableOpacity style={styles.closeButton} onPress={handleClosePress}>
             <CloseCircle size={24} color={colors.white} variant="Bold" />
           </TouchableOpacity>
         </View>
       </ImageBackground>
-      
+
+      {/* Error Banner */}
+      {error && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={() => setError(null)}>
+            <CloseCircle size={20} color={colors.white} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Content */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 120 },
+          { paddingBottom: insets.bottom + 180 },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Flight Detail Card - Opens Bottom Sheet */}
-        <TouchableOpacity 
-          style={styles.selectionCard}
-          onPress={() => {
+        {/* Flight Summary */}
+        <FlightSummaryCard
+          flightInfo={flightInfo}
+          fareRules={priceConfirmation?.fareRules}
+          onViewDetails={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             setShowFlightDetailSheet(true);
           }}
-        >
-          <View style={styles.selectionIcon}>
-            <Airplane size={20} color={colors.primary} variant="Bold" />
-          </View>
-          <View style={styles.selectionInfo}>
-            <Text style={styles.selectionTitle}>Flight Details</Text>
-            <Text style={styles.selectionSubtitle}>
-              {flightInfo.airlineName} • {Math.floor(flightInfo.duration / 60)}h {flightInfo.duration % 60}m
-            </Text>
-          </View>
-          <ArrowRight2 size={20} color={colors.gray400} />
-        </TouchableOpacity>
-        
-        {/* Selection Cards - Open Bottom Sheets */}
-        <TouchableOpacity 
-          style={styles.selectionCard}
+        />
+
+        {/* Seat Selection - Only if available from Amadeus */}
+        {isSeatSelectionAvailable && (
+          <CheckoutSection
+            title="Select Seats"
+            subtitle={selectedSeats.length > 0 
+              ? `${selectedSeats.length} seat${selectedSeats.length > 1 ? 's' : ''}: ${selectedSeats.join(', ')}`
+              : 'Choose your preferred seats'
+            }
+            icon={<Reserve size={20} color={colors.primary} variant="Bold" />}
+            completed={selectedSeats.length > 0}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowSeatSheet(true);
+            }}
+            index={1}
+          />
+        )}
+
+        {/* Baggage - Real Amadeus pricing */}
+        <CheckoutSection
+          title="Baggage"
+          subtitle={selectedBaggage > 0 
+            ? `${selectedBaggage} extra bag${selectedBaggage > 1 ? 's' : ''} (+$${baggagePrice.toFixed(2)})`
+            : `${priceConfirmation?.baggage?.cabin?.included || 1} cabin bag included`
+          }
+          icon={<Briefcase size={20} color={colors.primary} variant="Bold" />}
+          completed={selectedBaggage > 0}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setShowSeatSheet(true);
+            setShowBaggageSheet(true);
           }}
-        >
-          <View style={[styles.selectionIcon, selectedSeats.length > 0 && styles.selectionIconComplete]}>
-            {selectedSeats.length > 0 ? (
-              <TickCircle size={20} color={colors.white} variant="Bold" />
-            ) : (
-              <Reserve size={20} color={colors.primary} variant="Bold" />
-            )}
-          </View>
-          <View style={styles.selectionInfo}>
-            <Text style={styles.selectionTitle}>Select Seats</Text>
-            <Text style={styles.selectionSubtitle}>
-              {selectedSeats.length > 0 
-                ? `${selectedSeats.length} seat${selectedSeats.length > 1 ? 's' : ''}: ${selectedSeats.join(', ')}`
-                : '+$25 per seat'
-              }
-            </Text>
-          </View>
-          <ArrowRight2 size={20} color={colors.gray400} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.selectionCard}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setShowExtrasSheet(true);
-          }}
-        >
-          <View style={[styles.selectionIcon, hasExtras && styles.selectionIconComplete]}>
-            {hasExtras ? (
-              <TickCircle size={20} color={colors.white} variant="Bold" />
-            ) : (
-              <Briefcase size={20} color={colors.primary} variant="Bold" />
-            )}
-          </View>
-          <View style={styles.selectionInfo}>
-            <Text style={styles.selectionTitle}>Extras</Text>
-            <Text style={styles.selectionSubtitle}>
-              {hasExtras 
-                ? `+$${extrasTotal} in extras`
-                : 'Baggage, meals, add-ons'
-              }
-            </Text>
-          </View>
-          <ArrowRight2 size={20} color={colors.gray400} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.selectionCard}
+          index={isSeatSelectionAvailable ? 2 : 1}
+        />
+
+        {/* Traveler Details */}
+        <CheckoutSection
+          title="Traveler Details"
+          subtitle={isTravelerComplete 
+            ? `${travelers.length} traveler${travelers.length > 1 ? 's' : ''} added`
+            : 'Add passenger information'
+          }
+          icon={<User size={20} color={colors.primary} variant="Bold" />}
+          completed={isTravelerComplete}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             setShowTravelerSheet(true);
           }}
-        >
-          <View style={[styles.selectionIcon, isTravelerComplete && styles.selectionIconComplete]}>
-            {isTravelerComplete ? (
-              <TickCircle size={20} color={colors.white} variant="Bold" />
-            ) : (
-              <User size={20} color={colors.primary} variant="Bold" />
-            )}
-          </View>
-          <View style={styles.selectionInfo}>
-            <Text style={styles.selectionTitle}>Traveler Details</Text>
-            <Text style={styles.selectionSubtitle}>
-              {isTravelerComplete 
-                ? `${travelers.length} traveler${travelers.length > 1 ? 's' : ''}`
-                : 'Add passenger information'
-              }
-            </Text>
-          </View>
-          <ArrowRight2 size={20} color={colors.gray400} />
-        </TouchableOpacity>
-        
-        {/* Payment Card - Opens Bottom Sheet */}
-        <TouchableOpacity 
-          style={styles.selectionCard}
+          index={isSeatSelectionAvailable ? 3 : 2}
+        />
+
+        {/* Payment Info */}
+        <CheckoutSection
+          title="Payment"
+          subtitle="Pay securely with Stripe"
+          icon={<Card size={20} color={colors.primary} variant="Bold" />}
+          completed={false}
           onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setShowPaymentSheet(true);
+            if (canBook) {
+              handlePayment();
+            } else {
+              Alert.alert('Complete Required Fields', 'Please add traveler details before proceeding to payment.');
+            }
           }}
-        >
-          <View style={[styles.selectionIcon, isPaymentComplete && styles.selectionIconComplete]}>
-            {isPaymentComplete ? (
-              <TickCircle size={20} color={colors.white} variant="Bold" />
-            ) : (
-              <Card size={20} color={colors.primary} variant="Bold" />
-            )}
-          </View>
-          <View style={styles.selectionInfo}>
-            <Text style={styles.selectionTitle}>Payment Details</Text>
-            <Text style={styles.selectionSubtitle}>
-              {isPaymentComplete 
-                ? `•••• ${paymentInfo.cardNumber.slice(-4)}`
-                : 'Enter card information'
-              }
-            </Text>
-          </View>
-          <ArrowRight2 size={20} color={colors.gray400} />
-        </TouchableOpacity>
+          index={isSeatSelectionAvailable ? 4 : 3}
+        />
       </ScrollView>
-      
-      {/* Bottom Sheets */}
-      <SeatSelectionSheet
-        visible={showSeatSheet}
-        onClose={() => setShowSeatSheet(false)}
-        selectedSeats={selectedSeats}
-        onSelectSeats={setSelectedSeats}
+
+      {/* Bottom Bar */}
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + spacing.md }]}>
+        <View style={styles.priceContainer}>
+          <Text style={styles.priceLabel}>Total</Text>
+          <Text style={styles.priceValue}>
+            ${calculateTotal().toFixed(2)} {priceConfirmation?.currency || 'USD'}
+          </Text>
+          {baggagePrice > 0 && (
+            <Text style={styles.priceBreakdown}>
+              Flight ${(priceConfirmation?.confirmedPrice || flightInfo.price).toFixed(2)} + Baggage ${baggagePrice.toFixed(2)}
+            </Text>
+          )}
+        </View>
+        <TouchableOpacity
+          style={[
+            styles.bookButton,
+            (!canBook || isProcessing) && styles.bookButtonDisabled,
+          ]}
+          onPress={handlePayment}
+          disabled={!canBook || isProcessing}
+        >
+          {isProcessing ? (
+            <ActivityIndicator color={colors.white} />
+          ) : (
+            <>
+              <TickCircle size={20} color={colors.white} variant="Bold" />
+              <Text style={styles.bookButtonText}>Pay Now</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Sheets */}
+      {isSeatSelectionAvailable && (
+        <SeatSelectionSheet
+          visible={showSeatSheet}
+          onClose={() => setShowSeatSheet(false)}
+          selectedSeats={selectedSeats}
+          onSelectSeats={setSelectedSeats}
+          seatMap={{
+            rows: priceConfirmation.seatMap.decks[0].rows.map((r: any) => r.number),
+            columns: ['A', 'B', 'C', 'D', 'E', 'F'],
+            seats: priceConfirmation.seatMap.decks[0].rows.flatMap((r: any) => 
+              r.seats.map((s: any) => ({
+                number: s.number,
+                available: s.available,
+                price: s.price,
+                characteristics: s.characteristics,
+              }))
+            ),
+            defaultPrice: 25,
+          }}
+        />
+      )}
+
+      <BaggageSheet
+        visible={showBaggageSheet}
+        onClose={() => setShowBaggageSheet(false)}
+        selectedBags={selectedBaggage}
+        onSelectBags={handleBaggageSelect}
+        includedBaggage={{
+          cabin: priceConfirmation?.baggage?.cabin?.included || 1,
+          checked: priceConfirmation?.baggage?.checked?.included || 0,
+          cabinWeight: priceConfirmation?.baggage?.cabin?.weight,
+          checkedWeight: priceConfirmation?.baggage?.checked?.weight,
+        }}
+        addOnOptions={priceConfirmation?.baggage?.checked?.addOnOptions}
       />
-      
-      <ExtrasSheet
-        visible={showExtrasSheet}
-        onClose={() => setShowExtrasSheet(false)}
-        selectedExtras={extras}
-        onSelectExtras={setExtras}
-      />
-      
+
       <TravelerDetailsSheet
         visible={showTravelerSheet}
         onClose={() => setShowTravelerSheet(false)}
         travelers={travelers}
-        onSaveTravelers={setTravelers}
+        onSaveTravelers={handleSaveTravelers}
       />
-      
-      <FlightDetailSheet
+
+      <FlightDetailSheetDark
         visible={showFlightDetailSheet}
         onClose={() => setShowFlightDetailSheet(false)}
-        flightInfo={flightInfo}
+        flightInfo={{
+          ...flightInfo,
+          passengerCount: totalTravelerCount,
+        }}
       />
-      
-      <PaymentSheet
-        visible={showPaymentSheet}
-        onClose={() => setShowPaymentSheet(false)}
-        paymentInfo={paymentInfo}
-        onSavePayment={setPaymentInfo}
-      />
-      
-      {/* Bottom Price & Book Button */}
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + spacing.md }]}>
-        <View style={styles.priceBreakdown}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalPrice}>${totalPrice}</Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.bookButton, !(isTravelerComplete && isPaymentComplete) && styles.bookButtonDisabled]}
-          onPress={handleComplete}
-          disabled={!(isTravelerComplete && isPaymentComplete)}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.bookButtonText}>
-            {isTravelerComplete && isPaymentComplete ? 'Book Now' : 'Complete All Details'}
-          </Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* Close Confirmation Modal */}
+      {/* Close Confirmation */}
       <CancelBookingModal
         visible={showCloseConfirm}
         onCancel={handleCancelClose}

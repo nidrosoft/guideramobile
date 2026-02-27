@@ -250,7 +250,7 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
         icon: MessageQuestion,
         iconColor: colors.gray900,
         iconVariant: 'Bold',
-        route: '/account/help',
+        route: '/account/help-center',
         showChevron: true,
       },
       {
@@ -259,7 +259,7 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
         icon: Call,
         iconColor: colors.gray900,
         iconVariant: 'Bold',
-        route: '/account/contact',
+        route: '/account/contact-support',
         showChevron: true,
       },
       {
@@ -268,7 +268,7 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
         icon: Flag,
         iconColor: colors.gray900,
         iconVariant: 'Bold',
-        route: '/account/report',
+        route: '/account/report-issue',
         showChevron: true,
       },
       {
@@ -277,7 +277,7 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
         icon: DocumentText,
         iconColor: colors.gray900,
         iconVariant: 'Bold',
-        route: '/account/terms',
+        route: '/account/terms-of-service',
         showChevron: true,
       },
       {
@@ -325,7 +325,7 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
         iconColor: colors.error,
         iconVariant: 'Bold',
         destructive: true,
-        route: '/account/delete',
+        route: '/account/delete-account',
         showChevron: true,
       },
     ],

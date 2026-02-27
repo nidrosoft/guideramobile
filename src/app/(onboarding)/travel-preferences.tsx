@@ -21,6 +21,7 @@ export default function TravelPreferencesScreen() {
       currentStep={8}
       totalSteps={10}
       nextRoute="/(onboarding)/dietary-restrictions"
+      fieldName="travelStyle"
     />
   );
 }

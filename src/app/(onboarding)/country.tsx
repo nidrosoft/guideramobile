@@ -12,6 +12,7 @@ export default function CountryScreen() {
       currentStep={5}
       totalSteps={10}
       nextRoute="/(onboarding)/language"
+      fieldName="country"
     />
   );
 }

@@ -2,9 +2,10 @@
  * EXPERIENCE SEARCH LOADING SCREEN
  * 
  * Animated loading screen while searching for experiences.
+ * Integrates with Provider Manager for real search results.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -20,6 +21,8 @@ import Animated, {
 import { Map1, Ticket, Coffee, Activity, Star1 } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
 import { useExperienceStore } from '../../../stores/useExperienceStore';
+import { useExperienceSearch } from '@/hooks/useProviderSearch';
+import { ExperienceSearchParams as ProviderExperienceSearchParams } from '@/types/unified';
 
 interface ExperienceSearchLoadingScreenProps {
   onComplete: () => void;
@@ -37,8 +40,10 @@ export default function ExperienceSearchLoadingScreen({
   onComplete,
 }: ExperienceSearchLoadingScreenProps) {
   const insets = useSafeAreaInsets();
-  const { searchParams } = useExperienceStore();
+  const { searchParams, setResults } = useExperienceStore();
   const [messageIndex, setMessageIndex] = useState(0);
+  const [searchState, { search }] = useExperienceSearch();
+  const searchInitiated = useRef(false);
 
   // Animation values
   const icon1Scale = useSharedValue(1);
@@ -46,6 +51,92 @@ export default function ExperienceSearchLoadingScreen({
   const icon3Scale = useSharedValue(1);
   const icon4Scale = useSharedValue(1);
   const progressWidth = useSharedValue(0);
+
+  // Perform actual search via Provider Manager
+  useEffect(() => {
+    if (searchInitiated.current) return;
+    searchInitiated.current = true;
+
+    const performSearch = async () => {
+      try {
+        const startDate = searchParams.date instanceof Date
+          ? searchParams.date.toISOString().split('T')[0]
+          : typeof searchParams.date === 'string'
+            ? new Date(searchParams.date).toISOString().split('T')[0]
+            : new Date().toISOString().split('T')[0];
+
+        const providerParams: ProviderExperienceSearchParams = {
+          destination: {
+            type: 'city',
+            value: searchParams.destination?.name || searchParams.destination?.code || 'New York',
+          },
+          dates: {
+            startDate,
+            flexibleDates: false,
+          },
+          participants: {
+            adults: searchParams.participants?.adults || 2,
+            children: searchParams.participants?.children || 0,
+          },
+        };
+
+        await search(providerParams);
+      } catch (error) {
+        console.error('Experience search error:', error);
+        onComplete();
+      }
+    };
+
+    performSearch();
+  }, []);
+
+  // Handle search completion
+  useEffect(() => {
+    if (!searchState.isLoading && searchState.results.length > 0) {
+      const mappedResults = searchState.results.map((exp: any) => ({
+        id: exp.id,
+        title: exp.title,
+        description: exp.description || '',
+        shortDescription: exp.shortDescription || '',
+        category: exp.category || 'tours',
+        subcategory: exp.subcategory || '',
+        images: exp.images?.map((img: any) => img.url) || [],
+        location: {
+          name: exp.location?.address?.city || '',
+          address: exp.location?.address?.formatted || '',
+          coordinates: exp.location?.coordinates,
+        },
+        duration: {
+          value: exp.duration?.value || 2,
+          unit: exp.duration?.unit || 'hours',
+        },
+        rating: {
+          score: exp.rating?.score || 4.5,
+          reviewCount: exp.rating?.reviewCount || 100,
+        },
+        price: {
+          amount: exp.price?.amount || 50,
+          currency: exp.price?.currency || 'USD',
+          formatted: exp.price?.formatted || '$50',
+        },
+        includes: exp.includes || [],
+        excludes: exp.excludes || [],
+        highlights: exp.highlights || [],
+        languages: exp.languages || ['English'],
+        cancellationPolicy: exp.cancellationPolicy?.freeCancellation 
+          ? 'Free cancellation' 
+          : 'Non-refundable',
+        instantConfirmation: true,
+        mobileTicket: true,
+        available: true,
+      })) as any[];
+
+      setResults(mappedResults);
+      onComplete();
+    } else if (!searchState.isLoading && searchState.error) {
+      onComplete();
+    }
+  }, [searchState.isLoading, searchState.results, searchState.error]);
 
   useEffect(() => {
     // Icon pulse animations
@@ -102,13 +193,15 @@ export default function ExperienceSearchLoadingScreen({
       setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
     }, 600);
 
-    // Complete after delay
-    const timer = setTimeout(() => {
-      onComplete();
-    }, 2500);
+    // Fallback timeout if search takes too long
+    const fallbackTimer = setTimeout(() => {
+      if (searchState.isLoading) {
+        onComplete();
+      }
+    }, 10000);
 
     return () => {
-      clearTimeout(timer);
+      clearTimeout(fallbackTimer);
       clearInterval(messageInterval);
     };
   }, []);

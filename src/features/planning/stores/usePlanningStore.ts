@@ -61,6 +61,15 @@ interface PlanningState {
   confirmPlan: () => Promise<TripPlan>;
   reset: () => void;
   
+  // Actions - Apply Saved Preferences
+  applyPreferences: (preferences: {
+    companionType?: CompanionType | null;
+    tripStyles?: TripStyle[];
+    travelers?: { adults: number; children: number; infants: number };
+  }) => void;
+  hasAppliedPreferences: boolean;
+  setHasAppliedPreferences: (value: boolean) => void;
+  
   // Validation
   isDestinationValid: () => boolean;
   isDatesValid: () => boolean;
@@ -88,6 +97,7 @@ export const usePlanningStore = create<PlanningState>((set, get) => ({
   generationProgress: 0,
   generationMessage: '',
   aiContent: null,
+  hasAppliedPreferences: false,
   
   // Navigation
   setCurrentStep: (index) => set({ currentStepIndex: index }),
@@ -268,7 +278,34 @@ export const usePlanningStore = create<PlanningState>((set, get) => ({
     generationProgress: 0,
     generationMessage: '',
     aiContent: null,
+    hasAppliedPreferences: false,
   }),
+  
+  // Apply saved preferences from user profile
+  applyPreferences: (preferences) => {
+    set((state) => {
+      const newData = { ...state.quickTripData };
+      
+      if (preferences.companionType !== undefined) {
+        newData.companionType = preferences.companionType;
+      }
+      
+      if (preferences.tripStyles && preferences.tripStyles.length > 0) {
+        newData.tripStyles = preferences.tripStyles.slice(0, 4) as TripStyle[];
+      }
+      
+      if (preferences.travelers) {
+        newData.travelerCount = preferences.travelers;
+      }
+      
+      return {
+        quickTripData: newData,
+        hasAppliedPreferences: true,
+      };
+    });
+  },
+  
+  setHasAppliedPreferences: (value) => set({ hasAppliedPreferences: value }),
   
   // Validation
   isDestinationValid: () => {

@@ -3,17 +3,19 @@ import { typography } from './typography';
 import { spacing } from './spacing';
 import { shadows } from './shadows';
 
-// Apple-style border radius
+// Apple-style border radius (iOS Human Interface Guidelines)
 export const borderRadius = {
-  sm: 8,
-  md: 12,
-  lg: 24,      // Universal card radius - ALL cards use 24px
-  xl: 24,      // Same as lg for consistency
-  '2xl': 28,
-  full: 9999,
+  none: 0,
+  xs: 4,       // Small elements, badges
+  sm: 6,       // Chips, small buttons
+  md: 8,       // Standard cards, buttons (Apple default)
+  lg: 10,      // Larger cards
+  xl: 12,      // Modal sheets, large containers
+  '2xl': 16,   // Full-screen modals
+  full: 9999,  // Pills, circular elements
   
-  // Nested element rule: inner elements = card radius - 4px
-  nested: 20,  // For images/components inside 24px cards
+  // Nested element rule: inner elements = container radius - 4px
+  nested: 6,   // For images/components inside cards
 };
 
 export const theme = {
@@ -35,7 +37,7 @@ export const theme = {
   
   // Card configuration
   card: {
-    borderRadius: borderRadius.lg,  // All cards = 24px
+    borderRadius: borderRadius.md,  // All cards = 8px (Apple standard)
     padding: spacing.lg,
   },
 };

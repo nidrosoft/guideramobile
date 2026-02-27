@@ -12,6 +12,7 @@ export default function NameScreen() {
       currentStep={1}
       totalSteps={10}
       nextRoute="/(onboarding)/dob"
+      fieldName="firstName"
     />
   );
 }

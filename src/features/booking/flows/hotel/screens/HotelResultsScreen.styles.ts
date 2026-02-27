@@ -189,5 +189,7 @@ export const styles = StyleSheet.create({
   },
   listContent: {
     paddingTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
   },
 });

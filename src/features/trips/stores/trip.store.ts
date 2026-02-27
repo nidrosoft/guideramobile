@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import { Trip, TripState, CreateTripData, UpdateTripData } from '../types/trip.types';
 import { canTransitionTo } from '../config/trip-states.config';
-import { mockTrip } from './mockTripData';
+import { mockTrip, colombiaTrip } from './mockTripData';
 
 interface TripStore {
   // State
@@ -49,8 +49,8 @@ export const useTripStore = create<TripStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       // TODO: Replace with actual API call
-      // Using mock data for demonstration
-      set({ trips: [mockTrip], isLoading: false });
+      // Using mock data for demonstration - includes Colombia trip with AI-generated content
+      set({ trips: [colombiaTrip, mockTrip], isLoading: false });
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : 'Failed to fetch trips',

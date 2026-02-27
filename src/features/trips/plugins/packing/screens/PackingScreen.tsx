@@ -29,8 +29,62 @@ import { useTripStore } from '@/features/trips/stores/trip.store';
 import { PackingCategory, PackingItem } from '../types/packing.types';
 import AddItemBottomSheet from '../components/AddItemBottomSheet';
 
-// Mock smart suggestions based on trip analysis
-const MOCK_PACKING_ITEMS: PackingItem[] = [
+// AI-Generated Packing Lists by Trip (Claude Opus 4.5)
+const COLOMBIA_PACKING_ITEMS: PackingItem[] = [
+  // Documents & Essentials - Critical for Colombia
+  { id: 'col-1', name: 'Passport (valid 6+ months)', category: PackingCategory.ESSENTIALS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'US citizens get 90-day visa-free entry' },
+  { id: 'col-2', name: 'Flight Confirmation (Avianca)', category: PackingCategory.ESSENTIALS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
+  { id: 'col-3', name: 'Hotel Reservations Printed', category: PackingCategory.ESSENTIALS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Immigration may ask for proof' },
+  { id: 'col-4', name: 'Travel Insurance Documents', category: PackingCategory.ESSENTIALS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
+  { id: 'col-5', name: 'Credit Cards (Visa/Mastercard)', category: PackingCategory.ESSENTIALS, quantity: 2, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Notify bank of travel dates' },
+  { id: 'col-6', name: 'Colombian Pesos (Cash)', category: PackingCategory.ESSENTIALS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Withdraw from ATMs - better rates' },
+  { id: 'col-7', name: 'Copy of Passport', category: PackingCategory.ESSENTIALS, quantity: 2, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Keep separate from original' },
+  
+  // Clothing - Layered for altitude changes
+  { id: 'col-8', name: 'Lightweight T-shirts', category: PackingCategory.CLOTHING, quantity: 6, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Quick-dry for Cartagena heat' },
+  { id: 'col-9', name: 'Long Pants (Hiking)', category: PackingCategory.CLOTHING, quantity: 2, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'For Cocora Valley hike' },
+  { id: 'col-10', name: 'Shorts', category: PackingCategory.CLOTHING, quantity: 3, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Cartagena is hot & humid' },
+  { id: 'col-11', name: 'Warm Fleece/Jacket', category: PackingCategory.CLOTHING, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Bogota is cool (8-18°C)' },
+  { id: 'col-12', name: 'Rain Jacket (Packable)', category: PackingCategory.CLOTHING, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'February can have rain in Coffee Region' },
+  { id: 'col-13', name: 'Comfortable Walking Shoes', category: PackingCategory.CLOTHING, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Cobblestone streets in Cartagena' },
+  { id: 'col-14', name: 'Hiking Boots', category: PackingCategory.CLOTHING, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Essential for Cocora Valley - muddy trails' },
+  { id: 'col-15', name: 'Sandals', category: PackingCategory.CLOTHING, quantity: 1, isPacked: false, isOptional: true, isSuggested: true, addedBy: 'system' },
+  { id: 'col-16', name: 'Swimsuit', category: PackingCategory.CLOTHING, quantity: 2, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Hotel pools & Caribbean beaches' },
+  { id: 'col-17', name: 'Underwear', category: PackingCategory.CLOTHING, quantity: 8, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
+  { id: 'col-18', name: 'Socks (Hiking & Regular)', category: PackingCategory.CLOTHING, quantity: 8, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
+  
+  // Toiletries
+  { id: 'col-19', name: 'Sunscreen SPF 50+', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'High altitude = stronger UV' },
+  { id: 'col-20', name: 'Insect Repellent (DEET)', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Mosquitoes in Cartagena & Coffee Region' },
+  { id: 'col-21', name: 'Toothbrush & Toothpaste', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
+  { id: 'col-22', name: 'Deodorant', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
+  { id: 'col-23', name: 'Lip Balm with SPF', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Altitude dries lips' },
+  { id: 'col-24', name: 'Hand Sanitizer', category: PackingCategory.TOILETRIES, quantity: 2, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
+  
+  // Electronics
+  { id: 'col-25', name: 'Smartphone', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Download offline maps & Spanish translator' },
+  { id: 'col-26', name: 'Phone Charger & Cable', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Colombia uses Type A/B plugs (same as US)' },
+  { id: 'col-27', name: 'Power Bank (10000+ mAh)', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Long hiking days' },
+  { id: 'col-28', name: 'Camera', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: true, isSuggested: true, addedBy: 'system', notes: 'Wax palms are incredible!' },
+  { id: 'col-29', name: 'Headphones', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: true, isSuggested: true, addedBy: 'system' },
+  
+  // Health & Safety
+  { id: 'col-30', name: 'Altitude Sickness Pills', category: PackingCategory.HEALTH, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Bogota is 2,640m - take it easy day 1' },
+  { id: 'col-31', name: 'Anti-Diarrhea Medicine', category: PackingCategory.HEALTH, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Just in case - avoid tap water' },
+  { id: 'col-32', name: 'Pain Relievers (Ibuprofen)', category: PackingCategory.HEALTH, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
+  { id: 'col-33', name: 'Band-Aids & Blister Pads', category: PackingCategory.HEALTH, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'For hiking' },
+  { id: 'col-34', name: 'Rehydration Salts', category: PackingCategory.HEALTH, quantity: 3, isPacked: false, isOptional: true, isSuggested: true, addedBy: 'system', notes: 'Hot weather in Cartagena' },
+  
+  // Activities - Specific to Colombia Trip
+  { id: 'col-35', name: 'Daypack (20-30L)', category: PackingCategory.ACTIVITIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'For Cocora Valley & day trips' },
+  { id: 'col-36', name: 'Reusable Water Bottle', category: PackingCategory.ACTIVITIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Stay hydrated at altitude' },
+  { id: 'col-37', name: 'Sunglasses (UV Protection)', category: PackingCategory.ACTIVITIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
+  { id: 'col-38', name: 'Wide-Brim Hat', category: PackingCategory.ACTIVITIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Sun protection for hiking & beach' },
+  { id: 'col-39', name: 'Trekking Poles (Optional)', category: PackingCategory.ACTIVITIES, quantity: 1, isPacked: false, isOptional: true, isSuggested: true, addedBy: 'system', notes: 'Helpful for Cocora Valley descent' },
+];
+
+// Default packing items for other trips
+const DEFAULT_PACKING_ITEMS: PackingItem[] = [
   // Essentials
   { id: '1', name: 'Passport', category: PackingCategory.ESSENTIALS, quantity: 1, isPacked: true, isOptional: false, isSuggested: true, addedBy: 'system' },
   { id: '2', name: 'Flight Tickets', category: PackingCategory.ESSENTIALS, quantity: 1, isPacked: true, isOptional: false, isSuggested: true, addedBy: 'system' },
@@ -49,18 +103,26 @@ const MOCK_PACKING_ITEMS: PackingItem[] = [
   { id: '11', name: 'Toothbrush & Toothpaste', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: true, isOptional: false, isSuggested: true, addedBy: 'system' },
   { id: '12', name: 'Shampoo & Conditioner', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
   { id: '13', name: 'Deodorant', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: '14', name: 'Sunscreen SPF 50', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Important for Paris summer' },
+  { id: '14', name: 'Sunscreen SPF 50', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
   
   // Electronics
   { id: '15', name: 'Laptop', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: true, isSuggested: false, addedBy: 'user' },
   { id: '16', name: 'Camera', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: true, isSuggested: true, addedBy: 'system' },
   { id: '17', name: 'Power Bank', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: '18', name: 'EU Travel Adapter', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Required for France' },
+  { id: '18', name: 'Travel Adapter', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
   
   // Health
   { id: '19', name: 'Medications', category: PackingCategory.HEALTH, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
   { id: '20', name: 'First Aid Kit', category: PackingCategory.HEALTH, quantity: 1, isPacked: false, isOptional: true, isSuggested: true, addedBy: 'system' },
 ];
+
+// Get packing items based on trip destination
+const getPackingItemsForTrip = (tripId: string, destination?: string): PackingItem[] => {
+  if (tripId === '2' || destination?.toLowerCase().includes('colombia')) {
+    return COLOMBIA_PACKING_ITEMS;
+  }
+  return DEFAULT_PACKING_ITEMS;
+};
 
 const CATEGORY_INFO = [
   { id: PackingCategory.ESSENTIALS, name: 'Essentials', icon: 'bag', color: '#EF4444' },
@@ -79,7 +141,7 @@ export default function PackingScreen() {
   const tripId = params.tripId as string;
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
   
-  const [items, setItems] = useState<PackingItem[]>(MOCK_PACKING_ITEMS);
+  const [items, setItems] = useState<PackingItem[]>(getPackingItemsForTrip(tripId, trip?.destination?.country));
   const [expandedCategories, setExpandedCategories] = useState<Set<PackingCategory>>(
     new Set([PackingCategory.ESSENTIALS])
   );

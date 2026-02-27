@@ -56,11 +56,11 @@ export default function TypingAnimation({
 
 const styles = StyleSheet.create({
   text: {
-    fontSize: typography.fontSize['3xl'],
+    fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
     color: colors.white,
     textAlign: 'center',
-    lineHeight: typography.fontSize['3xl'] * 1.3,
+    lineHeight: typography.fontSize['2xl'] * 1.3,
   },
   cursor: {
     opacity: 0.7,

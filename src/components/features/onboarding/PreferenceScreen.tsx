@@ -1,12 +1,26 @@
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, typography, spacing, borderRadius } from '@/styles';
 import ProgressStepper from '@/components/common/ProgressStepper';
 import { ArrowLeft } from 'iconsax-react-native';
+import { useOnboardingStore } from '@/stores/useOnboardingStore';
+import { useAuth } from '@/context/AuthContext';
+
+type OnboardingField = 
+  | 'firstName' 
+  | 'dateOfBirth' 
+  | 'gender' 
+  | 'ethnicity' 
+  | 'country' 
+  | 'language' 
+  | 'emergencyContactPhone' 
+  | 'travelStyle' 
+  | 'dietaryRestrictions' 
+  | 'accessibilityNeeds';
 
 interface PreferenceScreenProps {
   icon: React.ComponentType<any>;
@@ -21,6 +35,7 @@ interface PreferenceScreenProps {
   isLast?: boolean;
   keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
   showBackButton?: boolean;
+  fieldName?: OnboardingField;
 }
 
 export default function PreferenceScreen({
@@ -36,12 +51,16 @@ export default function PreferenceScreen({
   isLast = false,
   keyboardType = 'default',
   showBackButton = false,
+  fieldName,
 }: PreferenceScreenProps) {
   const router = useRouter();
   const [value, setValue] = useState('');
   const [selectedOption, setSelectedOption] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  
+  const { updateOnboardingStep } = useAuth();
+  const onboardingStore = useOnboardingStore();
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -60,12 +79,49 @@ export default function PreferenceScreen({
     }
   };
 
-  const handleContinue = () => {
+  const saveToStore = () => {
+    if (!fieldName) return;
+    
+    switch (fieldName) {
+      case 'firstName':
+        onboardingStore.setFirstName(value);
+        break;
+      case 'dateOfBirth':
+        onboardingStore.setDateOfBirth(date);
+        break;
+      case 'gender':
+        onboardingStore.setGender(selectedOption);
+        break;
+      case 'ethnicity':
+        onboardingStore.setEthnicity(selectedOption);
+        break;
+      case 'country':
+        onboardingStore.setCountry(value);
+        break;
+      case 'language':
+        onboardingStore.setLanguage(selectedOption);
+        break;
+      case 'emergencyContactPhone':
+        onboardingStore.setEmergencyContactPhone(value);
+        break;
+      case 'travelStyle':
+        onboardingStore.setTravelStyle(selectedOption);
+        break;
+      case 'dietaryRestrictions':
+        onboardingStore.setDietaryRestrictions(selectedOption);
+        break;
+      case 'accessibilityNeeds':
+        onboardingStore.setAccessibilityNeeds(selectedOption);
+        break;
+    }
+  };
+
+  const handleContinue = async () => {
     let hasValue = false;
     if (inputType === 'text') {
       hasValue = value.trim().length > 0;
     } else if (inputType === 'date') {
-      hasValue = true; // Date always has a value
+      hasValue = true;
     } else {
       hasValue = selectedOption.length > 0;
     }
@@ -74,7 +130,9 @@ export default function PreferenceScreen({
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    // TODO: Save preference data
+    saveToStore();
+    onboardingStore.setCurrentStep(currentStep);
+    await updateOnboardingStep(currentStep);
     
     if (isLast) {
       router.push('/(onboarding)/setup' as any);

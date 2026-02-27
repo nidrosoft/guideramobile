@@ -5,25 +5,66 @@
  * Reduced from 666 lines to ~150 lines.
  */
 
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, TextInput, SafeAreaView } from 'react-native';
-import { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, SafeAreaView, RefreshControl } from 'react-native';
+import { useState, useMemo, useCallback } from 'react';
+import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
-import { colors, typography, spacing, borderRadius } from '@/styles';
-import { SearchNormal1, Setting4 } from 'iconsax-react-native';
+import { useTranslation } from 'react-i18next';
+import { typography, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
+import { SearchNormal1 } from 'iconsax-react-native';
 import TripReminder from '@/components/features/home/TripReminder';
 import SectionRenderer from '@/components/features/home/SectionRenderer';
 import PlanBottomSheet from '@/components/features/home/PlanBottomSheet';
+import { SearchOverlay } from '@/components/features/search';
 import { FlightBookingFlow, HotelBookingFlow, PackageBookingFlow, CarBookingFlow, ExperienceFlow } from '@/features/booking';
 import { categories } from '@/data/categories';
 import { SECTIONS_CONFIG } from '@/config/sections.config';
+import { useAuth } from '@/context/AuthContext';
+import { profileService } from '@/services/profile.service';
+import { useHomepageData } from '@/features/homepage';
 
 export default function Home() {
+  const router = useRouter();
+  const { profile } = useAuth();
+  const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
+  
+  // Modal states
   const [isPlanBottomSheetVisible, setIsPlanBottomSheetVisible] = useState(false);
   const [isFlightBookingVisible, setIsFlightBookingVisible] = useState(false);
   const [isHotelBookingVisible, setIsHotelBookingVisible] = useState(false);
   const [isPackageBookingVisible, setIsPackageBookingVisible] = useState(false);
   const [isCarRentalVisible, setIsCarRentalVisible] = useState(false);
   const [isExperienceVisible, setIsExperienceVisible] = useState(false);
+  
+  // Search states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  
+  // Homepage data with pull-to-refresh
+  const { isRefreshing, refresh } = useHomepageData();
+  
+  const handleRefresh = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await refresh();
+  }, [refresh]);
+
+  // Dynamic styles based on theme
+  const dynamicStyles = useMemo(() => ({
+    safeArea: { backgroundColor: colors.background },
+    welcomeText: { color: colors.textPrimary },
+    locationText: { color: colors.textSecondary },
+    notificationBadge: { backgroundColor: colors.error },
+    notificationCount: { color: colors.white },
+    notificationIcon: { backgroundColor: colors.white },
+    searchBar: { backgroundColor: colors.white },
+    searchInput: { color: colors.textPrimary },
+    filterButton: { backgroundColor: colors.white },
+    categoryCircle: { backgroundColor: colors.white, borderColor: colors.gray200 },
+    categoryText: { color: colors.textPrimary },
+  }), [colors]);
 
   const handleCategoryPress = (categoryName: string) => {
     switch (categoryName) {
@@ -50,50 +91,76 @@ export default function Home() {
     }
   };
 
+  // Search handlers
+  const handleSearchPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setIsSearchFocused(true);
+  };
+
+  const handleSelectSearch = (term: string) => {
+    setSearchQuery(term);
+    setIsSearchFocused(false);
+    router.push(`/search/results?q=${encodeURIComponent(term)}` as any);
+  };
+
+  const handleCloseSearchOverlay = () => {
+    setIsSearchFocused(false);
+  };
+
+  
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" translucent={false} backgroundColor={colors.background} />
+    <SafeAreaView style={[styles.safeArea, dynamicStyles.safeArea]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} translucent={false} backgroundColor={colors.background} />
       <View style={styles.container}>
       
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
           <Image
-            source={{ uri: 'https://i.pravatar.cc/150?img=12' }}
+            source={{ uri: profile?.avatar_url || 'https://i.pravatar.cc/150?img=12' }}
             style={styles.profileImage}
           />
           <View style={styles.welcomeContainer}>
-            <Text style={styles.welcomeText}>Welcome, Daniel 👋</Text>
-            <Text style={styles.locationText}>San Diego, USA</Text>
+            <Text style={[styles.welcomeText, dynamicStyles.welcomeText]}>
+              {t('home.welcomeUser', { name: profile?.first_name || 'Traveler' })}
+            </Text>
+            <Text style={[styles.locationText, dynamicStyles.locationText]}>
+              {profile?.location_name || profile?.city || t('home.setLocation')}
+            </Text>
           </View>
           <View style={styles.notificationContainer}>
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationCount}>3</Text>
+            <View style={[styles.notificationBadge, dynamicStyles.notificationBadge]}>
+              <Text style={[styles.notificationCount, dynamicStyles.notificationCount]}>3</Text>
             </View>
-            <View style={styles.notificationIcon}>
+            <View style={[styles.notificationIcon, dynamicStyles.notificationIcon]}>
               <Text style={styles.bellIcon}>🔔</Text>
             </View>
           </View>
         </View>
 
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
-            <SearchNormal1 size={20} color={colors.textSecondary} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Where can we take you ?"
-              placeholderTextColor={colors.textSecondary}
-            />
-          </View>
-          <TouchableOpacity style={styles.filterButton}>
-            <Setting4 size={20} color={colors.textPrimary} variant="Outline" />
-          </TouchableOpacity>
-        </View>
+        {/* Search Bar - Tapping opens full-screen search overlay */}
+        <TouchableOpacity 
+          style={[styles.searchBarFull, dynamicStyles.searchBar]}
+          activeOpacity={0.8}
+          onPress={handleSearchPress}
+        >
+          <SearchNormal1 size={20} color={colors.textSecondary} />
+          <Text style={[styles.searchPlaceholder, { color: colors.textSecondary }]}>
+            {t('home.searchPlaceholder')}
+          </Text>
+        </TouchableOpacity>
 
         {/* Categories */}
         <ScrollView 
@@ -116,7 +183,7 @@ export default function Home() {
                 ]}>
                   <Icon size={24} color={category.color} variant="Bold" />
                 </View>
-                <Text style={styles.categoryText}>{category.name}</Text>
+                <Text style={[styles.categoryText, dynamicStyles.categoryText]}>{category.name}</Text>
               </TouchableOpacity>
             );
           })}
@@ -170,6 +237,14 @@ export default function Home() {
         visible={isExperienceVisible}
         onClose={() => setIsExperienceVisible(false)}
       />
+
+      {/* Search Overlay */}
+      <SearchOverlay
+        visible={isSearchFocused}
+        query={searchQuery}
+        onSelectSearch={handleSelectSearch}
+        onClose={handleCloseSearchOverlay}
+      />
     </SafeAreaView>
   );
 }
@@ -177,7 +252,6 @@ export default function Home() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
@@ -207,11 +281,9 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
   },
   locationText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     marginTop: 2,
   },
   notificationContainer: {
@@ -221,7 +293,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -4,
     right: -4,
-    backgroundColor: colors.error,
     borderRadius: 10,
     width: 20,
     height: 20,
@@ -232,47 +303,31 @@ const styles = StyleSheet.create({
   notificationCount: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
   },
   notificationIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
   },
   bellIcon: {
     fontSize: 20,
   },
-  searchContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-    gap: spacing.md,
-  },
-  searchBar: {
-    flex: 1,
+  searchBarFull: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.full,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     gap: spacing.sm,
+    height: 48,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
   },
-  searchInput: {
+  searchPlaceholder: {
     flex: 1,
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
-  },
-  filterButton: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.white,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   categoriesScroll: {
     marginBottom: spacing.lg,
@@ -289,15 +344,12 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: colors.gray200,
   },
   categoryText: {
     fontSize: typography.fontSize.xs,
-    color: colors.textPrimary,
     fontWeight: typography.fontWeight.medium,
   },
 });

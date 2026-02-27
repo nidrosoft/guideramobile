@@ -1,0 +1,156 @@
+{
+  "common": {
+    "welcome": "Bienvenue",
+    "loading": "Chargement...",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "done": "Terminé",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "search": "Rechercher",
+    "seeAll": "Voir tout",
+    "back": "Retour",
+    "next": "Suivant",
+    "skip": "Passer",
+    "confirm": "Confirmer",
+    "error": "Erreur",
+    "success": "Succès",
+    "retry": "Réessayer"
+  },
+  "tabs": {
+    "explore": "Explorer",
+    "trips": "Voyages",
+    "community": "Communauté",
+    "profile": "Profil"
+  },
+  "home": {
+    "welcomeUser": "Bienvenue, {{name}} 👋",
+    "setLocation": "Définir votre position",
+    "searchPlaceholder": "Où voulez-vous aller ?",
+    "categories": {
+      "plan": "Planifier",
+      "flight": "Vol",
+      "hotel": "Hôtel",
+      "package": "Forfait",
+      "car": "Voiture",
+      "experiences": "Expériences"
+    },
+    "sections": {
+      "popularDestinations": "Destinations populaires",
+      "trendingNow": "Tendances",
+      "nearbyAttractions": "Attractions à proximité",
+      "specialOffers": "Offres spéciales",
+      "recommendedForYou": "Recommandé pour vous"
+    },
+    "tripReminder": {
+      "upcomingTrip": "Voyage à venir",
+      "daysLeft": "{{count}} jours restants",
+      "hoursLeft": "{{count}} heures restantes"
+    }
+  },
+  "trips": {
+    "title": "Mes Voyages",
+    "tabs": {
+      "upcoming": "À venir",
+      "ongoing": "En cours",
+      "past": "Passés",
+      "cancelled": "Annulés",
+      "draft": "Brouillons"
+    },
+    "empty": {
+      "noTrips": "Aucun voyage {{type}}",
+      "startPlanning": "Commencez à planifier votre prochaine aventure",
+      "createTrip": "Créez un voyage pour commencer"
+    },
+    "createTrip": "Créer un voyage"
+  },
+  "community": {
+    "title": "Communauté",
+    "tabs": {
+      "discover": "Découvrir",
+      "myGroups": "Mes Groupes",
+      "buddies": "Amis",
+      "events": "Événements"
+    },
+    "stats": {
+      "activeGroups": "Groupes actifs",
+      "activities": "Activités",
+      "waiting": "En attente"
+    },
+    "searchPlaceholder": "Rechercher des communautés..."
+  },
+  "profile": {
+    "title": "Profil",
+    "editProfile": "Modifier le profil",
+    "stats": {
+      "trips": "Voyages",
+      "countries": "Pays",
+      "cities": "Villes"
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "sections": {
+      "account": "Compte",
+      "preferences": "Préférences",
+      "support": "Assistance",
+      "legal": "Mentions légales"
+    },
+    "items": {
+      "personalInfo": "Informations personnelles",
+      "security": "Sécurité et confidentialité",
+      "paymentMethods": "Moyens de paiement",
+      "travelPreferences": "Préférences de voyage",
+      "notifications": "Notifications",
+      "language": "Langue",
+      "appearance": "Apparence",
+      "currency": "Devise",
+      "helpCenter": "Centre d'aide",
+      "contactUs": "Nous contacter",
+      "reportProblem": "Signaler un problème",
+      "termsOfService": "Conditions d'utilisation",
+      "privacyPolicy": "Politique de confidentialité",
+      "logout": "Déconnexion"
+    },
+    "language": {
+      "title": "Langue",
+      "subtitle": "Choisissez votre langue préférée",
+      "current": "Langue actuelle"
+    },
+    "appearance": {
+      "title": "Apparence",
+      "subtitle": "Choisissez votre thème préféré",
+      "light": "Clair",
+      "dark": "Sombre",
+      "system": "Système",
+      "preview": "Aperçu"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "subtitle": "Gérez vos préférences de notification",
+      "pushNotifications": "Notifications push",
+      "tripUpdates": "Mises à jour de voyage",
+      "flightAlerts": "Alertes de vol",
+      "priceAlerts": "Alertes de prix",
+      "deals": "Offres et promotions"
+    }
+  },
+  "booking": {
+    "flight": "Vol",
+    "hotel": "Hôtel",
+    "car": "Location de voiture",
+    "experience": "Expérience",
+    "package": "Forfait",
+    "searchFlights": "Rechercher des vols",
+    "searchHotels": "Rechercher des hôtels",
+    "from": "De",
+    "to": "À",
+    "departure": "Départ",
+    "return": "Retour",
+    "passengers": "Passagers",
+    "rooms": "Chambres",
+    "guests": "Voyageurs",
+    "checkIn": "Arrivée",
+    "checkOut": "Départ"
+  }
+}

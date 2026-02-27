@@ -41,11 +41,6 @@ export default function WalkthroughScreen({
     router.push('/(auth)/landing' as any);
   };
 
-  const handleDevShortcut = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/(tabs)' as any);
-  };
-
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
@@ -94,16 +89,6 @@ export default function WalkthroughScreen({
           </Text>
         </TouchableOpacity>
 
-        {/* Dev Shortcut Button - Only on first screen */}
-        {currentStep === 1 && (
-          <TouchableOpacity
-            style={styles.devButton}
-            onPress={handleDevShortcut}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.devButtonText}>🚀 Go to Home (Dev)</Text>
-          </TouchableOpacity>
-        )}
       </View>
     </View>
   );
@@ -184,21 +169,5 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
     color: colors.white,
-  },
-  devButton: {
-    height: 48,
-    backgroundColor: colors.gray100,
-    borderRadius: borderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: spacing.md,
-    borderWidth: 2,
-    borderColor: colors.gray300,
-    borderStyle: 'dashed',
-  },
-  devButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textSecondary,
   },
 });

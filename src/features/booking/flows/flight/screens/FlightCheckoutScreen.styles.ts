@@ -383,7 +383,9 @@ export const styles = StyleSheet.create({
     borderTopColor: colors.gray100,
   },
   priceBreakdown: {
-    flex: 1,
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   totalLabel: {
     fontSize: typography.fontSize.sm,
@@ -395,10 +397,15 @@ export const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   bookButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.primary,
     borderRadius: borderRadius.xl,
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
+    minWidth: 140,
+    gap: spacing.sm,
   },
   bookButtonDisabled: {
     backgroundColor: colors.gray300,
@@ -407,5 +414,33 @@ export const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
     color: colors.white,
+  },
+  // Error banner
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.error,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: typography.fontSize.sm,
+    color: colors.white,
+    marginRight: spacing.sm,
+  },
+  // Price container for bottom bar
+  priceContainer: {
+    flex: 1,
+  },
+  priceLabel: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+  },
+  priceValue: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
   },
 });

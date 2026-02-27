@@ -22,6 +22,7 @@ export default function DietaryRestrictionsScreen() {
       currentStep={9}
       totalSteps={10}
       nextRoute="/(onboarding)/accessibility-needs"
+      fieldName="dietaryRestrictions"
     />
   );
 }

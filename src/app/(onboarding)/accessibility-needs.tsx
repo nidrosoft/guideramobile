@@ -21,6 +21,7 @@ export default function AccessibilityNeedsScreen() {
       totalSteps={10}
       nextRoute="/(onboarding)/setup"
       isLast={true}
+      fieldName="accessibilityNeeds"
     />
   );
 }

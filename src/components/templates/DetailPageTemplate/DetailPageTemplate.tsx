@@ -5,6 +5,7 @@
  * Handles destinations, events, places, etc.
  */
 
+import { useState } from 'react';
 import { View, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import Animated, { 
   useAnimatedScrollHandler, 
@@ -19,6 +20,11 @@ import { MessageQuestion } from 'iconsax-react-native';
 import { colors, spacing } from '@/styles';
 import * as Haptics from 'expo-haptics';
 import { Linking } from 'react-native';
+import { PlanTripSheet } from '@/components/features/search';
+import type { TripPlanData } from '@/components/features/search/PlanTripSheet';
+import { QuickTripFlow, AdvancedTripFlow } from '@/features/planning';
+import { usePlanningStore } from '@/features/planning/stores/usePlanningStore';
+import { useAdvancedPlanningStore } from '@/features/planning/stores/useAdvancedPlanningStore';
 
 const { width } = Dimensions.get('window');
 const IMAGE_HEIGHT = width * 1.2;
@@ -60,6 +66,15 @@ interface DetailPageTemplateProps {
 
 export default function DetailPageTemplate({ type, id, data }: DetailPageTemplateProps) {
   const scrollOffset = useSharedValue(0);
+  
+  // Plan Trip states
+  const [showPlanSheet, setShowPlanSheet] = useState(false);
+  const [showQuickTripFlow, setShowQuickTripFlow] = useState(false);
+  const [showAdvancedTripFlow, setShowAdvancedTripFlow] = useState(false);
+  
+  // Planning stores
+  const planningStore = usePlanningStore();
+  const advancedPlanningStore = useAdvancedPlanningStore();
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event: any) => {
@@ -103,18 +118,67 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
   });
 
   const handleAction = () => {
-    // For destinations, open maps with directions
+    // For destinations, show Plan Trip sheet
     if (type === 'destination') {
-      const query = encodeURIComponent(data.name);
-      Linking.openURL(`https://maps.google.com/?q=${query}`);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setShowPlanSheet(true);
+      return;
     }
-    // Add other type-specific actions here
+    // For other types, open maps with directions
+    const query = encodeURIComponent(data.name);
+    Linking.openURL(`https://maps.google.com/?q=${query}`);
   };
 
   const handleAIAssistant = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert('AI Assistant', `Ask me anything about ${data.name}!`);
     // TODO: Open AI chat interface
+  };
+
+  // Trip plan data from destination
+  const tripPlanData: TripPlanData = {
+    destination: data.name,
+    startDate: null,
+    endDate: null,
+    guests: { adults: 1, children: 0, infants: 0 },
+  };
+
+  const handleQuickTrip = (tripData: TripPlanData) => {
+    planningStore.reset();
+    if (tripData.destination) {
+      planningStore.setDestination({
+        id: id,
+        name: tripData.destination,
+        code: '',
+        country: data.location?.split(',')[0]?.trim() || '',
+        countryCode: '',
+        type: 'city',
+      });
+    }
+    if (tripData.startDate) planningStore.setStartDate(tripData.startDate);
+    if (tripData.endDate) planningStore.setEndDate(tripData.endDate);
+    setShowQuickTripFlow(true);
+  };
+
+  const handleAdvancedTrip = (tripData: TripPlanData) => {
+    advancedPlanningStore.reset();
+    if (tripData.destination) {
+      advancedPlanningStore.updateDestination(0, {
+        id: id,
+        name: tripData.destination,
+        code: '',
+        country: data.location?.split(',')[0]?.trim() || '',
+        countryCode: '',
+        type: 'city',
+      });
+    }
+    if (tripData.startDate) advancedPlanningStore.setDepartureDate(tripData.startDate);
+    if (tripData.endDate) advancedPlanningStore.setReturnDate(tripData.endDate);
+    if (tripData.guests) {
+      advancedPlanningStore.setAdults(tripData.guests.adults);
+      advancedPlanningStore.setInfants(tripData.guests.infants);
+    }
+    setShowAdvancedTripFlow(true);
   };
 
   return (
@@ -225,6 +289,27 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
           onPress={handleAction}
         />
       </View>
+
+      {/* Plan Trip Sheet */}
+      <PlanTripSheet
+        visible={showPlanSheet}
+        onClose={() => setShowPlanSheet(false)}
+        onSelectQuickTrip={handleQuickTrip}
+        onSelectAdvancedTrip={handleAdvancedTrip}
+        tripData={tripPlanData}
+      />
+
+      {/* Quick Trip Flow */}
+      <QuickTripFlow
+        visible={showQuickTripFlow}
+        onClose={() => setShowQuickTripFlow(false)}
+      />
+
+      {/* Advanced Trip Flow */}
+      <AdvancedTripFlow
+        visible={showAdvancedTripFlow}
+        onClose={() => setShowAdvancedTripFlow(false)}
+      />
     </View>
   );
 }

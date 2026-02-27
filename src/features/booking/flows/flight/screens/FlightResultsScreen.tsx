@@ -8,7 +8,7 @@
  * - Change Trip bottom sheet
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
   ImageBackground,
   Modal,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
@@ -42,6 +43,7 @@ import { Flight, FlightSegment } from '../../../types/flight.types';
 import ChangeTripSheet from '../sheets/ChangeTripSheet';
 import DatePickerSheet from '../sheets/DatePickerSheet';
 import { FlightCard, FlightCardData } from '../../../shared/components';
+import { useFlightSearchState } from '../../../stores/flightSearchState';
 
 // Helper to format time from Date
 const formatTime = (date: Date | undefined): string => {
@@ -131,11 +133,18 @@ export default function FlightResultsScreen({
   const insets = useSafeAreaInsets();
   const { searchParams, searchResults } = useFlightStore();
   
+  // Use the shared flight search state (populated by FlightSearchLoadingScreen)
+  const searchState = useFlightSearchState();
+  
   const [showChangeTripSheet, setShowChangeTripSheet] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDateIndex, setSelectedDateIndex] = useState(2); // Center date
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
+  
+  // NOTE: Flight search is now performed in FlightSearchLoadingScreen
+  // The useFlightSearch hook shares state, so results are already available when this screen mounts
+  // We only re-fetch if the user changes the date from the date picker
   
   const datePrices = generateDatePrices(searchParams.departureDate || new Date());
   
@@ -235,13 +244,61 @@ export default function FlightResultsScreen({
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
-  // Facility colors
-  const facilityColors: Record<string, { bg: string; text: string }> = {
-    'WiFi': { bg: '#EEF2FF', text: '#6366F1' },
-    'Meals': { bg: '#FEF3C7', text: '#D97706' },
-    '23kg': { bg: '#DCFCE7', text: '#16A34A' },
-    'Lounge': { bg: '#FCE7F3', text: '#DB2777' },
-  };
+  // Convert API results to display format
+  const flights = useMemo(() => {
+    if (searchState.results.length === 0) return [];
+    
+    return searchState.results.map((result: any) => {
+      const outbound = result.outbound || {};
+      const firstSegment = outbound.segments?.[0] || {};
+      
+      return {
+        id: result.id,
+        airlineName: firstSegment.carrier?.name || 'Unknown Airline',
+        airlineCode: firstSegment.carrier?.code || 'XX',
+        flightNumber: firstSegment.flightNumber || '',
+        originCode: outbound.departure?.airport || searchParams.origin?.code || 'JFK',
+        destCode: outbound.arrival?.airport || searchParams.destination?.code || 'LAX',
+        departureTime: outbound.departure?.time ? new Date(outbound.departure.time) : new Date(),
+        arrivalTime: outbound.arrival?.time ? new Date(outbound.arrival.time) : new Date(),
+        duration: result.totalDurationMinutes || outbound.duration || 0,
+        stops: result.totalStops || outbound.stops || 0,
+        price: result.price?.amount || 0,
+        seatsAvailable: 10,
+      };
+    });
+  }, [searchState.results, searchParams.origin?.code, searchParams.destination?.code]);
+
+  // Calculate best deal and recommended flights
+  const { bestDealId, recommendedId } = useMemo(() => {
+    if (flights.length === 0) return { bestDealId: null, recommendedId: null };
+    
+    // Best Deal = lowest price
+    const sortedByPrice = [...flights].sort((a, b) => a.price - b.price);
+    const bestDeal = sortedByPrice[0];
+    
+    // Recommended = best score (price 40% + duration 30% + stops 20% + early departure 10%)
+    const scored = flights.map(f => {
+      const priceScore = 100 - (f.price / (sortedByPrice[sortedByPrice.length - 1]?.price || 1)) * 100;
+      const durationScore = 100 - (f.duration / Math.max(...flights.map(x => x.duration))) * 100;
+      const stopsScore = f.stops === 0 ? 100 : f.stops === 1 ? 60 : 30;
+      const depHour = f.departureTime instanceof Date ? f.departureTime.getHours() : new Date(f.departureTime).getHours();
+      const timeScore = depHour >= 6 && depHour <= 10 ? 100 : depHour >= 10 && depHour <= 14 ? 80 : 50;
+      
+      return {
+        id: f.id,
+        score: priceScore * 0.4 + durationScore * 0.3 + stopsScore * 0.2 + timeScore * 0.1
+      };
+    });
+    const recommended = scored.sort((a, b) => b.score - a.score)[0];
+    
+    // If best deal and recommended are the same, pick second best for recommended
+    if (bestDeal?.id === recommended?.id && scored.length > 1) {
+      return { bestDealId: bestDeal?.id, recommendedId: scored[1]?.id };
+    }
+    
+    return { bestDealId: bestDeal?.id, recommendedId: recommended?.id };
+  }, [flights]);
 
   // Use the shared FlightCard component for consistent premium UI
   const renderFlightCard = ({ item, index }: { item: MockFlight; index: number }) => {
@@ -258,60 +315,19 @@ export default function FlightResultsScreen({
       stops: item.stops,
       price: item.price,
       seatsAvailable: item.seatsAvailable,
-      facilities: ['WiFi', 'Meals', '23kg'],
+      // No facilities - will be shown on detail screen after API call
     };
 
     return (
       <FlightCard
         flight={flightData}
         index={index}
-        isRecommended={index === 0}
-        isBestDeal={index === 1}
+        isRecommended={item.id === recommendedId}
+        isBestDeal={item.id === bestDealId}
         onPress={() => onSelectFlight(item as any)}
       />
     );
   };
-
-  // Generate mock flights for display
-  const mockFlights = useMemo(() => {
-    const originCode = searchParams.origin?.code || 'JFK';
-    const destCode = searchParams.destination?.code || 'ATL';
-    
-    const createMockFlight = (id: string, depHour: number, arrHour: number, price: number, stops: number, airlineName: string) => {
-      const depTime = new Date();
-      depTime.setHours(depHour, Math.floor(Math.random() * 60), 0);
-      const arrTime = new Date();
-      arrTime.setHours(arrHour, Math.floor(Math.random() * 60), 0);
-      const duration = (arrHour - depHour) * 60 + Math.floor(Math.random() * 30);
-      
-      return {
-        id,
-        airlineName,
-        airlineCode: airlineName.substring(0, 2).toUpperCase(),
-        flightNumber: `${airlineName.substring(0, 2).toUpperCase()}${Math.floor(Math.random() * 900) + 100}`,
-        originCode,
-        destCode,
-        departureTime: depTime,
-        arrivalTime: arrTime,
-        duration,
-        stops,
-        price,
-        seatsAvailable: Math.floor(Math.random() * 20) + 5,
-      };
-    };
-    
-    return [
-      createMockFlight('1', 6, 9, 189, 0, 'Delta Airlines'),
-      createMockFlight('2', 8, 12, 156, 1, 'American Airlines'),
-      createMockFlight('3', 10, 13, 210, 0, 'United Airlines'),
-      createMockFlight('4', 12, 16, 145, 1, 'Southwest Airlines'),
-      createMockFlight('5', 14, 17, 178, 0, 'JetBlue Airways'),
-      createMockFlight('6', 16, 20, 199, 1, 'Spirit Airlines'),
-    ];
-  }, [searchParams.origin?.code, searchParams.destination?.code]);
-
-  // Use mock data for now
-  const flights = mockFlights;
 
   return (
     <View style={styles.container}>
@@ -430,16 +446,39 @@ export default function FlightResultsScreen({
       </View>
       
       {/* Flight List */}
-      <FlatList
-        data={flights}
-        keyExtractor={(item) => item.id}
-        renderItem={renderFlightCard}
-        contentContainerStyle={[
-          styles.flightList,
-          { paddingBottom: insets.bottom + spacing.xl },
-        ]}
-        showsVerticalScrollIndicator={false}
-      />
+      {searchState.isLoading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ marginTop: 16, color: colors.textSecondary }}>
+            Searching {searchState.totalCount > 0 ? `${searchState.totalCount} flights...` : 'flights...'}
+          </Text>
+        </View>
+      ) : searchState.error ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60, paddingHorizontal: 20 }}>
+          <Text style={{ color: colors.error, textAlign: 'center' }}>{searchState.error}</Text>
+        </View>
+      ) : flights.length === 0 ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 }}>
+          <Airplane size={48} color={colors.textSecondary} />
+          <Text style={{ marginTop: 16, color: colors.textSecondary }}>No flights found</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={flights}
+          keyExtractor={(item) => item.id}
+          renderItem={renderFlightCard}
+          contentContainerStyle={[
+            styles.flightList,
+            { paddingBottom: insets.bottom + spacing.xl },
+          ]}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <Text style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, color: colors.textSecondary }}>
+              {searchState.totalCount} flights found • Source: {searchState.source || 'live'}
+            </Text>
+          }
+        />
+      )}
       
       {/* Change Trip Sheet */}
       <ChangeTripSheet

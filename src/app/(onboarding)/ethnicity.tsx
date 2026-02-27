@@ -21,6 +21,7 @@ export default function EthnicityScreen() {
       currentStep={4}
       totalSteps={10}
       nextRoute="/(onboarding)/country"
+      fieldName="ethnicity"
     />
   );
 }

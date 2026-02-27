@@ -23,7 +23,7 @@ import {
   ArrowLeft,
   Sort,
   Filter,
-  Calendar,
+  CloseCircle,
   ArrowDown2,
   DollarCircle,
   Star1,
@@ -33,11 +33,8 @@ import * as Haptics from 'expo-haptics';
 import { colors, spacing } from '@/styles';
 import { useHotelStore } from '../../../stores/useHotelStore';
 import { Hotel } from '../../../types/hotel.types';
-import { generateMockHotels } from '../../../data/mockHotels';
 import { styles } from './HotelResultsScreen.styles';
 
-// Import components
-import DatePickerSheet from '../../flight/sheets/DatePickerSheet';
 
 // Import shared premium card
 import { HotelCard, HotelCardData } from '../../../shared/components';
@@ -98,16 +95,12 @@ export default function HotelResultsScreen({
     searchParams,
     searchResults,
     filteredResults,
-    isSearching,
-    setSearchResults,
-    setSearching,
     selectHotel,
     getNights,
     setCheckInDate,
     setCheckOutDate,
   } = useHotelStore();
   
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDateIndex, setSelectedDateIndex] = useState(2);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
@@ -118,32 +111,9 @@ export default function HotelResultsScreen({
     [searchParams.checkIn]
   );
 
-  // Load mock hotels on mount
-  useEffect(() => {
-    if (searchParams.destination && searchParams.checkIn && searchParams.checkOut) {
-      setSearching(true);
-      
-      // Handle both Date objects and string dates (from persistence)
-      const checkInDate = searchParams.checkIn instanceof Date 
-        ? searchParams.checkIn 
-        : new Date(searchParams.checkIn);
-      const checkOutDate = searchParams.checkOut instanceof Date 
-        ? searchParams.checkOut 
-        : new Date(searchParams.checkOut);
-      
-      // Simulate API call
-      setTimeout(() => {
-        const hotels = generateMockHotels(
-          searchParams.destination!,
-          checkInDate,
-          checkOutDate,
-          15
-        );
-        setSearchResults(hotels);
-        setSearching(false);
-      }, 500);
-    }
-  }, [searchParams.destination, searchParams.checkIn, searchParams.checkOut]);
+  // Hotels are loaded by HotelSearchLoadingScreen via provider-manager
+  // This screen just displays the results from the store
+  // No need to regenerate mock data here
 
   const handleSelectHotel = useCallback((hotel: Hotel) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -215,23 +185,41 @@ export default function HotelResultsScreen({
 
   const renderHotelCard = useCallback(({ item, index }: { item: Hotel; index: number }) => {
     // Convert Hotel to HotelCardData format for the premium shared card
+    // Extract room data for policy info
+    const firstRoom = item.rooms?.[0];
+    const cancellationPolicy = firstRoom?.cancellationPolicy;
+    
     const cardData: HotelCardData = {
       id: item.id,
       name: item.name,
-      images: item.images.map(img => img.url), // Extract URLs from HotelImage[]
+      images: item.images?.map(img => img.url) || [], // Extract URLs from HotelImage[]
       starRating: item.starRating,
       userRating: item.userRating, // 0-10 scale
       reviewCount: item.reviewCount,
       location: {
-        city: item.location.city,
-        neighborhood: item.location.neighborhood,
-        address: item.location.address,
+        city: item.location?.city,
+        neighborhood: item.location?.neighborhood,
+        address: item.location?.address,
+        coordinates: item.location?.coordinates,
       },
-      amenities: item.amenities.slice(0, 4).map(a => a.name), // Extract amenity names
-      pricePerNight: item.pricePerNight.amount,
-      totalPrice: item.pricePerNight.amount * nights,
+      amenities: (item.amenities || []).slice(0, 4).map(a => typeof a === 'string' ? a : a.name), // Extract amenity names
+      pricePerNight: item.pricePerNight?.amount || 0,
+      totalPrice: (item.pricePerNight?.amount || 0) * nights,
+      currency: item.pricePerNight?.currency || 'USD',
       isPopular: index === 0,
       isBestValue: index === 1,
+      // Booking.com specific fields from room data
+      // Handle both string and object cancellationPolicy formats
+      isFreeCancellable: typeof cancellationPolicy === 'object' 
+        ? (cancellationPolicy as any)?.freeCancellation 
+        : firstRoom?.refundable || false,
+      freeCancellationDeadline: typeof cancellationPolicy === 'object' 
+        ? (cancellationPolicy as any)?.freeCancellationDeadline 
+        : undefined,
+      hasBreakfast: (firstRoom as any)?.boardType === 'breakfast_included' || firstRoom?.breakfast === 'included',
+      roomsRemaining: (firstRoom as any)?.roomsRemaining,
+      checkInTime: (item.policies?.checkIn as any)?.time || item.policies?.checkIn?.from,
+      checkOutTime: (item.policies?.checkOut as any)?.time || item.policies?.checkOut?.until,
     };
 
     return (
@@ -286,10 +274,10 @@ export default function HotelResultsScreen({
             style={styles.calendarButton}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setShowDatePicker(true);
+              onClose();
             }}
           >
-            <Calendar size={24} color={colors.white} />
+            <CloseCircle size={24} color={colors.white} variant="Bold" />
           </TouchableOpacity>
         </View>
       </ImageBackground>
@@ -389,21 +377,6 @@ export default function HotelResultsScreen({
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Date Picker Sheet */}
-      <DatePickerSheet
-        visible={showDatePicker}
-        onClose={() => setShowDatePicker(false)}
-        onSelect={(checkIn: Date, checkOut?: Date) => {
-          if (checkIn && checkOut) {
-            setCheckInDate(checkIn);
-            setCheckOutDate(checkOut);
-          }
-          setShowDatePicker(false);
-        }}
-        tripType="round-trip"
-        departureDate={searchParams.checkIn}
-        returnDate={searchParams.checkOut}
-      />
     </View>
   );
 }

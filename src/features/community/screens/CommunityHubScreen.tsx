@@ -3,18 +3,19 @@
  * 
  * Main entry point for the Community feature.
  * Shows Your Groups with stats, search, pending requests, and group list.
+ * Refactored to use modular services and hooks.
  */
 
 import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   RefreshControl,
   TextInput,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,75 +24,71 @@ import {
   SearchNormal1,
   Add,
   People,
-  Message,
   Calendar,
   Discover,
   Notification,
   Activity,
   Clock,
-  Timer1,
+  Map1,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
-import { MY_COMMUNITIES, DISCOVER_COMMUNITIES, MOCK_EVENTS, MOCK_BUDDY_MATCHES } from '../data/mockData';
+import { colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
+import {
+  useGroups,
+  useDiscoverGroups,
+  useBuddySuggestions,
+  useUpcomingEvents,
+  usePendingBuddyRequests,
+} from '@/hooks/useCommunity';
 import CommunityCard from '../components/CommunityCard';
 import SectionHeader from '../components/SectionHeader';
 import BuddyMatchCard from '../components/BuddyMatchCard';
 import EventCard from '../components/EventCard';
+import DiscoverTabContent from '../components/DiscoverTabContent';
+import EventsTabContent from '../components/EventsTabContent';
+import GuidesTabContent from './GuidesTabContent';
+import { styles } from './CommunityHubScreen.styles';
 
-type TabType = 'discover' | 'my' | 'buddies' | 'events';
+type TabType = 'discover' | 'my' | 'buddies' | 'events' | 'guides' | 'map';
 
 const TABS: { id: TabType; label: string; icon: any }[] = [
   { id: 'discover', label: 'Discover', icon: Discover },
+  { id: 'guides', label: 'Guides', icon: Map1 },
   { id: 'my', label: 'My Groups', icon: People },
   { id: 'buddies', label: 'Buddies', icon: People },
   { id: 'events', label: 'Events', icon: Calendar },
-];
-
-// Mock pending groups waiting for confirmation
-const PENDING_GROUPS = [
-  {
-    id: 'pending-1',
-    name: 'UK Travel Community 🇬🇧',
-    avatar: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=200',
-    memberCount: 67000,
-    status: 'waiting' as const,
-  },
-  {
-    id: 'pending-2',
-    name: 'Beach & Sea Lover',
-    avatar: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=200',
-    memberCount: 124600,
-    status: 'checked' as const,
-  },
-  {
-    id: 'pending-3',
-    name: 'Every Weekend Travel Community',
-    avatar: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=200',
-    memberCount: 738,
-    status: 'waiting' as const,
-  },
+  { id: 'map', label: 'Live Map', icon: Map1 },
 ];
 
 export default function CommunityHubScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: themeColors } = useTheme();
+  const { user } = useAuth();
+  const userId = user?.id;
+
   const [activeTab, setActiveTab] = useState<TabType>('my');
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Mock data - will come from API
+
+  // Hooks for data fetching
+  const { groups: myGroups, loading: loadingMyGroups, refetch: refetchMyGroups } = useGroups(userId);
+  const { groups: discoverGroups, loading: loadingDiscover } = useDiscoverGroups({ search: searchQuery, limit: 20 });
+  const { suggestions: buddySuggestions, loading: loadingBuddies, refetch: refetchBuddies } = useBuddySuggestions(userId);
+  const { events, loading: loadingEvents, refetch: refetchEvents } = useUpcomingEvents();
+  const { requests: pendingRequests } = usePendingBuddyRequests(userId);
+
   const isPremium = true;
-  const notificationCount = 5;
-  const activeGroupCount = MY_COMMUNITIES.length;
-  const activityCount = 200;
-  const waitingCount = PENDING_GROUPS.length;
-  
-  const onRefresh = useCallback(() => {
+  const notificationCount = pendingRequests.length;
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
-  
+    await Promise.all([refetchMyGroups(), refetchBuddies(), refetchEvents()]);
+    setRefreshing(false);
+  }, [refetchMyGroups, refetchBuddies, refetchEvents]);
+
   const handleCreateCommunity = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (!isPremium) {
@@ -100,126 +97,69 @@ export default function CommunityHubScreen() {
     }
     router.push('/community/create' as any);
   };
-  
+
   const handleNotifications = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push('/community/notifications' as any);
   };
-  
+
   const handleCommunityPress = (communityId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(`/community/${communityId}` as any);
   };
-  
+
   const handleBuddyPress = (buddyId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(`/community/buddy/${buddyId}` as any);
   };
-  
+
   const handleEventPress = (eventId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(`/community/event/${eventId}` as any);
   };
-  
+
+  const handleLiveMapPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/community/live-map' as any);
+  };
+
   const formatMemberCount = (count: number) => {
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
     if (count >= 1000) return `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}k`;
     return count.toString();
   };
-  
+
+  const renderLoading = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color={colors.primary} />
+    </View>
+  );
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'discover':
         return (
-          <>
-            {/* Trending Communities */}
-            <SectionHeader 
-              title="Trending Communities" 
-              onSeeAll={() => router.push('/community/trending' as any)}
-            />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalList}
-            >
-              {DISCOVER_COMMUNITIES.map(community => (
-                <CommunityCard
-                  key={community.id}
-                  community={community}
-                  variant="horizontal"
-                  onPress={() => handleCommunityPress(community.id)}
-                />
-              ))}
-            </ScrollView>
-            
-            {/* All Communities */}
-            <SectionHeader title="All Communities" />
-            {DISCOVER_COMMUNITIES.map(community => (
-              <CommunityCard
-                key={community.id}
-                community={community}
-                variant="list"
-                onPress={() => handleCommunityPress(community.id)}
-                showJoinButton={true}
-              />
-            ))}
-          </>
+          <DiscoverTabContent
+            onSearch={() => router.push('/community/search' as any)}
+            onGroupPress={handleCommunityPress}
+            onTravelerPress={handleBuddyPress}
+            onEventPress={handleEventPress}
+            onSeeAllGroups={() => router.push('/community/trending' as any)}
+            onSeeAllTravelers={() => router.push('/community/travelers' as any)}
+            onSeeAllEvents={() => router.push('/community/all-events' as any)}
+            isPremium={isPremium}
+          />
         );
-        
+
       case 'my':
+        if (loadingMyGroups) return renderLoading();
         return (
           <>
-            {/* Waiting Confirmation Section */}
-            {PENDING_GROUPS.length > 0 && (
-              <>
-                <View style={styles.waitingHeader}>
-                  <View style={styles.waitingTitleRow}>
-                    <Text style={styles.waitingTitle}>Waiting Confirmation</Text>
-                    <View style={styles.waitingDot} />
-                  </View>
-                  <Text style={styles.waitingSubtitle}>
-                    This group are waiting for the admin to confirm it
-                  </Text>
-                </View>
-                
-                {PENDING_GROUPS.map(group => (
-                  <TouchableOpacity 
-                    key={group.id} 
-                    style={styles.pendingCard}
-                    onPress={() => handleCommunityPress(group.id)}
-                  >
-                    <Image source={{ uri: group.avatar }} style={styles.pendingAvatar} />
-                    <View style={styles.pendingInfo}>
-                      <Text style={styles.pendingName} numberOfLines={1}>{group.name}</Text>
-                      <Text style={styles.pendingMembers}>
-                        {formatMemberCount(group.memberCount)} Members
-                      </Text>
-                    </View>
-                    <View style={[
-                      styles.statusBadge,
-                      group.status === 'checked' && styles.statusBadgeChecked
-                    ]}>
-                      <Text style={styles.statusEmoji}>
-                        {group.status === 'waiting' ? '✋' : '👀'}
-                      </Text>
-                      <Text style={[
-                        styles.statusText,
-                        group.status === 'checked' && styles.statusTextChecked
-                      ]}>
-                        {group.status === 'waiting' ? 'Waiting' : 'Checked'}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </>
-            )}
-            
-            {/* My Active Groups */}
             <SectionHeader 
               title="My Groups" 
               onSeeAll={() => router.push('/community/my-groups' as any)}
             />
-            {MY_COMMUNITIES.length === 0 ? (
+            {myGroups.length === 0 ? (
               <View style={styles.emptyState}>
                 <People size={64} color={colors.gray300} variant="Bold" />
                 <Text style={styles.emptyTitle}>No groups yet</Text>
@@ -234,69 +174,138 @@ export default function CommunityHubScreen() {
                 </TouchableOpacity>
               </View>
             ) : (
-              MY_COMMUNITIES.map(community => (
+              myGroups.map(({ group, role }) => (
                 <CommunityCard
-                  key={community.id}
-                  community={community}
+                  key={group.id}
+                  community={{
+                    id: group.id,
+                    name: group.name,
+                    avatar: group.groupPhotoUrl || '',
+                    coverImage: group.coverPhotoUrl || '',
+                    memberCount: group.memberCount,
+                    isVerified: group.isVerified,
+                    type: (group.category as any) || 'interest',
+                    privacy: group.privacy,
+                    tags: group.tags,
+                    isMember: true,
+                  }}
                   variant="list"
-                  onPress={() => handleCommunityPress(community.id)}
+                  onPress={() => handleCommunityPress(group.id)}
                 />
               ))
             )}
           </>
         );
-        
+
       case 'buddies':
+        if (loadingBuddies) return renderLoading();
         return (
           <>
             <SectionHeader 
               title="Buddy Matches" 
               subtitle="Travelers with similar plans"
             />
-            {MOCK_BUDDY_MATCHES.map(buddy => (
-              <BuddyMatchCard
-                key={buddy.id}
-                buddy={buddy}
-                onPress={() => handleBuddyPress(buddy.id)}
-                isPremium={isPremium}
-              />
-            ))}
+            {buddySuggestions.length === 0 ? (
+              <View style={styles.emptyState}>
+                <People size={64} color={colors.gray300} variant="Bold" />
+                <Text style={styles.emptyTitle}>No matches yet</Text>
+                <Text style={styles.emptyText}>
+                  Complete your profile and add trips to find buddy matches
+                </Text>
+              </View>
+            ) : (
+              buddySuggestions.map(suggestion => (
+                <BuddyMatchCard
+                  key={suggestion.user.id}
+                  buddy={{
+                    id: suggestion.user.id,
+                    userId: suggestion.user.id,
+                    firstName: suggestion.user.firstName,
+                    lastName: suggestion.user.lastName,
+                    avatar: suggestion.user.avatarUrl || '',
+                    bio: suggestion.user.bio || '',
+                    matchScore: suggestion.matchScore,
+                    matchReasons: suggestion.matchReasons.map(r => r.label),
+                    travelStyles: (suggestion.user.travelStyles as any) || [],
+                    languages: suggestion.user.languages || [],
+                    verificationLevel: 'email' as const,
+                    countriesVisited: suggestion.user.countryCount || 0,
+                    rating: suggestion.user.averageRating || 0,
+                    connectionStatus: 'none' as const,
+                    sharedTrip: suggestion.tripOverlap ? {
+                      destination: suggestion.tripOverlap.destination,
+                      dates: `${suggestion.tripOverlap.yourDates.start.toLocaleDateString()} - ${suggestion.tripOverlap.yourDates.end.toLocaleDateString()}`,
+                    } : undefined,
+                  }}
+                  onPress={() => handleBuddyPress(suggestion.user.id)}
+                  isPremium={isPremium}
+                />
+              ))
+            )}
           </>
         );
-        
+
       case 'events':
         return (
-          <>
-            <SectionHeader 
-              title="Upcoming Events" 
-              subtitle="Meetups and virtual gatherings"
-            />
-            {MOCK_EVENTS.map(event => (
-              <EventCard
-                key={event.id}
-                event={event}
-                variant="list"
-                onPress={() => handleEventPress(event.id)}
-              />
-            ))}
-          </>
+          <EventsTabContent
+            events={events.map(event => ({
+              id: event.id,
+              communityId: event.groupId || '',
+              title: event.title,
+              coverImage: event.coverImageUrl,
+              type: (event.type === 'other' ? 'meetup' : event.type) as any,
+              status: event.status as any,
+              location: {
+                city: event.locationName || 'Online',
+                country: '',
+                isVirtual: event.locationType === 'virtual',
+              },
+              startDate: event.startDate,
+              attendeeCount: event.attendeeCount,
+              myRSVP: 'none' as const,
+            }))}
+            loading={loadingEvents}
+            onRefresh={refetchEvents}
+            onEventPress={handleEventPress}
+            onCreateEvent={() => router.push('/community/create-event' as any)}
+            currentLocation="Paris"
+          />
         );
-        
+
+      case 'guides':
+        return <GuidesTabContent />;
+
+      case 'map':
+        return (
+          <View style={styles.emptyState}>
+            <Map1 size={64} color={colors.primary} variant="Bold" />
+            <Text style={styles.emptyTitle}>Live Map</Text>
+            <Text style={styles.emptyText}>
+              See nearby travelers and activities in real-time
+            </Text>
+            <TouchableOpacity 
+              style={styles.emptyButton}
+              onPress={handleLiveMapPress}
+            >
+              <Text style={styles.emptyButtonText}>Open Live Map</Text>
+            </TouchableOpacity>
+          </View>
+        );
+
       default:
         return null;
     }
   };
-  
+
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
       
-      {/* Header with page background color */}
+      {/* Header */}
       <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
         <View style={styles.header}>
-          <Text style={styles.title}>Your Group 🍻</Text>
+          <Text style={styles.title}>Community 🍻</Text>
           <View style={styles.headerRight}>
-            {/* New Group Button */}
             <TouchableOpacity 
               style={styles.newGroupButton}
               onPress={handleCreateCommunity}
@@ -305,7 +314,6 @@ export default function CommunityHubScreen() {
               <Text style={styles.newGroupText}>New Group</Text>
             </TouchableOpacity>
             
-            {/* Notification Bell - White background */}
             <TouchableOpacity 
               style={styles.notificationButton}
               onPress={handleNotifications}
@@ -331,7 +339,7 @@ export default function CommunityHubScreen() {
           </View>
           <View>
             <Text style={styles.statLabel}>Active</Text>
-            <Text style={styles.statValue}>{activeGroupCount} Group</Text>
+            <Text style={styles.statValue}>{myGroups.length} Groups</Text>
           </View>
         </View>
         
@@ -342,8 +350,8 @@ export default function CommunityHubScreen() {
             <Activity size={20} color={colors.success} variant="Bold" />
           </View>
           <View>
-            <Text style={styles.statLabel}>Activity</Text>
-            <Text style={styles.statValue}>{activityCount} Post</Text>
+            <Text style={styles.statLabel}>Buddies</Text>
+            <Text style={styles.statValue}>{buddySuggestions.length} Matches</Text>
           </View>
         </View>
         
@@ -354,8 +362,8 @@ export default function CommunityHubScreen() {
             <Clock size={20} color={colors.warning} variant="Bold" />
           </View>
           <View>
-            <Text style={styles.statLabel}>Waiting</Text>
-            <Text style={styles.statValue}>{waitingCount} Group</Text>
+            <Text style={styles.statLabel}>Events</Text>
+            <Text style={styles.statValue}>{events.length} Upcoming</Text>
           </View>
         </View>
       </View>
@@ -366,7 +374,7 @@ export default function CommunityHubScreen() {
           <SearchNormal1 size={20} color={colors.gray400} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Find your groups"
+            placeholder="Find groups, buddies, events..."
             placeholderTextColor={colors.gray400}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -426,309 +434,3 @@ export default function CommunityHubScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  headerContainer: {
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  title: {
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  newGroupButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    gap: spacing.xs,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  newGroupText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.primary,
-  },
-  notificationButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.error,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  notificationBadgeText: {
-    fontSize: 10,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.white,
-  },
-  // Stats Container
-  statsContainer: {
-    flexDirection: 'row',
-    backgroundColor: colors.white,
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.xl,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  statItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.xs,
-  },
-  statIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexShrink: 0,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  statValue: {
-    fontSize: 12,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  statDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: colors.gray200,
-  },
-  // Search
-  searchContainer: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.xl,
-    gap: spacing.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
-  },
-  // Tabs
-  tabsContainer: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
-    backgroundColor: colors.background,
-  },
-  tabs: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    gap: spacing.sm,
-    flexDirection: 'row',
-  },
-  tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 20,
-    backgroundColor: colors.white,
-    gap: spacing.xs,
-  },
-  tabActive: {
-    backgroundColor: colors.primary,
-  },
-  tabText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.textSecondary,
-  },
-  tabTextActive: {
-    color: colors.white,
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingTop: spacing.md,
-  },
-  // Waiting Confirmation
-  waitingHeader: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  waitingTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  waitingTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  waitingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF69B4', // Pink dot like screenshot
-  },
-  waitingSubtitle: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  // Pending Cards
-  pendingCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  pendingAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: borderRadius.md,
-  },
-  pendingInfo: {
-    flex: 1,
-    marginLeft: spacing.md,
-  },
-  pendingName: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  pendingMembers: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.warning + '20',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    gap: spacing.xs,
-  },
-  statusBadgeChecked: {
-    backgroundColor: colors.warning + '30',
-  },
-  statusEmoji: {
-    fontSize: 14,
-  },
-  statusText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.warning,
-  },
-  statusTextChecked: {
-    color: colors.warning,
-  },
-  // Horizontal List
-  horizontalList: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
-    paddingBottom: spacing.lg,
-    paddingTop: spacing.xs,
-  },
-  // Empty State
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing['3xl'],
-    paddingHorizontal: spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginTop: spacing.md,
-  },
-  emptyText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-  emptyButton: {
-    marginTop: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.full,
-  },
-  emptyButtonText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
-  },
-});

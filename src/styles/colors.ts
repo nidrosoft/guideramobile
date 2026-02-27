@@ -40,3 +40,49 @@ export const colors = {
   textTertiary: '#9CA3AF',
   textInverse: '#FFFFFF',
 };
+
+// Dark mode colors
+export const darkColors = {
+  // Primary Brand Color (same - works well on dark)
+  primary: '#8B7AFF',
+  primaryLight: '#A899FF',
+  primaryDark: '#6B5AD9',
+  
+  // Gradient Colors
+  gradientStart: '#6B5AD9',
+  gradientEnd: '#3D2E99',
+  
+  // Neutral Colors (inverted)
+  white: '#1C1C1E',
+  black: '#FFFFFF',
+  
+  // Gray Scale (inverted for dark mode)
+  gray50: '#1C1C1E',
+  gray100: '#2C2C2E',
+  gray200: '#3A3A3C',
+  gray300: '#48484A',
+  gray400: '#636366',
+  gray500: '#8E8E93',
+  gray600: '#AEAEB2',
+  gray700: '#C7C7CC',
+  gray800: '#D1D1D6',
+  gray900: '#E5E5EA',
+  
+  // Semantic Colors (slightly adjusted for dark backgrounds)
+  success: '#30D158',
+  warning: '#FFD60A',
+  error: '#FF453A',
+  info: '#64D2FF',
+  
+  // Background
+  background: '#000000',
+  backgroundSecondary: '#1C1C1E',
+  
+  // Text
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E8E93',
+  textTertiary: '#636366',
+  textInverse: '#000000',
+};
+
+export type ColorScheme = typeof colors;

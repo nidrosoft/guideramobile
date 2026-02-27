@@ -1,19 +1,39 @@
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import CountryPicker, { Country, CountryCode } from 'react-native-country-picker-modal';
 import PhoneIcon from '@/components/common/icons/PhoneIcon';
 import CloseIcon from '@/components/common/icons/CloseIcon';
 import { colors, typography, spacing, borderRadius, shadows } from '@/styles';
+import { useSignIn, useSSO } from '@clerk/clerk-expo';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
+
+const useWarmUpBrowser = () => {
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    void WebBrowser.warmUpAsync();
+    return () => {
+      void WebBrowser.coolDownAsync();
+    };
+  }, []);
+};
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function SignIn() {
+  useWarmUpBrowser();
   const router = useRouter();
+  const { isLoaded, signIn, setActive } = useSignIn();
+  const { startSSOFlow } = useSSO();
   const [countryCode, setCountryCode] = useState<CountryCode>('US');
   const [callingCode, setCallingCode] = useState('1');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const onSelectCountry = (country: Country) => {
     setCountryCode(country.cca2);
@@ -25,18 +45,82 @@ export default function SignIn() {
     router.back();
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // TODO: Implement Google sign in
-    console.log('Google sign in');
+    setError('');
+
+    try {
+      const { createdSessionId, setActive: ssoSetActive, signIn: ssoSignIn, signUp: ssoSignUp } = await startSSOFlow({
+        strategy: 'oauth_google',
+        redirectUrl: AuthSession.makeRedirectUri(),
+      });
+
+      if (createdSessionId && ssoSetActive) {
+        await ssoSetActive({ session: createdSessionId });
+        // AuthGuard will handle redirect
+      } else {
+        console.log('[SignIn SSO] No session created. signUp status:', ssoSignUp?.status, 'signIn status:', ssoSignIn?.status);
+      }
+    } catch (err: any) {
+      const clerkError = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err.message || 'Google sign in failed';
+      setError(clerkError);
+    }
   };
 
-  const handleContinue = () => {
-    if (phoneNumber.length < 10) return;
+  const handleEmailSignIn = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push('/(auth)/email-signin' as any);
+  };
+
+  const handleContinue = async () => {
+    if (phoneNumber.length < 10 || !isLoaded || isLoading) return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // TODO: Send OTP for sign in
-    router.push('/(auth)/verify-otp');
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const fullPhone = `+${callingCode}${phoneNumber}`;
+
+      // Create sign-in with phone number
+      const { supportedFirstFactors } = await signIn.create({
+        identifier: fullPhone,
+      });
+
+      // Find the phone_code factor
+      const phoneFactor = supportedFirstFactors?.find(
+        (f: any) => f.strategy === 'phone_code'
+      );
+
+      if (phoneFactor && 'phoneNumberId' in phoneFactor) {
+        await signIn.prepareFirstFactor({
+          strategy: 'phone_code',
+          phoneNumberId: phoneFactor.phoneNumberId,
+        });
+
+        // Navigate to OTP screen (replace to prevent double-stack)
+        router.replace({
+          pathname: '/(auth)/verify-otp',
+          params: {
+            phone: fullPhone,
+            mode: 'signin',
+          },
+        });
+      } else {
+        setError('Phone sign-in not available. Try email or Google.');
+      }
+    } catch (err: any) {
+      const errCode = err?.errors?.[0]?.code;
+      if (errCode === 'form_identifier_not_found') {
+        // Account doesn't exist — redirect to sign-up
+        router.push('/(auth)/email-signup' as any);
+        return;
+      }
+      const clerkError = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err.message || 'Failed to sign in';
+      setError(clerkError);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -99,14 +183,20 @@ export default function SignIn() {
           We'll send you a text with a verification code to sign you back in.
         </Text>
 
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
         {/* Continue Button - Always Visible */}
         <TouchableOpacity
-          style={[styles.continueButton, phoneNumber.length < 10 && styles.continueButtonDisabled]}
+          style={[styles.continueButton, (phoneNumber.length < 10 || isLoading) && styles.continueButtonDisabled]}
           onPress={handleContinue}
-          disabled={phoneNumber.length < 10}
+          disabled={phoneNumber.length < 10 || isLoading}
           activeOpacity={0.8}
         >
-          <Text style={[styles.continueIcon, phoneNumber.length < 10 && styles.continueIconDisabled]}>→</Text>
+          {isLoading ? (
+            <ActivityIndicator color={colors.white} size="small" />
+          ) : (
+            <Text style={[styles.continueIcon, phoneNumber.length < 10 && styles.continueIconDisabled]}>→</Text>
+          )}
         </TouchableOpacity>
 
         {/* Divider */}
@@ -123,6 +213,15 @@ export default function SignIn() {
           activeOpacity={0.8}
         >
           <Text style={styles.googleButtonText}>Sign in with Google</Text>
+        </TouchableOpacity>
+
+        {/* Email Sign In Button */}
+        <TouchableOpacity
+          style={styles.emailButton}
+          onPress={handleEmailSignIn}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.emailButtonText}>Sign in with Email</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -206,6 +305,11 @@ const styles = StyleSheet.create({
     lineHeight: typography.fontSize.base * typography.lineHeight.normal,
     marginBottom: spacing['3xl'],
   },
+  errorText: {
+    fontSize: typography.fontSize.sm,
+    color: '#EF4444',
+    marginBottom: spacing.md,
+  },
   continueButton: {
     width: 64,
     height: 64,
@@ -254,6 +358,21 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   googleButtonText: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  emailButton: {
+    height: 56,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.gray300,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
+  emailButtonText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,

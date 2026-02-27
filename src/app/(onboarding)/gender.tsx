@@ -19,6 +19,7 @@ export default function GenderScreen() {
       currentStep={3}
       totalSteps={10}
       nextRoute="/(onboarding)/ethnicity"
+      fieldName="gender"
     />
   );
 }

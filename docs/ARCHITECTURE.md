@@ -147,6 +147,72 @@ Unit, integration, and end-to-end tests.
 7. **API Integration**: Abstracted API clients for easy provider switching
 8. **Testing Structure**: Organized test suites for unit, integration, and e2e tests
 
+---
+
+## Booking Architecture
+
+### Plugin Architecture Pattern
+
+All booking flows follow a consistent 4-screen plugin architecture:
+
+```
+[Flow]BookingFlow.tsx              # Modal orchestrator (~200 lines)
+├── screens/
+│   ├── [Flow]SearchScreen.tsx     # Search form with bottom sheets
+│   ├── [Flow]SearchLoadingScreen.tsx  # Animated loading transition
+│   ├── [Flow]ResultsScreen.tsx    # Results with filters/sorting
+│   └── [Flow]CheckoutScreen.tsx   # Combined checkout
+├── sheets/                        # Bottom sheet modals
+│   ├── LocationPickerSheet.tsx
+│   ├── DatePickerSheet.tsx
+│   ├── [Flow-specific]Sheet.tsx
+│   └── PaymentSheet.tsx
+├── components/                    # Reusable field components
+│   └── [Flow-specific]Card.tsx
+└── *.styles.ts                    # Extracted styles
+```
+
+### Booking Flows
+
+| Flow | Screens | Key Features |
+|------|---------|--------------|
+| **Flight** | Search → Loading → Results → Checkout | One-way/round-trip, seat selection, baggage |
+| **Hotel** | Search → Loading → Results → Detail → Checkout | Room selection, amenities, guest details |
+| **Car** | Search → Loading → Results → Checkout | Protection packages, extras, driver info |
+| **Experience** | Search → Loading → Results → Checkout | Time slots, participants, host info |
+| **Package** | Search → Build → Checkout | Bundle discounts, multi-category selection |
+
+### Architecture Principles
+
+1. **File Size Limits**: Max 500 lines per file, styles extracted to `.styles.ts`
+2. **Bottom Sheets**: All selections happen in modal sheets
+3. **State Management**: Zustand stores with persistence for draft bookings
+4. **Shared Components**: `CancelBookingModal`, `PaymentSheet` reused across flows
+5. **Consistent UX**: Same header pattern, navigation, and styling
+
+### Shared Components
+
+```
+src/features/booking/
+├── flows/shared/
+│   └── CancelBookingModal.tsx     # Reusable cancellation modal
+├── shared/
+│   └── components/
+│       ├── FlightCard.tsx
+│       ├── HotelCard.tsx
+│       ├── CarCard.tsx
+│       ├── ExperienceCard.tsx
+│       └── FilterChips.tsx
+└── stores/
+    ├── useFlightStore.ts
+    ├── useHotelStore.ts
+    ├── useCarStore.ts
+    ├── useExperienceStore.ts
+    └── usePackageStore.ts
+```
+
+---
+
 ## Next Steps
 
 1. Implement splash screen and app loading

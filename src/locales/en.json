@@ -1,0 +1,156 @@
+{
+  "common": {
+    "welcome": "Welcome",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "done": "Done",
+    "edit": "Edit",
+    "delete": "Delete",
+    "search": "Search",
+    "seeAll": "See All",
+    "back": "Back",
+    "next": "Next",
+    "skip": "Skip",
+    "confirm": "Confirm",
+    "error": "Error",
+    "success": "Success",
+    "retry": "Retry"
+  },
+  "tabs": {
+    "explore": "Explore",
+    "trips": "Trips",
+    "community": "Community",
+    "profile": "Profile"
+  },
+  "home": {
+    "welcomeUser": "Welcome, {{name}} 👋",
+    "setLocation": "Set your location",
+    "searchPlaceholder": "Where can we take you?",
+    "categories": {
+      "plan": "Plan",
+      "flight": "Flight",
+      "hotel": "Hotel",
+      "package": "Package",
+      "car": "Car",
+      "experiences": "Experiences"
+    },
+    "sections": {
+      "popularDestinations": "Popular Destinations",
+      "trendingNow": "Trending Now",
+      "nearbyAttractions": "Nearby Attractions",
+      "specialOffers": "Special Offers",
+      "recommendedForYou": "Recommended for You"
+    },
+    "tripReminder": {
+      "upcomingTrip": "Upcoming Trip",
+      "daysLeft": "{{count}} days left",
+      "hoursLeft": "{{count}} hours left"
+    }
+  },
+  "trips": {
+    "title": "My Trips",
+    "tabs": {
+      "upcoming": "Upcoming",
+      "ongoing": "Ongoing",
+      "past": "Past",
+      "cancelled": "Cancelled",
+      "draft": "Draft"
+    },
+    "empty": {
+      "noTrips": "No {{type}} trips",
+      "startPlanning": "Start planning your next adventure",
+      "createTrip": "Create a trip to get started"
+    },
+    "createTrip": "Create Trip"
+  },
+  "community": {
+    "title": "Community",
+    "tabs": {
+      "discover": "Discover",
+      "myGroups": "My Groups",
+      "buddies": "Buddies",
+      "events": "Events"
+    },
+    "stats": {
+      "activeGroups": "Active Groups",
+      "activities": "Activities",
+      "waiting": "Waiting"
+    },
+    "searchPlaceholder": "Search communities..."
+  },
+  "profile": {
+    "title": "Profile",
+    "editProfile": "Edit Profile",
+    "stats": {
+      "trips": "Trips",
+      "countries": "Countries",
+      "cities": "Cities"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "sections": {
+      "account": "Account",
+      "preferences": "Preferences",
+      "support": "Support",
+      "legal": "Legal"
+    },
+    "items": {
+      "personalInfo": "Personal Information",
+      "security": "Security & Privacy",
+      "paymentMethods": "Payment Methods",
+      "travelPreferences": "Travel Preferences",
+      "notifications": "Notifications",
+      "language": "Language",
+      "appearance": "Appearance",
+      "currency": "Currency",
+      "helpCenter": "Help Center",
+      "contactUs": "Contact Us",
+      "reportProblem": "Report a Problem",
+      "termsOfService": "Terms of Service",
+      "privacyPolicy": "Privacy Policy",
+      "logout": "Log Out"
+    },
+    "language": {
+      "title": "Language",
+      "subtitle": "Choose your preferred language",
+      "current": "Current Language"
+    },
+    "appearance": {
+      "title": "Appearance",
+      "subtitle": "Choose your preferred theme",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System",
+      "preview": "Preview"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "subtitle": "Manage your notification preferences",
+      "pushNotifications": "Push Notifications",
+      "tripUpdates": "Trip Updates",
+      "flightAlerts": "Flight Alerts",
+      "priceAlerts": "Price Alerts",
+      "deals": "Deals & Offers"
+    }
+  },
+  "booking": {
+    "flight": "Flight",
+    "hotel": "Hotel",
+    "car": "Car Rental",
+    "experience": "Experience",
+    "package": "Package",
+    "searchFlights": "Search Flights",
+    "searchHotels": "Search Hotels",
+    "from": "From",
+    "to": "To",
+    "departure": "Departure",
+    "return": "Return",
+    "passengers": "Passengers",
+    "rooms": "Rooms",
+    "guests": "Guests",
+    "checkIn": "Check-in",
+    "checkOut": "Check-out"
+  }
+}

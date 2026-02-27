@@ -1,17 +1,19 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { colors, typography, spacing, borderRadius } from '@/styles';
 import { Bookmark, ArrowRight, Star1, Ticket, TrendUp, Crown } from 'iconsax-react-native';
+import { useHomepageDataSafe, useInteractionTracking } from '@/features/homepage';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 64;
 
-const destinations = [
+// Mock data fallback
+const mockDestinations = [
   {
-    id: 1,
+    id: '1',
     city: 'Brazil',
     country: 'Rio de Janeiro',
     name: 'Christ the Redeemer',
@@ -24,7 +26,7 @@ const destinations = [
     trending: '+15%',
   },
   {
-    id: 2,
+    id: '2',
     city: 'France',
     country: 'Paris',
     name: 'Eiffel Tower',
@@ -37,7 +39,7 @@ const destinations = [
     trending: '+22%',
   },
   {
-    id: 3,
+    id: '3',
     city: 'Egypt',
     country: 'Giza',
     name: 'Great Pyramid',
@@ -50,7 +52,7 @@ const destinations = [
     trending: '+18%',
   },
   {
-    id: 4,
+    id: '4',
     city: 'India',
     country: 'Agra',
     name: 'Taj Mahal',
@@ -63,7 +65,7 @@ const destinations = [
     trending: '+25%',
   },
   {
-    id: 5,
+    id: '5',
     city: 'USA',
     country: 'New York',
     name: 'Statue of Liberty',
@@ -80,13 +82,42 @@ const destinations = [
 export default function StackedDestinationCards() {
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const homepageData = useHomepageDataSafe();
+  const { trackDetailView } = useInteractionTracking();
+
+  // Map database data to card format, fallback to mock data
+  const destinations = useMemo(() => {
+    const popularSection = homepageData?.sections?.find(s => s.slug === 'popular-destinations');
+    
+    if (popularSection?.items?.length) {
+      return popularSection.items.slice(0, 5).map((item, index) => ({
+        id: item.id || String(index),
+        city: item.location?.country || 'Unknown',
+        country: item.location?.city || 'Unknown',
+        name: item.title,
+        rating: item.rating || 4.5,
+        visitors: `${Math.floor((item.matchScore || 50) * 0.1)}M/year`,
+        entryFee: item.price?.formatted || `$${item.price?.amount || 25}`,
+        bestTime: 'Year-round',
+        image: item.imageUrl || item.thumbnailUrl || 'https://picsum.photos/seed/dest/600/800',
+        isUNESCO: item.badges?.some(b => b.text?.includes('UNESCO')) || item.rating && item.rating >= 4.8,
+        trending: `+${Math.floor(Math.random() * 20) + 10}%`,
+      }));
+    }
+    
+    return mockDestinations;
+  }, [homepageData?.sections]);
 
   const handleSwipe = () => {
     setCurrentIndex((prev) => (prev + 1) % destinations.length);
   };
 
-  const handleCardPress = (destination: typeof destinations[0]) => {
+  const handleCardPress = (destination: typeof destinations[0], index: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    // Track interaction
+    trackDetailView(destination.id, 'destination', 'popular-destinations', index);
+    
     router.push(`/detail/${destination.id}` as any);
   };
 
@@ -165,7 +196,7 @@ export default function StackedDestinationCards() {
 
                 <TouchableOpacity 
                   style={styles.arrowButton}
-                  onPress={() => handleCardPress(destination)}
+                  onPress={() => handleCardPress(destination, index)}
                 >
                   <ArrowRight size={20} color={colors.textPrimary} variant="Outline" />
                 </TouchableOpacity>

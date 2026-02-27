@@ -1,0 +1,131 @@
+/**
+ * BECOME A GUIDE CARD
+ * 
+ * CTA banner encouraging users to become local guides.
+ * Shows on the community hub for non-guide users.
+ */
+
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Map1, ArrowRight2, ShieldTick } from 'iconsax-react-native';
+import { colors } from '@/styles';
+
+interface BecomeGuideCardProps {
+  onPress: () => void;
+}
+
+export default function BecomeGuideCard({ onPress }: BecomeGuideCardProps) {
+  return (
+    <TouchableOpacity activeOpacity={0.85} onPress={onPress}>
+      <LinearGradient
+        colors={['#6366F1', '#8B5CF6', '#A855F7']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
+      >
+        <View style={styles.iconContainer}>
+          <Map1 size={28} color={colors.white} variant="Bold" />
+        </View>
+
+        <View style={styles.textContainer}>
+          <Text style={styles.title}>Know your city inside out?</Text>
+          <Text style={styles.subtitle}>
+            Help travelers explore safely. Become a verified Local Guide.
+          </Text>
+        </View>
+
+        <View style={styles.features}>
+          <View style={styles.featureItem}>
+            <ShieldTick size={14} color="rgba(255,255,255,0.8)" variant="Bold" />
+            <Text style={styles.featureText}>Get verified</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <ShieldTick size={14} color="rgba(255,255,255,0.8)" variant="Bold" />
+            <Text style={styles.featureText}>Build reputation</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <ShieldTick size={14} color="rgba(255,255,255,0.8)" variant="Bold" />
+            <Text style={styles.featureText}>Help travelers</Text>
+          </View>
+        </View>
+
+        <View style={styles.ctaRow}>
+          <Text style={styles.ctaText}>Become a Local Guide</Text>
+          <View style={styles.ctaArrow}>
+            <ArrowRight2 size={16} color="#6366F1" variant="Bold" />
+          </View>
+        </View>
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  textContainer: {
+    marginBottom: 14,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.white,
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.85)',
+    lineHeight: 20,
+  },
+  features: {
+    flexDirection: 'row',
+    gap: 14,
+    marginBottom: 16,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  featureText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '500',
+  },
+  ctaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: colors.white,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    gap: 8,
+  },
+  ctaText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6366F1',
+  },
+  ctaArrow: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#6366F115',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

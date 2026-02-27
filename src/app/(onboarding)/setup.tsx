@@ -6,6 +6,8 @@ import * as Haptics from 'expo-haptics';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { User, Location, Heart, Shield, Airplane } from 'iconsax-react-native';
 import { colors, typography, spacing, borderRadius } from '@/styles';
+import { useOnboardingStore } from '@/stores/useOnboardingStore';
+import { useAuth } from '@/context/AuthContext';
 
 const setupSteps = [
   { id: 1, text: 'Setting up your account', icon: User, color: '#6366F1', bgColor: '#EEF2FF', duration: 1500 },
@@ -20,12 +22,28 @@ export default function Setup() {
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const confettiRef = useRef<any>(null);
+  const [hasSavedProfile, setHasSavedProfile] = useState(false);
+  
+  const { updateProfile, completeOnboarding } = useAuth();
+  const { getProfileUpdates, reset: resetOnboarding } = useOnboardingStore();
+
+  const saveProfileData = async () => {
+    if (hasSavedProfile) return;
+    setHasSavedProfile(true);
+    
+    try {
+      const profileUpdates = getProfileUpdates();
+      await updateProfile(profileUpdates);
+      await completeOnboarding();
+      resetOnboarding();
+    } catch (error) {
+      console.error('Error saving profile:', error);
+    }
+  };
 
   useEffect(() => {
-    // Mark current step as completed
     if (currentStep < setupSteps.length) {
       const timer = setTimeout(() => {
-        // Haptic feedback when step completes
         if (Platform.OS === 'ios') {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
@@ -35,12 +53,12 @@ export default function Setup() {
         if (currentStep < setupSteps.length - 1) {
           setCurrentStep(currentStep + 1);
         } else {
-          // All steps complete, trigger confetti
+          saveProfileData();
+          
           setTimeout(() => {
             confettiRef.current?.start();
           }, 300);
           
-          // Navigate to home after confetti
           setTimeout(() => {
             router.replace('/(tabs)');
           }, 3000);

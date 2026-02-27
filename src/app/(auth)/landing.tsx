@@ -1,19 +1,40 @@
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Video, ResizeMode } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useState, useEffect, useCallback } from 'react';
 import * as Haptics from 'expo-haptics';
 import { colors, typography, spacing, borderRadius, shadows } from '@/styles';
 import PrimaryButton from '@/components/common/buttons/PrimaryButton';
 import TypingAnimation from '@/components/common/TypingAnimation';
+import { useSSO } from '@clerk/clerk-expo';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
+
+export const useWarmUpBrowser = () => {
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    void WebBrowser.warmUpAsync();
+    return () => {
+      void WebBrowser.coolDownAsync();
+    };
+  }, []);
+};
+
+WebBrowser.maybeCompleteAuthSession();
 
 const { width, height } = Dimensions.get('window');
 
 export default function Landing() {
+  useWarmUpBrowser();
   const router = useRouter();
+  const { startSSOFlow } = useSSO();
+  const [error, setError] = useState('');
+  const [ssoLoading, setSsoLoading] = useState('');
 
   const phrases = [
+    "Guidera",
     "Let's explore the world",
     "Let's immerse ourselves",
     "Let's go sightseeing",
@@ -25,15 +46,35 @@ export default function Landing() {
     "Let's create memories",
   ];
 
-  const handlePhoneSignUp = () => {
+  const handleSSOSignUp = async (strategy: 'oauth_google' | 'oauth_apple' | 'oauth_facebook') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/(auth)/phone-signup');
+    setError('');
+    setSsoLoading(strategy);
+
+    try {
+      const { createdSessionId, setActive, signIn, signUp } = await startSSOFlow({
+        strategy,
+        redirectUrl: AuthSession.makeRedirectUri(),
+      });
+
+      if (createdSessionId && setActive) {
+        await setActive({ session: createdSessionId });
+        // AuthGuard will handle navigation based on onboarding status
+      } else {
+        // No session created — might need additional steps (MFA, etc.)
+        console.log('[Landing SSO] No session created. signUp status:', signUp?.status, 'signIn status:', signIn?.status);
+      }
+    } catch (err: any) {
+      const clerkError = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err.message || 'Sign up failed';
+      setError(clerkError);
+    } finally {
+      setSsoLoading('');
+    }
   };
 
-  const handleGoogleSignUp = () => {
+  const handleEmailSignUp = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // TODO: Implement Google sign up
-    console.log('Google sign up');
+    router.push('/(auth)/email-signup' as any);
   };
 
   const handleSignIn = () => {
@@ -75,24 +116,47 @@ export default function Landing() {
 
         {/* Bottom Actions */}
         <View style={styles.bottomContainer}>
-          {/* Phone Sign Up Button with Gradient */}
-          <LinearGradient
-            colors={[colors.gradientStart, colors.gradientEnd]}
-            style={styles.phoneButton}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
+          {/* Social SSO Buttons Row */}
+          <View style={styles.ssoRow}>
             <TouchableOpacity
-              style={styles.phoneButtonInner}
-              onPress={handlePhoneSignUp}
+              style={styles.ssoButton}
+              onPress={() => handleSSOSignUp('oauth_apple')}
               activeOpacity={0.8}
+              disabled={!!ssoLoading}
             >
-              <Text style={styles.phoneButtonText}>Sign up with Phone Number</Text>
+              {ssoLoading === 'oauth_apple' ? (
+                <ActivityIndicator color={colors.textPrimary} size="small" />
+              ) : (
+                <Text style={styles.ssoIconApple}></Text>
+              )}
             </TouchableOpacity>
-          </LinearGradient>
 
-          {/* Quick & Easy Badge */}
-          <Text style={styles.badge}>Quick & easy - no hassle, just your phone number</Text>
+            <TouchableOpacity
+              style={styles.ssoButton}
+              onPress={() => handleSSOSignUp('oauth_google')}
+              activeOpacity={0.8}
+              disabled={!!ssoLoading}
+            >
+              {ssoLoading === 'oauth_google' ? (
+                <ActivityIndicator color={colors.textPrimary} size="small" />
+              ) : (
+                <Text style={styles.ssoIconText}>G</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.ssoButton}
+              onPress={() => handleSSOSignUp('oauth_facebook')}
+              activeOpacity={0.8}
+              disabled={!!ssoLoading}
+            >
+              {ssoLoading === 'oauth_facebook' ? (
+                <ActivityIndicator color={colors.textPrimary} size="small" />
+              ) : (
+                <Text style={styles.ssoIconFb}>f</Text>
+              )}
+            </TouchableOpacity>
+          </View>
 
           {/* Divider */}
           <View style={styles.divider}>
@@ -101,14 +165,23 @@ export default function Landing() {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Google Button */}
-          <TouchableOpacity
-            style={styles.googleButton}
-            onPress={handleGoogleSignUp}
-            activeOpacity={0.8}
+          {/* Sign Up with Email Button (primary CTA) */}
+          <LinearGradient
+            colors={[colors.gradientStart, colors.gradientEnd]}
+            style={styles.signUpButton}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
           >
-            <Text style={styles.googleButtonText}>Continue with Google</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.signUpButtonInner}
+              onPress={handleEmailSignUp}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.signUpButtonText}>Sign up with Email</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+
+          {error ? <Text style={styles.errorBadge}>{error}</Text> : null}
 
           {/* Sign In Link */}
           <View style={styles.signInContainer}>
@@ -164,28 +237,35 @@ const styles = StyleSheet.create({
   bottomContainer: {
     gap: spacing.sm,
   },
-  phoneButton: {
+  ssoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  ssoButton: {
+    flex: 1,
     height: 56,
     borderRadius: borderRadius.md,
-    overflow: 'hidden',
-    ...shadows.md,
-  },
-  phoneButtonInner: {
-    flex: 1,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  phoneButtonText: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
+  ssoIconApple: {
+    fontSize: 28,
     color: colors.white,
   },
-  badge: {
-    fontSize: typography.fontSize.xs,
+  ssoIconText: {
+    fontSize: 22,
+    fontWeight: '700' as const,
     color: colors.white,
-    opacity: 0.8,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
+  },
+  ssoIconFb: {
+    fontSize: 26,
+    fontWeight: '700' as const,
+    color: colors.white,
   },
   divider: {
     flexDirection: 'row',
@@ -203,18 +283,27 @@ const styles = StyleSheet.create({
     color: colors.white,
     opacity: 0.8,
   },
-  googleButton: {
+  signUpButton: {
     height: 56,
-    backgroundColor: colors.white,
     borderRadius: borderRadius.md,
+    overflow: 'hidden',
+    ...shadows.md,
+  },
+  signUpButtonInner: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.sm,
   },
-  googleButtonText: {
+  signUpButtonText: {
     fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.white,
+  },
+  errorBadge: {
+    fontSize: typography.fontSize.xs,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginTop: spacing.xs,
   },
   signInContainer: {
     flexDirection: 'row',

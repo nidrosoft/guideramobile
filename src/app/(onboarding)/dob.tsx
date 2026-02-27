@@ -11,6 +11,7 @@ export default function DOBScreen() {
       currentStep={2}
       totalSteps={10}
       nextRoute="/(onboarding)/gender"
+      fieldName="dateOfBirth"
     />
   );
 }

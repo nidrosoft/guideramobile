@@ -59,8 +59,8 @@ export default function FlightBookingFlow({
   useEffect(() => {
     if (visible) {
       bookingStore.startBookingSession('flight');
-      fadeAnim.value = withTiming(1, { duration: 300 });
-      scaleAnim.value = withSpring(1, { damping: 20, stiffness: 300 });
+      fadeAnim.value = withTiming(1, { duration: 250 });
+      scaleAnim.value = withTiming(1, { duration: 250 });
     } else {
       fadeAnim.value = withTiming(0, { duration: 200 });
       scaleAnim.value = withTiming(0.95, { duration: 200 });
@@ -69,11 +69,9 @@ export default function FlightBookingFlow({
   
   const handleClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    fadeAnim.value = withTiming(0, { duration: 200 });
-    scaleAnim.value = withTiming(0.95, { duration: 200 }, () => {
-      runOnJS(onClose)();
-      runOnJS(resetFlow)();
-    });
+    // Close immediately - let Modal handle the animation
+    onClose();
+    resetFlow();
   }, [onClose]);
   
   const resetFlow = () => {
@@ -161,7 +159,7 @@ export default function FlightBookingFlow({
   return (
     <Modal
       visible={visible}
-      animationType="none"
+      animationType="fade"
       presentationStyle="fullScreen"
       statusBarTranslucent
       onRequestClose={handleClose}

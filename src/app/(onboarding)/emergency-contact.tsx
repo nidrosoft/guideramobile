@@ -13,6 +13,7 @@ export default function EmergencyContactScreen() {
       currentStep={7}
       totalSteps={10}
       nextRoute="/(onboarding)/travel-preferences"
+      fieldName="emergencyContactPhone"
     />
   );
 }

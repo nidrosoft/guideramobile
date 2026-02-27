@@ -2,9 +2,10 @@
  * SAVED ITEMS SCREEN
  * 
  * User's saved destinations, hotels, deals, etc.
+ * Connected to Supabase with grid layout.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -13,71 +14,147 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  RefreshControl,
+  Alert,
+  Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Heart } from 'iconsax-react-native';
+import { ArrowLeft, Heart, Location, Building, Airplane, Activity, PercentageSquare, Map1 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useAuth } from '@/context/AuthContext';
+import { savedService, SavedItem, SavedItemType } from '@/services/saved.service';
 
-// Mock saved items
-const MOCK_SAVED_ITEMS = [
-  {
-    id: '1',
-    type: 'destination',
-    title: 'Bali, Indonesia',
-    subtitle: 'Island Paradise',
-    image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400',
-    savedAt: new Date('2024-11-15'),
-  },
-  {
-    id: '2',
-    type: 'hotel',
-    title: 'Four Seasons Resort',
-    subtitle: 'Bali • $450/night',
-    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400',
-    savedAt: new Date('2024-11-10'),
-  },
-  {
-    id: '3',
-    type: 'deal',
-    title: '30% Off Tokyo Flights',
-    subtitle: 'Expires in 5 days',
-    image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400',
-    savedAt: new Date('2024-11-08'),
-  },
-  {
-    id: '4',
-    type: 'destination',
-    title: 'Santorini, Greece',
-    subtitle: 'Romantic Getaway',
-    image: 'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=400',
-    savedAt: new Date('2024-11-01'),
-  },
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_GAP = spacing.md;
+const CARD_WIDTH = (SCREEN_WIDTH - spacing.lg * 2 - CARD_GAP) / 2;
+
+const FILTER_TABS = [
+  { label: 'All', value: 'all' as const },
+  { label: 'Destinations', value: 'destination' as SavedItemType },
+  { label: 'Hotels', value: 'hotel' as SavedItemType },
+  { label: 'Flights', value: 'flight' as SavedItemType },
+  { label: 'Experiences', value: 'experience' as SavedItemType },
+  { label: 'Deals', value: 'deal' as SavedItemType },
 ];
 
-const FILTER_TABS = ['All', 'Destinations', 'Hotels', 'Deals', 'Activities'];
+const TYPE_ICONS: Record<SavedItemType, any> = {
+  destination: Location,
+  hotel: Building,
+  flight: Airplane,
+  experience: Activity,
+  deal: PercentageSquare,
+  trip: Map1,
+};
+
+const TYPE_COLORS: Record<SavedItemType, string> = {
+  destination: colors.primary,
+  hotel: colors.info,
+  flight: colors.warning,
+  experience: colors.success,
+  deal: colors.error,
+  trip: colors.primary,
+};
 
 export default function SavedScreen() {
   const router = useRouter();
-  const [activeFilter, setActiveFilter] = useState('All');
-  const [savedItems, setSavedItems] = useState(MOCK_SAVED_ITEMS);
+  const { user } = useAuth();
+  const [activeFilter, setActiveFilter] = useState<SavedItemType | 'all'>('all');
+  const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Fetch saved items
+  const fetchSavedItems = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      const filterType = activeFilter === 'all' ? undefined : activeFilter;
+      const { data, error } = await savedService.getSavedItems(user.id, filterType);
+      
+      if (error) {
+        console.error('Error fetching saved items:', error);
+        return;
+      }
+      
+      setSavedItems(data || []);
+    } catch (error) {
+      console.error('Error in fetchSavedItems:', error);
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  }, [user?.id, activeFilter]);
+
+  useEffect(() => {
+    fetchSavedItems();
+  }, [fetchSavedItems]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchSavedItems();
+  }, [fetchSavedItems]);
   
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.back();
   };
   
-  const handleRemove = (id: string) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setSavedItems(prev => prev.filter(item => item.id !== id));
+  const handleRemove = async (id: string) => {
+    Alert.alert(
+      'Remove Item',
+      'Are you sure you want to remove this saved item?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            const { error } = await savedService.removeSavedItem(id);
+            if (!error) {
+              setSavedItems(prev => prev.filter(item => item.id !== id));
+            }
+          },
+        },
+      ]
+    );
   };
-  
-  const filteredItems = activeFilter === 'All' 
-    ? savedItems 
-    : savedItems.filter(item => 
-        item.type.toLowerCase() === activeFilter.toLowerCase().slice(0, -1)
+
+  const handleItemPress = (item: SavedItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Navigate to detail based on type
+    // For now, just log - can be expanded later
+    console.log('Item pressed:', item);
+  };
+
+  const renderGridItems = () => {
+    const rows = [];
+    for (let i = 0; i < savedItems.length; i += 2) {
+      const item1 = savedItems[i];
+      const item2 = savedItems[i + 1];
+      
+      rows.push(
+        <View key={i} style={styles.gridRow}>
+          <SavedItemCard 
+            item={item1} 
+            onPress={() => handleItemPress(item1)}
+            onRemove={() => handleRemove(item1.id)}
+          />
+          {item2 && (
+            <SavedItemCard 
+              item={item2} 
+              onPress={() => handleItemPress(item2)}
+              onRemove={() => handleRemove(item2.id)}
+            />
+          )}
+        </View>
       );
+    }
+    return rows;
+  };
   
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -101,34 +178,41 @@ export default function SavedScreen() {
         >
           {FILTER_TABS.map(tab => (
             <TouchableOpacity
-              key={tab}
+              key={tab.value}
               style={[
                 styles.filterTab,
-                activeFilter === tab && styles.filterTabActive,
+                activeFilter === tab.value && styles.filterTabActive,
               ]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setActiveFilter(tab);
+                setActiveFilter(tab.value);
               }}
             >
               <Text style={[
                 styles.filterText,
-                activeFilter === tab && styles.filterTextActive,
+                activeFilter === tab.value && styles.filterTextActive,
               ]}>
-                {tab}
+                {tab.label}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
       
-      {/* Saved Items List */}
+      {/* Content */}
       <ScrollView 
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
-        {filteredItems.length === 0 ? (
+        {isLoading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : savedItems.length === 0 ? (
           <View style={styles.emptyState}>
             <Heart size={48} color={colors.gray300} variant="Bold" />
             <Text style={styles.emptyTitle}>No saved items</Text>
@@ -137,25 +221,49 @@ export default function SavedScreen() {
             </Text>
           </View>
         ) : (
-          filteredItems.map(item => (
-            <View key={item.id} style={styles.itemCard}>
-              <Image source={{ uri: item.image }} style={styles.itemImage} />
-              <View style={styles.itemContent}>
-                <Text style={styles.itemType}>{item.type.toUpperCase()}</Text>
-                <Text style={styles.itemTitle}>{item.title}</Text>
-                <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
-              </View>
-              <TouchableOpacity 
-                style={styles.removeButton}
-                onPress={() => handleRemove(item.id)}
-              >
-                <Heart size={20} color={colors.error} variant="Bold" />
-              </TouchableOpacity>
-            </View>
-          ))
+          renderGridItems()
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+// Saved Item Card Component
+interface SavedItemCardProps {
+  item: SavedItem;
+  onPress: () => void;
+  onRemove: () => void;
+}
+
+function SavedItemCard({ item, onPress, onRemove }: SavedItemCardProps) {
+  const TypeIcon = TYPE_ICONS[item.type] || Heart;
+  const typeColor = TYPE_COLORS[item.type] || colors.primary;
+  
+  return (
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
+      <Image 
+        source={{ uri: item.image_url || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400' }} 
+        style={styles.cardImage} 
+      />
+      
+      {/* Type Badge */}
+      <View style={[styles.typeBadge, { backgroundColor: typeColor }]}>
+        <TypeIcon size={12} color={colors.white} variant="Bold" />
+      </View>
+      
+      {/* Heart Button */}
+      <TouchableOpacity style={styles.heartButton} onPress={onRemove}>
+        <Heart size={18} color={colors.error} variant="Bold" />
+      </TouchableOpacity>
+      
+      {/* Content */}
+      <View style={styles.cardContent}>
+        <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+        {item.subtitle && (
+          <Text style={styles.cardSubtitle} numberOfLines={1}>{item.subtitle}</Text>
+        )}
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -223,13 +331,17 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: spacing.lg,
-    gap: spacing.md,
+    flexGrow: 1,
+  },
+  loadingState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: spacing['3xl'],
   },
   emptyTitle: {
     fontSize: typography.fontSize.lg,
@@ -241,46 +353,66 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+    textAlign: 'center',
   },
-  itemCard: {
+  gridRow: {
     flexDirection: 'row',
+    gap: CARD_GAP,
+    marginBottom: CARD_GAP,
+  },
+  card: {
+    width: CARD_WIDTH,
     backgroundColor: colors.white,
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
+    elevation: 3,
+  },
+  cardImage: {
+    width: '100%',
+    height: CARD_WIDTH * 0.75,
+    backgroundColor: colors.gray100,
+  },
+  typeBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heartButton: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
     elevation: 2,
   },
-  itemImage: {
-    width: 100,
-    height: 100,
+  cardContent: {
+    padding: spacing.sm,
   },
-  itemContent: {
-    flex: 1,
-    padding: spacing.md,
-    justifyContent: 'center',
-  },
-  itemType: {
-    fontSize: 10,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.primary,
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  itemTitle: {
-    fontSize: typography.fontSize.base,
+  cardTitle: {
+    fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
   },
-  itemSubtitle: {
-    fontSize: typography.fontSize.sm,
+  cardSubtitle: {
+    fontSize: typography.fontSize.xs,
     color: colors.textSecondary,
     marginTop: 2,
-  },
-  removeButton: {
-    padding: spacing.md,
-    justifyContent: 'center',
   },
 });

@@ -1,0 +1,156 @@
+{
+  "common": {
+    "welcome": "Benvenuto",
+    "loading": "Caricamento...",
+    "save": "Salva",
+    "cancel": "Annulla",
+    "done": "Fatto",
+    "edit": "Modifica",
+    "delete": "Elimina",
+    "search": "Cerca",
+    "seeAll": "Vedi tutto",
+    "back": "Indietro",
+    "next": "Avanti",
+    "skip": "Salta",
+    "confirm": "Conferma",
+    "error": "Errore",
+    "success": "Successo",
+    "retry": "Riprova"
+  },
+  "tabs": {
+    "explore": "Esplora",
+    "trips": "Viaggi",
+    "community": "Community",
+    "profile": "Profilo"
+  },
+  "home": {
+    "welcomeUser": "Benvenuto, {{name}} 👋",
+    "setLocation": "Imposta posizione",
+    "searchPlaceholder": "Dove vuoi andare?",
+    "categories": {
+      "plan": "Pianifica",
+      "flight": "Volo",
+      "hotel": "Hotel",
+      "package": "Pacchetto",
+      "car": "Auto",
+      "experiences": "Esperienze"
+    },
+    "sections": {
+      "popularDestinations": "Destinazioni popolari",
+      "trendingNow": "Di tendenza",
+      "nearbyAttractions": "Attrazioni vicine",
+      "specialOffers": "Offerte speciali",
+      "recommendedForYou": "Consigliato per te"
+    },
+    "tripReminder": {
+      "upcomingTrip": "Prossimo viaggio",
+      "daysLeft": "{{count}} giorni rimanenti",
+      "hoursLeft": "{{count}} ore rimanenti"
+    }
+  },
+  "trips": {
+    "title": "I Miei Viaggi",
+    "tabs": {
+      "upcoming": "In arrivo",
+      "ongoing": "In corso",
+      "past": "Passati",
+      "cancelled": "Annullati",
+      "draft": "Bozze"
+    },
+    "empty": {
+      "noTrips": "Nessun viaggio {{type}}",
+      "startPlanning": "Inizia a pianificare la tua prossima avventura",
+      "createTrip": "Crea un viaggio per iniziare"
+    },
+    "createTrip": "Crea viaggio"
+  },
+  "community": {
+    "title": "Community",
+    "tabs": {
+      "discover": "Scopri",
+      "myGroups": "I Miei Gruppi",
+      "buddies": "Amici",
+      "events": "Eventi"
+    },
+    "stats": {
+      "activeGroups": "Gruppi attivi",
+      "activities": "Attività",
+      "waiting": "In attesa"
+    },
+    "searchPlaceholder": "Cerca community..."
+  },
+  "profile": {
+    "title": "Profilo",
+    "editProfile": "Modifica profilo",
+    "stats": {
+      "trips": "Viaggi",
+      "countries": "Paesi",
+      "cities": "Città"
+    }
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "sections": {
+      "account": "Account",
+      "preferences": "Preferenze",
+      "support": "Supporto",
+      "legal": "Legale"
+    },
+    "items": {
+      "personalInfo": "Informazioni personali",
+      "security": "Sicurezza e privacy",
+      "paymentMethods": "Metodi di pagamento",
+      "travelPreferences": "Preferenze di viaggio",
+      "notifications": "Notifiche",
+      "language": "Lingua",
+      "appearance": "Aspetto",
+      "currency": "Valuta",
+      "helpCenter": "Centro assistenza",
+      "contactUs": "Contattaci",
+      "reportProblem": "Segnala un problema",
+      "termsOfService": "Termini di servizio",
+      "privacyPolicy": "Informativa sulla privacy",
+      "logout": "Esci"
+    },
+    "language": {
+      "title": "Lingua",
+      "subtitle": "Scegli la tua lingua preferita",
+      "current": "Lingua attuale"
+    },
+    "appearance": {
+      "title": "Aspetto",
+      "subtitle": "Scegli il tuo tema preferito",
+      "light": "Chiaro",
+      "dark": "Scuro",
+      "system": "Sistema",
+      "preview": "Anteprima"
+    },
+    "notifications": {
+      "title": "Notifiche",
+      "subtitle": "Gestisci le tue preferenze di notifica",
+      "pushNotifications": "Notifiche push",
+      "tripUpdates": "Aggiornamenti viaggio",
+      "flightAlerts": "Avvisi volo",
+      "priceAlerts": "Avvisi prezzo",
+      "deals": "Offerte e promozioni"
+    }
+  },
+  "booking": {
+    "flight": "Volo",
+    "hotel": "Hotel",
+    "car": "Noleggio auto",
+    "experience": "Esperienza",
+    "package": "Pacchetto",
+    "searchFlights": "Cerca voli",
+    "searchHotels": "Cerca hotel",
+    "from": "Da",
+    "to": "A",
+    "departure": "Partenza",
+    "return": "Ritorno",
+    "passengers": "Passeggeri",
+    "rooms": "Camere",
+    "guests": "Ospiti",
+    "checkIn": "Check-in",
+    "checkOut": "Check-out"
+  }
+}

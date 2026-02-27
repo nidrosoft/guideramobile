@@ -27,6 +27,7 @@ import {
   Star1,
   Location,
   TickCircle,
+  Coffee,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -201,6 +202,51 @@ export default function HotelDetailScreen({
               Excellent · {selectedHotel.reviewCount} reviews
             </Text>
           </View>
+
+          {/* Policy Badges */}
+          <View style={styles.policyRow}>
+            {selectedHotel.rooms?.[0]?.refundable && (
+              <View style={styles.policyBadge}>
+                <TickCircle size={14} color="#10B981" variant="Bold" />
+                <Text style={styles.policyBadgeText}>Free cancellation</Text>
+              </View>
+            )}
+            {(selectedHotel.rooms?.[0] as any)?.boardType === 'breakfast_included' && (
+              <View style={[styles.policyBadge, styles.breakfastPolicyBadge]}>
+                <Coffee size={14} color="#D97706" variant="Bold" />
+                <Text style={[styles.policyBadgeText, styles.breakfastPolicyText]}>Breakfast included</Text>
+              </View>
+            )}
+          </View>
+        </Animated.View>
+
+        {/* Check-in/Check-out Info */}
+        <Animated.View entering={FadeInDown.duration(400).delay(50)} style={styles.section}>
+          <Text style={styles.sectionTitle}>Hotel Policies</Text>
+          <View style={styles.policiesGrid}>
+            <View style={styles.policyItem}>
+              <View style={styles.policyIconContainer}>
+                <ArrowLeft size={18} color={colors.primary} style={{ transform: [{ rotate: '45deg' }] }} />
+              </View>
+              <View>
+                <Text style={styles.policyLabel}>Check-in</Text>
+                <Text style={styles.policyValue}>
+                  {(selectedHotel.policies?.checkIn as any)?.time || selectedHotel.policies?.checkIn?.from || 'From 3:00 PM'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.policyItem}>
+              <View style={styles.policyIconContainer}>
+                <ArrowLeft size={18} color={colors.primary} style={{ transform: [{ rotate: '-135deg' }] }} />
+              </View>
+              <View>
+                <Text style={styles.policyLabel}>Check-out</Text>
+                <Text style={styles.policyValue}>
+                  {(selectedHotel.policies?.checkOut as any)?.time || selectedHotel.policies?.checkOut?.until || 'Until 11:00 AM'}
+                </Text>
+              </View>
+            </View>
+          </View>
         </Animated.View>
 
         {/* Amenities */}
@@ -237,7 +283,7 @@ export default function HotelDetailScreen({
           <View style={styles.priceInfo}>
             <Text style={styles.totalLabel}>{nights} nights</Text>
             <Text style={styles.totalPrice}>
-              ${selectedRoom.price.amount * nights}
+              ${Math.round((selectedRoom.price?.amount || 0) * nights)}
             </Text>
           </View>
           <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
@@ -383,6 +429,63 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: typography.fontSize.sm,
     color: colors.textSecondary,
+  },
+  policyRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  policyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 6,
+  },
+  breakfastPolicyBadge: {
+    backgroundColor: '#FEF3C7',
+  },
+  policyBadgeText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: '#10B981',
+  },
+  breakfastPolicyText: {
+    color: '#D97706',
+  },
+  policiesGrid: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+  },
+  policyItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.gray50,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    gap: spacing.sm,
+  },
+  policyIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: `${colors.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  policyLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  policyValue: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
   },
   section: {
     padding: spacing.lg,
