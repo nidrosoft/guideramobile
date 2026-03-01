@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
 import { useState } from 'react';
-import { colors, typography, spacing, borderRadius } from '@/styles';
+import { typography, spacing, borderRadius, colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Clock, Location, People, Ticket, Calendar } from 'iconsax-react-native';
 
 const { width } = Dimensions.get('window');
@@ -75,6 +76,7 @@ const events = [
 ];
 
 export default function StackedEventCards() {
+  const { colors } = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const handleSwipe = () => {
@@ -105,7 +107,8 @@ export default function StackedEventCards() {
             key={event.id}
             style={[
               styles.card,
-              position > 0 && styles.cardBehind,
+              { backgroundColor: colors.bgCard },
+              position > 0 && { borderWidth: 1, borderColor: colors.borderSubtle },
               {
                 transform: [{ scale }, { translateY }, { rotate }],
                 opacity,
@@ -117,36 +120,36 @@ export default function StackedEventCards() {
           >
             {/* Header Section */}
             <View style={styles.headerSection}>
-              <View style={styles.categoryBadge}>
-                <Text style={styles.categoryText}>{event.category}</Text>
+              <View style={[styles.categoryBadge, { backgroundColor: colors.primary + '15' }]}>
+                <Text style={[styles.categoryText, { color: colors.primary }]}>{event.category}</Text>
               </View>
-              <View style={styles.ratingBadge}>
-                <Text style={styles.ratingText}>⭐ {event.rating}</Text>
+              <View style={[styles.ratingBadge, { backgroundColor: colors.bgElevated }]}>
+                <Text style={[styles.ratingText, { color: colors.textPrimary }]}>⭐ {event.rating}</Text>
               </View>
             </View>
 
             {/* Separator */}
-            <View style={styles.separator} />
+            <View style={[styles.separator, { backgroundColor: colors.borderSubtle }]} />
 
             {/* Event Info Section */}
             <View style={styles.eventInfoSection}>
-              <Text style={styles.eventName}>{event.eventName}</Text>
+              <Text style={[styles.eventName, { color: colors.textPrimary }]}>{event.eventName}</Text>
               
               {/* Venue & City */}
               <View style={styles.venueRow}>
                 <Location size={16} color={colors.textSecondary} variant="Bold" />
-                <Text style={styles.venueText}>{event.venue}, {event.city}</Text>
+                <Text style={[styles.venueText, { color: colors.textSecondary }]}>{event.venue}, {event.city}</Text>
               </View>
               
               {/* Date & Time Row */}
               <View style={styles.dateTimeRow}>
-                <View style={styles.dateContainer}>
+                <View style={[styles.dateContainer, { backgroundColor: colors.primary + '10' }]}>
                   <Calendar size={14} color={colors.primary} variant="Bold" />
-                  <Text style={styles.dateText}>{event.date}</Text>
+                  <Text style={[styles.dateText, { color: colors.primary }]}>{event.date}</Text>
                 </View>
-                <View style={styles.eventTimeContainer}>
+                <View style={[styles.eventTimeContainer, { backgroundColor: colors.success + '15' }]}>
                   <Clock size={14} color={colors.success} variant="Bold" />
-                  <Text style={styles.eventTime}>{event.time}</Text>
+                  <Text style={[styles.eventTime, { color: colors.success }]}>{event.time}</Text>
                 </View>
               </View>
               
@@ -154,11 +157,11 @@ export default function StackedEventCards() {
               <View style={styles.bottomInfoRow}>
                 <View style={styles.attendeesContainer}>
                   <People size={14} color={colors.textSecondary} variant="Bold" />
-                  <Text style={styles.attendeesText}>{event.attendees} going</Text>
+                  <Text style={[styles.attendeesText, { color: colors.textSecondary }]}>{event.attendees} going</Text>
                 </View>
                 <View style={styles.priceContainer}>
                   <Ticket size={14} color={colors.primary} variant="Bold" />
-                  <Text style={styles.priceText}>{event.ticketPrice}</Text>
+                  <Text style={[styles.priceText, { color: colors.primary }]}>{event.ticketPrice}</Text>
                 </View>
               </View>
             </View>
@@ -185,14 +188,11 @@ const styles = StyleSheet.create({
   card: {
     position: 'absolute',
     width: CARD_WIDTH,
-    backgroundColor: colors.white,
     borderRadius: 24,
     padding: spacing.lg,
     overflow: 'hidden',
-  },
-  cardBehind: {
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   headerSection: {
     flexDirection: 'row',
@@ -201,7 +201,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   categoryBadge: {
-    backgroundColor: colors.primary + '15',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: 16,
@@ -209,10 +208,8 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary,
   },
   ratingBadge: {
-    backgroundColor: colors.gray100,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: 16,
@@ -220,11 +217,9 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   separator: {
     height: 1,
-    backgroundColor: colors.gray200,
     marginBottom: spacing.md,
   },
   eventInfoSection: {
@@ -233,7 +228,6 @@ const styles = StyleSheet.create({
   eventName: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
   venueRow: {
@@ -244,7 +238,6 @@ const styles = StyleSheet.create({
   },
   venueText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     flex: 1,
   },
   dateTimeRow: {
@@ -256,7 +249,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.primary + '10',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: 12,
@@ -264,13 +256,11 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary,
   },
   eventTimeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.success + '15',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: 12,
@@ -278,7 +268,6 @@ const styles = StyleSheet.create({
   eventTime: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: colors.success,
   },
   bottomInfoRow: {
     flexDirection: 'row',
@@ -292,7 +281,6 @@ const styles = StyleSheet.create({
   },
   attendeesText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     fontWeight: typography.fontWeight.medium,
   },
   priceContainer: {
@@ -303,7 +291,6 @@ const styles = StyleSheet.create({
   priceText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary,
   },
   imageContainer: {
     width: '100%',

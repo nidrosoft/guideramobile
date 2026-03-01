@@ -35,6 +35,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { 
   notificationService, 
   NotificationPreferences,
@@ -109,6 +110,7 @@ const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
 export default function NotificationsSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [permissionGranted, setPermissionGranted] = useState(false);
@@ -187,20 +189,20 @@ export default function NotificationsSettingsScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <StatusBar style="dark" />
+        <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
   
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
         <View style={styles.headerSpacer} />
@@ -324,9 +326,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -395,12 +397,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.gray100,
+    borderColor: colors.borderSubtle,
   },
   masterToggleContent: {
     flexDirection: 'row',
@@ -430,12 +432,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   categoryCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray100,
+    borderColor: colors.borderSubtle,
   },
   categoryHeader: {
     flexDirection: 'row',
@@ -443,7 +445,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   categoryIconContainer: {
     width: 36,

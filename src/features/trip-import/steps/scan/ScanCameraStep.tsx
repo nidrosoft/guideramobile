@@ -9,6 +9,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Scan, Gallery, InfoCircle } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { StepComponentProps } from '../../types/import-flow.types';
 
 export default function ScanCameraStep({ onNext }: StepComponentProps) {

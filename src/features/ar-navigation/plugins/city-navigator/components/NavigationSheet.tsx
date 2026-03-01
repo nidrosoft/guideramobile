@@ -17,6 +17,7 @@ import {
   CloseCircle,
 } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { POI, TransportMode } from '../types/cityNavigator.types';
 import TransportModeSelector from './TransportModeSelector';
 
@@ -151,7 +152,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: spacing.md,

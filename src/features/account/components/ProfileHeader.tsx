@@ -9,11 +9,9 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Edit2, Verify, Star1, Location } from 'iconsax-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius, colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { UserProfile } from '../types/account.types';
-
-// Apple-style dark color - must match AccountScreen safe area
-const DARK_BG = '#1C1C1E';
 
 interface ProfileHeaderProps {
   user: UserProfile;
@@ -23,13 +21,14 @@ interface ProfileHeaderProps {
 
 export default function ProfileHeader({ user, onEditPress, onAvatarPress }: ProfileHeaderProps) {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
   const fullName = `${user.firstName} ${user.lastName}`;
   const isPremium = user.membership?.type === 'premium' || user.membership?.type === 'pro';
   
   return (
     <View style={styles.container}>
       {/* Dark solid background - matches safe area exactly */}
-      <View style={styles.backgroundSolid} />
+      <View style={[styles.backgroundSolid, { backgroundColor: isDark ? colors.bgSecondary : '#1C1C1E' }]} />
       
       {/* Profile content */}
       <View style={[styles.content, { paddingTop: insets.top + spacing.lg }]}>
@@ -42,7 +41,7 @@ export default function ProfileHeader({ user, onEditPress, onAvatarPress }: Prof
             />
             {user.verified?.identity && (
               <View style={styles.verifiedBadge}>
-                <Verify size={16} color={colors.white} variant="Bold" />
+                <Verify size={16} color="#FFFFFF" variant="Bold" />
               </View>
             )}
             {isPremium && (
@@ -77,32 +76,32 @@ export default function ProfileHeader({ user, onEditPress, onAvatarPress }: Prof
         </View>
         
         {/* Edit button */}
-        <TouchableOpacity style={styles.editButton} onPress={onEditPress}>
-          <Edit2 size={20} color={colors.white} variant="Outline" />
+        <TouchableOpacity style={[styles.editButton, { backgroundColor: 'rgba(255,255,255,0.12)' }]} onPress={onEditPress}>
+          <Edit2 size={20} color="#FFFFFF" variant="Outline" />
         </TouchableOpacity>
       </View>
       
       {/* Stats */}
       {user.stats && (
-        <View style={styles.statsContainer}>
+        <View style={[styles.statsContainer, { backgroundColor: isDark ? '#1A1A1A' : colors.bgCard, zIndex: 1 }]}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{user.stats.tripsCompleted}</Text>
-            <Text style={styles.statLabel}>Trips</Text>
+            <Text style={[styles.statValue, { color: colors.textPrimary }]}>{user.stats.tripsCompleted}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Trips</Text>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, { backgroundColor: colors.borderSubtle }]} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{user.stats.countriesVisited}</Text>
-            <Text style={styles.statLabel}>Countries</Text>
+            <Text style={[styles.statValue, { color: colors.textPrimary }]}>{user.stats.countriesVisited}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Countries</Text>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, { backgroundColor: colors.borderSubtle }]} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{user.stats.reviewsWritten}</Text>
-            <Text style={styles.statLabel}>Reviews</Text>
+            <Text style={[styles.statValue, { color: colors.textPrimary }]}>{user.stats.reviewsWritten}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Reviews</Text>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, { backgroundColor: colors.borderSubtle }]} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{user.stats.communitiesJoined}</Text>
-            <Text style={styles.statLabel}>Groups</Text>
+            <Text style={[styles.statValue, { color: colors.textPrimary }]}>{user.stats.communitiesJoined}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Groups</Text>
           </View>
         </View>
       )}
@@ -119,8 +118,7 @@ const styles = StyleSheet.create({
     top: -200,
     left: 0,
     right: 0,
-    height: 420, // Increased height so stats card sits at edge
-    backgroundColor: DARK_BG,
+    height: 420,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
@@ -138,7 +136,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 3,
-    borderColor: colors.white,
+    borderColor: '#FFFFFF',
   },
   verifiedBadge: {
     position: 'absolute',
@@ -147,11 +145,11 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: colors.primary,
+    backgroundColor: '#3FC39E',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: colors.white,
+    borderColor: '#FFFFFF',
   },
   premiumBadge: {
     position: 'absolute',
@@ -160,11 +158,11 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: DARK_BG,
+    backgroundColor: '#1C1C1E',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: colors.white,
+    borderColor: '#FFFFFF',
   },
   infoContainer: {
     flex: 1,
@@ -179,10 +177,10 @@ const styles = StyleSheet.create({
   name: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
   premiumTag: {
-    backgroundColor: colors.warning,
+    backgroundColor: '#F59E0B',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -190,7 +188,7 @@ const styles = StyleSheet.create({
   premiumText: {
     fontSize: 10,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray900,
+    color: '#111827',
   },
   locationRow: {
     flexDirection: 'row',
@@ -201,11 +199,11 @@ const styles = StyleSheet.create({
   location: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.white,
+    color: '#FFFFFF',
   },
   bio: {
     fontSize: typography.fontSize.sm,
-    color: colors.white,
+    color: '#FFFFFF',
     opacity: 0.85,
     marginTop: spacing.xs,
     lineHeight: 20,
@@ -214,22 +212,22 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.white + '20',
     justifyContent: 'center',
     alignItems: 'center',
   },
   statsContainer: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
     marginHorizontal: spacing.lg,
     marginTop: -spacing.md, // Slight negative margin - pushed down a bit
     paddingVertical: spacing.md,
-    borderRadius: borderRadius.xl,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
   },
   statItem: {
     flex: 1,
@@ -238,17 +236,14 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
   },
   statLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginTop: 2,
   },
   statDivider: {
     width: 1,
     height: '60%',
-    backgroundColor: colors.gray200,
     alignSelf: 'center',
   },
 });

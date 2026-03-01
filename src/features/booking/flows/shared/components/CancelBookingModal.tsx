@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   content: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.xl,
     width: '100%',

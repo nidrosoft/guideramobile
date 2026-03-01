@@ -147,15 +147,6 @@ serve(async (req: Request) => {
         })
         break
 
-      case 'book':
-        result = await handleBooking({
-          requestId,
-          params,
-          userId,
-          supabase,
-        })
-        break
-
       case 'health_check':
         result = await handleHealthCheck({
           providerId: params.providerId as string,
@@ -930,20 +921,6 @@ async function handleGetOffer(context: {
     provider: context.providerCode,
     valid: true,
     message: 'Offer details would be fetched from provider',
-  }
-}
-
-async function handleBooking(context: {
-  requestId: string
-  params: Record<string, unknown>
-  userId?: string
-  supabase: ReturnType<typeof createClient>
-}) {
-  // Placeholder for booking
-  return {
-    bookingReference: `GDR-${Date.now()}`,
-    status: 'pending',
-    message: 'Booking would be processed through provider',
   }
 }
 

@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
   
   // Timeline Card
   timelineCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
     marginBottom: spacing.md,
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderWidth: 3,
     borderColor: colors.primary,
     justifyContent: 'center',
@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
   
   // Amenities Card
   amenitiesCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
     marginBottom: spacing.md,
@@ -749,7 +749,7 @@ const styles = StyleSheet.create({
   
   // Fare Rules Card
   fareRulesCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
     marginBottom: spacing.md,
@@ -794,7 +794,7 @@ const styles = StyleSheet.create({
   
   // Price Card
   priceCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
     marginBottom: spacing.md,
@@ -831,9 +831,9 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: colors.borderSubtle,
   },
   closeBtn: {
     borderRadius: borderRadius.lg,

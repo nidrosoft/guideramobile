@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing, colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Heart, Star1, Clock, Ticket } from 'iconsax-react-native';
 
 interface BestDiscoverCardProps {
@@ -23,8 +24,9 @@ export default function BestDiscoverCard({
   bestFor,
   imageUrl 
 }: BestDiscoverCardProps) {
+  const { colors } = useTheme();
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bgCard }]}>
       {/* Image Container */}
       <View style={styles.imageContainer}>
         <Image source={{ uri: imageUrl }} style={styles.image} />
@@ -43,27 +45,27 @@ export default function BestDiscoverCard({
       {/* Info Section */}
       <View style={styles.infoContainer}>
         {/* Name */}
-        <Text style={styles.name} numberOfLines={2}>{name}</Text>
+        <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={2}>{name}</Text>
         
         {/* Location & Category */}
-        <Text style={styles.location}>{location}</Text>
-        <Text style={styles.category}>{category}</Text>
+        <Text style={[styles.location, { color: colors.textSecondary }]}>{location}</Text>
+        <Text style={[styles.category, { color: colors.textSecondary }]}>{category}</Text>
         
         {/* Bottom Row - Rating, Duration, Price */}
-        <View style={styles.bottomRow}>
+        <View style={[styles.bottomRow, { borderTopColor: colors.borderSubtle }]}>
           <View style={styles.leftInfo}>
             <View style={styles.ratingContainer}>
               <Star1 size={14} color="#FFD700" variant="Bold" />
-              <Text style={styles.ratingText}>{rating}</Text>
+              <Text style={[styles.ratingText, { color: colors.textPrimary }]}>{rating}</Text>
             </View>
             <View style={styles.durationContainer}>
               <Clock size={14} color={colors.textSecondary} variant="Outline" />
-              <Text style={styles.durationText}>{duration}</Text>
+              <Text style={[styles.durationText, { color: colors.textSecondary }]}>{duration}</Text>
             </View>
           </View>
           <View style={styles.priceContainer}>
             <Ticket size={14} color={colors.primary} variant="Bold" />
-            <Text style={styles.priceText}>{price}</Text>
+            <Text style={[styles.priceText, { color: colors.primary }]}>{price}</Text>
           </View>
         </View>
       </View>
@@ -74,10 +76,11 @@ export default function BestDiscoverCard({
 const styles = StyleSheet.create({
   container: {
     width: 300,
-    backgroundColor: colors.white,
     borderRadius: 24,
     padding: spacing.sm,
     marginRight: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   imageContainer: {
     width: '100%',
@@ -103,7 +106,7 @@ const styles = StyleSheet.create({
   bestForText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
   heartButton: {
     position: 'absolute',
@@ -112,7 +115,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -123,18 +126,15 @@ const styles = StyleSheet.create({
   name: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
     lineHeight: 20,
   },
   location: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginBottom: 2,
   },
   category: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginBottom: spacing.sm,
   },
   bottomRow: {
@@ -143,7 +143,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
   },
   leftInfo: {
     flexDirection: 'row',
@@ -156,7 +155,6 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textPrimary,
     fontWeight: typography.fontWeight.semibold,
   },
   durationContainer: {
@@ -166,7 +164,6 @@ const styles = StyleSheet.create({
   },
   durationText: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
   },
   priceContainer: {
     flexDirection: 'row',
@@ -176,6 +173,5 @@ const styles = StyleSheet.create({
   priceText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary,
   },
 });

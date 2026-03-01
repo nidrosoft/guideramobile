@@ -9,6 +9,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { Calendar, InfoCircle } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { StepComponentProps } from '../../types/import-flow.types';
 
 export default function ManualFlightStep({ onNext }: StepComponentProps) {

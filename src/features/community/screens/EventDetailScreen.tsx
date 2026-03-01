@@ -364,7 +364,7 @@ export default function EventDetailScreen() {
           >
             <CloseCircle 
               size={20} 
-              color={rsvpStatus === 'not_going' ? colors.white : colors.gray500} 
+              color={rsvpStatus === 'not_going' ? colors.white : colors.bgElevated0} 
             />
           </TouchableOpacity>
         </View>
@@ -450,10 +450,12 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.medium,
   },
   infoCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginTop: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   infoRow: {
     flexDirection: 'row',
@@ -482,7 +484,7 @@ const styles = StyleSheet.create({
   },
   infoDivider: {
     height: 1,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     marginVertical: spacing.md,
     marginLeft: 60,
   },
@@ -508,9 +510,11 @@ const styles = StyleSheet.create({
   hostCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   hostAvatar: {
     width: 48,
@@ -536,9 +540,11 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   attendeesCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   attendeeAvatars: {
     flexDirection: 'row',
@@ -552,7 +558,7 @@ const styles = StyleSheet.create({
     borderColor: colors.white,
   },
   moreAttendees: {
-    backgroundColor: colors.gray200,
+    backgroundColor: colors.borderSubtle,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -585,7 +591,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   tag: {
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
@@ -599,10 +605,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
   },
   rsvpButtons: {
     flexDirection: 'row',
@@ -628,7 +634,7 @@ const styles = StyleSheet.create({
     borderColor: colors.warning + '30',
   },
   rsvpNo: {
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     flex: 0,
     width: 52,
   },
@@ -641,7 +647,7 @@ const styles = StyleSheet.create({
     borderColor: colors.warning,
   },
   rsvpNoActive: {
-    backgroundColor: colors.gray500,
+    backgroundColor: colors.bgElevated0,
   },
   rsvpButtonText: {
     fontSize: typography.fontSize.sm,

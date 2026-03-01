@@ -29,7 +29,8 @@ import {
   ArrowLeft,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
+import { spacing, typography, shadows, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 // Airport type
 export interface Airport {
@@ -59,6 +60,7 @@ export default function AirportPicker({
   excludeCode,
 }: AirportPickerProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   
   const filteredAirports = useMemo(() => {
@@ -103,7 +105,7 @@ export default function AirportPicker({
       presentationStyle="fullScreen"
       onRequestClose={handleClose}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -113,15 +115,15 @@ export default function AirportPicker({
           >
             <ArrowLeft size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.title}>{title}</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
           <View style={styles.backButton} />
         </View>
         
         {/* Search Box - Matching DestinationStep style */}
-        <View style={styles.searchContainer}>
+        <View style={[styles.searchContainer, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
           <Location size={20} color={colors.textSecondary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.textPrimary }]}
             placeholder={placeholder}
             placeholderTextColor={colors.textSecondary}
             value={searchQuery}
@@ -130,7 +132,7 @@ export default function AirportPicker({
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <CloseCircle size={18} color={colors.gray400} />
+              <CloseCircle size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
@@ -144,30 +146,30 @@ export default function AirportPicker({
           renderItem={({ item, index }) => (
             <Animated.View entering={FadeInDown.duration(300).delay(index * 30)}>
               <TouchableOpacity
-                style={styles.airportItem}
+                style={[styles.airportItem, { borderBottomColor: colors.borderSubtle }]}
                 onPress={() => handleSelect(item)}
                 activeOpacity={0.7}
               >
                 {/* Airport Code */}
                 <View style={styles.codeContainer}>
-                  <Text style={styles.airportCode}>{item.code}</Text>
+                  <Text style={[styles.airportCode, { color: colors.primary }]}>{item.code}</Text>
                 </View>
                 
                 {/* Airport Info */}
                 <View style={styles.airportInfo}>
-                  <Text style={styles.airportCity}>{item.city}</Text>
-                  <Text style={styles.airportName} numberOfLines={1}>
+                  <Text style={[styles.airportCity, { color: colors.textPrimary }]}>{item.city}</Text>
+                  <Text style={[styles.airportName, { color: colors.textSecondary }]} numberOfLines={1}>
                     {item.name}
                   </Text>
                 </View>
                 
-                <ArrowRight2 size={18} color={colors.gray300} />
+                <ArrowRight2 size={18} color={colors.textSecondary} />
               </TouchableOpacity>
             </Animated.View>
           )}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No airports found</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No airports found</Text>
             </View>
           }
         />
@@ -179,7 +181,6 @@ export default function AirportPicker({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
   },
   header: {
     flexDirection: 'row',
@@ -197,28 +198,24 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     textAlign: 'center',
   },
   
-  // Search Box - Fully rounded with white background and border
+  // Search Box
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
     borderRadius: borderRadius.full,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray200,
   },
   searchInput: {
     flex: 1,
     marginLeft: spacing.sm,
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
     paddingVertical: spacing.xs,
   },
   
@@ -232,7 +229,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
   },
   
   // Airport Code - Prominent display
@@ -243,7 +239,6 @@ const styles = StyleSheet.create({
   airportCode: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary,
   },
   
   // Airport Info
@@ -253,12 +248,10 @@ const styles = StyleSheet.create({
   airportCity: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
     marginBottom: 2,
   },
   airportName: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   
   // Empty State
@@ -268,6 +261,5 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
   },
 });

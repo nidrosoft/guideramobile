@@ -108,7 +108,7 @@ export default function NavigationCard({ route, onExit }: NavigationCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: spacing.lg,

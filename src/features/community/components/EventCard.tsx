@@ -8,6 +8,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Calendar, Location, People, Video } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { EventPreview } from '../types/event.types';
 
 interface EventCardProps {
@@ -17,6 +18,7 @@ interface EventCardProps {
 }
 
 export default function EventCard({ event, variant = 'horizontal', onPress }: EventCardProps) {
+  const { colors: tc } = useTheme();
   const isHorizontal = variant === 'horizontal';
   
   const formatDate = (date: Date) => {
@@ -32,13 +34,66 @@ export default function EventCard({ event, variant = 'horizontal', onPress }: Ev
     switch (event.myRSVP) {
       case 'going': return colors.success;
       case 'maybe': return colors.warning;
-      default: return colors.gray400;
+      default: return colors.borderSubtle;
     }
   };
   
+  if (!isHorizontal) {
+    // List variant - full-width card with side image
+    return (
+      <TouchableOpacity
+        style={[styles.listContainer, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        {/* Left Image */}
+        {event.coverImage && (
+          <View style={styles.listImageWrapper}>
+            <Image source={{ uri: event.coverImage }} style={styles.listImage} />
+            {event.location.isVirtual && (
+              <View style={styles.listVirtualBadge}>
+                <Video size={10} color={colors.white} variant="Bold" />
+              </View>
+            )}
+          </View>
+        )}
+        {/* Right Content */}
+        <View style={styles.listContent}>
+          <View style={[styles.typeBadge, { backgroundColor: tc.primary + '15' }]}>
+            <Text style={[styles.typeBadgeText, { color: tc.primary }]}>{event.type.replace('_', ' ')}</Text>
+          </View>
+          <Text style={[styles.listTitle, { color: tc.textPrimary }]} numberOfLines={2}>{event.title}</Text>
+          <View style={styles.infoRow}>
+            <Calendar size={13} color={tc.primary} />
+            <Text style={[styles.infoText, { color: tc.textSecondary }]}>{formatDate(event.startDate)}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Location size={13} color={tc.textSecondary} />
+            <Text style={[styles.infoText, { color: tc.textSecondary }]}>
+              {event.location.isVirtual ? 'Online' : `${event.location.city}, ${event.location.country}`}
+            </Text>
+          </View>
+          <View style={styles.listFooter}>
+            <View style={styles.attendees}>
+              <People size={13} color={tc.textSecondary} />
+              <Text style={[styles.attendeeText, { color: tc.textSecondary }]}>{event.attendeeCount}</Text>
+            </View>
+            {event.myRSVP !== 'none' && (
+              <View style={[styles.rsvpBadge, { backgroundColor: getRSVPColor() + '20' }]}>
+                <Text style={[styles.rsvpText, { color: getRSVPColor() }]}>
+                  {event.myRSVP === 'going' ? 'Going' : 'Maybe'}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <TouchableOpacity
-      style={[styles.container, isHorizontal ? styles.horizontal : styles.list]}
+      style={[styles.container, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -46,7 +101,7 @@ export default function EventCard({ event, variant = 'horizontal', onPress }: Ev
       {event.coverImage && (
         <Image
           source={{ uri: event.coverImage }}
-          style={isHorizontal ? styles.coverImage : styles.listImage}
+          style={styles.coverImage}
         />
       )}
       
@@ -60,24 +115,24 @@ export default function EventCard({ event, variant = 'horizontal', onPress }: Ev
       
       {/* Content */}
       <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={2}>{event.title}</Text>
+        <Text style={[styles.title, { color: tc.textPrimary }]} numberOfLines={2}>{event.title}</Text>
         
         <View style={styles.infoRow}>
-          <Calendar size={14} color={colors.primary} />
-          <Text style={styles.infoText}>{formatDate(event.startDate)}</Text>
+          <Calendar size={14} color={tc.primary} />
+          <Text style={[styles.infoText, { color: tc.textSecondary }]}>{formatDate(event.startDate)}</Text>
         </View>
         
         <View style={styles.infoRow}>
-          <Location size={14} color={colors.gray500} />
-          <Text style={styles.infoText}>
+          <Location size={14} color={tc.textSecondary} />
+          <Text style={[styles.infoText, { color: tc.textSecondary }]}>
             {event.location.isVirtual ? 'Online' : `${event.location.city}, ${event.location.country}`}
           </Text>
         </View>
         
         <View style={styles.footer}>
           <View style={styles.attendees}>
-            <People size={14} color={colors.gray500} />
-            <Text style={styles.attendeeText}>{event.attendeeCount} attending</Text>
+            <People size={14} color={tc.textSecondary} />
+            <Text style={[styles.attendeeText, { color: tc.textSecondary }]}>{event.attendeeCount} attending</Text>
           </View>
           
           {event.myRSVP !== 'none' && (
@@ -95,29 +150,84 @@ export default function EventCard({ event, variant = 'horizontal', onPress }: Ev
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 24,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
+  listContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    marginBottom: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  listImageWrapper: {
+    position: 'relative',
+  },
+  listImage: {
+    width: 110,
+    height: 130,
+  },
+  listVirtualBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listContent: {
+    flex: 1,
+    padding: spacing.md,
+    justifyContent: 'center',
+  },
+  listTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  typeBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginBottom: 6,
+  },
+  typeBadgeText: {
+    fontSize: 10,
+    fontWeight: typography.fontWeight.semibold,
+    textTransform: 'capitalize',
+  },
+  listFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
   horizontal: {
     width: 240,
   },
-  list: {
-    flexDirection: 'row',
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-  },
   coverImage: {
     width: '100%',
-    height: 100,
-  },
-  listImage: {
-    width: 100,
     height: 100,
   },
   virtualBadge: {
@@ -170,7 +280,7 @@ const styles = StyleSheet.create({
   },
   attendeeText: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray500,
+    color: colors.borderSubtle,
   },
   rsvpBadge: {
     paddingHorizontal: spacing.sm,

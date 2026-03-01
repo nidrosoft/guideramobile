@@ -21,7 +21,8 @@ import {
   PercentageCircle,
   MoneyRecive,
 } from 'iconsax-react-native';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import { Claim, ClaimStatus, ClaimType, ClaimStats, ClaimTypeInfo } from '../types/compensation.types';
 import { useToast } from '@/contexts/ToastContext';
@@ -138,6 +139,7 @@ const MOCK_CLAIMS: Claim[] = [
 export default function CompensationScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { colors, isDark } = useTheme();
   const { showSuccess } = useToast();
   const tripId = params.tripId as string;
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
@@ -194,37 +196,37 @@ export default function CompensationScreen() {
   const getStatusColor = (status: ClaimStatus) => {
     switch (status) {
       case ClaimStatus.POTENTIAL:
-        return colors.warning;
+        return '#F59E0B';
       case ClaimStatus.ACTIVE:
         return colors.primary;
       case ClaimStatus.COMPLETED:
-        return colors.success;
+        return '#10B981';
       default:
-        return colors.gray500;
+        return '#6B7280';
     }
   };
 
   const getStatusIcon = (status: ClaimStatus) => {
     switch (status) {
       case ClaimStatus.POTENTIAL:
-        return <Warning2 size={20} color={colors.warning} variant="Bold" />;
+        return <Warning2 size={20} color="#F59E0B" variant="Bold" />;
       case ClaimStatus.ACTIVE:
         return <Clock size={20} color={colors.primary} variant="Bold" />;
       case ClaimStatus.COMPLETED:
-        return <TickCircle size={20} color={colors.success} variant="Bold" />;
+        return <TickCircle size={20} color="#10B981" variant="Bold" />;
     }
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgPrimary} />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgPrimary }]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ArrowLeft size={24} color={colors.gray900} />
+            <ArrowLeft size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Compensation Tracker</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Compensation Tracker</Text>
           <TouchableOpacity
             style={styles.addButton}
             onPress={() => setAddClaimVisible(true)}
@@ -235,30 +237,30 @@ export default function CompensationScreen() {
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Total Potential Card */}
-          <View style={styles.totalPotentialCard}>
+          <View style={[styles.totalPotentialCard, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
             <View style={styles.totalPotentialRow}>
               <View style={styles.totalPotentialLeft}>
                 <View style={styles.totalPotentialIconContainer}>
                   <DollarCircle size={24} color={colors.primary} variant="Bold" />
                 </View>
                 <View style={styles.totalPotentialTextContainer}>
-                  <Text style={styles.totalPotentialTitle}>Total Potential</Text>
-                  <Text style={styles.totalPotentialSubtitle}>
+                  <Text style={[styles.totalPotentialTitle, { color: colors.textPrimary }]}>Total Potential</Text>
+                  <Text style={[styles.totalPotentialSubtitle, { color: colors.textSecondary }]}>
                     {stats.potentialClaims} potential {stats.potentialClaims === 1 ? 'claim' : 'claims'}
                   </Text>
                 </View>
               </View>
-              <Text style={styles.totalPotentialValue}>{formatCurrency(stats.totalPotentialAmount)}</Text>
+              <Text style={[styles.totalPotentialValue, { color: colors.textPrimary }]}>{formatCurrency(stats.totalPotentialAmount)}</Text>
             </View>
           </View>
 
           {/* Tabs - Fully Rounded */}
-          <View style={styles.tabsContainer}>
+          <View style={[styles.tabsContainer, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
             <TouchableOpacity
               style={[styles.tab, activeTab === ClaimStatus.POTENTIAL && styles.tabActive]}
               onPress={() => setActiveTab(ClaimStatus.POTENTIAL)}
             >
-              <Text style={[styles.tabText, activeTab === ClaimStatus.POTENTIAL && styles.tabTextActive]}>
+              <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === ClaimStatus.POTENTIAL && styles.tabTextActive]}>
                 Potential
               </Text>
             </TouchableOpacity>
@@ -266,7 +268,7 @@ export default function CompensationScreen() {
               style={[styles.tab, activeTab === ClaimStatus.ACTIVE && styles.tabActive]}
               onPress={() => setActiveTab(ClaimStatus.ACTIVE)}
             >
-              <Text style={[styles.tabText, activeTab === ClaimStatus.ACTIVE && styles.tabTextActive]}>
+              <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === ClaimStatus.ACTIVE && styles.tabTextActive]}>
                 Active
               </Text>
             </TouchableOpacity>
@@ -274,7 +276,7 @@ export default function CompensationScreen() {
               style={[styles.tab, activeTab === ClaimStatus.COMPLETED && styles.tabActive]}
               onPress={() => setActiveTab(ClaimStatus.COMPLETED)}
             >
-              <Text style={[styles.tabText, activeTab === ClaimStatus.COMPLETED && styles.tabTextActive]}>
+              <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === ClaimStatus.COMPLETED && styles.tabTextActive]}>
                 Completed
               </Text>
             </TouchableOpacity>
@@ -282,30 +284,30 @@ export default function CompensationScreen() {
 
           {/* Total Claim & Potential Card - Side by Side */}
           <View style={styles.statsRow}>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
               <View style={[styles.statIconCircle, { backgroundColor: '#8B5CF615' }]}>
                 <DollarCircle size={24} color="#8B5CF6" variant="Bold" />
               </View>
-              <Text style={styles.statCardLabel}>Total to Claim</Text>
-              <Text style={styles.statCardValue}>{formatCurrency(stats.totalPotentialAmount)}</Text>
+              <Text style={[styles.statCardLabel, { color: colors.textSecondary }]}>Total to Claim</Text>
+              <Text style={[styles.statCardValue, { color: colors.textPrimary }]}>{formatCurrency(stats.totalPotentialAmount)}</Text>
             </View>
 
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
               <View style={[styles.statIconCircle, { backgroundColor: '#3B82F615' }]}>
                 <MoneyRecive size={24} color="#3B82F6" variant="Bold" />
               </View>
-              <Text style={styles.statCardLabel}>Potential Card</Text>
-              <Text style={styles.statCardValue}>{stats.potentialClaims} Card</Text>
+              <Text style={[styles.statCardLabel, { color: colors.textSecondary }]}>Potential Card</Text>
+              <Text style={[styles.statCardValue, { color: colors.textPrimary }]}>{stats.potentialClaims} Card</Text>
             </View>
           </View>
 
           {/* Average to Claim */}
-          <View style={styles.averageCard}>
+          <View style={[styles.averageCard, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
             <View style={styles.averageLeft}>
               <View style={[styles.averageIconCircle, { backgroundColor: '#10B98115' }]}>
                 <PercentageCircle size={24} color="#10B981" variant="Bold" />
               </View>
-              <Text style={styles.averageLabel}>Average to Claim</Text>
+              <Text style={[styles.averageLabel, { color: colors.textPrimary }]}>Average to Claim</Text>
             </View>
             <View style={styles.averageBadge}>
               <Text style={styles.averageValue}>{Math.round(stats.successRate)} %</Text>
@@ -313,14 +315,14 @@ export default function CompensationScreen() {
           </View>
 
           {/* Section Title */}
-          <Text style={styles.sectionTitle}>Potential Claim</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Potential Claim</Text>
 
           {/* Claims List */}
           <View style={styles.claimsSection}>
             {filteredClaims.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No {activeTab} claims</Text>
-                <Text style={styles.emptyStateSubtext}>
+                <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>No {activeTab} claims</Text>
+                <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
                   {activeTab === ClaimStatus.POTENTIAL && 'Add a claim to track potential compensation'}
                   {activeTab === ClaimStatus.ACTIVE && 'No active claims in progress'}
                   {activeTab === ClaimStatus.COMPLETED && 'No completed claims yet'}
@@ -333,52 +335,52 @@ export default function CompensationScreen() {
                 // Active Claim Card (with progress bar)
                 if (claim.status === ClaimStatus.ACTIVE) {
                   return (
-                    <TouchableOpacity key={claim.id} style={styles.activeClaimCard} activeOpacity={0.7}>
+                    <TouchableOpacity key={claim.id} style={[styles.activeClaimCard, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]} activeOpacity={0.7}>
                       {/* Progress Header */}
                       <View style={styles.activeClaimHeader}>
-                        <Text style={styles.activeClaimTitle}>Checked Progress</Text>
+                        <Text style={[styles.activeClaimTitle, { color: colors.textSecondary }]}>Checked Progress</Text>
                         <View style={styles.activeProgressRow}>
-                          <Text style={styles.activeProgressText}>68%</Text>
+                          <Text style={[styles.activeProgressText, { color: colors.textPrimary }]}>68%</Text>
                           <View style={styles.activeProgressBar}>
                             <View style={[styles.activeProgressFill, { width: '68%' }]} />
                           </View>
-                          <Text style={styles.activeProgressTotal}>100%</Text>
+                          <Text style={[styles.activeProgressTotal, { color: colors.textTertiary }]}>100%</Text>
                         </View>
                       </View>
 
                       {/* Amount Section */}
                       <View style={styles.activeAmountSection}>
                         <View>
-                          <Text style={styles.activeAmountLabel}>Estimated Claim</Text>
-                          <Text style={styles.activeAmountValue}>{formatCurrency(claim.estimatedAmount)}</Text>
+                          <Text style={[styles.activeAmountLabel, { color: colors.textSecondary }]}>Estimated Claim</Text>
+                          <Text style={[styles.activeAmountValue, { color: colors.textPrimary }]}>{formatCurrency(claim.estimatedAmount)}</Text>
                         </View>
-                        <View style={styles.activeClaimTypeIcon}>
-                          <Airplane size={20} color={colors.gray600} />
+                        <View style={[styles.activeClaimTypeIcon, { backgroundColor: isDark ? '#2A2A2A' : '#F3F4F6' }]}>
+                          <Airplane size={20} color={colors.textSecondary} />
                         </View>
                       </View>
 
                       {/* Date & Provider */}
                       <View style={styles.activeMetaRow}>
                         <View style={styles.activeMetaItem}>
-                          <Text style={styles.activeMetaLabel}>📅 Date</Text>
-                          <Text style={styles.activeMetaValue}>{formatDate(claim.date)}</Text>
+                          <Text style={[styles.activeMetaLabel, { color: colors.textTertiary }]}>📅 Date</Text>
+                          <Text style={[styles.activeMetaValue, { color: colors.textPrimary }]}>{formatDate(claim.date)}</Text>
                         </View>
                         <View style={styles.activeMetaItem}>
-                          <Text style={styles.activeMetaLabel}>Provider 🏷️</Text>
-                          <Text style={styles.activeMetaValue}>{claim.provider}</Text>
+                          <Text style={[styles.activeMetaLabel, { color: colors.textTertiary }]}>Provider 🏷️</Text>
+                          <Text style={[styles.activeMetaValue, { color: colors.textPrimary }]}>{claim.provider}</Text>
                         </View>
                       </View>
 
                       {/* Circular Chart */}
                       <View style={styles.chartContainer}>
-                        <View style={styles.chartCircle}>
+                        <View style={[styles.chartCircle, { backgroundColor: isDark ? '#2A2A2A' : '#F3F4F6' }]}>
                           <View style={[styles.chartProgress, { 
                             backgroundColor: colors.primary,
                             transform: [{ rotate: `${(claim.aiConfidence || 0) * 3.6}deg` }]
                           }]} />
-                          <View style={styles.chartInner}>
-                            <Text style={styles.chartPercentage}>{claim.aiConfidence}%</Text>
-                            <Text style={styles.chartLabel}>Claim Percentage 👍</Text>
+                          <View style={[styles.chartInner, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
+                            <Text style={[styles.chartPercentage, { color: colors.textPrimary }]}>{claim.aiConfidence}%</Text>
+                            <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>Claim Percentage 👍</Text>
                           </View>
                         </View>
                       </View>
@@ -390,9 +392,9 @@ export default function CompensationScreen() {
                 if (claim.status === ClaimStatus.COMPLETED) {
                   const isSuccess = claim.actualAmount && claim.actualAmount > 0;
                   return (
-                    <TouchableOpacity key={claim.id} style={styles.completedClaimCard} activeOpacity={0.7}>
+                    <TouchableOpacity key={claim.id} style={[styles.completedClaimCard, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF', borderColor: colors.borderSubtle }]} activeOpacity={0.7}>
                       {/* Status Banner */}
-                      <View style={[styles.completedBanner, { backgroundColor: isSuccess ? colors.success : '#EF4444' }]}>
+                      <View style={[styles.completedBanner, { backgroundColor: isSuccess ? '#10B981' : '#EF4444' }]}>
                         <Text style={styles.completedBannerText}>
                           {isSuccess ? 'Successfully Claimed' : 'Failed to Claim'}
                         </Text>
@@ -402,23 +404,23 @@ export default function CompensationScreen() {
                       <View style={styles.completedContent}>
                         <View style={styles.completedAmountSection}>
                           <View>
-                            <Text style={styles.completedAmountLabel}>Estimated Claim</Text>
-                            <Text style={styles.completedAmountValue}>{formatCurrency(claim.estimatedAmount)}</Text>
+                            <Text style={[styles.completedAmountLabel, { color: colors.textSecondary }]}>Estimated Claim</Text>
+                            <Text style={[styles.completedAmountValue, { color: colors.textPrimary }]}>{formatCurrency(claim.estimatedAmount)}</Text>
                           </View>
-                          <View style={styles.completedClaimTypeIcon}>
-                            <Airplane size={20} color={colors.gray600} />
+                          <View style={[styles.completedClaimTypeIcon, { backgroundColor: isDark ? '#2A2A2A' : '#F3F4F6' }]}>
+                            <Airplane size={20} color={colors.textSecondary} />
                           </View>
                         </View>
 
                         {/* Date & Provider */}
                         <View style={styles.completedMetaRow}>
                           <View style={styles.completedMetaItem}>
-                            <Text style={styles.completedMetaLabel}>📅 Date</Text>
-                            <Text style={styles.completedMetaValue}>{formatDate(claim.date)}</Text>
+                            <Text style={[styles.completedMetaLabel, { color: colors.textTertiary }]}>📅 Date</Text>
+                            <Text style={[styles.completedMetaValue, { color: colors.textPrimary }]}>{formatDate(claim.date)}</Text>
                           </View>
                           <View style={styles.completedMetaItem}>
-                            <Text style={styles.completedMetaLabel}>Provider 🏷️</Text>
-                            <Text style={styles.completedMetaValue}>{claim.provider}</Text>
+                            <Text style={[styles.completedMetaLabel, { color: colors.textTertiary }]}>Provider 🏷️</Text>
+                            <Text style={[styles.completedMetaValue, { color: colors.textPrimary }]}>{claim.provider}</Text>
                           </View>
                         </View>
                       </View>
@@ -430,21 +432,21 @@ export default function CompensationScreen() {
                 return (
                   <View key={claim.id} style={styles.claimCardStack}>
                     {/* Stacked Card Effect - Background Cards */}
-                    <View style={[styles.stackedCard, styles.stackedCard3]} />
-                    <View style={[styles.stackedCard, styles.stackedCard2]} />
-                    <View style={[styles.stackedCard, styles.stackedCard1]} />
+                    <View style={[styles.stackedCard, styles.stackedCard3, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]} />
+                    <View style={[styles.stackedCard, styles.stackedCard2, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]} />
+                    <View style={[styles.stackedCard, styles.stackedCard1, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]} />
                     
                     {/* Main Card */}
-                    <TouchableOpacity style={styles.claimCard} activeOpacity={0.7}>
+                    <TouchableOpacity style={[styles.claimCard, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]} activeOpacity={0.7}>
                     {/* Top Section */}
                     <View style={styles.claimTopSection}>
                       <View style={styles.claimLabelRow}>
-                        <Text style={styles.claimLabel}>Estimated Claim</Text>
-                        <View style={styles.claimTypeIcon}>
-                          <Airplane size={20} color={colors.gray600} />
+                        <Text style={[styles.claimLabel, { color: colors.textSecondary }]}>Estimated Claim</Text>
+                        <View style={[styles.claimTypeIcon, { backgroundColor: isDark ? '#2A2A2A' : '#F3F4F6' }]}>
+                          <Airplane size={20} color={colors.textSecondary} />
                         </View>
                       </View>
-                      <Text style={styles.claimAmountLarge}>
+                      <Text style={[styles.claimAmountLarge, { color: colors.textPrimary }]}>
                         {formatCurrency(claim.estimatedAmount)}
                       </Text>
                     </View>
@@ -452,32 +454,32 @@ export default function CompensationScreen() {
                     {/* Date & Provider Row */}
                     <View style={styles.claimMetaRow}>
                       <View style={styles.claimMetaItem}>
-                        <Text style={styles.claimMetaLabel}>📅 Date</Text>
-                        <Text style={styles.claimMetaValue}>{formatDate(claim.date)}</Text>
+                        <Text style={[styles.claimMetaLabel, { color: colors.textTertiary }]}>📅 Date</Text>
+                        <Text style={[styles.claimMetaValue, { color: colors.textPrimary }]}>{formatDate(claim.date)}</Text>
                       </View>
                       <View style={styles.claimMetaItem}>
-                        <Text style={styles.claimMetaLabel}>✈️ Provider</Text>
-                        <Text style={styles.claimMetaValue}>{claim.provider}</Text>
+                        <Text style={[styles.claimMetaLabel, { color: colors.textTertiary }]}>✈️ Provider</Text>
+                        <Text style={[styles.claimMetaValue, { color: colors.textPrimary }]}>{claim.provider}</Text>
                       </View>
                     </View>
 
                     {/* Circular Progress Chart */}
                     <View style={styles.chartContainer}>
-                      <View style={styles.chartCircle}>
+                      <View style={[styles.chartCircle, { backgroundColor: isDark ? '#2A2A2A' : '#F3F4F6' }]}>
                         <View style={[styles.chartProgress, { 
                           backgroundColor: colors.primary,
                           transform: [{ rotate: `${(claim.aiConfidence || 0) * 3.6}deg` }]
                         }]} />
-                        <View style={styles.chartInner}>
-                          <Text style={styles.chartPercentage}>{claim.aiConfidence}%</Text>
-                          <Text style={styles.chartLabel}>Claim Percentage 👍</Text>
+                        <View style={[styles.chartInner, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
+                          <Text style={[styles.chartPercentage, { color: colors.textPrimary }]}>{claim.aiConfidence}%</Text>
+                          <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>Claim Percentage 👍</Text>
                         </View>
                       </View>
                     </View>
 
                     {/* Status Footer */}
-                    <View style={styles.claimFooter}>
-                      <Text style={styles.claimFooterLabel}>Status</Text>
+                    <View style={[styles.claimFooter, { borderTopColor: colors.borderSubtle }]}>
+                      <Text style={[styles.claimFooterLabel, { color: colors.textTertiary }]}>Status</Text>
                       <View style={styles.waitingBadge}>
                         <Text style={styles.waitingText}>Waiting to Active</Text>
                       </View>
@@ -508,11 +510,9 @@ export default function CompensationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -520,9 +520,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
   },
   backButton: {
     width: 40,
@@ -533,13 +531,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.gray900,
   },
   addButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: 'rgba(124, 58, 237, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -547,12 +544,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   totalPotentialCard: {
-    backgroundColor: colors.white,
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -572,7 +568,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: 'rgba(124, 58, 237, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -583,24 +579,20 @@ const styles = StyleSheet.create({
   totalPotentialTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray900,
     marginBottom: spacing.xs,
   },
   totalPotentialSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
   },
   totalPotentialValue: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: '700',
-    color: colors.gray900,
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.white,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -615,7 +607,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: 'rgba(124, 58, 237, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -625,24 +617,20 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
     marginBottom: spacing.xs,
   },
   statValue: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: '700',
-    color: colors.gray900,
     marginBottom: spacing.xs,
   },
   statValueSmall: {
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
-    color: colors.gray900,
     marginBottom: spacing.xs,
   },
   statSubtext: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray500,
   },
   statsRow: {
     flexDirection: 'row',
@@ -660,24 +648,21 @@ const styles = StyleSheet.create({
   },
   statCardLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
     marginBottom: spacing.sm,
   },
   statCardValue: {
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
-    color: colors.gray900,
   },
   averageCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.white,
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -699,10 +684,9 @@ const styles = StyleSheet.create({
   averageLabel: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray900,
   },
   averageBadge: {
-    backgroundColor: `${colors.success}15`,
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
@@ -710,16 +694,15 @@ const styles = StyleSheet.create({
   averageValue: {
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
-    color: colors.success,
+    color: '#10B981',
   },
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     padding: spacing.xs,
     borderRadius: borderRadius.full,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -733,20 +716,18 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   tabActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#7C3AED',
   },
   tabText: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray600,
   },
   tabTextActive: {
-    color: colors.white,
+    color: '#FFFFFF',
   },
   sectionTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.gray900,
     marginHorizontal: spacing.lg,
     marginTop: spacing.xl,
     marginBottom: spacing.sm,
@@ -763,9 +744,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    backgroundColor: colors.white,
     borderRadius: borderRadius.lg,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 3,
@@ -787,11 +767,10 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   claimCard: {
-    backgroundColor: colors.white,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.md,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -808,20 +787,17 @@ const styles = StyleSheet.create({
   },
   claimLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
   },
   claimTypeIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.gray100,
     alignItems: 'center',
     justifyContent: 'center',
   },
   claimAmountLarge: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: '700',
-    color: colors.gray900,
   },
   claimMetaRow: {
     flexDirection: 'row',
@@ -833,13 +809,11 @@ const styles = StyleSheet.create({
   },
   claimMetaLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray500,
     marginBottom: spacing.xs,
   },
   claimMetaValue: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray900,
   },
   chartContainer: {
     alignItems: 'center',
@@ -849,7 +823,6 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: colors.gray100,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -865,7 +838,6 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
@@ -873,12 +845,10 @@ const styles = StyleSheet.create({
   chartPercentage: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: '700',
-    color: colors.gray900,
     marginBottom: spacing.xs,
   },
   chartLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray600,
     textAlign: 'center',
   },
   claimFooter: {
@@ -887,16 +857,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
   },
   claimFooterLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray500,
   },
   claimFooterValue: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray900,
     fontStyle: 'italic',
   },
   waitingBadge: {
@@ -913,11 +880,10 @@ const styles = StyleSheet.create({
   },
   // Active Claim Card Styles
   activeClaimCard: {
-    backgroundColor: colors.white,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.md,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -928,7 +894,6 @@ const styles = StyleSheet.create({
   },
   activeClaimTitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
     marginBottom: spacing.sm,
   },
   activeProgressRow: {
@@ -939,12 +904,11 @@ const styles = StyleSheet.create({
   activeProgressText: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.gray900,
   },
   activeProgressBar: {
     flex: 1,
     height: 8,
-    backgroundColor: colors.gray100,
+    backgroundColor: '#F3F4F6',
     borderRadius: borderRadius.full,
     overflow: 'hidden',
   },
@@ -955,7 +919,6 @@ const styles = StyleSheet.create({
   },
   activeProgressTotal: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray400,
     fontStyle: 'italic',
   },
   activeAmountSection: {
@@ -966,19 +929,16 @@ const styles = StyleSheet.create({
   },
   activeAmountLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
     marginBottom: spacing.xs,
   },
   activeAmountValue: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: '700',
-    color: colors.gray900,
   },
   activeClaimTypeIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.gray100,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -992,27 +952,23 @@ const styles = StyleSheet.create({
   },
   activeMetaLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray500,
     marginBottom: spacing.xs,
   },
   activeMetaValue: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray900,
   },
   // Completed Claim Card Styles
   completedClaimCard: {
-    backgroundColor: colors.white,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.md,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 2,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.gray200,
   },
   completedBanner: {
     paddingVertical: spacing.md,
@@ -1021,7 +977,7 @@ const styles = StyleSheet.create({
   completedBannerText: {
     fontSize: typography.fontSize.base,
     fontWeight: '700',
-    color: colors.white,
+    color: '#FFFFFF',
   },
   completedContent: {
     padding: spacing.lg,
@@ -1034,19 +990,16 @@ const styles = StyleSheet.create({
   },
   completedAmountLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
     marginBottom: spacing.xs,
   },
   completedAmountValue: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: '700',
-    color: colors.gray900,
   },
   completedClaimTypeIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.gray100,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1059,13 +1012,11 @@ const styles = StyleSheet.create({
   },
   completedMetaLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray500,
     marginBottom: spacing.xs,
   },
   completedMetaValue: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray900,
   },
   emptyState: {
     alignItems: 'center',
@@ -1074,12 +1025,10 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: typography.fontSize.lg,
     fontWeight: '600',
-    color: colors.gray900,
     marginBottom: spacing.sm,
   },
   emptyStateSubtext: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
     textAlign: 'center',
   },
 });

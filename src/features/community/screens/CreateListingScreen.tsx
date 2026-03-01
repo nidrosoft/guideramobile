@@ -396,11 +396,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: colors.gray50, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.bgElevated, alignItems: 'center', justifyContent: 'center',
   },
   headerTitle: {
     flex: 1, fontSize: 17, fontWeight: '700',
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'center', gap: 6, paddingVertical: 12,
   },
   progressDot: {
-    width: 8, height: 8, borderRadius: 4, backgroundColor: colors.gray200,
+    width: 8, height: 8, borderRadius: 4, backgroundColor: colors.borderSubtle,
   },
   progressDotActive: { backgroundColor: colors.primary },
   progressDotCurrent: { width: 24, borderRadius: 4 },
@@ -433,9 +433,9 @@ const styles = StyleSheet.create({
     fontSize: 12, color: colors.textTertiary, marginBottom: 8,
   },
   textInput: {
-    backgroundColor: colors.gray50, borderRadius: 12, padding: 14,
+    backgroundColor: colors.bgElevated, borderRadius: 12, padding: 14,
     fontSize: 15, color: colors.textPrimary, borderWidth: 1,
-    borderColor: colors.gray200, marginBottom: 16,
+    borderColor: colors.borderSubtle, marginBottom: 16,
   },
   textArea: { height: 120, textAlignVertical: 'top' },
   charCount: {
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
   // Category Cards
   categoryCard: {
     flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16,
-    backgroundColor: colors.gray50, borderWidth: 2, borderColor: colors.gray200, marginBottom: 12,
+    backgroundColor: colors.bgElevated, borderWidth: 2, borderColor: colors.borderSubtle, marginBottom: 12,
   },
   categoryIcon: {
     width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 14,
@@ -461,8 +461,8 @@ const styles = StyleSheet.create({
   // Photo
   photoUpload: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: colors.gray50, borderRadius: 12, padding: 16,
-    borderWidth: 2, borderColor: colors.gray200, borderStyle: 'dashed', marginBottom: 16,
+    backgroundColor: colors.bgElevated, borderRadius: 12, padding: 16,
+    borderWidth: 2, borderColor: colors.borderSubtle, borderStyle: 'dashed', marginBottom: 16,
   },
   photoUploadText: { fontSize: 14, fontWeight: '600', color: colors.primary },
 
@@ -481,7 +481,8 @@ const styles = StyleSheet.create({
 
   // Review
   reviewCard: {
-    backgroundColor: colors.white, borderRadius: 16, padding: 18,
+    backgroundColor: colors.bgElevated, borderRadius: 20, padding: 18,
+    borderWidth: 1, borderColor: colors.borderSubtle,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 8, elevation: 3, marginBottom: 20,
   },
@@ -498,7 +499,7 @@ const styles = StyleSheet.create({
   },
   reviewRow: {
     flexDirection: 'row', paddingVertical: 8,
-    borderTopWidth: 1, borderTopColor: colors.gray100,
+    borderTopWidth: 1, borderTopColor: colors.borderSubtle,
   },
   reviewLabel: {
     fontSize: 13, color: colors.textTertiary, fontWeight: '500', width: 90,
@@ -517,14 +518,14 @@ const styles = StyleSheet.create({
   // Bottom Bar
   bottomBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: colors.white, paddingHorizontal: 20, paddingTop: 12,
-    borderTopWidth: 1, borderTopColor: colors.gray100,
+    backgroundColor: colors.bgElevated, paddingHorizontal: 20, paddingTop: 12,
+    borderTopWidth: 1, borderTopColor: colors.borderSubtle,
   },
   nextButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 16,
   },
-  nextButtonDisabled: { backgroundColor: colors.gray100 },
+  nextButtonDisabled: { backgroundColor: colors.borderSubtle },
   nextButtonText: { fontSize: 16, fontWeight: '700', color: colors.white },
   nextButtonTextDisabled: { color: colors.textTertiary },
 });

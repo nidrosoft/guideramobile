@@ -32,9 +32,13 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, borderRadius, shadows } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import { useHotelStore } from '../../../stores/useHotelStore';
 import { Room } from '../../../types/hotel.types';
 import RoomCard from '../components/RoomCard';
+import { BookOnProviderButton } from '../../../components/shared';
+import { useDealRedirect } from '@/hooks/useDeals';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -48,7 +52,10 @@ export default function HotelDetailScreen({
   onBack,
 }: HotelDetailScreenProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
+  const { user } = useAuth();
   const { selectedHotel, selectedRoom, selectRoom, getNights } = useHotelStore();
+  const { redirect } = useDealRedirect();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const scrollY = useSharedValue(0);
@@ -74,10 +81,39 @@ export default function HotelDetailScreen({
     selectRoom(room);
   };
 
-  const handleContinue = () => {
-    if (!selectedRoom) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onContinue();
+  const handleBookOnProvider = async () => {
+    if (!selectedHotel) return;
+    const deepLink = (selectedHotel as any).deepLink || (selectedHotel as any).url;
+    const provider = (selectedHotel as any).provider?.code || 'booking';
+    const totalPrice = selectedRoom
+      ? (selectedRoom.price?.amount || 0) * nights
+      : (selectedHotel as any)?.lowestPrice?.amount || 0;
+
+    await redirect({
+      deal_type: 'hotel',
+      provider,
+      affiliate_url: deepLink || '',
+      deal_snapshot: {
+        title: selectedHotel.name,
+        subtitle: selectedHotel.location?.address || '',
+        provider: { code: provider, name: provider === 'booking' ? 'Booking.com' : provider },
+        price: { amount: totalPrice, currency: 'USD', formatted: `$${totalPrice}` },
+        hotel: {
+          name: selectedHotel.name,
+          starRating: selectedHotel.starRating,
+          address: selectedHotel.location?.address || '',
+          checkIn: '',
+          checkOut: '',
+          nights,
+          roomType: selectedRoom?.name,
+          amenities: selectedHotel.amenities?.map((a: any) => a.name || a) || [],
+        },
+      },
+      price_amount: totalPrice,
+      source: 'search',
+      deep_link: deepLink,
+      destination: selectedHotel.location?.city || selectedHotel.name,
+    });
   };
 
   // Amenity colors mapping
@@ -103,7 +139,7 @@ export default function HotelDetailScreen({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       {/* Fixed Header */}
       <Animated.View style={[styles.fixedHeader, { paddingTop: insets.top + spacing.sm }, headerAnimatedStyle]}>
         <TouchableOpacity
@@ -286,16 +322,12 @@ export default function HotelDetailScreen({
               ${Math.round((selectedRoom.price?.amount || 0) * nights)}
             </Text>
           </View>
-          <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-            <LinearGradient
-              colors={[colors.primary, colors.primaryDark]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.continueGradient}
-            >
-              <Text style={styles.continueText}>Continue</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <BookOnProviderButton
+              provider={(selectedHotel as any)?.provider?.code || 'booking'}
+              onPress={handleBookOnProvider}
+            />
+          </View>
         </View>
       )}
     </View>
@@ -381,12 +413,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.5)',
   },
   indicatorActive: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     width: 24,
   },
   infoSection: {
     padding: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   starRow: {
     flexDirection: 'row',
@@ -489,7 +521,7 @@ const styles = StyleSheet.create({
   },
   section: {
     padding: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     marginTop: spacing.sm,
   },
   sectionTitle: {
@@ -522,7 +554,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderTopWidth: 1,
     borderTopColor: colors.gray100,
     ...shadows.lg,

@@ -48,7 +48,7 @@ export default function PlaceViewCard({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 24,
     padding: spacing.sm,
     shadowColor: '#000',

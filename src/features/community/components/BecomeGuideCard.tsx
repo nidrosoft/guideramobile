@@ -19,7 +19,7 @@ export default function BecomeGuideCard({ onPress }: BecomeGuideCardProps) {
   return (
     <TouchableOpacity activeOpacity={0.85} onPress={onPress}>
       <LinearGradient
-        colors={['#6366F1', '#8B5CF6', '#A855F7']}
+        colors={[colors.primary, colors.primaryGradient, colors.primaryDark]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.container}
@@ -53,7 +53,7 @@ export default function BecomeGuideCard({ onPress }: BecomeGuideCardProps) {
         <View style={styles.ctaRow}>
           <Text style={styles.ctaText}>Become a Local Guide</Text>
           <View style={styles.ctaArrow}>
-            <ArrowRight2 size={16} color="#6366F1" variant="Bold" />
+            <ArrowRight2 size={16} color={colors.primary} variant="Bold" />
           </View>
         </View>
       </LinearGradient>
@@ -109,22 +109,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: colors.white,
+    backgroundColor: 'rgba(255,255,255,0.95)',
     borderRadius: 14,
     paddingVertical: 10,
     paddingHorizontal: 18,
     gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   ctaText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#6366F1',
+    color: colors.primary,
   },
   ctaArrow: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#6366F115',
+    backgroundColor: colors.primary + '15',
     alignItems: 'center',
     justifyContent: 'center',
   },

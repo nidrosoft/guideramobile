@@ -31,6 +31,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAdvancedPlanningStore } from '../../../stores/useAdvancedPlanningStore';
 import { POPULAR_DESTINATIONS } from '../../../config/planning.config';
 import { Location as LocationType } from '@/features/booking/types/booking.types';
@@ -47,6 +48,7 @@ export default function DestinationsStep({
   onClose,
 }: DestinationsStepProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const {
     advancedTripData,
     setOrigin,
@@ -133,7 +135,7 @@ export default function DestinationsStep({
   const isSearching = editingOrigin || editingIndex !== null;
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -388,7 +390,7 @@ const styles = StyleSheet.create({
   locationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     borderWidth: 1.5,
@@ -440,7 +442,7 @@ const styles = StyleSheet.create({
   nightsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.xs,
     borderWidth: 1,
@@ -509,7 +511,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.full,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
@@ -530,7 +532,7 @@ const styles = StyleSheet.create({
   searchResultItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     ...shadows.sm,

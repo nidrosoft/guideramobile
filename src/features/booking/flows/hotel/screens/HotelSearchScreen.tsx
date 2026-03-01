@@ -8,7 +8,7 @@
 
 import React, { useCallback, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useHotelStore } from '../../../stores/useHotelStore';
 import { 
   UnifiedSearchOverlay, 
@@ -54,6 +54,7 @@ export default function HotelSearchScreen({
   onSearch,
   onBack,
 }: HotelSearchScreenProps) {
+  const { colors } = useTheme();
   const { 
     searchParams, 
     setDestination, 
@@ -112,7 +113,7 @@ export default function HotelSearchScreen({
   }, [searchParams]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <UnifiedSearchOverlay
         serviceType="hotel"
         title="Find a Hotel"
@@ -129,6 +130,5 @@ export default function HotelSearchScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 });

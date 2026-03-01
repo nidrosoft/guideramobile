@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bottomSheet: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingHorizontal: spacing.lg,

@@ -56,10 +56,12 @@ export default function QuickActionCard({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
     padding: spacing.md,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -86,7 +88,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: colors.white,
+    borderColor: colors.bgElevated,
   },
   badge: {
     position: 'absolute',

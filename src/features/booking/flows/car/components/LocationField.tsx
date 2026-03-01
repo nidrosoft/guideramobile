@@ -58,11 +58,11 @@ const styles = StyleSheet.create({
   field: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: '#E6E9EB',
+    borderColor: colors.borderSubtle,
   },
   iconContainer: {
     width: 40,

@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing, colors } from '@/styles';
 import { Bookmark, ArrowRight, TrendUp, Star1 } from 'iconsax-react-native';
 
 interface TrendingLocationCardProps {
@@ -39,7 +39,7 @@ export default function TrendingLocationCard({
         
         {/* Bookmark Button */}
         <TouchableOpacity style={styles.bookmarkButton}>
-          <Bookmark size={20} color={colors.textPrimary} variant="Outline" />
+          <Bookmark size={20} color="#1a1a1a" variant="Outline" />
         </TouchableOpacity>
       </View>
 
@@ -67,7 +67,7 @@ export default function TrendingLocationCard({
 
             {/* Right Side - Arrow Button */}
             <TouchableOpacity style={styles.arrowButton}>
-              <ArrowRight size={24} color={colors.textPrimary} variant="Outline" />
+              <ArrowRight size={24} color="#1a1a1a" variant="Outline" />
             </TouchableOpacity>
           </View>
         </BlurView>
@@ -84,6 +84,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginRight: spacing.md,
     position: 'relative',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   backgroundImage: {
     width: '100%',
@@ -114,7 +116,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
@@ -148,14 +150,14 @@ const styles = StyleSheet.create({
   },
   location: {
     fontSize: typography.fontSize.sm,
-    color: colors.white,
+    color: '#FFFFFF',
     marginBottom: 4,
     fontWeight: typography.fontWeight.medium,
   },
   placeName: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
     marginBottom: spacing.sm,
   },
   visitorsContainer: {
@@ -172,7 +174,7 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: colors.white,
+    borderColor: '#FFFFFF',
   },
   visitorsText: {
     fontSize: typography.fontSize.xs,
@@ -192,14 +194,14 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: typography.fontSize.sm,
-    color: colors.white,
+    color: '#FFFFFF',
     fontWeight: typography.fontWeight.bold,
   },
   arrowButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: spacing.md,

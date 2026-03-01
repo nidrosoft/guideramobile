@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Airplane, Building, Coffee, Car, Location, ShoppingCart } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Activity, ActivityType } from '../types/planner.types';
 
 interface ActivityCardProps {
@@ -132,7 +133,7 @@ const styles = StyleSheet.create({
     paddingTop: 2,
   },
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 12,
     padding: spacing.md,
     shadowColor: colors.black,

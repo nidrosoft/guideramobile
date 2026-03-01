@@ -1,7 +1,8 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, ScrollView } from 'react-native';
 import { useState, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
-import { colors, typography, spacing, borderRadius } from '@/styles';
+import { typography, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Flash, Airplane, Briefcase } from 'iconsax-react-native';
 import ImportTripFlow from '@/features/trip-import/components/ImportTripFlow';
 import { QuickTripFlow, AdvancedTripFlow } from '@/features/planning';
@@ -12,6 +13,7 @@ interface PlanBottomSheetProps {
 }
 
 export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetProps) {
+  const { colors } = useTheme();
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showImportFlow, setShowImportFlow] = useState(false);
   const [showQuickTripFlow, setShowQuickTripFlow] = useState(false);
@@ -64,22 +66,22 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <View style={styles.overlay}>
+      <View style={[styles.overlay, { backgroundColor: colors.bgOverlay }]}>
         <TouchableOpacity 
           style={styles.backdrop} 
           activeOpacity={1} 
           onPress={onClose}
         />
         
-        <View style={styles.bottomSheet}>
+        <View style={[styles.bottomSheet, { backgroundColor: colors.bgModal }]}>
           {/* Dent Handle */}
           <View style={styles.handleContainer}>
-            <View style={styles.handle} />
+            <View style={[styles.handle, { backgroundColor: colors.borderSubtle }]} />
           </View>
 
           {/* Close Button */}
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeIcon}>✕</Text>
+          <TouchableOpacity style={[styles.closeButton, { backgroundColor: colors.bgElevated }]} onPress={onClose}>
+            <Text style={[styles.closeIcon, { color: colors.textSecondary }]}>✕</Text>
           </TouchableOpacity>
 
           <ScrollView 
@@ -96,13 +98,13 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
             </View>
 
             {/* Title */}
-            <Text style={styles.title}>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>
               Plan Your Own Adventure{'\n'}
-              <Text style={styles.titleSecondary}>Your Way!</Text>
+              <Text style={[styles.titleSecondary, { color: colors.primary }]}>Your Way!</Text>
             </Text>
             
             {/* Description */}
-            <Text style={styles.description}>
+            <Text style={[styles.description, { color: colors.textSecondary }]}>
               Choose the trip creation style that suits your vibe. Whether you want to get going quickly or dive deep into the details, we've got you covered!
             </Text>
 
@@ -112,19 +114,20 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
               <TouchableOpacity 
                 style={[
                   styles.optionCard,
-                  selectedOption === 'quick' && styles.selectedCard
+                  { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle },
+                  selectedOption === 'quick' && { backgroundColor: colors.primary + '10', borderColor: colors.primary, borderWidth: 2 }
                 ]}
                 onPress={() => handleSelectOption('quick')}
                 activeOpacity={0.7}
               >
-                <View style={styles.iconContainer}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.bgCard }]}>
                   <Flash size={20} color={selectedOption === 'quick' ? colors.primary : colors.textPrimary} variant="Bold" />
                 </View>
                 <View style={styles.optionContent}>
-                  <Text style={[styles.optionTitle, selectedOption === 'quick' && styles.selectedTitle]}>
+                  <Text style={[styles.optionTitle, { color: colors.textPrimary }, selectedOption === 'quick' && { color: colors.primary }]}>
                     Quick Trip
                   </Text>
-                  <Text style={[styles.optionDescription, selectedOption === 'quick' && styles.selectedDescription]}>
+                  <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>
                     Answer a few quick questions and we'll create a custom trip plan in no time. Perfect for when you need to hit the road ASAP!
                   </Text>
                 </View>
@@ -134,19 +137,20 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
               <TouchableOpacity 
                 style={[
                   styles.optionCard,
-                  selectedOption === 'advanced' && styles.selectedCard
+                  { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle },
+                  selectedOption === 'advanced' && { backgroundColor: colors.primary + '10', borderColor: colors.primary, borderWidth: 2 }
                 ]}
                 onPress={() => handleSelectOption('advanced')}
                 activeOpacity={0.7}
               >
-                <View style={styles.iconContainer}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.bgCard }]}>
                   <Airplane size={20} color={selectedOption === 'advanced' ? colors.primary : colors.textPrimary} variant="Bold" />
                 </View>
                 <View style={styles.optionContent}>
-                  <Text style={[styles.optionTitle, selectedOption === 'advanced' && styles.selectedTitle]}>
+                  <Text style={[styles.optionTitle, { color: colors.textPrimary }, selectedOption === 'advanced' && { color: colors.primary }]}>
                     Advanced Trip
                   </Text>
-                  <Text style={[styles.optionDescription, selectedOption === 'advanced' && styles.selectedDescription]}>
+                  <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>
                     Customize every detail of your journey with our advanced planner. Perfect for travelers who love a tailored experience!
                   </Text>
                 </View>
@@ -156,19 +160,20 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
               <TouchableOpacity 
                 style={[
                   styles.optionCard,
-                  selectedOption === 'import' && styles.selectedCard
+                  { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle },
+                  selectedOption === 'import' && { backgroundColor: colors.primary + '10', borderColor: colors.primary, borderWidth: 2 }
                 ]}
                 onPress={() => handleSelectOption('import')}
                 activeOpacity={0.7}
               >
-                <View style={styles.iconContainer}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.bgCard }]}>
                   <Briefcase size={20} color={selectedOption === 'import' ? colors.primary : colors.textPrimary} variant="Bold" />
                 </View>
                 <View style={styles.optionContent}>
-                  <Text style={[styles.optionTitle, selectedOption === 'import' && styles.selectedTitle]}>
+                  <Text style={[styles.optionTitle, { color: colors.textPrimary }, selectedOption === 'import' && { color: colors.primary }]}>
                     Import Trip
                   </Text>
-                  <Text style={[styles.optionDescription, selectedOption === 'import' && styles.selectedDescription]}>
+                  <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>
                     Already booked your trip elsewhere? Import it here, and let us enhance it with recommendations and local tips!
                   </Text>
                 </View>
@@ -219,13 +224,11 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   backdrop: {
     flex: 1,
   },
   bottomSheet: {
-    backgroundColor: colors.white,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingHorizontal: spacing.md,
@@ -243,7 +246,6 @@ const styles = StyleSheet.create({
   handle: {
     width: 40,
     height: 4,
-    backgroundColor: colors.gray300,
     borderRadius: 2,
   },
   closeButton: {
@@ -253,14 +255,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.gray100,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
   },
   closeIcon: {
     fontSize: 18,
-    color: colors.textSecondary,
     fontWeight: '600',
   },
   imageContainer: {
@@ -275,7 +275,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.xs,
     lineHeight: typography.fontSize.xl * 1.3,
@@ -283,11 +282,9 @@ const styles = StyleSheet.create({
   titleSecondary: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary,
   },
   description: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: spacing.xl,
@@ -297,24 +294,16 @@ const styles = StyleSheet.create({
   },
   optionCard: {
     flexDirection: 'row',
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     padding: spacing.md,
     gap: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.gray200,
     minHeight: 90,
-  },
-  selectedCard: {
-    backgroundColor: '#F5F3FF',
-    borderColor: colors.primary,
-    borderWidth: 2,
   },
   iconContainer: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -324,18 +313,10 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: 4,
-  },
-  selectedTitle: {
-    color: colors.primary,
   },
   optionDescription: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     lineHeight: 18,
-  },
-  selectedDescription: {
-    color: '#6B5DD3',
   },
 });

@@ -111,7 +111,7 @@ export default function FlightSelectionSheet({
   }, [onSelect, onClose]);
 
   const getFilterIcon = (iconType: string, isSelected: boolean) => {
-    const iconColor = isSelected ? colors.primary : colors.textPrimary;
+    const iconColor = isSelected ? colors.textSecondary : colors.textPrimary;
     switch (iconType) {
       case 'sort': return <Sort size={16} color={iconColor} />;
       case 'price': return <DollarCircle size={16} color={iconColor} />;
@@ -170,7 +170,7 @@ export default function FlightSelectionSheet({
             <Text style={styles.headerSubtitle}>{formatRoute()}</Text>
           </View>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <CloseCircle size={24} color={colors.gray400} variant="Bold" />
+            <CloseCircle size={24} color={colors.textTertiary} variant="Bold" />
           </TouchableOpacity>
         </View>
 
@@ -285,13 +285,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgCard,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -325,11 +325,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     marginHorizontal: spacing.xs,
     borderRadius: borderRadius.lg,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     alignItems: 'center',
     minWidth: 110,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -337,8 +337,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   dateItemSelected: {
-    backgroundColor: `${colors.primary}10`,
-    borderColor: colors.primary,
+    backgroundColor: `${colors.textSecondary}10`,
+    borderColor: colors.textSecondary,
     borderWidth: 2,
   },
   dateDay: {
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
   datePrice: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: `${colors.primary}60`,
+    color: `${colors.textSecondary}60`,
   },
   datePriceSelected: {
     color: colors.textPrimary,
@@ -372,27 +372,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     marginRight: spacing.sm,
     minHeight: 40,
     gap: 6,
   },
   filterButtonActive: {
-    borderColor: colors.primary,
-    backgroundColor: `${colors.primary}08`,
+    borderColor: colors.textSecondary,
+    backgroundColor: `${colors.textSecondary}08`,
   },
   filterButtonSelected: {
-    borderColor: colors.primary,
-    backgroundColor: `${colors.primary}10`,
+    borderColor: colors.textSecondary,
+    backgroundColor: `${colors.textSecondary}10`,
   },
   filterText: {
     fontSize: typography.fontSize.sm,
     color: colors.textPrimary,
   },
   filterTextSelected: {
-    color: colors.primary,
+    color: colors.textSecondary,
     fontWeight: typography.fontWeight.medium,
   },
   filterDropdown: {
@@ -400,10 +400,10 @@ const styles = StyleSheet.create({
     top: 52,
     left: spacing.md,
     right: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -416,17 +416,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   filterOptionSelected: {
-    backgroundColor: `${colors.primary}08`,
+    backgroundColor: `${colors.textSecondary}08`,
   },
   filterOptionText: {
     fontSize: typography.fontSize.base,
     color: colors.textPrimary,
   },
   filterOptionTextSelected: {
-    color: colors.primary,
+    color: colors.textSecondary,
     fontWeight: typography.fontWeight.medium,
   },
   // Results

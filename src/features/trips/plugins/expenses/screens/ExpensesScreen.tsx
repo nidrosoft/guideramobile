@@ -25,7 +25,8 @@ import {
   More,
   Trash,
 } from 'iconsax-react-native';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import { Expense, ExpenseCategory, CategoryInfo, ExpenseStats, PaymentMethod } from '../types/expense.types';
 import AddExpenseBottomSheet from '../components/AddExpenseBottomSheet';
@@ -143,9 +144,10 @@ const MOCK_BUDGET = 2000;
 export default function ExpensesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { showSuccess } = useToast();
+  const { colors, isDark } = useTheme();
   const tripId = params.tripId as string;
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
+  const { showSuccess } = useToast();
 
   const [expenses, setExpenses] = useState<Expense[]>(MOCK_EXPENSES);
   const [budget, setBudget] = useState(MOCK_BUDGET);
@@ -287,9 +289,9 @@ export default function ExpensesScreen() {
   };
 
   const getProgressColor = () => {
-    if (stats.percentageUsed < 70) return colors.success;
-    if (stats.percentageUsed < 90) return colors.warning;
-    return colors.error;
+    if (stats.percentageUsed < 70) return '#10B981';
+    if (stats.percentageUsed < 90) return '#F59E0B';
+    return '#EF4444';
   };
 
   // Prepare chart data
@@ -297,7 +299,7 @@ export default function ExpensesScreen() {
     name: CATEGORIES.find(c => c.id === cat.category)?.name || '',
     population: cat.amount,
     color: cat.color,
-    legendFontColor: colors.gray700,
+    legendFontColor: isDark ? '#D1D5DB' : '#374151',
     legendFontSize: 12,
   }));
 
@@ -312,15 +314,15 @@ export default function ExpensesScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgPrimary} />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgPrimary }]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ArrowLeft size={24} color={colors.gray900} variant="Linear" />
+            <ArrowLeft size={24} color={colors.textPrimary} variant="Linear" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Expenses</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Expenses</Text>
           <TouchableOpacity
             style={styles.addButton}
             onPress={() => setAddExpenseVisible(true)}
@@ -331,14 +333,14 @@ export default function ExpensesScreen() {
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Budget Progress Card */}
-          <View style={styles.budgetCard}>
+          <View style={[styles.budgetCard, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
             <View style={styles.budgetHeader}>
               <View style={styles.budgetIconContainer}>
                 <DollarCircle size={24} color={colors.primary} variant="Bold" />
               </View>
               <View style={styles.budgetTextContainer}>
-                <Text style={styles.budgetTitle}>Track Your Spending</Text>
-                <Text style={styles.budgetSubtitle}>
+                <Text style={[styles.budgetTitle, { color: colors.textPrimary }]}>Track Your Spending</Text>
+                <Text style={[styles.budgetSubtitle, { color: colors.textSecondary }]}>
                   {formatCurrency(stats.totalSpent)} of {formatCurrency(budget)} spent
                 </Text>
               </View>
@@ -351,7 +353,7 @@ export default function ExpensesScreen() {
             </View>
 
             {/* Progress Bar */}
-            <View style={styles.progressBarContainer}>
+            <View style={[styles.progressBarContainer, { backgroundColor: colors.borderMedium }]}>
               <LinearGradient
                 colors={[getProgressColor(), `${getProgressColor()}80`]}
                 start={{ x: 0, y: 0 }}
@@ -364,19 +366,19 @@ export default function ExpensesScreen() {
               <Text style={[styles.budgetPercentage, { color: getProgressColor() }]}>
                 {stats.percentageUsed.toFixed(1)}%
               </Text>
-              <Text style={styles.budgetRemaining}>
+              <Text style={[styles.budgetRemaining, { color: colors.textSecondary }]}>
                 {formatCurrency(stats.budgetRemaining)} remaining
               </Text>
             </View>
           </View>
 
           {/* Tabs */}
-          <View style={styles.tabs}>
+          <View style={[styles.tabs, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
             <TouchableOpacity
               style={[styles.tab, activeTab === 'overview' && styles.tabActive]}
               onPress={() => setActiveTab('overview')}
             >
-              <Text style={[styles.tabText, activeTab === 'overview' && styles.tabTextActive]}>
+              <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'overview' && styles.tabTextActive]}>
                 Overview
               </Text>
             </TouchableOpacity>
@@ -384,7 +386,7 @@ export default function ExpensesScreen() {
               style={[styles.tab, activeTab === 'analytics' && styles.tabActive]}
               onPress={() => setActiveTab('analytics')}
             >
-              <Text style={[styles.tabText, activeTab === 'analytics' && styles.tabTextActive]}>
+              <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'analytics' && styles.tabTextActive]}>
                 Analytics
               </Text>
             </TouchableOpacity>
@@ -394,8 +396,8 @@ export default function ExpensesScreen() {
           {activeTab === 'overview' ? (
             <View>
               {/* Category Breakdown */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>By Category</Text>
+              <View style={[styles.section, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>By Category</Text>
                 {stats.categoryTotals.map(cat => {
                   const categoryInfo = CATEGORIES.find(c => c.id === cat.category)!;
                   return (
@@ -405,8 +407,8 @@ export default function ExpensesScreen() {
                           {getCategoryIcon(cat.category, 20, cat.color)}
                         </View>
                         <View>
-                          <Text style={styles.categoryName}>{categoryInfo.name}</Text>
-                          <Text style={styles.categoryAmount}>{formatCurrency(cat.amount)}</Text>
+                          <Text style={[styles.categoryName, { color: colors.textPrimary }]}>{categoryInfo.name}</Text>
+                          <Text style={[styles.categoryAmount, { color: colors.textSecondary }]}>{formatCurrency(cat.amount)}</Text>
                         </View>
                       </View>
                       <View style={styles.categoryRight}>
@@ -421,7 +423,7 @@ export default function ExpensesScreen() {
                             ]}
                           />
                         </View>
-                        <Text style={styles.categoryPercentage}>{cat.percentage.toFixed(0)}%</Text>
+                        <Text style={[styles.categoryPercentage, { color: colors.textSecondary }]}>{cat.percentage.toFixed(0)}%</Text>
                       </View>
                     </View>
                   );
@@ -429,8 +431,8 @@ export default function ExpensesScreen() {
               </View>
 
               {/* Recent Expenses */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Recent Expenses</Text>
+              <View style={[styles.section, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Recent Expenses</Text>
                 {expenses.slice(0, 10).map(expense => {
                   const categoryInfo = CATEGORIES.find(c => c.id === expense.category)!;
                   return (
@@ -445,12 +447,12 @@ export default function ExpensesScreen() {
                           {getCategoryIcon(expense.category, 24, categoryInfo.color)}
                         </View>
                         <View style={styles.expenseInfo}>
-                          <Text style={styles.expenseDescription}>{expense.description}</Text>
-                          <Text style={styles.expenseDate}>{formatDate(expense.date)}</Text>
+                          <Text style={[styles.expenseDescription, { color: colors.textPrimary }]}>{expense.description}</Text>
+                          <Text style={[styles.expenseDate, { color: colors.textTertiary }]}>{formatDate(expense.date)}</Text>
                         </View>
                       </View>
                       <View style={styles.expenseRight}>
-                        <Text style={styles.expenseAmount}>{formatCurrency(expense.amount)}</Text>
+                        <Text style={[styles.expenseAmount, { color: colors.textPrimary }]}>{formatCurrency(expense.amount)}</Text>
                         <TouchableOpacity
                           style={styles.deleteButton}
                           onPress={(e) => {
@@ -469,8 +471,8 @@ export default function ExpensesScreen() {
           ) : (
             <View>
               {/* Analytics Tab */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Spending by Category</Text>
+              <View style={[styles.section, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Spending by Category</Text>
                 {pieChartData.length > 0 && (
                   <View style={styles.chartContainer}>
                     <PieChart
@@ -490,8 +492,8 @@ export default function ExpensesScreen() {
               </View>
 
               {/* Daily Spending Trend */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Daily Spending (Last 7 Days)</Text>
+              <View style={[styles.section, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Daily Spending (Last 7 Days)</Text>
                 {barChartData.datasets[0].data.length > 0 && (
                   <View style={styles.chartContainer}>
                     <BarChart
@@ -501,12 +503,12 @@ export default function ExpensesScreen() {
                       yAxisLabel="$"
                       yAxisSuffix=""
                       chartConfig={{
-                        backgroundColor: colors.white,
-                        backgroundGradientFrom: colors.white,
-                        backgroundGradientTo: colors.white,
+                        backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF',
+                        backgroundGradientFrom: isDark ? '#1A1A1A' : '#FFFFFF',
+                        backgroundGradientTo: isDark ? '#1A1A1A' : '#FFFFFF',
                         decimalPlaces: 0,
                         color: (opacity = 1) => `rgba(124, 58, 237, ${opacity})`,
-                        labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                        labelColor: (opacity = 1) => isDark ? `rgba(255, 255, 255, ${opacity})` : `rgba(0, 0, 0, ${opacity})`,
                         style: {
                           borderRadius: 16,
                         },
@@ -520,29 +522,29 @@ export default function ExpensesScreen() {
 
               {/* Stats Cards */}
               <View style={styles.statsGrid}>
-                <View style={styles.statCard}>
-                  <Text style={styles.statValue}>{formatCurrency(stats.averagePerDay)}</Text>
-                  <Text style={styles.statLabel}>Avg per Day</Text>
+                <View style={[styles.statCard, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
+                  <Text style={[styles.statValue, { color: colors.primary }]}>{formatCurrency(stats.averagePerDay)}</Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Avg per Day</Text>
                 </View>
-                <View style={styles.statCard}>
-                  <Text style={styles.statValue}>
+                <View style={[styles.statCard, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
+                  <Text style={[styles.statValue, { color: colors.primary }]}>
                     {stats.highestExpense ? formatCurrency(stats.highestExpense.amount) : '$0'}
                   </Text>
-                  <Text style={styles.statLabel}>Highest</Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Highest</Text>
                 </View>
               </View>
 
               {stats.categoryTotals.length > 0 && (
                 <View style={styles.statsGrid}>
-                  <View style={styles.statCard}>
-                    <Text style={styles.statValue}>
+                  <View style={[styles.statCard, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
+                    <Text style={[styles.statValue, { color: colors.primary }]}>
                       {CATEGORIES.find(c => c.id === stats.categoryTotals[0].category)?.emoji}
                     </Text>
-                    <Text style={styles.statLabel}>Top Category</Text>
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Top Category</Text>
                   </View>
-                  <View style={styles.statCard}>
-                    <Text style={styles.statValue}>{expenses.length}</Text>
-                    <Text style={styles.statLabel}>Total Expenses</Text>
+                  <View style={[styles.statCard, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
+                    <Text style={[styles.statValue, { color: colors.primary }]}>{expenses.length}</Text>
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Expenses</Text>
                   </View>
                 </View>
               )}
@@ -574,11 +576,9 @@ export default function ExpensesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -586,9 +586,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
   },
   backButton: {
     width: 40,
@@ -599,13 +597,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '600',
-    color: colors.gray900,
   },
   addButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: 'rgba(63, 195, 158, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -613,12 +610,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   budgetCard: {
-    backgroundColor: colors.white,
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     padding: spacing.lg,
     borderRadius: borderRadius.xl,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -633,7 +629,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: 'rgba(63, 195, 158, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -644,27 +640,24 @@ const styles = StyleSheet.create({
   budgetTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray900,
     marginBottom: 4,
   },
   budgetSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
   },
   editBudgetButton: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: 8,
-    backgroundColor: `${colors.primary}10`,
+    backgroundColor: 'rgba(63, 195, 158, 0.06)',
   },
   editBudgetText: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.primary,
+    color: '#3FC39E',
   },
   progressBarContainer: {
     height: 8,
-    backgroundColor: colors.gray200,
     borderRadius: 4,
     overflow: 'hidden',
     marginBottom: spacing.sm,
@@ -684,16 +677,14 @@ const styles = StyleSheet.create({
   },
   budgetRemaining: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
   },
   tabs: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     borderRadius: 12,
     padding: 4,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -706,23 +697,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tabActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#3FC39E',
   },
   tabText: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray600,
   },
   tabTextActive: {
-    color: colors.white,
+    color: '#FFFFFF',
   },
   section: {
-    backgroundColor: colors.white,
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     padding: spacing.lg,
     borderRadius: borderRadius.xl,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -731,7 +720,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.gray900,
     marginBottom: spacing.md,
   },
   categoryItem: {
@@ -756,11 +744,9 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray900,
   },
   categoryAmount: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray600,
   },
   categoryRight: {
     alignItems: 'flex-end',
@@ -769,7 +755,7 @@ const styles = StyleSheet.create({
   categoryBarContainer: {
     width: '100%',
     height: 6,
-    backgroundColor: colors.gray200,
+    backgroundColor: 'rgba(0,0,0,0.08)',
     borderRadius: 3,
     marginBottom: 4,
   },
@@ -780,7 +766,6 @@ const styles = StyleSheet.create({
   categoryPercentage: {
     fontSize: typography.fontSize.xs,
     fontWeight: '600',
-    color: colors.gray700,
   },
   expenseItem: {
     flexDirection: 'row',
@@ -788,7 +773,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   expenseLeft: {
     flexDirection: 'row',
@@ -809,12 +794,10 @@ const styles = StyleSheet.create({
   expenseDescription: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray900,
     marginBottom: 2,
   },
   expenseDate: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray500,
   },
   expenseRight: {
     alignItems: 'flex-end',
@@ -824,7 +807,6 @@ const styles = StyleSheet.create({
   expenseAmount: {
     fontSize: typography.fontSize.base,
     fontWeight: '700',
-    color: colors.gray900,
   },
   deleteButton: {
     padding: spacing.xs,
@@ -844,11 +826,10 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.white,
     padding: spacing.lg,
     borderRadius: borderRadius.xl,
     alignItems: 'center',
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -857,12 +838,10 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
-    color: colors.primary,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray600,
     textAlign: 'center',
   },
 });

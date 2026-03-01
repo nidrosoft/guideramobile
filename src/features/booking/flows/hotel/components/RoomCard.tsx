@@ -153,12 +153,12 @@ export default function RoomCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     marginBottom: spacing.md,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E6E9EB',
+    borderColor: colors.borderSubtle,
     ...shadows.sm,
   },
   containerSelected: {

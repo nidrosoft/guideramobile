@@ -16,7 +16,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ArrowRight2, Calendar } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 interface DateRangePickerProps {
   visible: boolean;
@@ -52,6 +53,7 @@ export default function DateRangePicker({
   singleDate = false,
 }: DateRangePickerProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const [currentMonth, setCurrentMonth] = useState(startDate || new Date());
   const [selectingStart, setSelectingStart] = useState(true);
   
@@ -181,50 +183,54 @@ export default function DateRangePicker({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <ArrowLeft size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Select Dates</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Select Dates</Text>
           <View style={styles.closeButton} />
         </View>
         
         {/* Selected Dates Display */}
         {!singleDate && (
-          <View style={styles.selectedDates}>
+          <View style={[styles.selectedDates, { backgroundColor: colors.bgCard }]}>
             <TouchableOpacity
               style={[
                 styles.dateBox,
-                selectingStart && styles.dateBoxActive,
+                { backgroundColor: colors.bgElevated },
+                selectingStart && { borderColor: colors.primary },
               ]}
               onPress={() => setSelectingStart(true)}
             >
-              <Text style={styles.dateLabel}>{startLabel}</Text>
+              <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>{startLabel}</Text>
               <Text style={[
                 styles.dateValue,
-                !startDate && styles.dateValuePlaceholder,
+                { color: colors.textPrimary },
+                !startDate && { color: colors.textSecondary },
               ]}>
                 {formatDate(startDate)}
               </Text>
             </TouchableOpacity>
             
             <View style={styles.dateSeparator}>
-              <ArrowRight2 size={20} color={colors.gray400} />
+              <ArrowRight2 size={20} color={colors.textSecondary} />
             </View>
             
             <TouchableOpacity
               style={[
                 styles.dateBox,
-                !selectingStart && styles.dateBoxActive,
+                { backgroundColor: colors.bgElevated },
+                !selectingStart && { borderColor: colors.primary },
               ]}
               onPress={() => setSelectingStart(false)}
             >
-              <Text style={styles.dateLabel}>{endLabel}</Text>
+              <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>{endLabel}</Text>
               <Text style={[
                 styles.dateValue,
-                !endDate && styles.dateValuePlaceholder,
+                { color: colors.textPrimary },
+                !endDate && { color: colors.textSecondary },
               ]}>
                 {formatDate(endDate)}
               </Text>
@@ -237,16 +243,16 @@ export default function DateRangePicker({
           <TouchableOpacity
             onPress={goToPreviousMonth}
             disabled={!canGoToPrevious}
-            style={[styles.navButton, !canGoToPrevious && styles.navButtonDisabled]}
+            style={[styles.navButton, { backgroundColor: colors.bgElevated }, !canGoToPrevious && { opacity: 0.4 }]}
           >
-            <ArrowLeft size={20} color={canGoToPrevious ? colors.textPrimary : colors.gray300} />
+            <ArrowLeft size={20} color={colors.textPrimary} />
           </TouchableOpacity>
           
-          <Text style={styles.monthTitle}>
+          <Text style={[styles.monthTitle, { color: colors.textPrimary }]}>
             {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
           </Text>
           
-          <TouchableOpacity onPress={goToNextMonth} style={styles.navButton}>
+          <TouchableOpacity onPress={goToNextMonth} style={[styles.navButton, { backgroundColor: colors.bgElevated }]}>
             <ArrowRight2 size={20} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
@@ -254,7 +260,7 @@ export default function DateRangePicker({
         {/* Day Headers */}
         <View style={styles.dayHeaders}>
           {DAYS.map((day) => (
-            <Text key={day} style={styles.dayHeader}>
+            <Text key={day} style={[styles.dayHeader, { color: colors.textSecondary }]}>
               {day}
             </Text>
           ))}
@@ -289,15 +295,16 @@ export default function DateRangePicker({
                   <View
                     style={[
                       styles.dayContent,
-                      selected && styles.dayContentSelected,
+                      selected && { backgroundColor: colors.primary },
                       disabled && styles.dayContentDisabled,
                     ]}
                   >
                     <Text
                       style={[
                         styles.dayText,
-                        selected && styles.dayTextSelected,
-                        disabled && styles.dayTextDisabled,
+                        { color: colors.textPrimary },
+                        selected && { color: '#FFFFFF', fontWeight: typography.fontWeight.semibold },
+                        disabled && { color: colors.textSecondary },
                       ]}
                     >
                       {date.getDate()}
@@ -310,11 +317,12 @@ export default function DateRangePicker({
         </ScrollView>
         
         {/* Confirm Button */}
-        <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+        <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md, borderTopColor: colors.borderSubtle }]}>
           <TouchableOpacity
             style={[
               styles.confirmButton,
-              (!startDate || (!singleDate && !endDate)) && styles.confirmButtonDisabled,
+              { backgroundColor: colors.primary },
+              (!startDate || (!singleDate && !endDate)) && { backgroundColor: colors.textSecondary },
             ]}
             onPress={handleConfirm}
             disabled={!startDate || (!singleDate && !endDate)}
@@ -332,7 +340,6 @@ export default function DateRangePicker({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
   },
   header: {
     flexDirection: 'row',
@@ -341,7 +348,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
   },
   closeButton: {
     width: 40,
@@ -352,38 +358,27 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   selectedDates: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: colors.gray50,
   },
   dateBox: {
     flex: 1,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md, // Reduced for nested component
+    borderRadius: borderRadius.md,
     padding: spacing.md,
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  dateBoxActive: {
-    borderColor: colors.primary,
-  },
   dateLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginBottom: 4,
   },
   dateValue: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
-  },
-  dateValuePlaceholder: {
-    color: colors.gray400,
   },
   dateSeparator: {
     paddingHorizontal: spacing.sm,
@@ -399,17 +394,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.gray100,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  navButtonDisabled: {
-    backgroundColor: colors.gray50,
   },
   monthTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   dayHeaders: {
     flexDirection: 'row',
@@ -421,7 +411,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textSecondary,
   },
   calendarScroll: {
     flex: 1,
@@ -438,15 +427,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dayCellInRange: {
-    backgroundColor: colors.primary + '15',
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
   },
   dayCellStart: {
-    backgroundColor: colors.primary + '15',
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
     borderTopLeftRadius: 50,
     borderBottomLeftRadius: 50,
   },
   dayCellEnd: {
-    backgroundColor: colors.primary + '15',
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
     borderTopRightRadius: 50,
     borderBottomRightRadius: 50,
   },
@@ -458,40 +447,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dayContentSelected: {
-    backgroundColor: colors.primary,
   },
   dayContentDisabled: {
     opacity: 0.3,
   },
   dayText: {
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
-  },
-  dayTextSelected: {
-    color: colors.white,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  dayTextDisabled: {
-    color: colors.gray400,
   },
   footer: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
   },
   confirmButton: {
-    backgroundColor: colors.primary,
     borderRadius: borderRadius.lg,
     paddingVertical: spacing.md,
     alignItems: 'center',
   },
-  confirmButtonDisabled: {
-    backgroundColor: colors.gray300,
-  },
   confirmButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
 });

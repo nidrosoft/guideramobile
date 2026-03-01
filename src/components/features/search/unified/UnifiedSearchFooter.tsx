@@ -38,8 +38,8 @@ export default function UnifiedSearchFooter({
       styles.footer, 
       { 
         paddingBottom: insets.bottom + spacing.md,
-        backgroundColor: themeColors.white,
-        borderTopColor: themeColors.gray200,
+        backgroundColor: themeColors.bgElevated,
+        borderTopColor: themeColors.borderSubtle,
       }
     ]}>
       <TouchableOpacity onPress={onClear} activeOpacity={0.7}>

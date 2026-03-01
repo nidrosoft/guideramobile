@@ -66,7 +66,7 @@ export default function FlightLegCard({
   const iconRotation = isLastFlight ? '180deg' : '0deg';
 
   return (
-    <View style={[styles.container, { borderColor: themeColors.gray200 }]}>
+    <View style={[styles.container, { borderColor: themeColors.borderSubtle }]}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.legTitle, { color: themeColors.textSecondary }]}>
@@ -74,7 +74,7 @@ export default function FlightLegCard({
         </Text>
         {canRemove && (
           <TouchableOpacity onPress={handleRemove} activeOpacity={0.7}>
-            <CloseCircle size={20} color={themeColors.gray400} />
+            <CloseCircle size={20} color={themeColors.textSecondary} />
           </TouchableOpacity>
         )}
       </View>

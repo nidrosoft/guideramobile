@@ -29,6 +29,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAdvancedPlanningStore } from '../../../stores/useAdvancedPlanningStore';
 import { DIETARY_OPTIONS } from '../../../config/planning.config';
 
@@ -44,6 +45,7 @@ export default function TravelersStep({
   onClose,
 }: TravelersStepProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const {
     advancedTripData,
     setAdults,
@@ -111,7 +113,7 @@ export default function TravelersStep({
   }, [isTravelersValid, onNext]);
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -435,7 +437,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     borderWidth: 1,
@@ -501,7 +503,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.sm,
@@ -550,7 +552,7 @@ const styles = StyleSheet.create({
   toggleOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.sm,
@@ -591,7 +593,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   chip: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.full,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,

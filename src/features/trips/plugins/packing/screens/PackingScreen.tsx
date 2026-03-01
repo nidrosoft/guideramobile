@@ -24,7 +24,8 @@ import {
   Activity,
   TickCircle,
 } from 'iconsax-react-native';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import { PackingCategory, PackingItem } from '../types/packing.types';
 import AddItemBottomSheet from '../components/AddItemBottomSheet';
@@ -139,6 +140,7 @@ export default function PackingScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const tripId = params.tripId as string;
+  const { colors, isDark } = useTheme();
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
   
   const [items, setItems] = useState<PackingItem[]>(getPackingItemsForTrip(tripId, trip?.destination?.country));
@@ -239,15 +241,15 @@ export default function PackingScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgPrimary} />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgPrimary }]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ArrowLeft size={24} color={colors.gray900} variant="Linear" />
+            <ArrowLeft size={24} color={colors.textPrimary} variant="Linear" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Packing List</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Packing List</Text>
           <TouchableOpacity 
             style={styles.addButton}
             onPress={() => setAddItemVisible(true)}
@@ -258,14 +260,14 @@ export default function PackingScreen() {
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Progress Card */}
-          <View style={styles.progressCard}>
+          <View style={[styles.progressCard, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
             <View style={styles.progressHeader}>
               <View style={styles.progressIconContainer}>
                 <Bag2 size={24} color={colors.primary} variant="Bold" />
               </View>
               <View style={styles.progressTextContainer}>
-                <Text style={styles.progressTitle}>Check Your Packing List</Text>
-                <Text style={styles.progressSubtitle}>
+                <Text style={[styles.progressTitle, { color: colors.textPrimary }]}>Check Your Packing List</Text>
+                <Text style={[styles.progressSubtitle, { color: colors.textSecondary }]}>
                   You have {unpackedCount} unpacked {unpackedCount === 1 ? 'item' : 'items'}
                 </Text>
               </View>
@@ -273,7 +275,7 @@ export default function PackingScreen() {
 
             {/* Gradient Progress Bar */}
             <View style={styles.progressBarContainer}>
-              <View style={styles.progressBarBackground}>
+              <View style={[styles.progressBarBackground, { backgroundColor: colors.borderMedium }]}>
                 <LinearGradient
                   colors={[colors.primary, '#8B5CF6', '#3B82F6']}
                   start={{ x: 0, y: 0 }}
@@ -282,8 +284,8 @@ export default function PackingScreen() {
                 />
               </View>
               <View style={styles.progressStats}>
-                <Text style={styles.progressPercentage}>{progressPercentage}%</Text>
-                <Text style={styles.progressCount}>
+                <Text style={[styles.progressPercentage, { color: colors.primary }]}>{progressPercentage}%</Text>
+                <Text style={[styles.progressCount, { color: colors.textSecondary }]}>
                   {packedItems} of {totalItems} items packed
                 </Text>
               </View>
@@ -300,7 +302,7 @@ export default function PackingScreen() {
               const isExpanded = expandedCategories.has(categoryInfo.id);
 
               return (
-                <View key={categoryInfo.id} style={styles.categoryCard}>
+                <View key={categoryInfo.id} style={[styles.categoryCard, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
                   {/* Category Header */}
                   <TouchableOpacity
                     style={styles.categoryHeader}
@@ -311,13 +313,13 @@ export default function PackingScreen() {
                       <View style={[styles.categoryIconContainer, { backgroundColor: `${categoryInfo.color}15` }]}>
                         {renderCategoryIcon(categoryInfo.icon, categoryInfo.color)}
                       </View>
-                      <Text style={styles.categoryName}>{categoryInfo.name}</Text>
+                      <Text style={[styles.categoryName, { color: colors.textPrimary }]}>{categoryInfo.name}</Text>
                     </View>
                     <View style={styles.categoryRight}>
-                      <Text style={styles.categoryProgress}>
+                      <Text style={[styles.categoryProgress, { color: colors.textSecondary }]}>
                         {packed}/{total}
                       </Text>
-                      <Text style={styles.categoryArrow}>{isExpanded ? '▼' : '▶'}</Text>
+                      <Text style={[styles.categoryArrow, { color: colors.textTertiary }]}>{isExpanded ? '▼' : '▶'}</Text>
                     </View>
                   </TouchableOpacity>
 
@@ -334,6 +336,7 @@ export default function PackingScreen() {
                           {/* Checkbox */}
                           <View style={[
                             styles.checkbox,
+                            { borderColor: colors.borderMedium },
                             item.isPacked && styles.checkboxChecked,
                             item.isOptional && styles.checkboxOptional,
                           ]}>
@@ -347,7 +350,8 @@ export default function PackingScreen() {
                             <View style={styles.itemHeader}>
                               <Text style={[
                                 styles.itemName,
-                                item.isPacked && styles.itemNamePacked,
+                                { color: colors.textPrimary },
+                                item.isPacked && [styles.itemNamePacked, { color: colors.textTertiary }],
                               ]}>
                                 {item.name}
                                 {item.quantity > 1 && (
@@ -361,7 +365,7 @@ export default function PackingScreen() {
                               )}
                             </View>
                             {item.notes && (
-                              <Text style={styles.itemNotes}>{item.notes}</Text>
+                              <Text style={[styles.itemNotes, { color: colors.textTertiary }]}>{item.notes}</Text>
                             )}
                           </View>
                         </TouchableOpacity>
@@ -388,11 +392,9 @@ export default function PackingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -400,9 +402,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
   },
   backButton: {
     width: 40,
@@ -413,13 +413,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '600',
-    color: colors.gray900,
   },
   addButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: 'rgba(63, 195, 158, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -427,12 +426,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   progressCard: {
-    backgroundColor: colors.white,
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -447,7 +445,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: 'rgba(63, 195, 158, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -458,19 +456,16 @@ const styles = StyleSheet.create({
   progressTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray900,
     marginBottom: 4,
   },
   progressSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
   },
   progressBarContainer: {
     marginTop: spacing.sm,
   },
   progressBarBackground: {
     height: 8,
-    backgroundColor: colors.gray200,
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -487,11 +482,9 @@ const styles = StyleSheet.create({
   progressPercentage: {
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
-    color: colors.primary,
   },
   progressCount: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
   },
   categoriesSection: {
     marginTop: spacing.lg,
@@ -499,11 +492,10 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   categoryCard: {
-    backgroundColor: colors.white,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.md,
     overflow: 'hidden',
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -530,7 +522,6 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray900,
     marginLeft: spacing.md,
   },
   categoryRight: {
@@ -541,11 +532,9 @@ const styles = StyleSheet.create({
   categoryProgress: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray600,
   },
   categoryArrow: {
     fontSize: 12,
-    color: colors.gray400,
   },
   categoryItems: {
     paddingHorizontal: spacing.md,
@@ -561,15 +550,14 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: colors.gray300,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
     marginTop: 2,
   },
   checkboxChecked: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: '#3FC39E',
+    borderColor: '#3FC39E',
   },
   checkboxOptional: {
     borderStyle: 'dashed',
@@ -586,18 +574,15 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: typography.fontSize.sm,
     fontWeight: '500',
-    color: colors.gray900,
   },
   itemNamePacked: {
     textDecorationLine: 'line-through',
-    color: colors.gray500,
   },
   itemQuantity: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray500,
   },
   suggestedBadge: {
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: 'rgba(63, 195, 158, 0.08)',
     paddingHorizontal: spacing.xs,
     paddingVertical: 2,
     borderRadius: 4,
@@ -605,11 +590,10 @@ const styles = StyleSheet.create({
   suggestedText: {
     fontSize: typography.fontSize.xs,
     fontWeight: '600',
-    color: colors.primary,
+    color: '#3FC39E',
   },
   itemNotes: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray500,
     marginTop: 4,
     fontStyle: 'italic',
   },

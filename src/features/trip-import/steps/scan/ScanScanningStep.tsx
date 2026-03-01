@@ -8,6 +8,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { StepComponentProps } from '../../types/import-flow.types';
 
 export default function ScanScanningStep({ onNext, data }: StepComponentProps) {

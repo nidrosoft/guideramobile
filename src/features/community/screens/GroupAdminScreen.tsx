@@ -222,7 +222,7 @@ export default function GroupAdminScreen() {
                   );
                 }}
               >
-                <More size={20} color={colors.gray500} />
+                <More size={20} color={colors.bgElevated0} />
               </TouchableOpacity>
             )}
           </View>
@@ -235,7 +235,7 @@ export default function GroupAdminScreen() {
     <>
       {requests.length === 0 ? (
         <View style={styles.emptyState}>
-          <People size={48} color={colors.gray300} />
+          <People size={48} color={colors.textTertiary} />
           <Text style={styles.emptyTitle}>No pending requests</Text>
           <Text style={styles.emptyText}>New join requests will appear here</Text>
         </View>
@@ -279,7 +279,7 @@ export default function GroupAdminScreen() {
         <Text style={styles.settingsSectionTitle}>Group Information</Text>
         
         <TouchableOpacity style={styles.settingsItem}>
-          <Edit2 size={20} color={colors.gray500} />
+          <Edit2 size={20} color={colors.bgElevated0} />
           <View style={styles.settingsItemContent}>
             <Text style={styles.settingsItemTitle}>Edit Group Name</Text>
             <Text style={styles.settingsItemValue}>{groupSettings.name}</Text>
@@ -287,7 +287,7 @@ export default function GroupAdminScreen() {
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.settingsItem}>
-          <Edit2 size={20} color={colors.gray500} />
+          <Edit2 size={20} color={colors.bgElevated0} />
           <View style={styles.settingsItemContent}>
             <Text style={styles.settingsItemTitle}>Edit Description</Text>
             <Text style={styles.settingsItemValue} numberOfLines={1}>
@@ -303,9 +303,9 @@ export default function GroupAdminScreen() {
         
         <TouchableOpacity style={styles.settingsItem}>
           {groupSettings.privacy === 'public' ? (
-            <Global size={20} color={colors.gray500} />
+            <Global size={20} color={colors.bgElevated0} />
           ) : (
-            <Lock size={20} color={colors.gray500} />
+            <Lock size={20} color={colors.bgElevated0} />
           )}
           <View style={styles.settingsItemContent}>
             <Text style={styles.settingsItemTitle}>Group Privacy</Text>
@@ -328,7 +328,7 @@ export default function GroupAdminScreen() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setGroupSettings(prev => ({ ...prev, requireApproval: value }));
             }}
-            trackColor={{ false: colors.gray300, true: colors.primary }}
+            trackColor={{ false: colors.textTertiary, true: colors.primary }}
             thumbColor={colors.white}
           />
         </View>
@@ -351,7 +351,7 @@ export default function GroupAdminScreen() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setGroupSettings(prev => ({ ...prev, allowMemberPosts: value }));
             }}
-            trackColor={{ false: colors.gray300, true: colors.primary }}
+            trackColor={{ false: colors.textTertiary, true: colors.primary }}
             thumbColor={colors.white}
           />
         </View>
@@ -369,7 +369,7 @@ export default function GroupAdminScreen() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setGroupSettings(prev => ({ ...prev, allowMemberEvents: value }));
             }}
-            trackColor={{ false: colors.gray300, true: colors.primary }}
+            trackColor={{ false: colors.textTertiary, true: colors.primary }}
             thumbColor={colors.white}
           />
         </View>
@@ -392,7 +392,7 @@ export default function GroupAdminScreen() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setGroupSettings(prev => ({ ...prev, muteNotifications: value }));
             }}
-            trackColor={{ false: colors.gray300, true: colors.primary }}
+            trackColor={{ false: colors.textTertiary, true: colors.primary }}
             thumbColor={colors.white}
           />
         </View>
@@ -453,7 +453,7 @@ export default function GroupAdminScreen() {
                 setActiveTab(tab.id);
               }}
             >
-              <Icon size={18} color={isActive ? colors.primary : colors.gray500} />
+              <Icon size={18} color={isActive ? colors.primary : colors.bgElevated0} />
               <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
                 {tab.label}
               </Text>
@@ -496,9 +496,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,
     gap: spacing.sm,
@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.lg,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     gap: spacing.xs,
   },
   tabActive: {
@@ -534,13 +534,13 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.gray500,
+    color: colors.bgElevated0,
   },
   tabTextActive: {
     color: colors.primary,
   },
   tabBadge: {
-    backgroundColor: colors.gray300,
+    backgroundColor: colors.textTertiary,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 10,
@@ -566,11 +566,13 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.md,
     gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   searchInput: {
     flex: 1,
@@ -582,10 +584,12 @@ const styles = StyleSheet.create({
   memberCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   memberAvatar: {
     width: 48,
@@ -629,10 +633,12 @@ const styles = StyleSheet.create({
   // Requests
   requestCard: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   requestAvatar: {
     width: 48,
@@ -693,19 +699,23 @@ const styles = StyleSheet.create({
   settingsItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     marginBottom: spacing.sm,
     gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   settingsItemSwitch: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   settingsItemContent: {
     flex: 1,

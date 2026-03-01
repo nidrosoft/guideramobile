@@ -1,7 +1,8 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useState } from 'react';
 import * as Haptics from 'expo-haptics';
-import { colors, typography, spacing, borderRadius } from '@/styles';
+import { typography, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Building, Tree, Map, Ship, Camera, Cup, ShoppingBag, TicketDiscount } from 'iconsax-react-native';
 
 const categories = [
@@ -17,6 +18,7 @@ const categories = [
 ];
 
 export default function CategoryPills() {
+  const { colors } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState('all');
 
   const handleCategoryPress = (categoryId: string) => {
@@ -42,7 +44,7 @@ export default function CategoryPills() {
             key={category.id}
             style={[
               styles.pill,
-              isSelected && styles.pillSelected,
+              { backgroundColor: isSelected ? colors.primary : colors.bgCard, borderColor: isSelected ? colors.primary : colors.borderSubtle },
             ]}
             onPress={() => handleCategoryPress(category.id)}
           >
@@ -55,7 +57,7 @@ export default function CategoryPills() {
             )}
             <Text style={[
               styles.pillText,
-              isSelected && styles.pillTextSelected,
+              { color: isSelected ? colors.white : colors.textPrimary },
             ]}>
               {category.name}
             </Text>
@@ -81,21 +83,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderRadius: 24,
-    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.gray200,
     gap: spacing.xs,
-  },
-  pillSelected: {
-    backgroundColor: colors.black,
-    borderColor: colors.black,
   },
   pillText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
-  },
-  pillTextSelected: {
-    color: colors.white,
   },
 });

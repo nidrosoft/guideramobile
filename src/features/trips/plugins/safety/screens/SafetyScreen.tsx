@@ -36,7 +36,8 @@ import {
   Global,
   ShieldTick,
 } from 'iconsax-react-native';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import { useToast } from '@/contexts/ToastContext';
 import * as Haptics from 'expo-haptics';
@@ -175,6 +176,7 @@ export default function SafetyScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { showSuccess, showError } = useToast();
+  const { colors, isDark } = useTheme();
   const tripId = params.tripId as string;
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
 
@@ -277,7 +279,7 @@ export default function SafetyScreen() {
   const getSafetyLevelColor = (level: SafetyLevel) => {
     switch (level) {
       case SafetyLevel.SAFE:
-        return colors.success;
+        return '#10B981';
       case SafetyLevel.CAUTION:
         return '#F59E0B';
       case SafetyLevel.WARNING:
@@ -316,31 +318,31 @@ export default function SafetyScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgPrimary} />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgPrimary }]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ArrowLeft size={24} color={colors.gray900} />
+            <ArrowLeft size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Safety</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Safety</Text>
           <View style={styles.headerRight} />
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Safety Score Card */}
-          <View style={styles.safetyScoreCard}>
+          <View style={[styles.safetyScoreCard, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
             <View style={styles.safetyScoreRow}>
               <View style={styles.safetyScoreLeft}>
-                <View style={styles.safetyScoreIconContainer}>
-                  <ShieldTick size={28} color={colors.success} variant="Bold" />
+                <View style={[styles.safetyScoreIconContainer, { backgroundColor: '#10B98115' }]}>
+                  <ShieldTick size={28} color="#10B981" variant="Bold" />
                 </View>
                 <View style={styles.safetyScoreTextContainer}>
-                  <Text style={styles.safetyScoreTitle}>Safety Score</Text>
-                  <Text style={styles.safetyScoreSubtitle}>{trip.destination.city}</Text>
+                  <Text style={[styles.safetyScoreTitle, { color: colors.textPrimary }]}>Safety Score</Text>
+                  <Text style={[styles.safetyScoreSubtitle, { color: colors.textSecondary }]}>{trip.destination.city}</Text>
                   <View style={styles.safetyScoreBadge}>
-                    <Text style={[styles.safetyScoreBadgeText, { color: colors.success }]}>
+                    <Text style={[styles.safetyScoreBadgeText, { color: '#10B981' }]}>
                       ● {getSafetyLevelText(SafetyLevel.SAFE)}
                     </Text>
                   </View>
@@ -348,8 +350,8 @@ export default function SafetyScreen() {
               </View>
               <View style={styles.safetyScoreRight}>
                 <View style={styles.safetyScoreValueContainer}>
-                  <Text style={styles.safetyScoreValue}>{MOCK_SAFETY_SCORE.overall}</Text>
-                  <Text style={styles.safetyScoreMax}>/100</Text>
+                  <Text style={[styles.safetyScoreValue, { color: colors.textPrimary }]}>{MOCK_SAFETY_SCORE.overall}</Text>
+                  <Text style={[styles.safetyScoreMax, { color: colors.textTertiary }]}>/100</Text>
                 </View>
               </View>
             </View>
@@ -357,17 +359,17 @@ export default function SafetyScreen() {
 
           {/* SOS Button - Always Visible */}
           <TouchableOpacity style={styles.sosButton} onPress={handleSOS}>
-            <Danger size={24} color={colors.white} variant="Bold" />
+            <Danger size={24} color="#FFFFFF" variant="Bold" />
             <Text style={styles.sosButtonText}>Emergency SOS</Text>
           </TouchableOpacity>
 
           {/* Tabs */}
-          <View style={styles.tabsContainer}>
+          <View style={[styles.tabsContainer, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
             <TouchableOpacity
               style={[styles.tab, activeTab === 'before' && styles.tabActive]}
               onPress={() => setActiveTab('before')}
             >
-              <Text style={[styles.tabText, activeTab === 'before' && styles.tabTextActive]}>
+              <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'before' && styles.tabTextActive]}>
                 Before You Go
               </Text>
             </TouchableOpacity>
@@ -375,7 +377,7 @@ export default function SafetyScreen() {
               style={[styles.tab, activeTab === 'during' && styles.tabActive]}
               onPress={() => setActiveTab('during')}
             >
-              <Text style={[styles.tabText, activeTab === 'during' && styles.tabTextActive]}>
+              <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'during' && styles.tabTextActive]}>
                 During Trip
               </Text>
             </TouchableOpacity>
@@ -383,7 +385,7 @@ export default function SafetyScreen() {
               style={[styles.tab, activeTab === 'alerts' && styles.tabActive]}
               onPress={() => setActiveTab('alerts')}
             >
-              <Text style={[styles.tabText, activeTab === 'alerts' && styles.tabTextActive]}>
+              <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'alerts' && styles.tabTextActive]}>
                 Alerts
               </Text>
             </TouchableOpacity>
@@ -392,11 +394,11 @@ export default function SafetyScreen() {
           {/* Before You Go Tab */}
           {activeTab === 'before' && (
             <View style={styles.tabContent}>
-              <Text style={styles.sectionTitle}>Preparation Checklist</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Preparation Checklist</Text>
               {beforeYouGoItems.map(item => (
                 <TouchableOpacity
                   key={item.id}
-                  style={styles.checklistItem}
+                  style={[styles.checklistItem, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}
                   onPress={() => toggleBeforeYouGoItem(item.id)}
                 >
                   <View style={[
@@ -404,18 +406,19 @@ export default function SafetyScreen() {
                     item.completed && styles.checkboxCompleted,
                   ]}>
                     {item.completed && (
-                      <TickCircle size={20} color={colors.success} variant="Bold" />
+                      <TickCircle size={20} color="#10B981" variant="Bold" />
                     )}
                   </View>
                   <View style={styles.checklistContent}>
                     <Text style={[
                       styles.checklistTitle,
-                      item.completed && styles.checklistTitleCompleted,
+                      { color: colors.textPrimary },
+                      item.completed && { textDecorationLine: 'line-through' as const, color: colors.textTertiary },
                     ]}>
                       {item.title}
                       {item.required && <Text style={styles.requiredBadge}> *</Text>}
                     </Text>
-                    <Text style={styles.checklistDescription}>{item.description}</Text>
+                    <Text style={[styles.checklistDescription, { color: colors.textSecondary }]}>{item.description}</Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -425,39 +428,39 @@ export default function SafetyScreen() {
           {/* During Trip Tab */}
           {activeTab === 'during' && (
             <View style={styles.tabContent}>
-              <Text style={styles.sectionTitle}>Emergency Contacts</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Emergency Contacts</Text>
               {MOCK_EMERGENCY_CONTACTS.map(contact => (
                 <TouchableOpacity
                   key={contact.type}
-                  style={styles.emergencyCard}
+                  style={[styles.emergencyCard, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}
                   onPress={() => handleEmergencyCall(contact.number)}
                 >
                   <View style={styles.emergencyIcon}>
                     {getEmergencyIcon(contact.type)}
                   </View>
                   <View style={styles.emergencyContent}>
-                    <Text style={styles.emergencyName}>{contact.name}</Text>
-                    <Text style={styles.emergencyDescription}>{contact.description}</Text>
+                    <Text style={[styles.emergencyName, { color: colors.textPrimary }]}>{contact.name}</Text>
+                    <Text style={[styles.emergencyDescription, { color: colors.textSecondary }]}>{contact.description}</Text>
                   </View>
                   <View style={styles.emergencyNumber}>
                     <Call size={20} color={colors.primary} variant="Bold" />
-                    <Text style={styles.emergencyNumberText}>{contact.number}</Text>
+                    <Text style={[styles.emergencyNumberText, { color: colors.primary }]}>{contact.number}</Text>
                   </View>
                 </TouchableOpacity>
               ))}
 
               {/* AI TODO: Live Location Sharing Section */}
               <View style={styles.locationSection}>
-                <Text style={styles.sectionTitle}>Location Sharing</Text>
-                <View style={styles.locationCard}>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Location Sharing</Text>
+                <View style={[styles.locationCard, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
                   <Location size={24} color={colors.primary} variant="Bold" />
                   <View style={styles.locationContent}>
-                    <Text style={styles.locationTitle}>Share Live Location</Text>
-                    <Text style={styles.locationDescription}>
+                    <Text style={[styles.locationTitle, { color: colors.textPrimary }]}>Share Live Location</Text>
+                    <Text style={[styles.locationDescription, { color: colors.textSecondary }]}>
                       Share your real-time location with emergency contacts
                     </Text>
                   </View>
-                  <TouchableOpacity style={styles.locationButton}>
+                  <TouchableOpacity style={[styles.locationButton, { backgroundColor: colors.primary }]}>
                     <Text style={styles.locationButtonText}>Enable</Text>
                   </TouchableOpacity>
                 </View>
@@ -468,9 +471,9 @@ export default function SafetyScreen() {
           {/* Alerts Tab */}
           {activeTab === 'alerts' && (
             <View style={styles.tabContent}>
-              <Text style={styles.sectionTitle}>Safety Alerts</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Safety Alerts</Text>
               {MOCK_ALERTS.map(alert => (
-                <View key={alert.id} style={styles.alertCard}>
+                <View key={alert.id} style={[styles.alertCard, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
                   <View style={styles.alertHeader}>
                     <View style={[
                       styles.alertBadge,
@@ -483,10 +486,10 @@ export default function SafetyScreen() {
                         {getSafetyLevelText(alert.level)}
                       </Text>
                     </View>
-                    <Text style={styles.alertSource}>{alert.source}</Text>
+                    <Text style={[styles.alertSource, { color: colors.textTertiary }]}>{alert.source}</Text>
                   </View>
-                  <Text style={styles.alertTitle}>{alert.title}</Text>
-                  <Text style={styles.alertDescription}>{alert.description}</Text>
+                  <Text style={[styles.alertTitle, { color: colors.textPrimary }]}>{alert.title}</Text>
+                  <Text style={[styles.alertDescription, { color: colors.textSecondary }]}>{alert.description}</Text>
                 </View>
               ))}
             </View>
@@ -500,11 +503,9 @@ export default function SafetyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -512,9 +513,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
   },
   backButton: {
     width: 40,
@@ -525,7 +524,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.gray900,
   },
   headerRight: {
     width: 40,
@@ -534,12 +532,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   safetyScoreCard: {
-    backgroundColor: colors.white,
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -559,7 +556,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: `${colors.success}15`,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -574,12 +570,10 @@ const styles = StyleSheet.create({
   safetyScoreTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray900,
     marginBottom: spacing.xs,
   },
   safetyScoreSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
   },
   safetyScoreValueContainer: {
     flexDirection: 'row',
@@ -588,11 +582,9 @@ const styles = StyleSheet.create({
   safetyScoreValue: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: '700',
-    color: colors.gray900,
   },
   safetyScoreMax: {
     fontSize: typography.fontSize.lg,
-    color: colors.gray400,
     marginLeft: spacing.xs,
   },
   safetyScoreBadge: {
@@ -622,16 +614,15 @@ const styles = StyleSheet.create({
   sosButtonText: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.white,
+    color: '#FFFFFF',
   },
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     padding: spacing.xs,
     borderRadius: borderRadius.full,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -645,15 +636,14 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   tabActive: {
-    backgroundColor: colors.gray900,
+    backgroundColor: '#111827',
   },
   tabText: {
     fontSize: typography.fontSize.xs,
     fontWeight: '600',
-    color: colors.gray600,
   },
   tabTextActive: {
-    color: colors.white,
+    color: '#FFFFFF',
   },
   tabContent: {
     paddingHorizontal: spacing.lg,
@@ -663,16 +653,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.gray900,
     marginBottom: spacing.md,
   },
   checklistItem: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
     padding: spacing.md,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.sm,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -683,14 +671,14 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: colors.gray300,
+    borderColor: '#D1D5DB',
     marginRight: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxCompleted: {
-    borderColor: colors.success,
-    backgroundColor: `${colors.success}15`,
+    borderColor: '#10B981',
+    backgroundColor: '#10B98115',
   },
   checklistContent: {
     flex: 1,
@@ -698,16 +686,13 @@ const styles = StyleSheet.create({
   checklistTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray900,
     marginBottom: spacing.xs,
   },
   checklistTitleCompleted: {
     textDecorationLine: 'line-through',
-    color: colors.gray500,
   },
   checklistDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
     lineHeight: 20,
   },
   requiredBadge: {
@@ -717,11 +702,10 @@ const styles = StyleSheet.create({
   emergencyCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
     padding: spacing.md,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.md,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -742,12 +726,10 @@ const styles = StyleSheet.create({
   emergencyName: {
     fontSize: typography.fontSize.base,
     fontWeight: '700',
-    color: colors.gray900,
     marginBottom: spacing.xs,
   },
   emergencyDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
   },
   emergencyNumber: {
     alignItems: 'center',
@@ -756,7 +738,6 @@ const styles = StyleSheet.create({
   emergencyNumberText: {
     fontSize: typography.fontSize.sm,
     fontWeight: '700',
-    color: colors.primary,
   },
   locationSection: {
     marginTop: spacing.xl,
@@ -764,10 +745,9 @@ const styles = StyleSheet.create({
   locationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
     padding: spacing.md,
     borderRadius: borderRadius.lg,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -780,15 +760,12 @@ const styles = StyleSheet.create({
   locationTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray900,
     marginBottom: spacing.xs,
   },
   locationDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
   },
   locationButton: {
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
@@ -796,14 +773,13 @@ const styles = StyleSheet.create({
   locationButtonText: {
     fontSize: typography.fontSize.sm,
     fontWeight: '700',
-    color: colors.white,
+    color: '#FFFFFF',
   },
   alertCard: {
-    backgroundColor: colors.white,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.md,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -826,17 +802,14 @@ const styles = StyleSheet.create({
   },
   alertSource: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray500,
   },
   alertTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.gray900,
     marginBottom: spacing.sm,
   },
   alertDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray700,
     lineHeight: 20,
   },
 });

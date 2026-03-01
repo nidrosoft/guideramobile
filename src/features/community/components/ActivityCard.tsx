@@ -85,7 +85,7 @@ const ACTIVITY_COLORS: Record<ActivityType, string> = {
   sports: '#2ECC71',
   coworking: '#3498DB',
   language_exchange: '#1ABC9C',
-  other: colors.gray500,
+  other: '#95A5A6',
 };
 
 const ACTIVITY_LABELS: Record<ActivityType, string> = {
@@ -110,7 +110,7 @@ export default function ActivityCard({
 }: ActivityCardProps) {
   const isCompact = variant === 'compact';
   const IconComponent = ACTIVITY_ICONS[activity.type] || More;
-  const activityColor = ACTIVITY_COLORS[activity.type] || colors.gray500;
+  const activityColor = ACTIVITY_COLORS[activity.type] || '#95A5A6';
   
   const formatTime = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -197,7 +197,7 @@ export default function ActivityCard({
       
       {/* Time */}
       <View style={styles.infoRow}>
-        <Clock size={14} color={colors.gray500} />
+        <Clock size={14} color={colors.textSecondary} />
         <Text style={styles.infoText}>
           {formatTime(activity.startTime)}
           {activity.endTime && ` - ${formatTime(activity.endTime)}`}
@@ -215,7 +215,7 @@ export default function ActivityCard({
         {/* Participants & Join */}
         <View style={styles.actions}>
           <View style={styles.participants}>
-            <People size={14} color={colors.gray500} />
+            <People size={14} color={colors.textSecondary} />
             <Text style={styles.participantText}>
               {activity.currentParticipants}
               {activity.maxParticipants && `/${activity.maxParticipants}`}
@@ -254,10 +254,12 @@ export default function ActivityCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
     padding: spacing.md,
     marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -267,7 +269,7 @@ const styles = StyleSheet.create({
   compactContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.md,
     padding: spacing.sm,
     marginBottom: spacing.xs,
@@ -328,7 +330,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
   },
   creator: {
     flexDirection: 'row',
@@ -381,7 +383,7 @@ const styles = StyleSheet.create({
     color: colors.success,
   },
   fullBadge: {
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
@@ -389,7 +391,7 @@ const styles = StyleSheet.create({
   fullText: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.gray500,
+    color: colors.bgElevated0,
   },
   spotsWarning: {
     marginTop: spacing.sm,

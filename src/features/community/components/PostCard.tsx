@@ -10,6 +10,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { ArrowUp, ArrowDown, Message, Flag, More } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { CommunityPost, EXPERTISE_OPTIONS } from '../types/guide.types';
 import TrustBadge from './TrustBadge';
 
@@ -22,6 +23,7 @@ interface PostCardProps {
 }
 
 export default function PostCard({ post, onPress, onAuthorPress, onComment, onFlag }: PostCardProps) {
+  const { colors: tc } = useTheme();
   const [myVote, setMyVote] = useState<'up' | 'down' | null>(post.myVote || null);
   const [score, setScore] = useState(post.score);
 
@@ -45,7 +47,7 @@ export default function PostCard({ post, onPress, onAuthorPress, onComment, onFl
   const timeSince = getTimeSince(post.createdAt);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
       {/* Pinned indicator */}
       {post.isPinned && (
         <View style={styles.pinnedBanner}>
@@ -149,10 +151,12 @@ function getTimeSince(dateStr: string): string {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
     marginBottom: 12,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -229,7 +233,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 200,
     borderRadius: 12,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     marginBottom: 6,
   },
   tagsRow: {
@@ -240,7 +244,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   tag: {
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
@@ -256,13 +260,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
     gap: 16,
   },
   voteContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     borderRadius: 10,
     paddingHorizontal: 4,
   },

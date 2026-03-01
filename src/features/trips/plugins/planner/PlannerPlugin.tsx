@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { ArrowLeft, CloseCircle } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Trip } from '@/features/trips/types/trip.types';
 import ActivityCard from './components/ActivityCard';
 import { DayItinerary, Activity, ActivityType } from './types/planner.types';
@@ -138,6 +139,7 @@ const MOCK_ITINERARY: DayItinerary[] = [
 ];
 
 export default function PlannerPlugin({ visible, onClose, trip }: PlannerPluginProps) {
+  const { colors: tc } = useTheme();
   const [selectedDay, setSelectedDay] = useState(0);
 
   const currentDay = MOCK_ITINERARY[selectedDay];
@@ -246,7 +248,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray200,
   },
@@ -268,7 +270,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   infoCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     marginHorizontal: spacing.lg,
     marginTop: spacing.md,
     padding: spacing.lg,
@@ -301,7 +303,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderRadius: 12,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     marginRight: spacing.sm,
     minWidth: 100,
     alignItems: 'center',

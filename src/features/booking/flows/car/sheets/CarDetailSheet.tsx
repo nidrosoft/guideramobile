@@ -27,10 +27,11 @@ import {
   Car as CarIcon,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { Car } from '../../../types/car.types';
 import { useCarStore } from '../../../stores/useCarStore';
+import { BookOnProviderButton } from '../../../components/shared';
+import { useDealRedirect } from '@/hooks/useDeals';
 
 interface CarDetailSheetProps {
   visible: boolean;
@@ -42,13 +43,37 @@ interface CarDetailSheetProps {
 export default function CarDetailSheet({ visible, onClose, onSelect, car }: CarDetailSheetProps) {
   const insets = useSafeAreaInsets();
   const { getRentalDays } = useCarStore();
+  const { redirect } = useDealRedirect();
   const rentalDays = getRentalDays();
 
-  const handleSelectCar = () => {
-    if (car && onSelect) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      onSelect(car);
-    }
+  const handleBookOnProvider = async () => {
+    if (!car) return;
+    const carAny = car as any;
+    const companyName = carAny.company?.name || carAny.provider?.name || 'Rental';
+    const totalPrice = car.rental.pricePerDay.amount * rentalDays;
+    await redirect({
+      deal_type: 'car',
+      provider: 'rentalcars',
+      affiliate_url: '',
+      deal_snapshot: {
+        title: `${car.name} - ${companyName}`,
+        subtitle: `${rentalDays} days`,
+        provider: { code: 'rentalcars', name: 'Rentalcars.com' },
+        price: { amount: totalPrice, currency: 'USD', formatted: `$${totalPrice.toFixed(0)}` },
+        car: {
+          name: car.name,
+          category: car.category,
+          company: companyName,
+          pickupLocation: '',
+          dropoffLocation: '',
+          pickupDate: '',
+          dropoffDate: '',
+        },
+      },
+      price_amount: totalPrice,
+      source: 'search',
+      location: companyName,
+    });
   };
 
   if (!car) return null;
@@ -171,32 +196,21 @@ export default function CarDetailSheet({ visible, onClose, onSelect, car }: CarD
             <View style={{ height: 100 }} />
           </ScrollView>
 
-          {/* Footer with Select Button */}
-          {onSelect && (
-            <View style={styles.footer}>
-              <View style={styles.priceContainer}>
-                <Text style={styles.priceLabel}>Total for {rentalDays} days</Text>
-                <Text style={styles.priceValue}>
-                  ${(car.rental.pricePerDay.amount * rentalDays).toFixed(2)}
-                </Text>
-              </View>
-              <TouchableOpacity 
-                style={styles.selectButton}
-                onPress={handleSelectCar}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={[colors.primary, colors.primaryDark]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.selectGradient}
-                >
-                  <CarIcon size={20} color={colors.white} variant="Bold" />
-                  <Text style={styles.selectButtonText}>Select This Car</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+          {/* Footer with Book on Provider Button */}
+          <View style={styles.footer}>
+            <View style={styles.priceContainer}>
+              <Text style={styles.priceLabel}>Total for {rentalDays} days</Text>
+              <Text style={styles.priceValue}>
+                ${(car.rental.pricePerDay.amount * rentalDays).toFixed(2)}
+              </Text>
             </View>
-          )}
+            <View style={{ flex: 1 }}>
+              <BookOnProviderButton
+                provider="rentalcars"
+                onPress={handleBookOnProvider}
+              />
+            </View>
+          </View>
         </View>
       </View>
     </Modal>
@@ -210,7 +224,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
     height: '85%',
@@ -367,7 +381,7 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,

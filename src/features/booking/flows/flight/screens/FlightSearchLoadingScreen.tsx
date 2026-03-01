@@ -25,6 +25,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Airplane } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useFlightSearch } from '@/hooks/useProviderSearch';
 import { useFlightStore } from '../../../stores/useFlightStore';
 import { useFlightSearchState } from '../../../stores/flightSearchState';
@@ -50,6 +51,7 @@ export default function FlightSearchLoadingScreen({
   onComplete,
 }: FlightSearchLoadingScreenProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const [messageIndex, setMessageIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const hasCompletedRef = useRef(false);
@@ -208,7 +210,7 @@ export default function FlightSearchLoadingScreen({
   }));
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <ImageBackground
         source={require('../../../../../../assets/images/flightbg.png')}
         style={[styles.background, { paddingTop: insets.top }]}

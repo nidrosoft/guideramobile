@@ -9,6 +9,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Platform }
 import { useState } from 'react';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { colors, typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Location, Send2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 
@@ -30,6 +31,7 @@ interface PlacesToVisitSectionProps {
 const categories = ['All', 'Hidden Gems', 'Attractions', 'Restaurants'];
 
 export default function PlacesToVisitSection({ places }: PlacesToVisitSectionProps) {
+  const { colors: tc } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   const handleCategoryPress = (category: string) => {
@@ -168,7 +170,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 24,
     padding: spacing.md,
     shadowColor: colors.black,
@@ -244,7 +246,7 @@ const styles = StyleSheet.create({
   },
   placeCard: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 12,
     padding: spacing.sm,
     shadowColor: colors.black,

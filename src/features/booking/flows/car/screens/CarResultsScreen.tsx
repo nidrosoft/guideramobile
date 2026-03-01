@@ -26,6 +26,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useCarStore } from '../../../stores/useCarStore';
 import { Car } from '../../../types/car.types';
 
@@ -60,6 +61,7 @@ export default function CarResultsScreen({
   onClose,
 }: CarResultsScreenProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const { searchParams, getFilteredResults, sortBy, setSortBy, getRentalDays } = useCarStore();
   
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
@@ -123,7 +125,7 @@ export default function CarResultsScreen({
   const currentSortLabel = SORT_OPTIONS.find(s => s.id === sortBy)?.label || 'Recommended';
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       {/* Header with Background Image */}
       <ImageBackground
         source={require('../../../../../../assets/images/carbg.png')}
@@ -357,7 +359,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
   },
   filterSection: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray100,
     position: 'relative',
@@ -405,7 +407,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '100%',
     left: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },

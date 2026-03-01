@@ -3,21 +3,18 @@
  */
 
 import { StyleSheet } from 'react-native';
-import { colors, spacing, borderRadius } from '@/styles';
+import { spacing, borderRadius } from '@/styles';
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.gray50,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
   },
   backButton: {
     padding: spacing.xs,
@@ -43,9 +40,7 @@ export const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: colors.success,
     borderWidth: 2,
-    borderColor: colors.white,
   },
   nameContainer: {
     marginLeft: spacing.sm,
@@ -53,11 +48,9 @@ export const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.textPrimary,
   },
   status: {
     fontSize: 12,
-    color: colors.success,
   },
   headerActions: {
     flexDirection: 'row',
@@ -85,7 +78,6 @@ export const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   typingBubble: {
-    backgroundColor: colors.white,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
@@ -98,7 +90,6 @@ export const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.gray400,
   },
   typingDot1: {
     opacity: 0.4,
@@ -110,18 +101,15 @@ export const styles = StyleSheet.create({
     opacity: 1,
   },
   inputContainer: {
-    backgroundColor: colors.white,
     paddingTop: spacing.sm,
     paddingHorizontal: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
   },
   attachmentOptions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
     marginBottom: spacing.sm,
   },
   attachmentButton: {
@@ -130,7 +118,6 @@ export const styles = StyleSheet.create({
   },
   attachmentLabel: {
     fontSize: 12,
-    color: colors.textSecondary,
   },
   inputRow: {
     flexDirection: 'row',
@@ -145,7 +132,6 @@ export const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-end',
-    backgroundColor: colors.gray100,
     borderRadius: borderRadius.xl,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
@@ -155,7 +141,6 @@ export const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     fontSize: 15,
-    color: colors.textPrimary,
     paddingVertical: spacing.xs,
   },
   emojiButton: {
@@ -166,7 +151,6 @@ export const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -174,7 +158,6 @@ export const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.primary + '15',
     alignItems: 'center',
     justifyContent: 'center',
   },

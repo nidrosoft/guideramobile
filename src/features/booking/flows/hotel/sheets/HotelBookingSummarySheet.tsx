@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   },
   hotelCard: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderRadius: borderRadius.xl,
     overflow: 'hidden',
     marginBottom: spacing.lg,
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   section: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
     marginBottom: spacing.md,
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   priceSection: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
   },

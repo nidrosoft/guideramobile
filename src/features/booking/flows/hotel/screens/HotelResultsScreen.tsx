@@ -31,6 +31,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useHotelStore } from '../../../stores/useHotelStore';
 import { Hotel } from '../../../types/hotel.types';
 import { styles } from './HotelResultsScreen.styles';
@@ -91,6 +92,7 @@ export default function HotelResultsScreen({
   onClose,
 }: HotelResultsScreenProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const {
     searchParams,
     searchResults,
@@ -252,7 +254,7 @@ export default function HotelResultsScreen({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       {/* Header */}
       <ImageBackground
         source={require('../../../../../../assets/images/bookingbg.png')}

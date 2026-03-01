@@ -31,6 +31,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { usePlanningStore } from '../../../stores/usePlanningStore';
 import { COMPANION_OPTIONS, TRIP_STYLES, MAX_TRIP_STYLES } from '../../../config/planning.config';
 import { CompanionType, TripStyle } from '../../../types/planning.types';
@@ -48,6 +49,7 @@ export default function StyleStep({
   onBack,
   onClose,
 }: StyleStepProps) {
+  const { colors: tc } = useTheme();
   const insets = useSafeAreaInsets();
   const {
     quickTripData,
@@ -88,7 +90,7 @@ export default function StyleStep({
   };
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -297,7 +299,7 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.full,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
@@ -340,7 +342,7 @@ const styles = StyleSheet.create({
   
   // Selected Summary
   selectedSummary: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     ...shadows.sm,

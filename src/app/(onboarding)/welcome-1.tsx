@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   progressDotActive: {
     width: 24,

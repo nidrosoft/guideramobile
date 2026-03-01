@@ -25,6 +25,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAdvancedPlanningStore } from '../../../stores/useAdvancedPlanningStore';
 import { DATE_FLEXIBILITY_OPTIONS } from '../../../config/planning.config';
 
@@ -43,6 +44,7 @@ export default function AdvancedDatesStep({
   onClose,
 }: AdvancedDatesStepProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const {
     advancedTripData,
     setDepartureDate,
@@ -95,7 +97,7 @@ export default function AdvancedDatesStep({
   };
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -275,7 +277,7 @@ const styles = StyleSheet.create({
   selectedDatesContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.lg,
@@ -315,7 +317,7 @@ const styles = StyleSheet.create({
   openCalendarButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.lg,
@@ -339,7 +341,7 @@ const styles = StyleSheet.create({
   flexibilityOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     borderWidth: 1.5,

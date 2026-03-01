@@ -28,6 +28,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useExperienceStore } from '../../../stores/useExperienceStore';
 import { Experience } from '../../../types/experience.types';
 
@@ -156,6 +157,7 @@ export default function ExperienceResultsScreen({
   onClose,
 }: ExperienceResultsScreenProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const { searchParams, setResults, results } = useExperienceStore();
   const [selectedExperience, setSelectedExperience] = useState<Experience | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -231,7 +233,7 @@ export default function ExperienceResultsScreen({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <StatusBar barStyle="light-content" />
       
       {/* Header with Background Image */}
@@ -346,7 +348,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray100,
     gap: spacing.sm,
@@ -370,7 +372,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   experienceCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
     borderWidth: 1,

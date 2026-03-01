@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.white, justifyContent: 'center', alignItems: 'center' },
+  backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.bgElevated, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, color: colors.textPrimary },
   placeholder: { width: 40 },
   scrollView: { flex: 1 },

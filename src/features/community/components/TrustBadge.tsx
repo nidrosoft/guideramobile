@@ -9,6 +9,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { ShieldTick, ShieldSecurity, Shield, Crown } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { TrustTier, TRUST_TIERS } from '../types/guide.types';
 
 interface TrustBadgeProps {

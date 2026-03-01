@@ -133,11 +133,11 @@ export default function LocationPickerSheet({
 
         {/* Search Input */}
         <View style={styles.searchContainer}>
-          <SearchNormal1 size={20} color={colors.gray400} />
+          <SearchNormal1 size={20} color={colors.textTertiary} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search city or airport..."
-            placeholderTextColor={colors.gray400}
+            placeholderTextColor={colors.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCapitalize="none"
@@ -145,7 +145,7 @@ export default function LocationPickerSheet({
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <CloseCircle size={20} color={colors.gray400} />
+              <CloseCircle size={20} color={colors.textTertiary} />
             </TouchableOpacity>
           )}
         </View>
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   title: {
     fontSize: typography.fontSize.xl,
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgCard,
     marginHorizontal: spacing.lg,
     marginVertical: spacing.md,
     paddingHorizontal: spacing.md,
@@ -228,12 +228,12 @@ const styles = StyleSheet.create({
   locationItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.gray100,
+    borderColor: colors.borderSubtle,
   },
   locationItemSelected: {
     borderColor: colors.primary,
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgCard,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,

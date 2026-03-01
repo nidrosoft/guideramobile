@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 const LAST_UPDATED = 'December 30, 2024';
 const EFFECTIVE_DATE = 'January 1, 2025';
@@ -26,6 +27,7 @@ const EFFECTIVE_DATE = 'January 1, 2025';
 export default function PrivacyPolicyScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -37,13 +39,13 @@ export default function PrivacyPolicyScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Privacy Policy</Text>
         <View style={styles.headerSpacer} />
@@ -306,9 +308,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -390,7 +392,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     paddingTop: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
   },
   footerText: {
     fontSize: typography.fontSize.sm,

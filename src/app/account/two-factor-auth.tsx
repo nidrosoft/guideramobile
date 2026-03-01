@@ -30,6 +30,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
 
@@ -39,6 +40,7 @@ type SetupStep = 'select' | 'verify' | 'success';
 export default function TwoFactorAuthScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const { user, profile } = useAuth();
   const [step, setStep] = useState<SetupStep>('select');
   const [method, setMethod] = useState<TwoFactorMethod | null>(null);
@@ -311,13 +313,13 @@ export default function TwoFactorAuthScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Two-Factor Authentication</Text>
         <View style={styles.headerSpacer} />
@@ -353,9 +355,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -417,12 +419,12 @@ const styles = StyleSheet.create({
   methodCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.gray100,
+    borderColor: colors.borderSubtle,
   },
   methodIcon: {
     width: 48,
@@ -455,7 +457,7 @@ const styles = StyleSheet.create({
   infoCard: {
     flexDirection: 'row',
     backgroundColor: colors.info + '10',
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.info + '20',
@@ -499,10 +501,10 @@ const styles = StyleSheet.create({
   codeInput: {
     width: '100%',
     height: 60,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     borderWidth: 2,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     fontSize: 32,
     fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
@@ -546,12 +548,12 @@ const styles = StyleSheet.create({
   },
   qrPlaceholder: {
     alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
     padding: spacing.lg,
     marginTop: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   qrPlaceholderText: {
     fontSize: typography.fontSize.sm,
@@ -602,7 +604,7 @@ const styles = StyleSheet.create({
   successInfo: {
     flexDirection: 'row',
     backgroundColor: colors.success + '10',
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     padding: spacing.md,
     width: '100%',
     marginBottom: spacing.xl,

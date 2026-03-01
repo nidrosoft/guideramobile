@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   },
   infoSection: {
     padding: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
   },
   roomName: {
     fontSize: typography.fontSize['2xl'],
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   },
   section: {
     padding: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     marginTop: spacing.sm,
   },
   sectionTitle: {
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderTopWidth: 1,
     borderTopColor: colors.gray100,
   },

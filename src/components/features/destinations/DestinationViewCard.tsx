@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     height: 420,
     borderRadius: 32,
     overflow: 'hidden',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     marginBottom: spacing.lg,
   },
   cardImage: {

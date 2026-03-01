@@ -9,6 +9,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Star1, Message, Clock, Location, Home2, Map, Setting2, DocumentText } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { GuideListing, ListingCategory, TRUST_TIERS } from '../types/guide.types';
 import TrustBadge from './TrustBadge';
 
@@ -27,11 +28,12 @@ const CATEGORY_CONFIG: Record<ListingCategory, { label: string; color: string; I
 };
 
 export default function ListingCard({ listing, onPress, onInquire, variant = 'full' }: ListingCardProps) {
+  const { colors: tc } = useTheme();
   const catConfig = CATEGORY_CONFIG[listing.category];
 
   if (variant === 'compact') {
     return (
-      <TouchableOpacity style={styles.compactContainer} onPress={onPress} activeOpacity={0.7}>
+      <TouchableOpacity style={[styles.compactContainer, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]} onPress={onPress} activeOpacity={0.7}>
         {listing.photos.length > 0 ? (
           <Image source={{ uri: listing.photos[0] }} style={styles.compactImage} />
         ) : (
@@ -43,15 +45,15 @@ export default function ListingCard({ listing, onPress, onInquire, variant = 'fu
           <View style={[styles.catBadge, { backgroundColor: catConfig.color + '15' }]}>
             <Text style={[styles.catText, { color: catConfig.color }]}>{catConfig.label}</Text>
           </View>
-          <Text style={styles.compactTitle} numberOfLines={2}>{listing.title}</Text>
+          <Text style={[styles.compactTitle, { color: tc.textPrimary }]} numberOfLines={2}>{listing.title}</Text>
           {listing.priceRange && (
-            <Text style={styles.compactPrice}>{listing.priceRange}</Text>
+            <Text style={[styles.compactPrice, { color: tc.primary }]}>{listing.priceRange}</Text>
           )}
           <View style={styles.compactMeta}>
             <Star1 size={11} color="#F59E0B" variant="Bold" />
-            <Text style={styles.compactRating}>{listing.rating || 'New'}</Text>
-            <Text style={styles.compactDot}>·</Text>
-            <Text style={styles.compactInquiries}>{listing.inquiryCount} inquiries</Text>
+            <Text style={[styles.compactRating, { color: tc.textPrimary }]}>{listing.rating || 'New'}</Text>
+            <Text style={[styles.compactDot, { color: tc.textSecondary }]}>·</Text>
+            <Text style={[styles.compactInquiries, { color: tc.textSecondary }]}>{listing.inquiryCount} inquiries</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -59,7 +61,7 @@ export default function ListingCard({ listing, onPress, onInquire, variant = 'fu
   }
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity style={[styles.container, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]} onPress={onPress} activeOpacity={0.7}>
       {/* Cover Image */}
       {listing.photos.length > 0 && (
         <View style={styles.imageContainer}>
@@ -73,12 +75,12 @@ export default function ListingCard({ listing, onPress, onInquire, variant = 'fu
 
       {/* Content */}
       <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={2}>{listing.title}</Text>
+        <Text style={[styles.title, { color: tc.textPrimary }]} numberOfLines={2}>{listing.title}</Text>
 
         {/* Location */}
         <View style={styles.locationRow}>
-          <Location size={12} color={colors.textTertiary} />
-          <Text style={styles.locationText}>
+          <Location size={12} color={tc.textSecondary} />
+          <Text style={[styles.locationText, { color: tc.textSecondary }]}>
             {listing.neighborhood ? `${listing.neighborhood}, ` : ''}{listing.city}
           </Text>
         </View>
@@ -86,12 +88,12 @@ export default function ListingCard({ listing, onPress, onInquire, variant = 'fu
         {/* Price & Duration */}
         <View style={styles.priceRow}>
           {listing.priceRange && (
-            <Text style={styles.price}>{listing.priceRange}</Text>
+            <Text style={[styles.price, { color: tc.textPrimary }]}>{listing.priceRange}</Text>
           )}
           {listing.duration && (
-            <View style={styles.durationBadge}>
-              <Clock size={11} color={colors.textSecondary} />
-              <Text style={styles.durationText}>{listing.duration}</Text>
+            <View style={[styles.durationBadge, { backgroundColor: tc.bgCard }]}>
+              <Clock size={11} color={tc.textSecondary} />
+              <Text style={[styles.durationText, { color: tc.textSecondary }]}>{listing.duration}</Text>
             </View>
           )}
         </View>
@@ -101,17 +103,17 @@ export default function ListingCard({ listing, onPress, onInquire, variant = 'fu
           {listing.rating ? (
             <View style={styles.ratingBadge}>
               <Star1 size={12} color="#F59E0B" variant="Bold" />
-              <Text style={styles.ratingText}>{listing.rating}</Text>
-              <Text style={styles.reviewCount}>({listing.reviewCount})</Text>
+              <Text style={[styles.ratingText, { color: tc.textPrimary }]}>{listing.rating}</Text>
+              <Text style={[styles.reviewCount, { color: tc.textSecondary }]}>({listing.reviewCount})</Text>
             </View>
           ) : null}
-          <Text style={styles.inquiryCount}>{listing.inquiryCount} inquiries</Text>
+          <Text style={[styles.inquiryCount, { color: tc.textSecondary }]}>{listing.inquiryCount} inquiries</Text>
         </View>
 
         {/* Guide Info */}
-        <View style={styles.guideRow}>
+        <View style={[styles.guideRow, { borderTopColor: tc.borderSubtle }]}>
           <Image source={{ uri: listing.guideAvatar }} style={styles.guideAvatar} />
-          <Text style={styles.guideName}>{listing.guideName}</Text>
+          <Text style={[styles.guideName, { color: tc.textPrimary }]}>{listing.guideName}</Text>
           <TrustBadge tier={listing.guideTrustTier} size="small" showLabel={false} />
           <View style={styles.spacer} />
           {onInquire && (
@@ -128,10 +130,12 @@ export default function ListingCard({ listing, onPress, onInquire, variant = 'fu
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 24,
     marginBottom: 14,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -144,7 +148,7 @@ const styles = StyleSheet.create({
   coverImage: {
     width: '100%',
     height: 180,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
   },
   categoryBadge: {
     position: 'absolute',
@@ -197,10 +201,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.borderSubtle,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 10,
+    borderRadius: 20,
   },
   durationText: {
     fontSize: 11,
@@ -236,12 +240,12 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
   },
   guideAvatar: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 20,
   },
   guideName: {
     fontSize: 13,
@@ -255,10 +259,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   inquireBtnText: {
     fontSize: 12,
@@ -269,10 +278,12 @@ const styles = StyleSheet.create({
   // Compact variant
   compactContainer: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
-    borderRadius: 14,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
     padding: 10,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -282,9 +293,9 @@ const styles = StyleSheet.create({
   compactImage: {
     width: 80,
     height: 80,
-    borderRadius: 10,
+    borderRadius: 20,
     marginRight: 10,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
   },
   compactImagePlaceholder: {
     alignItems: 'center',
@@ -298,7 +309,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: 8,
+    borderRadius: 20,
     marginBottom: 4,
   },
   catText: {

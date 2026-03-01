@@ -9,6 +9,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Airplane, Building, Car, Calendar, Location, TickCircle } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { StepComponentProps } from '../../types/import-flow.types';
 
 // Mock booking data based on type

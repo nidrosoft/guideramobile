@@ -26,6 +26,7 @@ import { useTheme, ThemeMode } from '@/context/ThemeContext';
 export default function AppearanceSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const systemColorScheme = useColorScheme();
   const { themeMode, isDark, colors, setThemeMode } = useTheme();
   
@@ -66,8 +67,8 @@ export default function AppearanceSettingsScreen() {
       backgroundColor: colors.background,
     },
     header: {
-      backgroundColor: colors.white,
-      borderBottomColor: colors.gray100,
+      backgroundColor: colors.bgCard,
+      borderBottomColor: colors.borderSubtle,
     },
     headerTitle: {
       color: colors.textPrimary,
@@ -86,15 +87,15 @@ export default function AppearanceSettingsScreen() {
       color: colors.textSecondary,
     },
     optionCard: {
-      backgroundColor: colors.white,
-      borderColor: colors.gray200,
+      backgroundColor: colors.bgCard,
+      borderColor: colors.borderSubtle,
     },
     optionCardSelected: {
       backgroundColor: colors.primary + '08',
       borderColor: colors.primary,
     },
     optionIconContainer: {
-      backgroundColor: colors.gray100,
+      backgroundColor: colors.bgElevated,
     },
     optionIconContainerSelected: {
       backgroundColor: colors.primary + '15',
@@ -109,10 +110,10 @@ export default function AppearanceSettingsScreen() {
       color: colors.textSecondary,
     },
     statusCard: {
-      backgroundColor: colors.gray100,
+      backgroundColor: colors.bgElevated,
     },
     statusIconContainer: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.bgCard,
     },
     statusText: {
       color: colors.textSecondary,
@@ -129,7 +130,7 @@ export default function AppearanceSettingsScreen() {
       {/* Header */}
       <View style={[styles.header, dynamicStyles.header, { paddingTop: insets.top + spacing.sm }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>Appearance</Text>
         <View style={styles.headerSpacer} />
@@ -334,7 +335,7 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 0.6,
     backgroundColor: lightColors.gray100,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     overflow: 'hidden',
   },
   previewHeader: {
@@ -386,7 +387,7 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 0.6,
     backgroundColor: '#1C1C1E',
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     overflow: 'hidden',
   },
   previewHeaderDark: {

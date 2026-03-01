@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   modeButtonActive: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
   },
   modeText: {
     fontSize: typography.fontSize.sm,

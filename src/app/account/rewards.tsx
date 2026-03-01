@@ -37,6 +37,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { rewardsService, RewardPoints, PointsType } from '@/services/rewards.service';
 
@@ -68,6 +69,7 @@ export default function RewardsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [pointsHistory, setPointsHistory] = useState<RewardPoints[]>([]);
   const [summary, setSummary] = useState({
@@ -159,7 +161,7 @@ export default function RewardsScreen() {
   );
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <StatusBar style="light" />
       
       {/* Animated Header */}
@@ -172,7 +174,7 @@ export default function RewardsScreen() {
           style={[styles.headerGradient, { paddingTop: insets.top }]}
         >
           {/* Fixed Navigation Row - always visible and touchable */}
-          <View style={styles.header}>
+          <View style={[styles.header, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
             <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <ArrowLeft size={24} color={colors.white} />
             </TouchableOpacity>
@@ -511,8 +513,8 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
     padding: spacing.md,
     alignItems: 'center',
     shadowColor: '#000',
@@ -551,7 +553,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   earnCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     shadowColor: '#000',
@@ -567,7 +569,7 @@ const styles = StyleSheet.create({
   },
   earnOptionBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   earnIcon: {
     width: 44,
@@ -591,7 +593,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   emptyState: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.xl,
     alignItems: 'center',
@@ -620,8 +622,8 @@ const styles = StyleSheet.create({
   historyCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
     padding: spacing.md,
     marginBottom: spacing.sm,
     shadowColor: '#000',

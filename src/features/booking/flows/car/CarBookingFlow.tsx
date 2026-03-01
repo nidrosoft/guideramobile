@@ -1,14 +1,12 @@
 /**
  * CAR BOOKING FLOW
  * 
- * Screen-based orchestrator for car rental booking.
- * Follows the same plugin architecture as FlightBookingFlow and HotelBookingFlow.
+ * Screen-based orchestrator for car rental search + deal redirect.
  * 
  * Screens:
  * 1. search - Car search with pickup/return location, dates, times, driver age
  * 2. loading - Animated loading while searching
- * 3. results - Car list with filters and sorting
- * 4. checkout - Combined: car details, protection, extras, driver, payment
+ * 3. results - Car list with filters, detail sheet, and "Book on [Provider]" redirect
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -17,16 +15,13 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/styles';
 import { useCarStore } from '../../stores/useCarStore';
-import { useBookingStore } from '../../stores/useBookingStore';
 import { Car } from '../../types/car.types';
 
 // Import screens
 import CarSearchScreen from './screens/CarSearchScreen';
 import CarSearchLoadingScreen from './screens/CarSearchLoadingScreen';
 import CarResultsScreen from './screens/CarResultsScreen';
-import CarCheckoutScreen from './screens/CarCheckoutScreen';
-
-type CarScreen = 'search' | 'loading' | 'results' | 'checkout';
+type CarScreen = 'search' | 'loading' | 'results';
 
 interface CarBookingFlowProps {
   visible: boolean;
@@ -39,14 +34,6 @@ export default function CarBookingFlow({ visible, onClose }: CarBookingFlowProps
   const [selectedCar, setSelectedCar] = useState<Car | null>(null);
   
   const carStore = useCarStore();
-  const bookingStore = useBookingStore();
-
-  // Reset stores on mount
-  useEffect(() => {
-    if (visible) {
-      bookingStore.startBookingSession('car');
-    }
-  }, [visible]);
 
   // Navigation helpers
   const navigateTo = useCallback((screen: CarScreen) => {
@@ -68,12 +55,11 @@ export default function CarBookingFlow({ visible, onClose }: CarBookingFlowProps
   const handleClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     carStore.reset();
-    bookingStore.endBookingSession();
     setCurrentScreen('search');
     setScreenHistory(['search']);
     setSelectedCar(null);
     onClose();
-  }, [onClose, carStore, bookingStore]);
+  }, [onClose, carStore]);
 
   // Screen handlers
   const handleSearch = useCallback(() => {
@@ -89,27 +75,13 @@ export default function CarBookingFlow({ visible, onClose }: CarBookingFlowProps
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedCar(car);
     carStore.selectCar(car);
-    navigateTo('checkout');
-  }, [navigateTo, carStore]);
+    // Car detail sheet opens from results screen with "Book on Provider" button
+  }, [carStore]);
 
   const handleBackFromResults = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     goBack();
   }, [goBack]);
-
-  const handleBackFromCheckout = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    goBack();
-  }, [goBack]);
-
-  const handleConfirmBooking = useCallback(() => {
-    // Generate booking reference
-    const reference = `CAR${Date.now().toString(36).toUpperCase()}`;
-    carStore.setBookingReference(reference);
-    carStore.confirmBooking();
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    handleClose();
-  }, [carStore, handleClose]);
 
   // Reset screen when modal opens
   useEffect(() => {
@@ -168,23 +140,6 @@ export default function CarBookingFlow({ visible, onClose }: CarBookingFlowProps
             />
           </Animated.View>
         );
-
-      case 'checkout':
-        return selectedCar ? (
-          <Animated.View 
-            key="checkout"
-            entering={FadeIn.duration(300)}
-            exiting={FadeOut.duration(200)}
-            style={styles.screen}
-          >
-            <CarCheckoutScreen
-              car={selectedCar}
-              onConfirm={handleConfirmBooking}
-              onBack={handleBackFromCheckout}
-              onClose={handleClose}
-            />
-          </Animated.View>
-        ) : null;
 
       default:
         return null;

@@ -9,6 +9,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Location, Calendar, TickCircle } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { StepComponentProps } from '../../types/import-flow.types';
 
 // Mock trip data

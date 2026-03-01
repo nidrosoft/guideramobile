@@ -34,6 +34,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { usePlanningStore } from '../../../stores/usePlanningStore';
 import { POPULAR_DESTINATIONS } from '../../../config/planning.config';
 import { Location as LocationType } from '@/features/booking/types/booking.types';
@@ -52,6 +53,7 @@ export default function DestinationStep({
   onClose,
 }: DestinationStepProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const { quickTripData, setDestination, isDestinationValid } = usePlanningStore();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -103,7 +105,7 @@ export default function DestinationStep({
   const isSelected = (id: string) => quickTripData.destination?.id === id;
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -115,8 +117,8 @@ export default function DestinationStep({
       >
         {/* Header */}
         <Animated.View entering={FadeInDown.duration(400)}>
-          <Text style={styles.title}>Where do you want to go?</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: tc.textPrimary }]}>Where do you want to go?</Text>
+          <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
             Pick a destination and we'll plan the perfect trip for you
           </Text>
         </Animated.View>
@@ -124,13 +126,13 @@ export default function DestinationStep({
         {/* Search Bar */}
         <Animated.View 
           entering={FadeInDown.duration(400).delay(100)}
-          style={styles.searchContainer}
+          style={[styles.searchContainer, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
         >
-          <SearchNormal1 size={20} color={colors.textSecondary} />
+          <SearchNormal1 size={20} color={tc.textSecondary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: tc.textPrimary }]}
             placeholder="Search destinations..."
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={tc.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -169,7 +171,7 @@ export default function DestinationStep({
           entering={FadeInDown.duration(400).delay(200)}
           style={styles.section}
         >
-          <Text style={styles.sectionTitle}>Popular Destinations</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Popular Destinations</Text>
           
           <View style={styles.destinationsGrid}>
             {filteredDestinations.map((destination, index) => (
@@ -180,7 +182,8 @@ export default function DestinationStep({
                 <TouchableOpacity
                   style={[
                     styles.destinationCard,
-                    isSelected(destination.id) && styles.destinationCardSelected,
+                    { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                    isSelected(destination.id) && { borderColor: tc.primary, backgroundColor: tc.primary + '08' },
                   ]}
                   onPress={() => handleSelectDestination(destination)}
                   activeOpacity={0.7}
@@ -189,16 +192,17 @@ export default function DestinationStep({
                   <View style={styles.destinationInfo}>
                     <Text style={[
                       styles.destinationName,
-                      isSelected(destination.id) && styles.destinationNameSelected,
+                      { color: tc.textPrimary },
+                      isSelected(destination.id) && { color: tc.primary },
                     ]}>
                       {destination.name}
                     </Text>
-                    <Text style={styles.destinationCountry}>
+                    <Text style={[styles.destinationCountry, { color: tc.textSecondary }]}>
                       {destination.country}
                     </Text>
                   </View>
                   {isSelected(destination.id) && (
-                    <TickCircle size={20} color={colors.primary} variant="Bold" />
+                    <TickCircle size={20} color={tc.primary} variant="Bold" />
                   )}
                 </TouchableOpacity>
               </Animated.View>
@@ -210,7 +214,7 @@ export default function DestinationStep({
       {/* Continue Button */}
       <Animated.View 
         entering={FadeInUp.duration(400).delay(300)}
-        style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}
+        style={[styles.footer, { paddingBottom: insets.bottom + spacing.md, backgroundColor: tc.background, borderTopColor: tc.borderSubtle }]}
       >
         <TouchableOpacity
           style={[
@@ -247,7 +251,6 @@ export default function DestinationStep({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -272,19 +275,16 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
     borderRadius: borderRadius.full,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.gray200,
   },
   searchInput: {
     flex: 1,
     marginLeft: spacing.sm,
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
     paddingVertical: spacing.xs,
   },
   
@@ -333,16 +333,9 @@ const styles = StyleSheet.create({
   destinationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.xl,
+    borderRadius: 20,
     padding: spacing.md,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    ...shadows.sm,
-  },
-  destinationCardSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '08',
+    borderWidth: 1,
   },
   destinationEmoji: {
     fontSize: 32,
@@ -371,11 +364,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.background,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
   },
   continueButton: {
     borderRadius: borderRadius.xl,

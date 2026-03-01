@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
   },
   dateBox: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     padding: spacing.md,
     borderRadius: borderRadius.lg,
     borderWidth: 2,
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.gray100,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
   },
   confirmButton: {
     backgroundColor: colors.primary,

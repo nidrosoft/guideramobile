@@ -24,6 +24,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { FlowHeader } from '@/features/booking/components/shared';
 import { useAdvancedPlanningStore } from '../../stores/useAdvancedPlanningStore';
 import { ADVANCED_TRIP_STEPS } from '../../config/planning.config';
@@ -70,6 +71,7 @@ export default function AdvancedTripFlow({
   onClose,
   onComplete,
 }: AdvancedTripFlowProps) {
+  const { colors: tc } = useTheme();
   const {
     currentStepIndex,
     setCurrentStep,
@@ -214,7 +216,7 @@ export default function AdvancedTripFlow({
       onRequestClose={handleClose}
     >
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      <Animated.View style={[styles.container, containerStyle]}>
+      <Animated.View style={[styles.container, containerStyle, { backgroundColor: tc.background }]}>
         {/* Header with background image */}
         {showHeader && (
           <FlowHeader
@@ -241,7 +243,7 @@ export default function AdvancedTripFlow({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    // backgroundColor set dynamically via useTheme()
   },
   content: {
     flex: 1,

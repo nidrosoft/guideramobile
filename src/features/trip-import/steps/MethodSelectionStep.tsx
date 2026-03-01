@@ -9,6 +9,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Sms, Link2, DocumentText, Scan } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { StepComponentProps } from '../types/import-flow.types';
 import OptionCard from '../components/shared/OptionCard';
 

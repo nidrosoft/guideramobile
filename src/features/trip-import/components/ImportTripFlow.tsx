@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { ArrowLeft } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import * as Haptics from 'expo-haptics';
 import {
   ImportFlowProps,
@@ -51,6 +52,7 @@ import ScanResultStep from '../steps/scan/ScanResultStep';
 import ScanSuccessStep from '../steps/scan/ScanSuccessStep';
 
 export default function ImportTripFlow({ visible, onClose, onComplete }: ImportFlowProps) {
+  const { colors: tc } = useTheme();
   const [flowState, setFlowState] = useState<ImportFlowState>({
     currentStep: 'method-selection',
     stepHistory: [],
@@ -354,20 +356,21 @@ export default function ImportTripFlow({ visible, onClose, onComplete }: ImportF
       >
         <View style={[
           styles.bottomSheet,
+          { backgroundColor: tc.bgModal },
           flowState.currentStep === 'method-selection' && styles.bottomSheetShort
         ]} onStartShouldSetResponder={() => true}>
           {/* Handle Bar */}
           <View style={styles.handleContainer}>
-            <View style={styles.handle} />
+            <View style={[styles.handle, { backgroundColor: tc.borderSubtle }]} />
           </View>
 
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, { borderBottomColor: tc.borderSubtle }]}>
             {/* Back Button (Left) */}
             <View style={styles.headerLeft}>
               {flowState.stepHistory.length > 0 ? (
                 <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                  <ArrowLeft size={24} color={colors.textPrimary} />
+                  <ArrowLeft size={24} color={tc.textPrimary} />
                 </TouchableOpacity>
               ) : (
                 <View style={styles.backButtonPlaceholder} />
@@ -375,12 +378,12 @@ export default function ImportTripFlow({ visible, onClose, onComplete }: ImportF
             </View>
             
             {/* Title (Center) */}
-            <Text style={styles.title}>{getTitle()}</Text>
+            <Text style={[styles.title, { color: tc.textPrimary }]}>{getTitle()}</Text>
             
             {/* Close Button (Right) */}
             <View style={styles.headerRight}>
-              <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-                <Text style={styles.closeIcon}>✕</Text>
+              <TouchableOpacity onPress={handleClose} style={[styles.closeButton, { backgroundColor: tc.bgElevated }]}>
+                <Text style={[styles.closeIcon, { color: tc.textSecondary }]}>✕</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -413,7 +416,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.white,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingHorizontal: spacing.md,
@@ -431,7 +433,6 @@ const styles = StyleSheet.create({
   handle: {
     width: 40,
     height: 4,
-    backgroundColor: colors.gray300,
     borderRadius: 2,
   },
   header: {
@@ -440,7 +441,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
   },
   headerLeft: {
     width: 40,
@@ -463,7 +463,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     textAlign: 'center',
     flex: 1,
   },
@@ -471,13 +470,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.gray100,
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeIcon: {
     fontSize: 18,
-    color: colors.textSecondary,
     fontWeight: '600',
   },
   stepContent: {

@@ -24,6 +24,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, Heart, Location, Building, Airplane, Activity, PercentageSquare, Map1 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { savedService, SavedItem, SavedItemType } from '@/services/saved.service';
 
@@ -60,6 +61,7 @@ const TYPE_COLORS: Record<SavedItemType, string> = {
 
 export default function SavedScreen() {
   const router = useRouter();
+  const { colors: tc } = useTheme();
   const { user } = useAuth();
   const [activeFilter, setActiveFilter] = useState<SavedItemType | 'all'>('all');
   const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
@@ -157,15 +159,15 @@ export default function SavedScreen() {
   };
   
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: tc.background }]}>
+      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Saved Items</Text>
+        <Text style={[styles.title, { color: tc.textPrimary }]}>Saved Items</Text>
         <View style={styles.placeholder} />
       </View>
       
@@ -270,7 +272,7 @@ function SavedItemCard({ item, onPress, onRemove }: SavedItemCardProps) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   header: {
     flexDirection: 'row',
@@ -278,7 +280,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   backButton: {
     width: 40,
@@ -295,10 +297,10 @@ const styles = StyleSheet.create({
     width: 40,
   },
   filterWrapper: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   filterContent: {
     paddingHorizontal: spacing.lg,
@@ -362,8 +364,8 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -393,7 +395,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',

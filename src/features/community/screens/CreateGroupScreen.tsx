@@ -36,6 +36,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { CommunityType, CommunityPrivacy } from '../types/community.types';
 import { COMMUNITY_TAGS } from '../config/community.config';
 
@@ -72,6 +73,7 @@ const POPULAR_TAGS = [
 export default function CreateGroupScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: tc, isDark } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   
@@ -172,9 +174,9 @@ export default function CreateGroupScreen() {
         {formData.coverImage ? (
           <Image source={{ uri: formData.coverImage }} style={styles.coverImage} />
         ) : (
-          <View style={styles.coverImagePlaceholder}>
-            <Gallery size={32} color={colors.gray400} />
-            <Text style={styles.coverImageText}>Add Cover Photo</Text>
+          <View style={[styles.coverImagePlaceholder, { backgroundColor: tc.bgCard }]}>
+            <Gallery size={32} color={tc.textTertiary} />
+            <Text style={[styles.coverImageText, { color: tc.textSecondary }]}>Add Cover Photo</Text>
           </View>
         )}
         <View style={styles.coverImageOverlay}>
@@ -191,8 +193,8 @@ export default function CreateGroupScreen() {
           {formData.avatar ? (
             <Image source={{ uri: formData.avatar }} style={styles.avatar} />
           ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Camera size={24} color={colors.gray400} />
+            <View style={[styles.avatarPlaceholder, { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle }]}>
+              <Camera size={24} color={tc.textTertiary} />
             </View>
           )}
           <View style={styles.avatarBadge}>
@@ -203,25 +205,25 @@ export default function CreateGroupScreen() {
       
       {/* Group Name */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Group Name *</Text>
+        <Text style={[styles.label, { color: tc.textPrimary }]}>Group Name *</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
           placeholder="e.g., Tokyo Travelers 2025"
-          placeholderTextColor={colors.gray400}
+          placeholderTextColor={tc.textTertiary}
           value={formData.name}
           onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
           maxLength={50}
         />
-        <Text style={styles.charCount}>{formData.name.length}/50</Text>
+        <Text style={[styles.charCount, { color: tc.textTertiary }]}>{formData.name.length}/50</Text>
       </View>
       
       {/* Description */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Description</Text>
+        <Text style={[styles.label, { color: tc.textPrimary }]}>Description</Text>
         <TextInput
-          style={[styles.input, styles.textArea]}
+          style={[styles.input, styles.textArea, { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
           placeholder="Tell people what your group is about..."
-          placeholderTextColor={colors.gray400}
+          placeholderTextColor={tc.textTertiary}
           value={formData.description}
           onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
           multiline
@@ -229,18 +231,18 @@ export default function CreateGroupScreen() {
           maxLength={500}
           textAlignVertical="top"
         />
-        <Text style={styles.charCount}>{formData.description.length}/500</Text>
+        <Text style={[styles.charCount, { color: tc.textTertiary }]}>{formData.description.length}/500</Text>
       </View>
       
       {/* Destination (for destination type) */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Destination (Optional)</Text>
-        <View style={styles.inputWithIcon}>
-          <Location size={20} color={colors.gray400} />
+        <Text style={[styles.label, { color: tc.textPrimary }]}>Destination (Optional)</Text>
+        <View style={[styles.inputWithIcon, { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle }]}>
+          <Location size={20} color={tc.textTertiary} />
           <TextInput
-            style={styles.inputInner}
+            style={[styles.inputInner, { color: tc.textPrimary }]}
             placeholder="e.g., Tokyo, Japan"
-            placeholderTextColor={colors.gray400}
+            placeholderTextColor={tc.textTertiary}
             value={formData.destination}
             onChangeText={(text) => setFormData(prev => ({ ...prev, destination: text }))}
           />
@@ -253,8 +255,8 @@ export default function CreateGroupScreen() {
     <>
       {/* Group Type */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Group Type</Text>
-        <Text style={styles.sublabel}>What kind of group is this?</Text>
+        <Text style={[styles.label, { color: tc.textPrimary }]}>Group Type</Text>
+        <Text style={[styles.sublabel, { color: tc.textSecondary }]}>What kind of group is this?</Text>
         
         {GROUP_TYPES.map(type => {
           const Icon = type.icon;
@@ -262,23 +264,23 @@ export default function CreateGroupScreen() {
           return (
             <TouchableOpacity
               key={type.id}
-              style={[styles.optionCard, isSelected && styles.optionCardSelected]}
+              style={[styles.optionCard, { backgroundColor: tc.bgCard, borderColor: isSelected ? tc.primary : tc.borderSubtle }]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setFormData(prev => ({ ...prev, type: type.id }));
               }}
             >
-              <View style={[styles.optionIcon, isSelected && styles.optionIconSelected]}>
-                <Icon size={20} color={isSelected ? colors.white : colors.gray500} />
+              <View style={[styles.optionIcon, { backgroundColor: isSelected ? tc.primary : tc.bgElevated }]}>
+                <Icon size={20} color={isSelected ? '#FFFFFF' : tc.textSecondary} />
               </View>
               <View style={styles.optionContent}>
-                <Text style={[styles.optionTitle, isSelected && styles.optionTitleSelected]}>
+                <Text style={[styles.optionTitle, { color: isSelected ? tc.primary : tc.textPrimary }]}>
                   {type.label}
                 </Text>
-                <Text style={styles.optionDescription}>{type.description}</Text>
+                <Text style={[styles.optionDescription, { color: tc.textSecondary }]}>{type.description}</Text>
               </View>
               {isSelected && (
-                <TickCircle size={24} color={colors.primary} variant="Bold" />
+                <TickCircle size={24} color={tc.primary} variant="Bold" />
               )}
             </TouchableOpacity>
           );
@@ -287,8 +289,8 @@ export default function CreateGroupScreen() {
       
       {/* Privacy */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Privacy</Text>
-        <Text style={styles.sublabel}>Who can find and join your group?</Text>
+        <Text style={[styles.label, { color: tc.textPrimary }]}>Privacy</Text>
+        <Text style={[styles.sublabel, { color: tc.textSecondary }]}>Who can find and join your group?</Text>
         
         {PRIVACY_OPTIONS.map(option => {
           const Icon = option.icon;
@@ -296,23 +298,23 @@ export default function CreateGroupScreen() {
           return (
             <TouchableOpacity
               key={option.id}
-              style={[styles.optionCard, isSelected && styles.optionCardSelected]}
+              style={[styles.optionCard, { backgroundColor: tc.bgCard, borderColor: isSelected ? tc.primary : tc.borderSubtle }]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setFormData(prev => ({ ...prev, privacy: option.id }));
               }}
             >
-              <View style={[styles.optionIcon, isSelected && styles.optionIconSelected]}>
-                <Icon size={20} color={isSelected ? colors.white : colors.gray500} />
+              <View style={[styles.optionIcon, { backgroundColor: isSelected ? tc.primary : tc.bgElevated }]}>
+                <Icon size={20} color={isSelected ? '#FFFFFF' : tc.textSecondary} />
               </View>
               <View style={styles.optionContent}>
-                <Text style={[styles.optionTitle, isSelected && styles.optionTitleSelected]}>
+                <Text style={[styles.optionTitle, { color: isSelected ? tc.primary : tc.textPrimary }]}>
                   {option.label}
                 </Text>
-                <Text style={styles.optionDescription}>{option.description}</Text>
+                <Text style={[styles.optionDescription, { color: tc.textSecondary }]}>{option.description}</Text>
               </View>
               {isSelected && (
-                <TickCircle size={24} color={colors.primary} variant="Bold" />
+                <TickCircle size={24} color={tc.primary} variant="Bold" />
               )}
             </TouchableOpacity>
           );
@@ -325,8 +327,8 @@ export default function CreateGroupScreen() {
     <>
       {/* Tags */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Tags</Text>
-        <Text style={styles.sublabel}>Add up to 5 tags to help people find your group</Text>
+        <Text style={[styles.label, { color: tc.textPrimary }]}>Tags</Text>
+        <Text style={[styles.sublabel, { color: tc.textSecondary }]}>Add up to 5 tags to help people find your group</Text>
         
         <View style={styles.tagsContainer}>
           {POPULAR_TAGS.map(tag => {
@@ -334,48 +336,48 @@ export default function CreateGroupScreen() {
             return (
               <TouchableOpacity
                 key={tag}
-                style={[styles.tag, isSelected && styles.tagSelected]}
+                style={[styles.tag, { backgroundColor: isSelected ? tc.primary : tc.bgCard, borderColor: isSelected ? tc.primary : tc.borderSubtle }]}
                 onPress={() => toggleTag(tag)}
               >
-                <Text style={[styles.tagText, isSelected && styles.tagTextSelected]}>
+                <Text style={[styles.tagText, { color: isSelected ? '#FFFFFF' : tc.textPrimary }]}>
                   {tag}
                 </Text>
                 {isSelected && (
-                  <CloseCircle size={14} color={colors.white} variant="Bold" />
+                  <CloseCircle size={14} color="#FFFFFF" variant="Bold" />
                 )}
               </TouchableOpacity>
             );
           })}
         </View>
         
-        <Text style={styles.tagCount}>
+        <Text style={[styles.tagCount, { color: tc.textTertiary }]}>
           {formData.tags.length}/5 tags selected
         </Text>
       </View>
       
       {/* Preview */}
       <View style={styles.previewSection}>
-        <Text style={styles.label}>Preview</Text>
-        <View style={styles.previewCard}>
+        <Text style={[styles.label, { color: tc.textPrimary }]}>Preview</Text>
+        <View style={[styles.previewCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
           {formData.coverImage ? (
             <Image source={{ uri: formData.coverImage }} style={styles.previewCover} />
           ) : (
-            <View style={[styles.previewCover, styles.previewCoverPlaceholder]} />
+            <View style={[styles.previewCover, styles.previewCoverPlaceholder, { backgroundColor: tc.bgCard }]} />
           )}
           <View style={styles.previewContent}>
             <View style={styles.previewHeader}>
               {formData.avatar ? (
                 <Image source={{ uri: formData.avatar }} style={styles.previewAvatar} />
               ) : (
-                <View style={[styles.previewAvatar, styles.previewAvatarPlaceholder]}>
-                  <People size={16} color={colors.gray400} />
+                <View style={[styles.previewAvatar, styles.previewAvatarPlaceholder, { backgroundColor: tc.bgCard }]}>
+                  <People size={16} color={tc.textTertiary} />
                 </View>
               )}
               <View style={styles.previewInfo}>
-                <Text style={styles.previewName} numberOfLines={1}>
+                <Text style={[styles.previewName, { color: tc.textPrimary }]} numberOfLines={1}>
                   {formData.name || 'Group Name'}
                 </Text>
-                <Text style={styles.previewMeta}>
+                <Text style={[styles.previewMeta, { color: tc.textSecondary }]}>
                   {formData.privacy === 'public' ? '🌐 Public' : '🔒 Private'} • 1 member
                 </Text>
               </View>
@@ -383,8 +385,8 @@ export default function CreateGroupScreen() {
             {formData.tags.length > 0 && (
               <View style={styles.previewTags}>
                 {formData.tags.slice(0, 3).map(tag => (
-                  <View key={tag} style={styles.previewTag}>
-                    <Text style={styles.previewTagText}>{tag}</Text>
+                  <View key={tag} style={[styles.previewTag, { backgroundColor: tc.primary + '15' }]}>
+                    <Text style={[styles.previewTagText, { color: tc.primary }]}>{tag}</Text>
                   </View>
                 ))}
               </View>
@@ -397,26 +399,26 @@ export default function CreateGroupScreen() {
   
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: tc.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Group</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Create Group</Text>
         <View style={styles.headerRight}>
-          <Text style={styles.stepIndicator}>Step {currentStep}/3</Text>
+          <Text style={[styles.stepIndicator, { color: tc.textSecondary }]}>Step {currentStep}/3</Text>
         </View>
       </View>
       
       {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${(currentStep / 3) * 100}%` }]} />
+      <View style={[styles.progressContainer, { backgroundColor: tc.bgElevated }]}>
+        <View style={[styles.progressTrack, { backgroundColor: tc.borderSubtle }]}>
+          <View style={[styles.progressFill, { width: `${(currentStep / 3) * 100}%`, backgroundColor: tc.primary }]} />
         </View>
       </View>
       
@@ -433,9 +435,9 @@ export default function CreateGroupScreen() {
       </ScrollView>
       
       {/* Footer */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom || spacing.md }]}>
+      <View style={[styles.footer, { paddingBottom: insets.bottom || spacing.md, backgroundColor: tc.bgElevated, borderTopColor: tc.borderSubtle }]}>
         <TouchableOpacity
-          style={[styles.nextButton, isSubmitting && styles.nextButtonDisabled]}
+          style={[styles.nextButton, { backgroundColor: tc.primary }, isSubmitting && styles.nextButtonDisabled]}
           onPress={handleNext}
           disabled={isSubmitting}
         >
@@ -459,9 +461,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -485,11 +487,11 @@ const styles = StyleSheet.create({
   progressContainer: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   progressTrack: {
     height: 4,
-    backgroundColor: colors.gray200,
+    backgroundColor: colors.borderSubtle,
     borderRadius: 2,
   },
   progressFill: {
@@ -519,7 +521,7 @@ const styles = StyleSheet.create({
   coverImagePlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -559,7 +561,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.gray200,
+    backgroundColor: colors.borderSubtle,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 4,
@@ -594,14 +596,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   input: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: typography.fontSize.base,
     color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   textArea: {
     height: 100,
@@ -616,11 +618,11 @@ const styles = StyleSheet.create({
   inputWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     gap: spacing.sm,
   },
   inputInner: {
@@ -633,12 +635,12 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     marginBottom: spacing.sm,
     borderWidth: 2,
-    borderColor: colors.gray100,
+    borderColor: colors.borderSubtle,
   },
   optionCardSelected: {
     borderColor: colors.primary,
@@ -648,7 +650,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -681,7 +683,7 @@ const styles = StyleSheet.create({
   tag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
@@ -707,9 +709,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   previewCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -721,7 +725,7 @@ const styles = StyleSheet.create({
     height: 100,
   },
   previewCoverPlaceholder: {
-    backgroundColor: colors.gray200,
+    backgroundColor: colors.borderSubtle,
   },
   previewContent: {
     padding: spacing.md,
@@ -736,7 +740,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   previewAvatarPlaceholder: {
-    backgroundColor: colors.gray200,
+    backgroundColor: colors.borderSubtle,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -759,7 +763,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   previewTag: {
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: borderRadius.full,
@@ -771,9 +775,9 @@ const styles = StyleSheet.create({
   // Footer
   footer: {
     padding: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
   },
   nextButton: {
     backgroundColor: colors.primary,

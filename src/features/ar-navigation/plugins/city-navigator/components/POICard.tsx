@@ -16,6 +16,7 @@ import {
   ArrowRight2,
 } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { POI } from '../types/cityNavigator.types';
 import { getCategoryColor } from '../data/mockPOIs';
 
@@ -171,7 +172,7 @@ function formatNumber(num: number): string {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderRadius: 20,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -284,7 +285,7 @@ const styles = StyleSheet.create({
   compactContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderRadius: 16,
     padding: spacing.sm,
     shadowColor: '#000',

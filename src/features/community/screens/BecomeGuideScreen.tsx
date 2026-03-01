@@ -145,46 +145,46 @@ export default function BecomeGuideScreen() {
 
   const renderStep1 = () => (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Where are you based?</Text>
-      <Text style={styles.stepSubtitle}>Tell travelers which city you call home</Text>
+      <Text style={[styles.stepTitle, { color: themeColors.textPrimary }]}>Where are you based?</Text>
+      <Text style={[styles.stepSubtitle, { color: themeColors.textSecondary }]}>Tell travelers which city you call home</Text>
 
-      <Text style={styles.inputLabel}>City *</Text>
+      <Text style={[styles.inputLabel, { color: themeColors.textSecondary }]}>City *</Text>
       <TextInput
-        style={styles.textInput}
+        style={[styles.textInput, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle, color: themeColors.textPrimary }]}
         placeholder="e.g., Medellín"
-        placeholderTextColor={colors.textTertiary}
+        placeholderTextColor={themeColors.textSecondary}
         value={city}
         onChangeText={setCity}
       />
 
-      <Text style={styles.inputLabel}>Region (optional)</Text>
+      <Text style={[styles.inputLabel, { color: themeColors.textSecondary }]}>Region (optional)</Text>
       <TextInput
-        style={styles.textInput}
+        style={[styles.textInput, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle, color: themeColors.textPrimary }]}
         placeholder="e.g., Antioquia"
-        placeholderTextColor={colors.textTertiary}
+        placeholderTextColor={themeColors.textSecondary}
         value={region}
         onChangeText={setRegion}
       />
 
-      <Text style={styles.inputLabel}>Country *</Text>
+      <Text style={[styles.inputLabel, { color: themeColors.textSecondary }]}>Country *</Text>
       <TextInput
-        style={styles.textInput}
+        style={[styles.textInput, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle, color: themeColors.textPrimary }]}
         placeholder="e.g., Colombia"
-        placeholderTextColor={colors.textTertiary}
+        placeholderTextColor={themeColors.textSecondary}
         value={country}
         onChangeText={setCountry}
       />
 
-      <Text style={styles.inputLabel}>Languages Spoken *</Text>
-      <Text style={styles.inputHint}>Select all languages you speak</Text>
+      <Text style={[styles.inputLabel, { color: themeColors.textSecondary }]}>Languages Spoken *</Text>
+      <Text style={[styles.inputHint, { color: themeColors.textSecondary }]}>Select all languages you speak</Text>
       <View style={styles.chipGrid}>
         {LANGUAGES.map(lang => (
           <TouchableOpacity
             key={lang}
-            style={[styles.chip, selectedLanguages.includes(lang) && styles.chipSelected]}
+            style={[styles.chip, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle }, selectedLanguages.includes(lang) && styles.chipSelected]}
             onPress={() => toggleLanguage(lang)}
           >
-            <Text style={[styles.chipText, selectedLanguages.includes(lang) && styles.chipTextSelected]}>
+            <Text style={[styles.chipText, { color: themeColors.textPrimary }, selectedLanguages.includes(lang) && styles.chipTextSelected]}>
               {lang}
             </Text>
           </TouchableOpacity>
@@ -195,18 +195,18 @@ export default function BecomeGuideScreen() {
 
   const renderStep2 = () => (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>What's your expertise?</Text>
-      <Text style={styles.stepSubtitle}>Select areas where you can help travelers</Text>
+      <Text style={[styles.stepTitle, { color: themeColors.textPrimary }]}>What's your expertise?</Text>
+      <Text style={[styles.stepSubtitle, { color: themeColors.textSecondary }]}>Select areas where you can help travelers</Text>
 
       <View style={styles.expertiseGrid}>
         {EXPERTISE_OPTIONS.map(opt => (
           <TouchableOpacity
             key={opt.id}
-            style={[styles.expertiseCard, selectedExpertise.includes(opt.id) && styles.expertiseCardSelected]}
+            style={[styles.expertiseCard, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle }, selectedExpertise.includes(opt.id) && styles.expertiseCardSelected]}
             onPress={() => toggleExpertise(opt.id)}
           >
             <Text style={styles.expertiseEmoji}>{opt.emoji}</Text>
-            <Text style={[styles.expertiseLabel, selectedExpertise.includes(opt.id) && styles.expertiseLabelSelected]}>
+            <Text style={[styles.expertiseLabel, { color: themeColors.textPrimary }, selectedExpertise.includes(opt.id) && styles.expertiseLabelSelected]}>
               {opt.label}
             </Text>
             {selectedExpertise.includes(opt.id) && (
@@ -218,12 +218,12 @@ export default function BecomeGuideScreen() {
         ))}
       </View>
 
-      <Text style={[styles.inputLabel, { marginTop: 20 }]}>Short Bio *</Text>
-      <Text style={styles.inputHint}>Tell travelers who you are and how you help (min 20 chars)</Text>
+      <Text style={[styles.inputLabel, { marginTop: 20, color: themeColors.textSecondary }]}>Short Bio *</Text>
+      <Text style={[styles.inputHint, { color: themeColors.textSecondary }]}>Tell travelers who you are and how you help (min 20 chars)</Text>
       <TextInput
-        style={[styles.textInput, styles.textArea]}
+        style={[styles.textInput, styles.textArea, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle, color: themeColors.textPrimary }]}
         placeholder="Born and raised in Medellín. I've been showing visitors the real side of the city for 5 years..."
-        placeholderTextColor={colors.textTertiary}
+        placeholderTextColor={themeColors.textSecondary}
         value={bio}
         onChangeText={setBio}
         multiline
@@ -236,20 +236,20 @@ export default function BecomeGuideScreen() {
 
   const renderStep3 = () => (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Optional Credentials</Text>
-      <Text style={styles.stepSubtitle}>Upload any certifications, licenses, or credentials that build trust</Text>
+      <Text style={[styles.stepTitle, { color: themeColors.textPrimary }]}>Optional Credentials</Text>
+      <Text style={[styles.stepSubtitle, { color: themeColors.textSecondary }]}>Upload any certifications, licenses, or credentials that build trust</Text>
 
-      <TouchableOpacity style={styles.uploadArea}>
-        <DocumentUpload size={32} color={colors.primary} />
-        <Text style={styles.uploadText}>Tap to upload credentials</Text>
-        <Text style={styles.uploadHint}>Tourism certificates, business licenses, etc.</Text>
+      <TouchableOpacity style={[styles.uploadArea, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle }]}>
+        <DocumentUpload size={32} color={themeColors.primary} />
+        <Text style={[styles.uploadText, { color: themeColors.textPrimary }]}>Tap to upload credentials</Text>
+        <Text style={[styles.uploadHint, { color: themeColors.textSecondary }]}>Tourism certificates, business licenses, etc.</Text>
       </TouchableOpacity>
 
-      <Text style={[styles.inputLabel, { marginTop: 24 }]}>Profile Photo</Text>
-      <Text style={styles.inputHint}>A clear, friendly photo helps travelers trust you</Text>
+      <Text style={[styles.inputLabel, { marginTop: 24, color: themeColors.textSecondary }]}>Profile Photo</Text>
+      <Text style={[styles.inputHint, { color: themeColors.textSecondary }]}>A clear, friendly photo helps travelers trust you</Text>
 
-      <TouchableOpacity style={styles.photoUpload}>
-        <Camera size={32} color={colors.primary} />
+      <TouchableOpacity style={[styles.photoUpload, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle }]}>
+        <Camera size={32} color={themeColors.primary} />
         <Text style={styles.uploadText}>Upload Profile Photo</Text>
       </TouchableOpacity>
 
@@ -263,8 +263,8 @@ export default function BecomeGuideScreen() {
 
   const renderStep4 = () => (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Verify Your Identity</Text>
-      <Text style={styles.stepSubtitle}>
+      <Text style={[styles.stepTitle, { color: themeColors.textPrimary }]}>Verify Your Identity</Text>
+      <Text style={[styles.stepSubtitle, { color: themeColors.textSecondary }]}>
         This protects both you and the travelers you'll help. We use secure identity verification.
       </Text>
 
@@ -420,13 +420,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.gray200,
+    backgroundColor: colors.borderSubtle,
   },
   progressDotActive: {
     backgroundColor: colors.primary,
@@ -493,13 +493,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   textInput: {
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     borderRadius: 12,
     padding: 14,
     fontSize: 15,
     color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     marginBottom: 16,
   },
   textArea: {
@@ -522,9 +522,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   chipSelected: {
     backgroundColor: colors.primary + '15',
@@ -549,9 +549,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 14,
     borderRadius: 14,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     borderWidth: 1.5,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   expertiseCardSelected: {
     backgroundColor: colors.primary + '08',
@@ -579,11 +579,11 @@ const styles = StyleSheet.create({
   uploadArea: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     borderRadius: 16,
     padding: 30,
     borderWidth: 2,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     borderStyle: 'dashed',
   },
   uploadText: {
@@ -600,11 +600,11 @@ const styles = StyleSheet.create({
   photoUpload: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     borderRadius: 16,
     padding: 24,
     borderWidth: 2,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     borderStyle: 'dashed',
     marginTop: 8,
   },
@@ -622,10 +622,12 @@ const styles = StyleSheet.create({
 
   // Verification
   verificationCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
@@ -745,10 +747,12 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     alignSelf: 'stretch',
-    backgroundColor: colors.white,
-    borderRadius: 16,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -761,7 +765,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   summaryLabel: {
     fontSize: 13,
@@ -801,11 +805,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingHorizontal: 20,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
   },
   nextButton: {
     flexDirection: 'row',
@@ -817,7 +821,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   nextButtonDisabled: {
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
   },
   nextButtonText: {
     fontSize: 16,

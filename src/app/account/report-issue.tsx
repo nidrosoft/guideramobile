@@ -36,6 +36,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
 
@@ -64,6 +65,7 @@ const PRIORITY_LEVELS = [
 export default function ReportIssueScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const { user, profile } = useAuth();
   const [step, setStep] = useState<'category' | 'details' | 'success'>('category');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -366,13 +368,13 @@ export default function ReportIssueScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Report an Issue</Text>
         <View style={styles.headerSpacer} />
@@ -408,9 +410,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -455,11 +457,11 @@ const styles = StyleSheet.create({
   categoryCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray100,
+    borderColor: colors.borderSubtle,
   },
   categoryIcon: {
     width: 48,
@@ -517,11 +519,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.md,
     paddingVertical: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   priorityDot: {
     width: 8,
@@ -534,24 +536,24 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   titleInput: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: typography.fontSize.base,
     color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   descriptionInput: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: typography.fontSize.base,
     color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     minHeight: 120,
   },
   charCount: {
@@ -582,7 +584,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -6,
     right: -6,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 10,
   },
   addAttachmentButton: {

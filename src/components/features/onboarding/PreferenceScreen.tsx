@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   continueButtonDisabled: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
     borderColor: colors.gray300,
   },

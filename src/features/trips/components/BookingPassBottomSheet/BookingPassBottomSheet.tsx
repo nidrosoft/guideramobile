@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import { Airplane, Wallet3, CloseCircle, DocumentDownload } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { FlightDetails } from '@/features/trips/types/trip.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -177,7 +178,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bottomSheet: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: SCREEN_HEIGHT * 0.9,
@@ -202,7 +203,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl,
   },
   passCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderRadius: 20,
     padding: spacing.xl,
     shadowColor: colors.black,

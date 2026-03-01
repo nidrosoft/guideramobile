@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'flex-start',

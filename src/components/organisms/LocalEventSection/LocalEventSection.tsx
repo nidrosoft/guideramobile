@@ -8,6 +8,7 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ScrollView, Alert } from 'react-native';
 import { useState } from 'react';
 import { colors, typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Clock, Location, Calendar as CalendarIcon, InfoCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 
@@ -48,6 +49,7 @@ const generateCalendarDays = () => {
 };
 
 export default function LocalEventSection({ events }: LocalEventSectionProps) {
+  const { colors: tc } = useTheme();
   const [selectedDate, setSelectedDate] = useState(0);
   const [currentIndex, setCurrentIndex] = useState(0);
   const calendarDays = generateCalendarDays();
@@ -241,7 +243,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
     borderRadius: 20,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
     borderColor: colors.gray300,
     alignItems: 'center',
@@ -276,7 +278,7 @@ const styles = StyleSheet.create({
   card: {
     position: 'absolute',
     width: CARD_WIDTH,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 24,
     overflow: 'hidden',
   },
@@ -355,7 +357,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 2,
     borderColor: colors.primary,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   calendarButtonText: {
     fontSize: typography.fontSize.base,

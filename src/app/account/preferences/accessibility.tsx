@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, TickCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { 
   preferencesService, 
@@ -30,6 +31,7 @@ import {
 
 export default function AccessibilityPreferencesScreen() {
   const router = useRouter();
+  const { colors: tc } = useTheme();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [preferences, setPreferences] = useState<TravelPreferences | null>(null);
@@ -118,13 +120,13 @@ export default function AccessibilityPreferencesScreen() {
   }
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <StatusBar style="dark" />
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Dietary & Accessibility</Text>
         <TouchableOpacity 
@@ -247,9 +249,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -309,10 +311,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.full,
     borderWidth: 1.5,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     gap: spacing.xs,
   },
   dietaryChipSelected: {
@@ -331,12 +333,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.gray100,
+    borderColor: colors.borderSubtle,
   },
   toggleContent: {
     flexDirection: 'row',

@@ -27,6 +27,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAdvancedPlanningStore } from '../../../stores/useAdvancedPlanningStore';
 import { 
   ACCOMMODATION_TYPE_OPTIONS,
@@ -52,6 +53,7 @@ export default function AccommodationStep({
   isOptional,
 }: AccommodationStepProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const {
     advancedTripData,
     setAccommodationType,
@@ -98,7 +100,7 @@ export default function AccommodationStep({
   }, [isAccommodationValid, onNext]);
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -342,7 +344,7 @@ const styles = StyleSheet.create({
   },
   typeCard: {
     width: '31%',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     alignItems: 'center',
@@ -375,7 +377,7 @@ const styles = StyleSheet.create({
   },
   starChip: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.sm,
     alignItems: 'center',
@@ -406,7 +408,7 @@ const styles = StyleSheet.create({
   locationOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     borderWidth: 1.5,
@@ -458,7 +460,7 @@ const styles = StyleSheet.create({
   amenityChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.full,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,

@@ -15,7 +15,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Add, Minus, People, Profile2User } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { PassengerCount } from '../../types/booking.types';
 import { BOOKING_LIMITS } from '../../config/booking.config';
 
@@ -47,6 +48,7 @@ function CounterRow({
   minValue = 0,
   maxValue = 9,
 }: CounterRowProps) {
+  const { colors } = useTheme();
   const canDecrement = value > minValue;
   const canIncrement = value < maxValue;
   
@@ -65,29 +67,29 @@ function CounterRow({
   };
   
   return (
-    <View style={styles.counterRow}>
+    <View style={[styles.counterRow, { backgroundColor: colors.bgElevated }]}>
       <View style={styles.counterInfo}>
-        <Text style={styles.counterLabel}>{label}</Text>
-        <Text style={styles.counterDescription}>{description}</Text>
+        <Text style={[styles.counterLabel, { color: colors.textPrimary }]}>{label}</Text>
+        <Text style={[styles.counterDescription, { color: colors.textSecondary }]}>{description}</Text>
       </View>
       
       <View style={styles.counterControls}>
         <TouchableOpacity
-          style={[styles.counterButton, !canDecrement && styles.counterButtonDisabled]}
+          style={[styles.counterButton, { backgroundColor: colors.primary + '15' }, !canDecrement && { backgroundColor: colors.bgCard }]}
           onPress={handleDecrement}
           disabled={!canDecrement}
         >
-          <Minus size={20} color={canDecrement ? colors.primary : colors.gray300} />
+          <Minus size={20} color={canDecrement ? colors.primary : colors.textSecondary} />
         </TouchableOpacity>
         
-        <Text style={styles.counterValue}>{value}</Text>
+        <Text style={[styles.counterValue, { color: colors.textPrimary }]}>{value}</Text>
         
         <TouchableOpacity
-          style={[styles.counterButton, !canIncrement && styles.counterButtonDisabled]}
+          style={[styles.counterButton, { backgroundColor: colors.primary + '15' }, !canIncrement && { backgroundColor: colors.bgCard }]}
           onPress={handleIncrement}
           disabled={!canIncrement}
         >
-          <Add size={20} color={canIncrement ? colors.primary : colors.gray300} />
+          <Add size={20} color={canIncrement ? colors.primary : colors.textSecondary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -103,6 +105,7 @@ export default function PassengerSelector({
   showInfants = true,
 }: PassengerSelectorProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const [localPassengers, setLocalPassengers] = useState(passengers);
   
   const totalPassengers = localPassengers.adults + localPassengers.children;
@@ -144,26 +147,26 @@ export default function PassengerSelector({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <ArrowLeft size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Passengers</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Passengers</Text>
           <View style={styles.closeButton} />
         </View>
         
         {/* Summary */}
-        <View style={styles.summary}>
-          <View style={styles.summaryIcon}>
+        <View style={[styles.summary, { backgroundColor: colors.primary + '10' }]}>
+          <View style={[styles.summaryIcon, { backgroundColor: colors.bgElevated }]}>
             <Profile2User size={24} color={colors.primary} variant="Bold" />
           </View>
-          <Text style={styles.summaryText}>{getTotalLabel()}</Text>
+          <Text style={[styles.summaryText, { color: colors.textPrimary }]}>{getTotalLabel()}</Text>
         </View>
         
         {/* Counters */}
-        <View style={styles.counters}>
+        <View style={[styles.counters, { backgroundColor: colors.bgCard }]}>
           <CounterRow
             label="Adults"
             description="Age 12+"
@@ -180,7 +183,7 @@ export default function PassengerSelector({
             maxValue={Math.min(BOOKING_LIMITS.maxAdults, localPassengers.adults + remainingSlots)}
           />
           
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
           
           <CounterRow
             label="Children"
@@ -194,7 +197,7 @@ export default function PassengerSelector({
           
           {showInfants && (
             <>
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
               
               <CounterRow
                 label="Infants"
@@ -210,8 +213,8 @@ export default function PassengerSelector({
         </View>
         
         {/* Info Note */}
-        <View style={styles.infoNote}>
-          <Text style={styles.infoNoteText}>
+        <View style={[styles.infoNote, { backgroundColor: colors.info + '10' }]}>
+          <Text style={[styles.infoNoteText, { color: colors.info }]}>
             {showInfants 
               ? 'Infants must sit on an adult\'s lap. Maximum 1 infant per adult.'
               : 'Children under 12 must be accompanied by an adult.'
@@ -220,9 +223,9 @@ export default function PassengerSelector({
         </View>
         
         {/* Confirm Button */}
-        <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+        <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md, borderTopColor: colors.borderSubtle }]}>
           <TouchableOpacity
-            style={styles.confirmButton}
+            style={[styles.confirmButton, { backgroundColor: colors.primary }]}
             onPress={handleConfirm}
           >
             <Text style={styles.confirmButtonText}>Confirm</Text>
@@ -245,6 +248,7 @@ export function PassengerTrigger({
   onPress,
   showInfants = true,
 }: PassengerTriggerProps) {
+  const { colors } = useTheme();
   const total = passengers.adults + passengers.children + (showInfants ? passengers.infants : 0);
   
   const getLabel = (): string => {
@@ -253,9 +257,9 @@ export function PassengerTrigger({
   };
   
   return (
-    <TouchableOpacity style={styles.trigger} onPress={onPress}>
+    <TouchableOpacity style={[styles.trigger, { backgroundColor: colors.bgElevated }]} onPress={onPress}>
       <People size={20} color={colors.textSecondary} />
-      <Text style={styles.triggerText}>{getLabel()}</Text>
+      <Text style={[styles.triggerText, { color: colors.textPrimary }]}>{getLabel()}</Text>
     </TouchableOpacity>
   );
 }
@@ -263,7 +267,6 @@ export function PassengerTrigger({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
   },
   header: {
     flexDirection: 'row',
@@ -272,7 +275,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
   },
   closeButton: {
     width: 40,
@@ -283,13 +285,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   summary: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.lg,
-    backgroundColor: colors.primary + '10',
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     borderRadius: borderRadius.lg,
@@ -299,20 +299,17 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
   },
   summaryText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
     flex: 1,
   },
   counters: {
     marginTop: spacing.xl,
     marginHorizontal: spacing.lg,
-    backgroundColor: colors.gray50,
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
   },
@@ -321,7 +318,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: spacing.lg,
-    backgroundColor: colors.white,
   },
   counterInfo: {
     flex: 1,
@@ -329,11 +325,9 @@ const styles = StyleSheet.create({
   counterLabel: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
   },
   counterDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     marginTop: 2,
   },
   counterControls: {
@@ -345,35 +339,27 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.primary + '15',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  counterButtonDisabled: {
-    backgroundColor: colors.gray100,
   },
   counterValue: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
     minWidth: 32,
     textAlign: 'center',
   },
   divider: {
     height: 1,
-    backgroundColor: colors.gray100,
     marginHorizontal: spacing.lg,
   },
   infoNote: {
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     padding: spacing.md,
-    backgroundColor: colors.info + '10',
     borderRadius: borderRadius.md,
   },
   infoNoteText: {
     fontSize: typography.fontSize.sm,
-    color: colors.info,
     lineHeight: 20,
   },
   footer: {
@@ -381,10 +367,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
   },
   confirmButton: {
-    backgroundColor: colors.primary,
     borderRadius: borderRadius.lg,
     paddingVertical: spacing.md,
     alignItems: 'center',
@@ -392,20 +376,18 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
   // Trigger styles
   trigger: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.gray50,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
   },
   triggerText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textPrimary,
   },
 });

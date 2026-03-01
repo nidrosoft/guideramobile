@@ -127,13 +127,13 @@ export default function HotelCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E6E9EB',
+    borderColor: colors.borderSubtle,
     ...shadows.sm,
   },
   imageContainer: {
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     left: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: borderRadius.sm,

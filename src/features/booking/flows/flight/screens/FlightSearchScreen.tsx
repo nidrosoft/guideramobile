@@ -7,7 +7,7 @@
 
 import React, { useCallback, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useFlightStore } from '../../../stores/useFlightStore';
 import { 
   UnifiedSearchOverlay, 
@@ -49,6 +49,7 @@ export default function FlightSearchScreen({
   onSearch,
   onBack,
 }: FlightSearchScreenProps) {
+  const { colors } = useTheme();
   const { searchParams, setSearchParams } = useFlightStore();
 
   const handleSearch = useCallback((data: SearchData) => {
@@ -94,7 +95,7 @@ export default function FlightSearchScreen({
   }), [searchParams]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <UnifiedSearchOverlay
         serviceType="flight"
         title="Find a Flight"
@@ -111,6 +112,5 @@ export default function FlightSearchScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 });

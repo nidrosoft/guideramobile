@@ -63,13 +63,13 @@ export default function SearchOverlay({
 
   // Dynamic styles
   const dynamicStyles = useMemo(() => ({
-    container: { backgroundColor: `${themeColors.gray200}E6` }, // 90% opacity (E6 = 90%)
+    container: { backgroundColor: themeColors.background },
     header: { backgroundColor: 'transparent' },
-    closeButton: { backgroundColor: themeColors.white },
-    footer: { backgroundColor: themeColors.white, borderTopColor: themeColors.gray200 },
+    closeButton: { backgroundColor: themeColors.bgElevated, borderWidth: 1, borderColor: themeColors.borderSubtle },
+    footer: { backgroundColor: themeColors.bgModal, borderTopColor: themeColors.borderSubtle },
     clearText: { color: themeColors.textSecondary },
     searchButton: { backgroundColor: themeColors.primary },
-    searchButtonText: { color: themeColors.white },
+    searchButtonText: { color: '#FFFFFF' },
   }), [themeColors]);
 
   // Reset state when overlay opens

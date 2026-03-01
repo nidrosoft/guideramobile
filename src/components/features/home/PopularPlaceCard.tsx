@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing, borderRadius, colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Star1, People } from 'iconsax-react-native';
 
 interface PopularPlaceCardProps {
@@ -17,26 +18,28 @@ export default function PopularPlaceCard({
   rating, 
   imageUrl 
 }: PopularPlaceCardProps) {
+  const { colors } = useTheme();
+
   return (
-    <TouchableOpacity style={styles.container}>
+    <TouchableOpacity style={[styles.container, { backgroundColor: colors.bgCard, shadowColor: '#000' }]}>
       <View style={styles.imageContainer}>
         <Image source={{ uri: imageUrl }} style={styles.image} />
         
         {/* Rating Badge */}
-        <View style={styles.ratingBadge}>
-          <Star1 size={12} color="#FFD700" variant="Bold" />
-          <Text style={styles.ratingText}>{rating}</Text>
+        <View style={[styles.ratingBadge, { backgroundColor: colors.bgOverlay }]}>
+          <Star1 size={12} color={colors.primary} variant="Bold" />
+          <Text style={[styles.ratingText, { color: colors.textPrimary }]}>{rating}</Text>
         </View>
       </View>
       
       <View style={styles.infoContainer}>
-        <Text style={styles.name} numberOfLines={1}>{name}</Text>
-        <Text style={styles.country}>{country}</Text>
+        <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{name}</Text>
+        <Text style={[styles.country, { color: colors.textSecondary }]}>{country}</Text>
         
         {/* Visitors */}
         <View style={styles.visitorsContainer}>
           <People size={14} color={colors.primary} variant="Bold" />
-          <Text style={styles.visitorsText}>{visitors} visitors</Text>
+          <Text style={[styles.visitorsText, { color: colors.textSecondary }]}>{visitors} visitors</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -45,16 +48,17 @@ export default function PopularPlaceCard({
 
 const styles = StyleSheet.create({
   container: {
-    width: 200,
-    backgroundColor: colors.white,
-    borderRadius: 24,
-    padding: spacing.sm,
-    marginRight: spacing.md,
-    shadowColor: '#000',
+    width: 180,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 3,
+    padding: spacing.sm,
+    marginRight: spacing.md,
   },
   imageContainer: {
     width: '100%',
@@ -75,7 +79,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: 12,
@@ -83,7 +86,6 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
   },
   infoContainer: {
     paddingHorizontal: spacing.xs,
@@ -91,13 +93,11 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginBottom: 2,
+    fontWeight: typography.fontWeight.semibold,
+    marginBottom: spacing.xs,
   },
   country: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
   visitorsContainer: {
@@ -107,7 +107,6 @@ const styles = StyleSheet.create({
   },
   visitorsText: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     fontWeight: typography.fontWeight.medium,
   },
 });

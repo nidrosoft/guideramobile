@@ -8,6 +8,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { ArrowRight2 } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 interface SectionHeaderProps {
   title: string;
@@ -16,16 +17,17 @@ interface SectionHeaderProps {
 }
 
 export default function SectionHeader({ title, subtitle, onSeeAll }: SectionHeaderProps) {
+  const { colors: tc } = useTheme();
   return (
     <View style={styles.container}>
       <View style={styles.textContainer}>
-        <Text style={styles.title}>{title}</Text>
-        {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+        <Text style={[styles.title, { color: tc.textPrimary }]}>{title}</Text>
+        {subtitle && <Text style={[styles.subtitle, { color: tc.textSecondary }]}>{subtitle}</Text>}
       </View>
       {onSeeAll && (
         <TouchableOpacity style={styles.seeAllButton} onPress={onSeeAll}>
-          <Text style={styles.seeAllText}>See All</Text>
-          <ArrowRight2 size={16} color={colors.primary} />
+          <Text style={[styles.seeAllText, { color: tc.primary }]}>See All</Text>
+          <ArrowRight2 size={16} color={tc.primary} />
         </TouchableOpacity>
       )}
     </View>

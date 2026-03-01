@@ -57,12 +57,12 @@ export default function Home() {
     welcomeText: { color: colors.textPrimary },
     locationText: { color: colors.textSecondary },
     notificationBadge: { backgroundColor: colors.error },
-    notificationCount: { color: colors.white },
-    notificationIcon: { backgroundColor: colors.white },
-    searchBar: { backgroundColor: colors.white },
+    notificationCount: { color: '#FFFFFF' },
+    notificationIcon: { backgroundColor: colors.bgCard },
+    searchBar: { backgroundColor: colors.bgCard, borderWidth: 1, borderColor: colors.borderSubtle },
     searchInput: { color: colors.textPrimary },
-    filterButton: { backgroundColor: colors.white },
-    categoryCircle: { backgroundColor: colors.white, borderColor: colors.gray200 },
+    filterButton: { backgroundColor: colors.bgCard },
+    categoryCircle: { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle },
     categoryText: { color: colors.textPrimary },
   }), [colors]);
 

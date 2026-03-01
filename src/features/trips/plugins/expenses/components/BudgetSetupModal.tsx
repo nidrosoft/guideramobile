@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { CloseCircle, DollarCircle } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
 
 interface BudgetSetupModalProps {
@@ -27,6 +28,7 @@ export default function BudgetSetupModal({
   currentBudget,
 }: BudgetSetupModalProps) {
   const { showSuccess } = useToast();
+  const { colors: tc } = useTheme();
   const [budget, setBudget] = useState(currentBudget?.toString() || '');
 
   const handleSave = () => {
@@ -128,7 +130,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modal: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderRadius: 24,
     padding: spacing.xl,
     width: '85%',

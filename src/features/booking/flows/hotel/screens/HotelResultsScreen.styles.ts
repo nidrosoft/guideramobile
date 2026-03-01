@@ -59,7 +59,7 @@ export const styles = StyleSheet.create({
   },
   // Date Scroll
   dateScrollContainer: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray100,
   },
@@ -108,7 +108,7 @@ export const styles = StyleSheet.create({
   },
   // Filters
   filtersContainer: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray100,
   },
@@ -150,7 +150,7 @@ export const styles = StyleSheet.create({
     top: '100%',
     left: spacing.lg,
     right: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     paddingVertical: spacing.sm,
     shadowColor: '#000',

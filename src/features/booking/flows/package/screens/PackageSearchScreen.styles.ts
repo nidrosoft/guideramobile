@@ -1,5 +1,8 @@
 /**
  * PACKAGE SEARCH SCREEN STYLES
+ *
+ * Uses dark-mode tokens (colors.bgElevated, colors.borderSubtle, etc.)
+ * matching the pattern from CarSearchScreen and other booking flows.
  */
 
 import { StyleSheet } from 'react-native';
@@ -8,7 +11,6 @@ import { colors, spacing, typography, borderRadius, shadows } from '@/styles';
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     minHeight: 160,
@@ -33,7 +35,7 @@ export const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
   closeButton: {
     width: 40,
@@ -53,14 +55,14 @@ export const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     gap: spacing.md,
   },
-  
+
   // Package Type Card (overlapping header)
   packageTypeCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -81,10 +83,10 @@ export const styles = StyleSheet.create({
     width: 100,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.xs,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgCard,
     borderRadius: borderRadius.lg,
     borderWidth: 2,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     alignItems: 'center',
     marginTop: 10,
   },
@@ -128,25 +130,29 @@ export const styles = StyleSheet.create({
   popularBadgeText: {
     fontSize: 8,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
-  
+
   // Field Cards
   fieldCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.gray200,
-    ...shadows.sm,
+    borderColor: colors.borderSubtle,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   fieldIcon: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgCard,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
@@ -165,9 +171,9 @@ export const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   fieldPlaceholder: {
-    color: colors.textSecondary,
+    color: colors.textTertiary,
   },
-  
+
   // Date Row
   dateRow: {
     flexDirection: 'row',
@@ -185,15 +191,19 @@ export const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.medium,
     color: colors.primary,
   },
-  
+
   // Summary Card
   summaryCard: {
     padding: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.gray200,
-    ...shadows.sm,
+    borderColor: colors.borderSubtle,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   summaryTitle: {
     fontSize: typography.fontSize.sm,
@@ -220,7 +230,7 @@ export const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.medium,
     color: colors.primary,
   },
-  
+
   // Footer
   footer: {
     position: 'absolute',
@@ -229,14 +239,18 @@ export const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
     zIndex: 100,
-    ...shadows.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 10,
   },
   continueButton: {
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
   },
   continueButtonDisabled: {
@@ -252,6 +266,6 @@ export const styles = StyleSheet.create({
   continueButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
 });

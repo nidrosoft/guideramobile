@@ -37,6 +37,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useFlightStore } from '../../../stores/useFlightStore';
 import { styles } from './FlightResultsScreen.styles';
 import { Flight, FlightSegment } from '../../../types/flight.types';
@@ -131,6 +132,7 @@ export default function FlightResultsScreen({
   onClose,
 }: FlightResultsScreenProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const { searchParams, searchResults } = useFlightStore();
   
   // Use the shared flight search state (populated by FlightSearchLoadingScreen)
@@ -330,7 +332,7 @@ export default function FlightResultsScreen({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       {/* Header with Background Image */}
       <ImageBackground
         source={require('../../../../../../assets/images/flightbg.png')}

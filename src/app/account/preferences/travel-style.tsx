@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, TickCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { 
   preferencesService, 
@@ -34,6 +35,7 @@ const MAX_TRIP_STYLES = 4;
 
 export default function TravelStylePreferencesScreen() {
   const router = useRouter();
+  const { colors: tc } = useTheme();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [preferences, setPreferences] = useState<TravelPreferences | null>(null);
@@ -129,13 +131,13 @@ export default function TravelStylePreferencesScreen() {
   }
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <StatusBar style="dark" />
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Travel Style</Text>
         <TouchableOpacity 
@@ -303,9 +305,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -366,10 +368,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.full,
     borderWidth: 1.5,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     gap: spacing.xs,
   },
   chipSelected: {
@@ -395,12 +397,12 @@ const styles = StyleSheet.create({
   styleCard: {
     width: '31%',
     aspectRatio: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     position: 'relative',
     paddingVertical: spacing.sm,
   },
@@ -438,11 +440,11 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     borderWidth: 1.5,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   optionCardSelected: {
     backgroundColor: colors.primary + '10',

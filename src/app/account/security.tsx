@@ -35,6 +35,7 @@ import * as Haptics from 'expo-haptics';
 import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
 
@@ -57,6 +58,7 @@ const DEFAULT_SETTINGS: SecuritySettings = {
 export default function SecuritySettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const { user } = useAuth();
   const [settings, setSettings] = useState<SecuritySettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
@@ -240,20 +242,20 @@ export default function SecuritySettingsScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <StatusBar style="dark" />
+        <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Security</Text>
         <View style={styles.headerSpacer}>
@@ -426,9 +428,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -466,11 +468,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.gray100,
+    borderColor: colors.borderSubtle,
   },
   settingItem: {
     flexDirection: 'row',

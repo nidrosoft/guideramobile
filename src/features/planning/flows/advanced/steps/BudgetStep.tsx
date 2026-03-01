@@ -28,6 +28,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAdvancedPlanningStore } from '../../../stores/useAdvancedPlanningStore';
 import { 
   SPENDING_STYLE_OPTIONS, 
@@ -47,6 +48,7 @@ export default function BudgetStep({
   onClose,
 }: BudgetStepProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const {
     advancedTripData,
     setBudgetAmount,
@@ -98,7 +100,7 @@ export default function BudgetStep({
   };
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -319,7 +321,7 @@ const styles = StyleSheet.create({
   budgetInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.md,
@@ -354,7 +356,7 @@ const styles = StyleSheet.create({
   
   // Currency Picker
   currencyPicker: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     padding: spacing.sm,
     marginBottom: spacing.lg,
@@ -404,7 +406,7 @@ const styles = StyleSheet.create({
   },
   styleCard: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     alignItems: 'center',
@@ -442,7 +444,7 @@ const styles = StyleSheet.create({
   priorityOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     borderWidth: 1.5,

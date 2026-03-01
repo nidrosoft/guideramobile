@@ -14,7 +14,8 @@ import {
   Microphone2,
   Location,
 } from 'iconsax-react-native';
-import { colors, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
+import { spacing, borderRadius } from '@/styles';
 
 export type MessageType = 'text' | 'image' | 'voice' | 'location' | 'system';
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
@@ -73,7 +74,8 @@ export default function ChatMessageBubble({
   onReplyPress,
   onImagePress,
 }: ChatMessageBubbleProps) {
-  
+  const { colors: tc } = useTheme();
+
   const formatTime = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
       hour: 'numeric',
@@ -84,15 +86,15 @@ export default function ChatMessageBubble({
   const renderStatusIcon = () => {
     switch (message.status) {
       case 'sending':
-        return <Clock size={12} color={colors.gray400} />;
+        return <Clock size={12} color={tc.textTertiary} />;
       case 'sent':
-        return <TickCircle size={12} color={colors.gray400} />;
+        return <TickCircle size={12} color={tc.textTertiary} />;
       case 'delivered':
-        return <TickCircle size={12} color={colors.gray500} variant="Bold" />;
+        return <TickCircle size={12} color={tc.textTertiary} variant="Bold" />;
       case 'read':
-        return <TickCircle size={12} color={colors.primary} variant="Bold" />;
+        return <TickCircle size={12} color={tc.primary} variant="Bold" />;
       case 'failed':
-        return <CloseCircle size={12} color={colors.error} />;
+        return <CloseCircle size={12} color={tc.error} />;
       default:
         return null;
     }
@@ -102,7 +104,9 @@ export default function ChatMessageBubble({
   if (message.type === 'system') {
     return (
       <View style={styles.systemContainer}>
-        <Text style={styles.systemText}>{message.content}</Text>
+        <Text style={[styles.systemText, { backgroundColor: tc.borderSubtle, color: tc.textSecondary }]}>
+          {message.content}
+        </Text>
       </View>
     );
   }
@@ -118,20 +122,20 @@ export default function ChatMessageBubble({
       <View style={[styles.bubbleContainer, isOwn && styles.bubbleContainerOwn]}>
         {/* Sender name (for group chats) */}
         {!isOwn && showName && (
-          <Text style={styles.senderName}>{message.senderName}</Text>
+          <Text style={[styles.senderName, { color: tc.primary }]}>{message.senderName}</Text>
         )}
         
         {/* Reply context */}
         {message.replyTo && (
           <TouchableOpacity 
-            style={styles.replyContext}
+            style={[styles.replyContext, { backgroundColor: tc.borderSubtle }]}
             onPress={onReplyPress}
             activeOpacity={0.7}
           >
-            <View style={styles.replyBar} />
+            <View style={[styles.replyBar, { backgroundColor: tc.primary }]} />
             <View style={styles.replyContent}>
-              <Text style={styles.replyName}>{message.replyTo.senderName}</Text>
-              <Text style={styles.replyPreview} numberOfLines={1}>
+              <Text style={[styles.replyName, { color: tc.primary }]}>{message.replyTo.senderName}</Text>
+              <Text style={[styles.replyPreview, { color: tc.textSecondary }]} numberOfLines={1}>
                 {message.replyTo.preview}
               </Text>
             </View>
@@ -140,7 +144,12 @@ export default function ChatMessageBubble({
         
         {/* Message bubble */}
         <Pressable
-          style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}
+          style={[
+            styles.bubble,
+            isOwn
+              ? [styles.bubbleOwn, { backgroundColor: tc.primary }]
+              : [styles.bubbleOther, { backgroundColor: tc.bgElevated, shadowColor: tc.black }],
+          ]}
           onPress={onPress}
           onLongPress={onLongPress}
         >
@@ -165,10 +174,10 @@ export default function ChatMessageBubble({
           {/* Voice message */}
           {message.type === 'voice' && (
             <View style={styles.voiceContainer}>
-              <View style={[styles.playButton, isOwn && styles.playButtonOwn]}>
+              <View style={[styles.playButton, { backgroundColor: tc.primary + '20' }, isOwn && styles.playButtonOwn]}>
                 <Microphone2 
                   size={16} 
-                  color={isOwn ? colors.white : colors.primary} 
+                  color={isOwn ? '#FFFFFF' : tc.primary} 
                   variant="Bold" 
                 />
               </View>
@@ -178,7 +187,7 @@ export default function ChatMessageBubble({
                     key={i} 
                     style={[
                       styles.waveformBar,
-                      { height: Math.random() * 16 + 4 },
+                      { height: Math.random() * 16 + 4, backgroundColor: tc.primary },
                       isOwn && styles.waveformBarOwn,
                     ]} 
                   />
@@ -195,27 +204,27 @@ export default function ChatMessageBubble({
           {/* Location message */}
           {message.type === 'location' && (
             <View style={styles.locationContainer}>
-              <View style={styles.locationIcon}>
-                <Location size={24} color={colors.primary} variant="Bold" />
+              <View style={[styles.locationIcon, { backgroundColor: tc.primary + '15' }]}>
+                <Location size={24} color={tc.primary} variant="Bold" />
               </View>
-              <Text style={[styles.locationText, isOwn && styles.textOwn]}>
-                📍 Shared location
+              <Text style={[styles.locationText, { color: tc.textPrimary }, isOwn && styles.textOwn]}>
+                Shared location
               </Text>
             </View>
           )}
           
           {/* Text content */}
           {(message.type === 'text' || message.content) && (
-            <Text style={[styles.messageText, isOwn && styles.textOwn]}>
+            <Text style={[styles.messageText, { color: tc.textPrimary }, isOwn && styles.textOwn]}>
               {message.content}
             </Text>
           )}
           
           {/* Time and status */}
           <View style={styles.metaRow}>
-            <Text style={[styles.time, isOwn && styles.timeOwn]}>
+            <Text style={[styles.time, { color: tc.textTertiary }, isOwn && styles.timeOwn]}>
               {formatTime(message.createdAt)}
-              {message.isEdited && ' • edited'}
+              {message.isEdited && ' . edited'}
             </Text>
             {isOwn && renderStatusIcon()}
           </View>
@@ -229,14 +238,15 @@ export default function ChatMessageBubble({
                 key={index}
                 style={[
                   styles.reactionBadge,
-                  reaction.userReacted && styles.reactionBadgeActive,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  reaction.userReacted && { borderColor: tc.primary, backgroundColor: tc.primary + '10' },
                 ]}
                 onPress={() => onReactionPress?.(reaction.emoji)}
                 activeOpacity={0.7}
               >
                 <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
                 {reaction.count > 1 && (
-                  <Text style={styles.reactionCount}>{reaction.count}</Text>
+                  <Text style={[styles.reactionCount, { color: tc.textSecondary }]}>{reaction.count}</Text>
                 )}
               </TouchableOpacity>
             ))}
@@ -250,7 +260,7 @@ export default function ChatMessageBubble({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.md,
     paddingHorizontal: spacing.md,
   },
   containerOwn: {
@@ -275,20 +285,17 @@ const styles = StyleSheet.create({
   senderName: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.primary,
     marginBottom: 2,
     marginLeft: spacing.sm,
   },
   replyContext: {
     flexDirection: 'row',
-    backgroundColor: colors.gray100,
     borderRadius: borderRadius.md,
     padding: spacing.sm,
     marginBottom: 4,
   },
   replyBar: {
     width: 3,
-    backgroundColor: colors.primary,
     borderRadius: 2,
     marginRight: spacing.sm,
   },
@@ -298,11 +305,9 @@ const styles = StyleSheet.create({
   replyName: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.primary,
   },
   replyPreview: {
     fontSize: 12,
-    color: colors.textSecondary,
   },
   bubble: {
     borderRadius: borderRadius.lg,
@@ -311,13 +316,10 @@ const styles = StyleSheet.create({
     minWidth: 60,
   },
   bubbleOwn: {
-    backgroundColor: colors.primary,
     borderBottomRightRadius: 4,
   },
   bubbleOther: {
-    backgroundColor: colors.white,
     borderBottomLeftRadius: 4,
-    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -325,11 +327,10 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: 15,
-    color: colors.textPrimary,
     lineHeight: 20,
   },
   textOwn: {
-    color: colors.white,
+    color: '#FFFFFF',
   },
   metaRow: {
     flexDirection: 'row',
@@ -340,7 +341,6 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 11,
-    color: colors.gray400,
   },
   timeOwn: {
     color: 'rgba(255,255,255,0.7)',
@@ -365,7 +365,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.primary + '20',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -381,7 +380,6 @@ const styles = StyleSheet.create({
   },
   waveformBar: {
     width: 3,
-    backgroundColor: colors.primary,
     borderRadius: 2,
   },
   waveformBarOwn: {
@@ -389,7 +387,6 @@ const styles = StyleSheet.create({
   },
   duration: {
     fontSize: 11,
-    color: colors.textSecondary,
   },
   durationOwn: {
     color: 'rgba(255,255,255,0.7)',
@@ -403,13 +400,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 8,
-    backgroundColor: colors.primary + '15',
     alignItems: 'center',
     justifyContent: 'center',
   },
   locationText: {
     fontSize: 14,
-    color: colors.textPrimary,
   },
   reactions: {
     flexDirection: 'row',
@@ -423,24 +418,17 @@ const styles = StyleSheet.create({
   reactionBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: borderRadius.full,
     borderWidth: 1,
-    borderColor: colors.gray200,
     gap: 2,
-  },
-  reactionBadgeActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '10',
   },
   reactionEmoji: {
     fontSize: 14,
   },
   reactionCount: {
     fontSize: 11,
-    color: colors.textSecondary,
     fontWeight: '500',
   },
   systemContainer: {
@@ -450,9 +438,7 @@ const styles = StyleSheet.create({
   },
   systemText: {
     fontSize: 12,
-    color: colors.textSecondary,
     textAlign: 'center',
-    backgroundColor: colors.gray100,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,

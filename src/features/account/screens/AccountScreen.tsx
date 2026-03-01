@@ -313,7 +313,7 @@ export default function AccountScreen() {
         <TouchableWithoutFeedback onPress={() => setShowLogoutModal(false)}>
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback>
-              <View style={[styles.modalContent, { backgroundColor: colors.white }]}>
+              <View style={[styles.modalContent, { backgroundColor: colors.bgCard }]}>
                 <View style={styles.modalIcon}>
                   <Logout size={32} color={colors.error} variant="Bold" />
                 </View>
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '100%',
     maxWidth: 320,
-    borderRadius: borderRadius.xl,
+    borderRadius: 24,
     padding: spacing.lg,
     alignItems: 'center',
   },

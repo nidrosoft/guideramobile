@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { CloseCircle } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { LayoutType } from '../types/journal.types';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -59,6 +60,7 @@ export default function CreateEntryBottomSheet({
   onCreate,
 }: CreateEntryBottomSheetProps) {
   const { showSuccess } = useToast();
+  const { colors: tc } = useTheme();
   const [title, setTitle] = useState('');
   const [selectedLayout, setSelectedLayout] = useState<LayoutType>(LayoutType.MIXED);
 
@@ -206,7 +208,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   bottomSheet: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: spacing.xl,
@@ -266,7 +268,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   layoutCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderRadius: 16,
     padding: spacing.md,
     borderWidth: 2,

@@ -21,6 +21,7 @@ import {
   Warning2,
 } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { DangerZone, Incident } from '../types/dangerAlerts.types';
 import { getDangerColor, getDangerGradient, getIncidentLabel } from '../data/mockDangerData';
 
@@ -197,7 +198,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     maxHeight: '60%',

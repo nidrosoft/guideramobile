@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 import { Add, Minus, People, Home2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 export interface HotelGuestCount {
   rooms: number;
@@ -48,6 +49,7 @@ function CounterRow({
   onIncrement,
   onDecrement,
 }: CounterRowProps) {
+  const { colors } = useTheme();
   const canDecrement = value > min;
   const canIncrement = value < max;
 
@@ -56,14 +58,14 @@ function CounterRow({
       <View style={styles.counterInfo}>
         {icon}
         <View style={styles.counterLabels}>
-          <Text style={styles.counterLabel}>{label}</Text>
-          {sublabel && <Text style={styles.counterSublabel}>{sublabel}</Text>}
+          <Text style={[styles.counterLabel, { color: colors.textPrimary }]}>{label}</Text>
+          {sublabel && <Text style={[styles.counterSublabel, { color: colors.textSecondary }]}>{sublabel}</Text>}
         </View>
       </View>
       
       <View style={styles.counterControls}>
         <TouchableOpacity
-          style={[styles.counterButton, !canDecrement && styles.counterButtonDisabled]}
+          style={[styles.counterButton, { borderColor: colors.borderSubtle, backgroundColor: colors.bgElevated }, !canDecrement && { backgroundColor: colors.bgCard }]}
           onPress={() => {
             if (canDecrement) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -73,13 +75,13 @@ function CounterRow({
           disabled={!canDecrement}
           activeOpacity={0.7}
         >
-          <Minus size={18} color={canDecrement ? colors.textPrimary : colors.gray300} />
+          <Minus size={18} color={canDecrement ? colors.textPrimary : colors.textSecondary} />
         </TouchableOpacity>
         
-        <Text style={styles.counterValue}>{value}</Text>
+        <Text style={[styles.counterValue, { color: colors.textPrimary }]}>{value}</Text>
         
         <TouchableOpacity
-          style={[styles.counterButton, !canIncrement && styles.counterButtonDisabled]}
+          style={[styles.counterButton, { borderColor: colors.borderSubtle, backgroundColor: colors.bgElevated }, !canIncrement && { backgroundColor: colors.bgCard }]}
           onPress={() => {
             if (canIncrement) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -89,7 +91,7 @@ function CounterRow({
           disabled={!canIncrement}
           activeOpacity={0.7}
         >
-          <Add size={18} color={canIncrement ? colors.textPrimary : colors.gray300} />
+          <Add size={18} color={canIncrement ? colors.textPrimary : colors.textSecondary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -100,6 +102,7 @@ export default function HotelGuestSection({
   guests,
   onGuestsChange,
 }: HotelGuestSectionProps) {
+  const { colors } = useTheme();
   const handleRoomsChange = useCallback((delta: number) => {
     const newRooms = Math.max(1, Math.min(8, guests.rooms + delta));
     // Ensure at least 1 adult per room
@@ -124,6 +127,7 @@ export default function HotelGuestSection({
     <View style={styles.container}>
       <CounterRow
         icon={<Home2 size={22} color={colors.primary} variant="Bold" />}
+
         label="Rooms"
         value={guests.rooms}
         min={1}
@@ -132,10 +136,11 @@ export default function HotelGuestSection({
         onDecrement={() => handleRoomsChange(-1)}
       />
       
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
       
       <CounterRow
         icon={<People size={22} color={colors.primary} variant="Bold" />}
+
         label="Adults"
         sublabel="Age 18+"
         value={guests.adults}
@@ -145,10 +150,11 @@ export default function HotelGuestSection({
         onDecrement={() => handleAdultsChange(-1)}
       />
       
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
       
       <CounterRow
         icon={<People size={22} color={colors.primary} variant="Outline" />}
+
         label="Children"
         sublabel="Age 0-17"
         value={guests.children}
@@ -159,8 +165,8 @@ export default function HotelGuestSection({
       />
 
       {/* Summary */}
-      <View style={styles.summary}>
-        <Text style={styles.summaryText}>
+      <View style={[styles.summary, { borderTopColor: colors.borderSubtle }]}>
+        <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
           {guests.rooms} room{guests.rooms > 1 ? 's' : ''} • {guests.adults} adult{guests.adults > 1 ? 's' : ''}
           {guests.children > 0 ? ` • ${guests.children} child${guests.children > 1 ? 'ren' : ''}` : ''}
         </Text>
@@ -190,11 +196,9 @@ const styles = StyleSheet.create({
   counterLabel: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
   },
   counterSublabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   counterControls: {
     flexDirection: 'row',
@@ -206,36 +210,26 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: colors.gray300,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.white,
-  },
-  counterButtonDisabled: {
-    borderColor: colors.gray200,
-    backgroundColor: colors.gray50,
   },
   counterValue: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
     minWidth: 24,
     textAlign: 'center',
   },
   divider: {
     height: 1,
-    backgroundColor: colors.gray100,
   },
   summary: {
     marginTop: spacing.md,
     paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
     alignItems: 'center',
   },
   summaryText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     fontWeight: typography.fontWeight.medium,
   },
 });

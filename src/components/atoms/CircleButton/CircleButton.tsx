@@ -7,7 +7,7 @@
 
 import { TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 interface CircleButtonProps {
   icon: React.ReactNode;
@@ -22,6 +22,8 @@ export default function CircleButton({
   style,
   size = 44 
 }: CircleButtonProps) {
+  const { colors, isDark } = useTheme();
+
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress();
@@ -29,7 +31,17 @@ export default function CircleButton({
 
   return (
     <TouchableOpacity 
-      style={[styles.button, { width: size, height: size, borderRadius: size / 2 }, style]}
+      style={[
+        styles.button, 
+        { 
+          width: size, 
+          height: size, 
+          borderRadius: size / 2,
+          backgroundColor: isDark ? '#1A1A1A' : 'rgba(255, 255, 255, 1)',
+          shadowColor: colors.black,
+        }, 
+        style,
+      ]}
       onPress={handlePress}
       activeOpacity={0.8}
     >
@@ -40,12 +52,10 @@ export default function CircleButton({
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: 'rgba(255, 255, 255, 1)', // 100% opacity - fully white
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
   },

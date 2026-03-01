@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   cursor: {
     width: 2,
     height: typography.fontSize['3xl'],
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     marginLeft: 3,
   },
   description: {

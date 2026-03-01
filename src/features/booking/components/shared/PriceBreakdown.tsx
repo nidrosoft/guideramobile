@@ -17,7 +17,8 @@ import Animated, {
   withTiming,
   useSharedValue,
 } from 'react-native-reanimated';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { PriceBreakdown as PriceBreakdownType } from '../../types/booking.types';
 import { usePricing } from '../../hooks/usePricing';
 
@@ -49,25 +50,28 @@ function LineItem({
   subLabel,
 }: LineItemProps) {
   const { formatPrice } = usePricing({ currency });
+  const { colors } = useTheme();
   
   return (
     <View style={[styles.lineItem, isTotal && styles.lineItemTotal]}>
       <View style={styles.lineItemLeft}>
         <Text style={[
           styles.lineItemLabel,
-          isTotal && styles.lineItemLabelTotal,
-          isDiscount && styles.lineItemLabelDiscount,
+          { color: colors.textSecondary },
+          isTotal && [styles.lineItemLabelTotal, { color: colors.textPrimary }],
+          isDiscount && { color: colors.success },
         ]}>
           {label}
         </Text>
         {subLabel && (
-          <Text style={styles.lineItemSubLabel}>{subLabel}</Text>
+          <Text style={[styles.lineItemSubLabel, { color: colors.textSecondary }]}>{subLabel}</Text>
         )}
       </View>
       <Text style={[
         styles.lineItemAmount,
+        { color: colors.textPrimary },
         isTotal && styles.lineItemAmountTotal,
-        isDiscount && styles.lineItemAmountDiscount,
+        isDiscount && { color: colors.success },
       ]}>
         {isDiscount ? '-' : ''}{formatPrice(amount)}
       </Text>
@@ -84,6 +88,7 @@ export default function PriceBreakdown({
   nights,
   days,
 }: PriceBreakdownProps) {
+  const { colors } = useTheme();
   const [isExpanded, setIsExpanded] = useState(!collapsible);
   const { formatPrice, calculatePerPerson, calculatePerNight, calculatePerDay } = usePricing({ 
     currency: breakdown.currency 
@@ -105,11 +110,11 @@ export default function PriceBreakdown({
     return (
       <View style={styles.compactContainer}>
         <View style={styles.compactRow}>
-          <Text style={styles.compactLabel}>Total</Text>
-          <Text style={styles.compactTotal}>{formatPrice(breakdown.total)}</Text>
+          <Text style={[styles.compactLabel, { color: colors.textSecondary }]}>Total</Text>
+          <Text style={[styles.compactTotal, { color: colors.textPrimary }]}>{formatPrice(breakdown.total)}</Text>
         </View>
         {perPersonPrice && (
-          <Text style={styles.compactSubtext}>
+          <Text style={[styles.compactSubtext, { color: colors.textSecondary }]}>
             {formatPrice(perPersonPrice)} per person
           </Text>
         )}
@@ -120,16 +125,17 @@ export default function PriceBreakdown({
   return (
     <View style={[
       styles.container,
-      variant === 'card' && styles.containerCard,
+      { backgroundColor: colors.bgElevated },
+      variant === 'card' && [styles.containerCard, { borderColor: colors.borderSubtle }],
     ]}>
       {/* Header with toggle */}
       {collapsible && (
         <TouchableOpacity 
-          style={styles.header} 
+          style={[styles.header, { backgroundColor: colors.bgCard }]} 
           onPress={toggleExpanded}
           activeOpacity={0.7}
         >
-          <Text style={styles.headerTitle}>Price Details</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Price Details</Text>
           {isExpanded ? (
             <ArrowUp2 size={20} color={colors.textSecondary} />
           ) : (
@@ -180,12 +186,12 @@ export default function PriceBreakdown({
             </View>
           )}
           
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
         </View>
       )}
       
       {/* Total */}
-      <View style={styles.totalSection}>
+      <View style={[styles.totalSection, { backgroundColor: colors.bgCard }]}>
         <LineItem
           label="Total"
           amount={breakdown.total}
@@ -197,17 +203,17 @@ export default function PriceBreakdown({
         {(perPersonPrice || perNightPrice || perDayPrice) && (
           <View style={styles.perUnitRow}>
             {perPersonPrice && (
-              <Text style={styles.perUnitText}>
+              <Text style={[styles.perUnitText, { color: colors.textSecondary }]}>
                 {formatPrice(perPersonPrice)}/person
               </Text>
             )}
             {perNightPrice && (
-              <Text style={styles.perUnitText}>
+              <Text style={[styles.perUnitText, { color: colors.textSecondary }]}>
                 {formatPrice(perNightPrice)}/night
               </Text>
             )}
             {perDayPrice && (
-              <Text style={styles.perUnitText}>
+              <Text style={[styles.perUnitText, { color: colors.textSecondary }]}>
                 {formatPrice(perDayPrice)}/day
               </Text>
             )}
@@ -217,9 +223,9 @@ export default function PriceBreakdown({
       
       {/* Savings badge */}
       {hasDiscount && (
-        <View style={styles.savingsBadge}>
+        <View style={[styles.savingsBadge, { backgroundColor: colors.success + '10' }]}>
           <TickCircle size={16} color={colors.success} variant="Bold" />
-          <Text style={styles.savingsText}>
+          <Text style={[styles.savingsText, { color: colors.success }]}>
             You're saving {formatPrice(breakdown.discount)}!
           </Text>
         </View>
@@ -243,30 +249,29 @@ export function PriceSummary({
   perPerson,
 }: PriceSummaryProps) {
   const { formatPrice } = usePricing({ currency });
+  const { colors } = useTheme();
   
   return (
     <View style={styles.summaryContainer}>
       <View>
-        <Text style={styles.summaryLabel}>{label}</Text>
+        <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>{label}</Text>
         {perPerson && (
-          <Text style={styles.summarySubtext}>
+          <Text style={[styles.summarySubtext, { color: colors.textSecondary }]}>
             {formatPrice(perPerson)}/person
           </Text>
         )}
       </View>
-      <Text style={styles.summaryTotal}>{formatPrice(total)}</Text>
+      <Text style={[styles.summaryTotal, { color: colors.textPrimary }]}>{formatPrice(total)}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
   },
   containerCard: {
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.gray200,
     overflow: 'hidden',
   },
   header: {
@@ -274,12 +279,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: spacing.md,
-    backgroundColor: colors.gray50,
   },
   headerTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
   },
   details: {
     padding: spacing.md,
@@ -299,33 +302,22 @@ const styles = StyleSheet.create({
   },
   lineItemLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   lineItemLabelTotal: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  lineItemLabelDiscount: {
-    color: colors.success,
   },
   lineItemSubLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray400,
     marginTop: 2,
   },
   lineItemAmount: {
     fontSize: typography.fontSize.sm,
-    color: colors.textPrimary,
     fontWeight: typography.fontWeight.medium,
   },
   lineItemAmountTotal: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  lineItemAmountDiscount: {
-    color: colors.success,
   },
   discountRow: {
     flexDirection: 'row',
@@ -336,12 +328,10 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: colors.gray200,
     marginVertical: spacing.sm,
   },
   totalSection: {
     padding: spacing.md,
-    backgroundColor: colors.gray50,
   },
   perUnitRow: {
     flexDirection: 'row',
@@ -350,21 +340,18 @@ const styles = StyleSheet.create({
   },
   perUnitText: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
   },
   savingsBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
     padding: spacing.sm,
-    backgroundColor: colors.success + '10',
     marginHorizontal: spacing.md,
     marginBottom: spacing.md,
     borderRadius: borderRadius.md,
   },
   savingsText: {
     fontSize: typography.fontSize.sm,
-    color: colors.success,
     fontWeight: typography.fontWeight.medium,
   },
   // Compact variant
@@ -378,16 +365,13 @@ const styles = StyleSheet.create({
   },
   compactLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   compactTotal: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
   },
   compactSubtext: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginTop: 2,
   },
   // Summary styles
@@ -398,15 +382,12 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   summarySubtext: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray400,
   },
   summaryTotal: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
   },
 });

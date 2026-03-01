@@ -1,103 +1,55 @@
 /**
- * Theme Context
+ * Theme Context (Legacy)
  * 
- * Provides dark mode support with:
- * - System preference detection
- * - Manual toggle
- * - Persistent preference storage
+ * Dark-mode-first design system. Primary accent: #3FC39E.
+ * Kept for backward compatibility with any files importing from @/contexts/ThemeContext.
+ * The canonical ThemeContext is at @/context/ThemeContext.
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { colors as dsColors } from '@/styles/colors';
 import { logger } from '@/services/logging';
 
 // Theme types
 export type ThemeMode = 'light' | 'dark' | 'system';
 
-// Light theme colors
-const lightColors = {
-  // Primary
-  primary: '#7257FF',
-  primaryLight: '#9B85FF',
-  primaryDark: '#5A3FE6',
-  
-  // Background
-  background: '#FFFFFF',
-  backgroundSecondary: '#F8F9FA',
-  backgroundTertiary: '#F1F3F5',
-  
-  // Surface
-  surface: '#FFFFFF',
-  surfaceElevated: '#FFFFFF',
-  
-  // Text
-  text: '#1A1A2E',
-  textSecondary: '#6B7280',
-  textTertiary: '#9CA3AF',
-  textInverse: '#FFFFFF',
-  
-  // Border
-  border: '#E5E7EB',
-  borderLight: '#F3F4F6',
-  
-  // Status
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-  info: '#3B82F6',
-  
-  // Misc
-  overlay: 'rgba(0, 0, 0, 0.5)',
-  shadow: 'rgba(0, 0, 0, 0.1)',
-  
-  // Card
-  card: '#FFFFFF',
-  cardBorder: '#E5E7EB',
-};
-
-// Dark theme colors
+// Dark-mode-first — both color sets point to the same tokens
 const darkColors = {
-  // Primary
-  primary: '#9B85FF',
-  primaryLight: '#B8A5FF',
-  primaryDark: '#7257FF',
-  
-  // Background
-  background: '#0F0F1A',
-  backgroundSecondary: '#1A1A2E',
-  backgroundTertiary: '#252542',
-  
-  // Surface
-  surface: '#1A1A2E',
-  surfaceElevated: '#252542',
-  
-  // Text
-  text: '#FFFFFF',
-  textSecondary: '#A1A1AA',
-  textTertiary: '#71717A',
-  textInverse: '#1A1A2E',
-  
-  // Border
-  border: '#3F3F5A',
-  borderLight: '#2D2D44',
-  
-  // Status
-  success: '#34D399',
-  warning: '#FBBF24',
-  error: '#F87171',
-  info: '#60A5FA',
-  
-  // Misc
-  overlay: 'rgba(0, 0, 0, 0.7)',
+  primary: dsColors.primary,
+  primaryLight: dsColors.primaryLight,
+  primaryDark: dsColors.primaryDark,
+
+  background: dsColors.bgPrimary,
+  backgroundSecondary: dsColors.bgSecondary,
+  backgroundTertiary: dsColors.bgElevated,
+
+  surface: dsColors.bgCard,
+  surfaceElevated: dsColors.bgElevated,
+
+  text: dsColors.textPrimary,
+  textSecondary: dsColors.textSecondary,
+  textTertiary: dsColors.textTertiary,
+  textInverse: dsColors.textInverse,
+
+  border: dsColors.borderStandard,
+  borderLight: dsColors.borderSubtle,
+
+  success: dsColors.success,
+  warning: dsColors.warning,
+  error: dsColors.error,
+  info: dsColors.info,
+
+  overlay: dsColors.bgOverlay,
   shadow: 'rgba(0, 0, 0, 0.3)',
-  
-  // Card
-  card: '#1A1A2E',
-  cardBorder: '#3F3F5A',
+
+  card: dsColors.bgCard,
+  cardBorder: dsColors.borderStandard,
 };
 
-export type ThemeColors = typeof lightColors;
+const lightColors = { ...darkColors };
+
+export type ThemeColors = typeof darkColors;
 
 interface ThemeContextValue {
   mode: ThemeMode;
@@ -116,8 +68,7 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const systemColorScheme = useColorScheme();
-  const [mode, setModeState] = useState<ThemeMode>('system');
+  const [mode, setModeState] = useState<ThemeMode>('dark');
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load saved preference
@@ -137,15 +88,11 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     loadTheme();
   }, []);
 
-  // Determine if dark mode is active
-  const isDark = mode === 'system' 
-    ? systemColorScheme === 'dark' 
-    : mode === 'dark';
+  // Always dark
+  const isDark = true;
+  const colors = darkColors;
 
-  // Get current colors
-  const colors = isDark ? darkColors : lightColors;
-
-  // Set mode and persist
+  // Set mode and persist (kept for API compat)
   const setMode = useCallback(async (newMode: ThemeMode) => {
     setModeState(newMode);
     try {
@@ -156,11 +103,10 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     }
   }, []);
 
-  // Toggle between light and dark
+  // Toggle (no-op in dark-mode-only)
   const toggleTheme = useCallback(() => {
-    const newMode = isDark ? 'light' : 'dark';
-    setMode(newMode);
-  }, [isDark, setMode]);
+    // Dark mode only
+  }, []);
 
   // Don't render until theme is loaded to prevent flash
   if (!isLoaded) {

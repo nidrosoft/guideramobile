@@ -313,12 +313,12 @@ export default function HotelCard({
 const styles = StyleSheet.create({
   // Card Container - Premium with depth
   container: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg, // Use design system: 24px
+    backgroundColor: colors.bgElevated,
+    borderRadius: 24, // Card container standard
     marginBottom: spacing.md,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.gray200, // Use design system border color
+    borderColor: colors.borderSubtle,
     // Premium shadow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
   ratingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
     borderRadius: 10,

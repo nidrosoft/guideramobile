@@ -32,6 +32,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { usePackageStore } from '../../../stores/usePackageStore';
 import { PACKAGE_TEMPLATES, PackageTemplate } from '../../../types/package.types';
 
@@ -62,6 +63,7 @@ export default function PackageSearchScreen({
   onClose,
 }: PackageSearchScreenProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc, isDark } = useTheme();
   const {
     tripSetup,
     setOrigin,
@@ -176,7 +178,7 @@ export default function PackageSearchScreen({
   };
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <StatusBar barStyle="light-content" />
       
       {/* Header with Background Image */}

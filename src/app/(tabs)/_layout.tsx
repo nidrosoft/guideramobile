@@ -15,20 +15,20 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [showScanSheet, setShowScanSheet] = useState(false);
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { t } = useTranslation();
 
   // Dynamic styles based on theme
   const dynamicStyles = useMemo(() => ({
     tabBar: {
-      backgroundColor: colors.white,
-      borderTopColor: colors.gray200,
+      backgroundColor: isDark ? '#1A1A1A' : colors.white,
+      borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : colors.gray200,
     },
     launcherButton: {
       backgroundColor: colors.primary,
       shadowColor: colors.primary,
     },
-  }), [colors]);
+  }), [colors, isDark]);
 
   // Define the order of visible tabs (excluding hidden ones like saved, inbox)
   const visibleTabNames = ['index', 'trips', 'ar', 'community', 'account'];

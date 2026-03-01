@@ -1,9 +1,11 @@
 /**
  * PACKAGE BUILD SCREEN STYLES
+ *
+ * Uses dark-mode tokens matching CarSearchScreen / FlightResultsScreen pattern.
  */
 
 import { StyleSheet } from 'react-native';
-import { colors, spacing, typography, borderRadius, shadows } from '@/styles';
+import { colors, spacing, typography, borderRadius } from '@/styles';
 
 export const styles = StyleSheet.create({
   container: {
@@ -15,9 +17,9 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -51,20 +53,20 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 280, // Increased to ensure content doesn't appear behind BundleCart
+    paddingBottom: 280,
   },
-  
-  // Sticky Filters Container - stays fixed while cards scroll underneath
+
+  // Sticky Filters Container
   stickyFiltersContainer: {
     backgroundColor: colors.background,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xs,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
     zIndex: 10,
   },
-  
+
   // Results Container
   resultsContainer: {
     padding: spacing.lg,
@@ -82,7 +84,7 @@ export const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: colors.textSecondary,
   },
-  
+
   // View All Button
   viewAllButton: {
     flexDirection: 'row',
@@ -115,9 +117,9 @@ export const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgCard,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   filterChipActive: {
     backgroundColor: colors.primary + '10',
@@ -131,18 +133,22 @@ export const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: typography.fontWeight.medium,
   },
-  
+
   // Result Card
   resultCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.gray200,
-    ...shadows.sm,
+    borderColor: colors.borderSubtle,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   resultCardSelected: {
     borderColor: colors.primary,
@@ -166,7 +172,7 @@ export const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   resultTitleSelected: {
-    color: colors.white,
+    color: '#FFFFFF',
   },
   resultSubtitle: {
     fontSize: typography.fontSize.sm,
@@ -182,13 +188,13 @@ export const styles = StyleSheet.create({
     color: colors.primary,
   },
   priceTextSelected: {
-    color: colors.white,
+    color: '#FFFFFF',
   },
   priceUnit: {
     fontSize: typography.fontSize.xs,
     color: colors.textSecondary,
   },
-  
+
   // Loading State
   loadingContainer: {
     flex: 1,
@@ -201,8 +207,8 @@ export const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.md,
   },
-  
-  // Cart Wrapper - Fixed at bottom with proper elevation
+
+  // Cart Wrapper
   cartWrapper: {
     position: 'absolute',
     bottom: 0,
@@ -210,7 +216,6 @@ export const styles = StyleSheet.create({
     right: 0,
     zIndex: 100,
     elevation: 20,
-    // Shadow for visual separation
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -8 },
     shadowOpacity: 0.15,

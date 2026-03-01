@@ -69,8 +69,8 @@ export default function WhereSection({
     <View style={styles.container}>
       {/* Search Input */}
       <View style={[styles.searchInput, { 
-        backgroundColor: themeColors.gray100,
-        borderColor: themeColors.gray200,
+        backgroundColor: themeColors.bgCard,
+        borderColor: themeColors.borderSubtle,
       }]}>
         <SearchNormal1 size={20} color={themeColors.textSecondary} />
         <TextInput
@@ -100,7 +100,7 @@ export default function WhereSection({
             onPress={() => handleSelect(destination)}
             activeOpacity={0.7}
           >
-            <View style={[styles.iconContainer, { backgroundColor: themeColors.gray100 }]}>
+            <View style={[styles.iconContainer, { backgroundColor: themeColors.bgCard }]}>
               <Text style={styles.emoji}>{destination.icon}</Text>
             </View>
             <View style={styles.destinationInfo}>

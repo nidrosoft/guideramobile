@@ -23,6 +23,7 @@ import { CloseCircle, SearchNormal1, Location } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useCarStore } from '../../../stores/useCarStore';
 import { Location as LocationType } from '../../../types/booking.types';
 
@@ -43,6 +44,7 @@ interface CarSearchScreenProps {
 
 export default function CarSearchScreen({ onSearch, onBack, onClose }: CarSearchScreenProps) {
   const insets = useSafeAreaInsets();
+  const { colors: themeColors } = useTheme();
   const {
     searchParams,
     setPickupLocation,
@@ -94,7 +96,7 @@ export default function CarSearchScreen({ onSearch, onBack, onClose }: CarSearch
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <StatusBar barStyle="light-content" />
       
       {/* Header with Background Image */}
@@ -261,7 +263,6 @@ export default function CarSearchScreen({ onSearch, onBack, onClose }: CarSearch
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     minHeight: 160,
@@ -310,11 +311,11 @@ const styles = StyleSheet.create({
   pickupCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -350,11 +351,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: '#E6E9EB',
+    borderColor: colors.borderSubtle,
   },
   toggleLabel: {
     fontSize: typography.fontSize.base,
@@ -366,11 +367,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
     // Ensure button is above scroll content
     zIndex: 100,
     elevation: 10,

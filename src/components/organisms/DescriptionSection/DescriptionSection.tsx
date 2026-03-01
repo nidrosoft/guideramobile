@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 24,
     padding: spacing.md,
     shadowColor: colors.black,

@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   },
   activeDot: {
     width: 24,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.6,

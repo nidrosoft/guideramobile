@@ -34,6 +34,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useExperienceStore } from '../../../stores/useExperienceStore';
 import { ExperienceCategory } from '../../../types/experience.types';
 import { Location as LocationType } from '../../../types/booking.types';
@@ -65,6 +66,7 @@ export default function ExperienceSearchScreen({
   onClose,
 }: ExperienceSearchScreenProps) {
   const insets = useSafeAreaInsets();
+  const { colors: themeColors } = useTheme();
   const {
     searchParams,
     setDestination,
@@ -126,7 +128,7 @@ export default function ExperienceSearchScreen({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <StatusBar barStyle="light-content" />
       
       {/* Header with Background Image */}
@@ -341,7 +343,7 @@ const styles = StyleSheet.create({
   destinationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
@@ -380,7 +382,7 @@ const styles = StyleSheet.create({
   fieldCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
@@ -428,7 +430,7 @@ const styles = StyleSheet.create({
   categoryCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.lg,

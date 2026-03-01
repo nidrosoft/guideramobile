@@ -1,18 +1,24 @@
 /**
  * CommunityHubScreen Styles
+ *
+ * Simplified: header with icon buttons, 4-tab bar, content area.
+ * No stats container, no hub-level search.
  */
 
 import { StyleSheet } from 'react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 
 export const styles = StyleSheet.create({
+  // ─── Layout ──────────────────────────────────────────────────
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
-  headerContainer: {
-    backgroundColor: colors.background,
+  content: {
+    flex: 1,
   },
+
+  // ─── Header ──────────────────────────────────────────────────
+  headerContainer: {},
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -23,50 +29,24 @@ export const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
   },
-  newGroupButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    gap: spacing.xs,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  newGroupText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.primary,
-  },
-  notificationButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.white,
+  headerIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
   },
   notificationBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    top: 4,
+    right: 4,
     minWidth: 16,
     height: 16,
     borderRadius: 8,
@@ -80,78 +60,10 @@ export const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.bold,
     color: colors.white,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    backgroundColor: colors.white,
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.xl,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  statItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.xs,
-  },
-  statIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexShrink: 0,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  statValue: {
-    fontSize: 12,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  statDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: colors.gray200,
-  },
-  searchContainer: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.xl,
-    gap: spacing.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
-  },
+
+  // ─── Tab Bar ─────────────────────────────────────────────────
   tabsContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
-    backgroundColor: colors.background,
   },
   tabs: {
     paddingHorizontal: spacing.lg,
@@ -165,147 +77,18 @@ export const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: 20,
-    backgroundColor: colors.white,
+    borderWidth: 1,
     gap: spacing.xs,
   },
   tabActive: {
     backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   tabText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textSecondary,
   },
   tabTextActive: {
     color: colors.white,
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingTop: spacing.md,
-  },
-  waitingHeader: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  waitingTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  waitingTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  waitingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF69B4',
-  },
-  waitingSubtitle: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  pendingCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  pendingAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: borderRadius.md,
-  },
-  pendingInfo: {
-    flex: 1,
-    marginLeft: spacing.md,
-  },
-  pendingName: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  pendingMembers: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.warning + '20',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    gap: spacing.xs,
-  },
-  statusBadgeChecked: {
-    backgroundColor: colors.warning + '30',
-  },
-  statusEmoji: {
-    fontSize: 14,
-  },
-  statusText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.warning,
-  },
-  statusTextChecked: {
-    color: colors.warning,
-  },
-  horizontalList: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
-    paddingBottom: spacing.lg,
-    paddingTop: spacing.xs,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing['3xl'],
-    paddingHorizontal: spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginTop: spacing.md,
-  },
-  emptyText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-  emptyButton: {
-    marginTop: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.full,
-  },
-  emptyButtonText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: spacing['3xl'],
   },
 });

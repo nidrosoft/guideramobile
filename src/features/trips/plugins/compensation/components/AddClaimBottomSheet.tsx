@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { CloseCircle, Calendar, Add, DocumentUpload, TickCircle } from 'iconsax-react-native';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -24,6 +25,7 @@ interface AddClaimBottomSheetProps {
 }
 
 export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddClaimBottomSheetProps) {
+  const { colors, isDark } = useTheme();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -126,12 +128,12 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
   if (showSuccess) {
     return (
       <BlurView intensity={20} style={styles.overlay}>
-        <View style={styles.successContainer}>
+        <View style={[styles.successContainer, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
           <View style={styles.successIconContainer}>
-            <TickCircle size={64} color={colors.success} variant="Bold" />
+            <TickCircle size={64} color="#10B981" variant="Bold" />
           </View>
-          <Text style={styles.successTitle}>Successfully Submitted!</Text>
-          <Text style={styles.successSubtitle}>
+          <Text style={[styles.successTitle, { color: colors.textPrimary }]}>Successfully Submitted!</Text>
+          <Text style={[styles.successSubtitle, { color: colors.textSecondary }]}>
             You successfully submit your compensation, it will go to active later and our team will check it for you ASAP!
           </Text>
           <TouchableOpacity style={styles.continueButton} onPress={handleClose}>
@@ -146,10 +148,10 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
   if (isSubmitting) {
     return (
       <BlurView intensity={20} style={styles.overlay}>
-        <View style={styles.loadingContainer}>
+        <View style={[styles.loadingContainer, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingPercentage}>25%</Text>
-          <Text style={styles.loadingText}>Submitting Compensation</Text>
+          <Text style={[styles.loadingPercentage, { color: colors.primary }]}>25%</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Submitting Compensation</Text>
         </View>
       </BlurView>
     );
@@ -157,21 +159,21 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
 
   return (
     <BlurView intensity={20} style={styles.overlay}>
-      <View style={styles.bottomSheet}>
+      <View style={[styles.bottomSheet, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>New Compensation</Text>
-            <Text style={styles.subtitle}>Step {currentStep} of 3</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>New Compensation</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Step {currentStep} of 3</Text>
           </View>
           <TouchableOpacity onPress={handleClose}>
-            <CloseCircle size={28} color={colors.gray400} />
+            <CloseCircle size={28} color={colors.textTertiary} />
           </TouchableOpacity>
         </View>
 
         {/* Progress Bar */}
         <View style={styles.progressBarContainer}>
-          <View style={styles.progressBarBackground}>
+          <View style={[styles.progressBarBackground, { backgroundColor: isDark ? '#2A2A2A' : '#F3F4F6' }]}>
             <View style={[styles.progressBarFill, { width: `${progressPercentage}%` }]} />
           </View>
         </View>
@@ -180,33 +182,33 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
           {/* Step 1: Claim Details */}
           {currentStep === 1 && (
             <View style={styles.stepContainer}>
-              <Text style={styles.label}>Incident</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Incident</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: isDark ? '#2A2A2A' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.borderSubtle }]}
                 placeholder="Enter your incident"
-                placeholderTextColor={colors.gray400}
+                placeholderTextColor={colors.textTertiary}
                 value={incident}
                 onChangeText={setIncident}
               />
 
               <View style={styles.row}>
                 <View style={styles.halfInput}>
-                  <Text style={styles.label}>ID</Text>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>ID</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: isDark ? '#2A2A2A' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.borderSubtle }]}
                     placeholder="Enter ID"
-                    placeholderTextColor={colors.gray400}
+                    placeholderTextColor={colors.textTertiary}
                     value={claimId}
                     onChangeText={setClaimId}
                   />
                 </View>
 
                 <View style={styles.halfInput}>
-                  <Text style={styles.label}>Provider</Text>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>Provider</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: isDark ? '#2A2A2A' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.borderSubtle }]}
                     placeholder="Enter provider"
-                    placeholderTextColor={colors.gray400}
+                    placeholderTextColor={colors.textTertiary}
                     value={provider}
                     onChangeText={setProvider}
                   />
@@ -215,11 +217,11 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
 
               <View style={styles.row}>
                 <View style={styles.halfInput}>
-                  <Text style={styles.label}>Estimated Claim</Text>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>Estimated Claim</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: isDark ? '#2A2A2A' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.borderSubtle }]}
                     placeholder="Enter estimated"
-                    placeholderTextColor={colors.gray400}
+                    placeholderTextColor={colors.textTertiary}
                     value={estimatedClaim}
                     onChangeText={setEstimatedClaim}
                     keyboardType="numeric"
@@ -227,20 +229,20 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
                 </View>
 
                 <View style={styles.halfInput}>
-                  <Text style={styles.label}>Date</Text>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>Date</Text>
                   <TouchableOpacity
-                    style={styles.dateInput}
+                    style={[styles.dateInput, { backgroundColor: isDark ? '#2A2A2A' : '#F9FAFB', borderColor: colors.borderSubtle }]}
                     onPress={() => setShowDatePicker(true)}
                   >
-                    <Calendar size={20} color={colors.gray600} />
-                    <Text style={styles.dateText}>
+                    <Calendar size={20} color={colors.textSecondary} />
+                    <Text style={[styles.dateText, { color: colors.textPrimary }]}>
                       {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
-              <Text style={styles.label}>Accuracy</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Accuracy</Text>
               <View style={styles.sliderContainer}>
                 <Slider
                   style={styles.slider}
@@ -249,11 +251,11 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
                   value={accuracy}
                   onValueChange={setAccuracy}
                   minimumTrackTintColor={colors.primary}
-                  maximumTrackTintColor={colors.gray200}
+                  maximumTrackTintColor={isDark ? '#2A2A2A' : '#E5E7EB'}
                   thumbTintColor={colors.primary}
                   step={1}
                 />
-                <Text style={styles.accuracyText}>{Math.round(accuracy)}%</Text>
+                <Text style={[styles.accuracyText, { color: colors.textPrimary }]}>{Math.round(accuracy)}%</Text>
               </View>
             </View>
           )}
@@ -261,22 +263,22 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
           {/* Step 2: Upload Documents */}
           {currentStep === 2 && (
             <View style={styles.stepContainer}>
-              <Text style={styles.sectionTitle}>Add Photos / Videos</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Add Photos / Videos</Text>
               
               <View style={styles.photosGrid}>
                 {photos.map((photo, index) => (
                   <Image key={index} source={{ uri: photo }} style={styles.photoThumbnail} />
                 ))}
-                <TouchableOpacity style={styles.addPhotoButton} onPress={handlePickImage}>
+                <TouchableOpacity style={[styles.addPhotoButton, { backgroundColor: `${colors.primary}10` }]} onPress={handlePickImage}>
                   <Add size={32} color={colors.primary} />
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.sectionTitle}>Add Additional Document</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Add Additional Document</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: isDark ? '#2A2A2A' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.borderSubtle }]}
                 placeholder="Additional document"
-                placeholderTextColor={colors.gray400}
+                placeholderTextColor={colors.textTertiary}
                 value={additionalDocument}
                 onChangeText={setAdditionalDocument}
               />
@@ -284,9 +286,9 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
               {documents.length > 0 && (
                 <View style={styles.documentsContainer}>
                   {documents.map((doc, index) => (
-                    <View key={index} style={styles.documentItem}>
+                    <View key={index} style={[styles.documentItem, { backgroundColor: isDark ? '#2A2A2A' : '#F9FAFB' }]}>
                       <DocumentUpload size={20} color={colors.primary} />
-                      <Text style={styles.documentName}>{doc.name}</Text>
+                      <Text style={[styles.documentName, { color: colors.textPrimary }]}>{doc.name}</Text>
                     </View>
                   ))}
                 </View>
@@ -297,41 +299,41 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
           {/* Step 3: Summary */}
           {currentStep === 3 && (
             <View style={styles.stepContainer}>
-              <Text style={styles.sectionTitle}>Summary</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Summary</Text>
               
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Incident</Text>
-                <Text style={styles.summaryValue}>{incident || 'N/A'}</Text>
+              <View style={[styles.summaryRow, { borderBottomColor: colors.borderSubtle }]}>
+                <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>Incident</Text>
+                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{incident || 'N/A'}</Text>
               </View>
 
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>ID</Text>
-                <Text style={styles.summaryValue}>{claimId || 'N/A'}</Text>
+              <View style={[styles.summaryRow, { borderBottomColor: colors.borderSubtle }]}>
+                <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>ID</Text>
+                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{claimId || 'N/A'}</Text>
               </View>
 
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Provider</Text>
-                <Text style={styles.summaryValue}>{provider || 'N/A'}</Text>
+              <View style={[styles.summaryRow, { borderBottomColor: colors.borderSubtle }]}>
+                <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>Provider</Text>
+                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{provider || 'N/A'}</Text>
               </View>
 
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Estimated Claim</Text>
-                <Text style={styles.summaryValue}>${estimatedClaim || '0'}</Text>
+              <View style={[styles.summaryRow, { borderBottomColor: colors.borderSubtle }]}>
+                <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>Estimated Claim</Text>
+                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>${estimatedClaim || '0'}</Text>
               </View>
 
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Accuracy</Text>
-                <Text style={styles.summaryValue}>{accuracy}%</Text>
+              <View style={[styles.summaryRow, { borderBottomColor: colors.borderSubtle }]}>
+                <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>Accuracy</Text>
+                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{accuracy}%</Text>
               </View>
 
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Media & Document</Text>
-                <Text style={styles.summaryValue}>{photos.length + documents.length} Item</Text>
+              <View style={[styles.summaryRow, { borderBottomColor: colors.borderSubtle }]}>
+                <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>Media & Document</Text>
+                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{photos.length + documents.length} Item</Text>
               </View>
 
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Date</Text>
-                <Text style={styles.summaryValue}>
+              <View style={[styles.summaryRow, { borderBottomColor: colors.borderSubtle }]}>
+                <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>Date</Text>
+                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>
                   {date.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </Text>
               </View>
@@ -342,8 +344,8 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
         {/* Footer Buttons */}
         <View style={styles.footer}>
           {currentStep > 1 && (
-            <TouchableOpacity style={styles.backButton} onPress={handlePreviousStep}>
-              <Text style={styles.backButtonText}>Back</Text>
+            <TouchableOpacity style={[styles.backButton, { backgroundColor: isDark ? '#2A2A2A' : '#F3F4F6' }]} onPress={handlePreviousStep}>
+              <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>Back</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -360,8 +362,8 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
       {/* Date Picker Modal */}
       {showDatePicker && (
         <BlurView intensity={20} style={styles.datePickerOverlay}>
-          <View style={styles.datePickerModal}>
-            <Text style={styles.datePickerTitle}>Select Date</Text>
+          <View style={[styles.datePickerModal, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
+            <Text style={[styles.datePickerTitle, { color: colors.textPrimary }]}>Select Date</Text>
             <DateTimePicker
               value={date}
               mode="date"
@@ -369,7 +371,7 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
               onChange={(event, selectedDate) => {
                 if (selectedDate) setDate(selectedDate);
               }}
-              textColor={colors.gray900}
+              textColor={colors.textPrimary}
             />
             <TouchableOpacity
               style={styles.datePickerButton}
@@ -395,7 +397,6 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   bottomSheet: {
-    backgroundColor: colors.white,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
     paddingBottom: spacing.xl,
@@ -411,12 +412,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
-    color: colors.gray900,
     marginBottom: spacing.xs,
   },
   subtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray500,
   },
   progressBarContainer: {
     paddingHorizontal: spacing.lg,
@@ -424,13 +423,12 @@ const styles = StyleSheet.create({
   },
   progressBarBackground: {
     height: 6,
-    backgroundColor: colors.gray100,
     borderRadius: borderRadius.full,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: colors.primary,
+    backgroundColor: '#7C3AED',
     borderRadius: borderRadius.full,
   },
   content: {
@@ -442,18 +440,14 @@ const styles = StyleSheet.create({
   label: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray700,
     marginBottom: spacing.sm,
     marginTop: spacing.md,
   },
   input: {
-    backgroundColor: colors.gray50,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     fontSize: typography.fontSize.base,
-    color: colors.gray900,
     borderWidth: 1,
-    borderColor: colors.gray200,
   },
   row: {
     flexDirection: 'row',
@@ -466,15 +460,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.gray50,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray200,
   },
   dateText: {
     fontSize: typography.fontSize.base,
-    color: colors.gray900,
   },
   sliderContainer: {
     marginTop: spacing.md,
@@ -486,13 +477,11 @@ const styles = StyleSheet.create({
   accuracyText: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.gray900,
     textAlign: 'center',
   },
   sectionTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray700,
     marginBottom: spacing.md,
     marginTop: spacing.md,
   },
@@ -511,7 +500,6 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: borderRadius.lg,
-    backgroundColor: `${colors.primary}10`,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -523,29 +511,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     padding: spacing.md,
-    backgroundColor: colors.gray50,
     borderRadius: borderRadius.md,
     marginBottom: spacing.sm,
   },
   documentName: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray900,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
   },
   summaryLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray500,
   },
   summaryValue: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray900,
   },
   footer: {
     flexDirection: 'row',
@@ -557,19 +540,17 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: spacing.md + 2,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.gray100,
     alignItems: 'center',
   },
   backButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray700,
   },
   nextButton: {
     flex: 2,
     paddingVertical: spacing.md + 2,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.primary,
+    backgroundColor: '#7C3AED',
     alignItems: 'center',
   },
   nextButtonFull: {
@@ -578,10 +559,9 @@ const styles = StyleSheet.create({
   nextButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: '700',
-    color: colors.white,
+    color: '#FFFFFF',
   },
   loadingContainer: {
-    backgroundColor: colors.white,
     borderRadius: borderRadius.xl,
     padding: spacing.xl * 2,
     marginHorizontal: spacing.xl,
@@ -590,16 +570,13 @@ const styles = StyleSheet.create({
   loadingPercentage: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: '700',
-    color: colors.primary,
     marginTop: spacing.lg,
   },
   loadingText: {
     fontSize: typography.fontSize.base,
-    color: colors.gray600,
     marginTop: spacing.sm,
   },
   successContainer: {
-    backgroundColor: colors.white,
     borderRadius: borderRadius.xl,
     padding: spacing.xl * 2,
     marginHorizontal: spacing.xl,
@@ -611,12 +588,10 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
-    color: colors.gray900,
     marginBottom: spacing.md,
   },
   successSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
     textAlign: 'center',
     marginBottom: spacing.xl,
     lineHeight: 20,
@@ -625,13 +600,13 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingVertical: spacing.md + 2,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.primary,
+    backgroundColor: '#7C3AED',
     alignItems: 'center',
   },
   continueButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: '700',
-    color: colors.white,
+    color: '#FFFFFF',
   },
   datePickerOverlay: {
     position: 'absolute',
@@ -644,7 +619,6 @@ const styles = StyleSheet.create({
     zIndex: 2000,
   },
   datePickerModal: {
-    backgroundColor: colors.white,
     borderRadius: borderRadius.xl,
     padding: spacing.xl,
     marginHorizontal: spacing.xl,
@@ -653,12 +627,11 @@ const styles = StyleSheet.create({
   datePickerTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.gray900,
     marginBottom: spacing.lg,
     textAlign: 'center',
   },
   datePickerButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#7C3AED',
     paddingVertical: spacing.md + 2,
     borderRadius: borderRadius.full,
     alignItems: 'center',
@@ -667,6 +640,6 @@ const styles = StyleSheet.create({
   datePickerButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: '700',
-    color: colors.white,
+    color: '#FFFFFF',
   },
 });

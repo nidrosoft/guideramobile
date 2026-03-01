@@ -16,14 +16,15 @@ import {
   Image,
   TextInput,
   ActivityIndicator,
+  Modal,
+  Pressable,
+  Animated as RNAnimated,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   ArrowLeft,
-  Call,
-  Video,
   More,
   Send2,
   Camera,
@@ -34,7 +35,8 @@ import {
   AttachCircle,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
+import { spacing, borderRadius } from '@/styles';
 import { styles } from './ChatScreen.styles';
 import ChatMessageBubble, { ChatMessageData } from '../components/ChatMessageBubble';
 
@@ -127,12 +129,17 @@ export default function ChatScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { colors: tc, isDark } = useTheme();
   const flatListRef = useRef<FlatList>(null);
   
   const [messages, setMessages] = useState<ChatMessageData[]>(MOCK_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
+  const [reactionMessageId, setReactionMessageId] = useState<string | null>(null);
+  const reactionScaleAnim = useRef(new RNAnimated.Value(0)).current;
+
+  const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '🔥', '👍'];
   
   const buddy = MOCK_BUDDY;
   const currentUserId = 'current-user';
@@ -237,30 +244,36 @@ export default function ChatScreen() {
         onReactionPress={(emoji) => handleReaction(item.id, emoji)}
         onLongPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          // Show message options
+          setReactionMessageId(item.id);
+          RNAnimated.spring(reactionScaleAnim, {
+            toValue: 1,
+            friction: 6,
+            tension: 100,
+            useNativeDriver: true,
+          }).start();
         }}
       />
     );
   }, [messages, handleReaction]);
   
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.background, paddingTop: insets.top }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.profileInfo} activeOpacity={0.7}>
           <View style={styles.avatarContainer}>
             <Image source={{ uri: buddy.avatar }} style={styles.avatar} />
-            {buddy.isOnline && <View style={styles.onlineIndicator} />}
+            {buddy.isOnline && <View style={[styles.onlineIndicator, { backgroundColor: tc.success, borderColor: tc.background }]} />}
           </View>
           <View style={styles.nameContainer}>
-            <Text style={styles.name}>{buddy.firstName} {buddy.lastName}</Text>
-            <Text style={styles.status}>
+            <Text style={[styles.name, { color: tc.textPrimary }]}>{buddy.firstName} {buddy.lastName}</Text>
+            <Text style={[styles.status, { color: buddy.isOnline ? tc.success : tc.textTertiary }]}>
               {buddy.isOnline ? 'Online' : `Last seen ${formatLastSeen(buddy.lastSeen)}`}
             </Text>
           </View>
@@ -268,13 +281,7 @@ export default function ChatScreen() {
         
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerButton}>
-            <Call size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
-            <Video size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
-            <More size={22} color={colors.textPrimary} />
+            <More size={22} color={tc.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -299,31 +306,31 @@ export default function ChatScreen() {
         {isTyping && (
           <View style={styles.typingContainer}>
             <Image source={{ uri: buddy.avatar }} style={styles.typingAvatar} />
-            <View style={styles.typingBubble}>
+            <View style={[styles.typingBubble, { backgroundColor: tc.bgElevated }]}>
               <View style={styles.typingDots}>
-                <View style={[styles.typingDot, styles.typingDot1]} />
-                <View style={[styles.typingDot, styles.typingDot2]} />
-                <View style={[styles.typingDot, styles.typingDot3]} />
+                <View style={[styles.typingDot, { backgroundColor: tc.textTertiary }, styles.typingDot1]} />
+                <View style={[styles.typingDot, { backgroundColor: tc.textTertiary }, styles.typingDot2]} />
+                <View style={[styles.typingDot, { backgroundColor: tc.textTertiary }, styles.typingDot3]} />
               </View>
             </View>
           </View>
         )}
         
         {/* Input */}
-        <View style={[styles.inputContainer, { paddingBottom: insets.bottom || spacing.md }]}>
+        <View style={[styles.inputContainer, { backgroundColor: tc.bgElevated, borderTopColor: tc.borderSubtle, paddingBottom: insets.bottom || spacing.md }]}>
           {showAttachments && (
-            <View style={styles.attachmentOptions}>
+            <View style={[styles.attachmentOptions, { borderBottomColor: tc.borderSubtle }]}>
               <TouchableOpacity style={styles.attachmentButton}>
-                <Camera size={22} color={colors.primary} />
-                <Text style={styles.attachmentLabel}>Camera</Text>
+                <Camera size={22} color={tc.primary} />
+                <Text style={[styles.attachmentLabel, { color: tc.textSecondary }]}>Camera</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.attachmentButton}>
-                <ImageIcon size={22} color={colors.primary} />
-                <Text style={styles.attachmentLabel}>Gallery</Text>
+                <ImageIcon size={22} color={tc.primary} />
+                <Text style={[styles.attachmentLabel, { color: tc.textSecondary }]}>Gallery</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.attachmentButton}>
-                <Location size={22} color={colors.primary} />
-                <Text style={styles.attachmentLabel}>Location</Text>
+                <Location size={22} color={tc.primary} />
+                <Text style={[styles.attachmentLabel, { color: tc.textSecondary }]}>Location</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -333,39 +340,114 @@ export default function ChatScreen() {
               style={styles.attachButton}
               onPress={() => setShowAttachments(!showAttachments)}
             >
-              <AttachCircle size={24} color={colors.gray500} />
+              <AttachCircle size={24} color={tc.textTertiary} />
             </TouchableOpacity>
             
-            <View style={styles.textInputContainer}>
+            <View style={[styles.textInputContainer, { backgroundColor: tc.bgInput || tc.bgCard }]}>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, { color: tc.textPrimary }]}
                 placeholder="Type a message..."
-                placeholderTextColor={colors.gray400}
+                placeholderTextColor={tc.textTertiary}
                 value={inputText}
                 onChangeText={setInputText}
                 multiline
                 maxLength={1000}
               />
               <TouchableOpacity style={styles.emojiButton}>
-                <EmojiHappy size={22} color={colors.gray400} />
+                <EmojiHappy size={22} color={tc.textTertiary} />
               </TouchableOpacity>
             </View>
             
             {inputText.trim() ? (
               <TouchableOpacity 
-                style={styles.sendButton}
+                style={[styles.sendButton, { backgroundColor: tc.primary }]}
                 onPress={handleSend}
               >
-                <Send2 size={22} color={colors.white} variant="Bold" />
+                <Send2 size={22} color="#FFFFFF" variant="Bold" />
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={styles.micButton}>
-                <Microphone2 size={22} color={colors.primary} />
+              <TouchableOpacity style={[styles.micButton, { backgroundColor: tc.primary + '15' }]}>
+                <Microphone2 size={22} color={tc.primary} />
               </TouchableOpacity>
             )}
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Reaction Picker Overlay */}
+      <Modal
+        visible={reactionMessageId !== null}
+        transparent
+        animationType="none"
+        onRequestClose={() => {
+          reactionScaleAnim.setValue(0);
+          setReactionMessageId(null);
+        }}
+      >
+        <Pressable
+          style={reactionStyles.overlay}
+          onPress={() => {
+            reactionScaleAnim.setValue(0);
+            setReactionMessageId(null);
+          }}
+        >
+          <RNAnimated.View
+            style={[
+              reactionStyles.pickerContainer,
+              { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, transform: [{ scale: reactionScaleAnim }] },
+            ]}
+          >
+            {REACTION_EMOJIS.map((emoji) => (
+              <TouchableOpacity
+                key={emoji}
+                style={reactionStyles.emojiOption}
+                onPress={() => {
+                  if (reactionMessageId) {
+                    handleReaction(reactionMessageId, emoji);
+                  }
+                  reactionScaleAnim.setValue(0);
+                  setReactionMessageId(null);
+                }}
+                activeOpacity={0.6}
+              >
+                <Text style={reactionStyles.emojiText}>{emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </RNAnimated.View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
+
+const reactionStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  pickerContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 28,
+    borderWidth: 1,
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  emojiOption: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 22,
+  },
+  emojiText: {
+    fontSize: 26,
+  },
+});

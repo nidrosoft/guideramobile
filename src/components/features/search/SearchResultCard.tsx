@@ -41,7 +41,7 @@ export default function SearchResultCard({
 
   const dynamicStyles = useMemo(() => ({
     card: {
-      backgroundColor: colors.white,
+      backgroundColor: colors.bgElevated,
       borderColor: colors.gray100,
     },
     typeText: { color: colors.primary },
@@ -49,7 +49,7 @@ export default function SearchResultCard({
     subtitle: { color: colors.textSecondary },
     ratingText: { color: colors.textPrimary },
     priceText: { color: colors.primary },
-    favoriteButton: { backgroundColor: colors.white },
+    favoriteButton: { backgroundColor: colors.bgElevated },
   }), [colors]);
 
   return (

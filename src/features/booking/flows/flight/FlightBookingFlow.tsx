@@ -1,10 +1,10 @@
 /**
  * FLIGHT BOOKING FLOW
  * 
- * Streamlined 3-screen flight booking:
+ * Streamlined 3-screen flight search + deal redirect:
  * 1. Search - Single page with bottom sheet modals
  * 2. Results - Flight list with filters and date scroll
- * 3. Checkout - Combined seats, extras, travelers, payment
+ * 3. Deal - Flight summary + "Book on [Provider]" redirect
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -24,17 +24,16 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/styles';
 import { useFlightStore } from '../../stores/useFlightStore';
-import { useBookingStore } from '../../stores/useBookingStore';
 import { Flight } from '../../types/flight.types';
 
 // Import new screens
 import FlightSearchScreen from './screens/FlightSearchScreen';
 import FlightSearchLoadingScreen from './screens/FlightSearchLoadingScreen';
 import FlightResultsScreen from './screens/FlightResultsScreen';
-import FlightCheckoutScreen from './screens/FlightCheckoutScreen';
+import FlightDealScreen from './screens/FlightDealScreen';
 
 // Screen types
-type FlightScreen = 'search' | 'loading' | 'results' | 'checkout';
+type FlightScreen = 'search' | 'loading' | 'results' | 'deal';
 
 interface FlightBookingFlowProps {
   visible: boolean;
@@ -46,7 +45,6 @@ export default function FlightBookingFlow({
   onClose,
 }: FlightBookingFlowProps) {
   const flightStore = useFlightStore();
-  const bookingStore = useBookingStore();
   
   const [currentScreen, setCurrentScreen] = useState<FlightScreen>('search');
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
@@ -58,7 +56,6 @@ export default function FlightBookingFlow({
   // Animate modal entrance
   useEffect(() => {
     if (visible) {
-      bookingStore.startBookingSession('flight');
       fadeAnim.value = withTiming(1, { duration: 250 });
       scaleAnim.value = withTiming(1, { duration: 250 });
     } else {
@@ -78,7 +75,6 @@ export default function FlightBookingFlow({
     setCurrentScreen('search');
     setSelectedFlight(null);
     flightStore.reset();
-    bookingStore.endBookingSession();
   };
   
   // Navigation handlers
@@ -97,7 +93,7 @@ export default function FlightBookingFlow({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedFlight(flight);
     flightStore.selectOutboundFlight(flight);
-    setCurrentScreen('checkout');
+    setCurrentScreen('deal');
   }, []);
   
   const handleBackFromResults = useCallback(() => {
@@ -105,7 +101,7 @@ export default function FlightBookingFlow({
     setCurrentScreen('search');
   }, []);
   
-  const handleBackFromCheckout = useCallback(() => {
+  const handleBackFromDeal = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setCurrentScreen('results');
   }, []);
@@ -142,12 +138,11 @@ export default function FlightBookingFlow({
             onClose={handleClose}
           />
         );
-      case 'checkout':
+      case 'deal':
         return selectedFlight ? (
-          <FlightCheckoutScreen
+          <FlightDealScreen
             flight={selectedFlight}
-            onComplete={handleClose}
-            onBack={handleBackFromCheckout}
+            onBack={handleBackFromDeal}
             onClose={handleClose}
           />
         ) : null;

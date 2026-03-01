@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing, colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Location, Clock, People, Star1, Heart } from 'iconsax-react-native';
 
 interface LocalExperienceCardProps {
@@ -30,8 +31,9 @@ export default function LocalExperienceCard({
   imageUrl,
   isNearby
 }: LocalExperienceCardProps) {
+  const { colors } = useTheme();
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bgCard }]}>
       {/* Image Section */}
       <View style={styles.imageContainer}>
         <Image source={{ uri: imageUrl }} style={styles.image} />
@@ -45,7 +47,7 @@ export default function LocalExperienceCard({
         {/* Nearby Badge */}
         {isNearby && (
           <View style={styles.nearbyBadge}>
-            <Location size={12} color={colors.white} variant="Bold" />
+            <Location size={12} color="#FFFFFF" variant="Bold" />
             <Text style={styles.nearbyText}>Nearby</Text>
           </View>
         )}
@@ -64,12 +66,12 @@ export default function LocalExperienceCard({
       {/* Info Section */}
       <View style={styles.infoContainer}>
         {/* Title */}
-        <Text style={styles.title} numberOfLines={2}>{title}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>{title}</Text>
 
         {/* Host Info */}
         <View style={styles.hostContainer}>
           <Image source={{ uri: hostImage }} style={styles.hostAvatar} />
-          <Text style={styles.hostText}>Hosted by {hostName}</Text>
+          <Text style={[styles.hostText, { color: colors.textSecondary }]}>Hosted by {hostName}</Text>
         </View>
 
         {/* Details Row */}
@@ -77,29 +79,29 @@ export default function LocalExperienceCard({
           {/* Duration */}
           <View style={styles.detailItem}>
             <Clock size={14} color={colors.textSecondary} variant="Outline" />
-            <Text style={styles.detailText}>{duration}</Text>
+            <Text style={[styles.detailText, { color: colors.textSecondary }]}>{duration}</Text>
           </View>
 
           {/* Group Size */}
           <View style={styles.detailItem}>
             <People size={14} color={colors.textSecondary} variant="Outline" />
-            <Text style={styles.detailText}>{groupSize}</Text>
+            <Text style={[styles.detailText, { color: colors.textSecondary }]}>{groupSize}</Text>
           </View>
 
           {/* Distance */}
           <View style={styles.detailItem}>
             <Location size={14} color={colors.textSecondary} variant="Bold" />
-            <Text style={styles.detailText}>{distance}</Text>
+            <Text style={[styles.detailText, { color: colors.textSecondary }]}>{distance}</Text>
           </View>
         </View>
 
         {/* Bottom Row - Rating & Price */}
-        <View style={styles.bottomRow}>
+        <View style={[styles.bottomRow, { borderTopColor: colors.borderSubtle }]}>
           <View style={styles.ratingContainer}>
             <Star1 size={14} color="#FFA500" variant="Bold" />
-            <Text style={styles.ratingText}>{rating}</Text>
+            <Text style={[styles.ratingText, { color: colors.textPrimary }]}>{rating}</Text>
           </View>
-          <Text style={styles.price}>{price}</Text>
+          <Text style={[styles.price, { color: colors.primary }]}>{price}</Text>
         </View>
       </View>
     </View>
@@ -109,10 +111,11 @@ export default function LocalExperienceCard({
 const styles = StyleSheet.create({
   container: {
     width: 280,
-    backgroundColor: colors.white,
     borderRadius: 20,
     overflow: 'hidden',
     marginRight: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -141,7 +144,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.primary,
+    backgroundColor: '#3FC39E',
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: 12,
@@ -149,7 +152,7 @@ const styles = StyleSheet.create({
   nearbyText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
   heartButton: {
     position: 'absolute',
@@ -158,7 +161,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -174,7 +177,7 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
+    color: '#1a1a1a',
   },
   infoContainer: {
     padding: spacing.md,
@@ -182,7 +185,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.sm,
     lineHeight: 20,
   },
@@ -197,11 +199,10 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: 'rgba(128,128,128,0.3)',
   },
   hostText: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
   },
   detailsRow: {
     flexDirection: 'row',
@@ -216,7 +217,6 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
   },
   bottomRow: {
     flexDirection: 'row',
@@ -224,7 +224,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -234,11 +233,9 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   price: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary,
   },
 });

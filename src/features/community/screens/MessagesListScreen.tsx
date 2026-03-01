@@ -27,7 +27,8 @@ import {
   TickCircle,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
+import { spacing, typography, borderRadius } from '@/styles';
 
 interface Conversation {
   id: string;
@@ -110,6 +111,7 @@ type FilterType = 'all' | 'groups' | 'dms';
 export default function MessagesListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: tc, isDark } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
@@ -165,34 +167,34 @@ export default function MessagesListScreen() {
   const totalUnread = MOCK_CONVERSATIONS.reduce((sum, conv) => sum + conv.unreadCount, 0);
   
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: tc.bgElevated }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Messages</Text>
+          <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Messages</Text>
           {totalUnread > 0 && (
-            <View style={styles.headerBadge}>
+            <View style={[styles.headerBadge, { backgroundColor: tc.error }]}>
               <Text style={styles.headerBadgeText}>{totalUnread}</Text>
             </View>
           )}
         </View>
         <TouchableOpacity style={styles.newButton} onPress={handleNewMessage}>
-          <Edit size={22} color={colors.primary} />
+          <Edit size={22} color={tc.primary} />
         </TouchableOpacity>
       </View>
       
       {/* Search */}
-      <View style={styles.searchContainer}>
-        <SearchNormal1 size={20} color={colors.gray400} />
+      <View style={[styles.searchContainer, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+        <SearchNormal1 size={20} color={tc.textTertiary} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: tc.textPrimary }]}
           placeholder="Search conversations..."
-          placeholderTextColor={colors.gray400}
+          placeholderTextColor={tc.textTertiary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -209,16 +211,24 @@ export default function MessagesListScreen() {
           return (
             <TouchableOpacity
               key={f.id}
-              style={[styles.filterButton, isActive && styles.filterButtonActive]}
+              style={[
+                styles.filterButton,
+                { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                isActive && { backgroundColor: tc.primary, borderColor: tc.primary },
+              ]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setFilter(f.id);
               }}
             >
               {f.icon && (
-                <f.icon size={16} color={isActive ? colors.white : colors.gray500} />
+                <f.icon size={16} color={isActive ? '#FFFFFF' : tc.textSecondary} />
               )}
-              <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
+              <Text style={[
+                styles.filterText,
+                { color: tc.textSecondary },
+                isActive && { color: '#FFFFFF' },
+              ]}>
                 {f.label}
               </Text>
             </TouchableOpacity>
@@ -234,44 +244,45 @@ export default function MessagesListScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.primary}
+            tintColor={tc.primary}
           />
         }
       >
         {filteredConversations.length === 0 ? (
           <View style={styles.emptyState}>
-            <Message size={48} color={colors.gray300} />
-            <Text style={styles.emptyTitle}>No conversations</Text>
-            <Text style={styles.emptyText}>Start chatting with travel buddies</Text>
+            <Message size={48} color={tc.textTertiary} />
+            <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No conversations</Text>
+            <Text style={[styles.emptyText, { color: tc.textSecondary }]}>Start chatting with travel buddies</Text>
           </View>
         ) : (
           filteredConversations.map(conversation => (
             <TouchableOpacity
               key={conversation.id}
-              style={styles.conversationCard}
+              style={[styles.conversationCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
               onPress={() => handleConversationPress(conversation)}
               activeOpacity={0.7}
             >
               <View style={styles.avatarContainer}>
                 <Image source={{ uri: conversation.avatar }} style={styles.avatar} />
                 {conversation.type === 'dm' && conversation.isOnline && (
-                  <View style={styles.onlineIndicator} />
+                  <View style={[styles.onlineIndicator, { backgroundColor: tc.success, borderColor: tc.bgElevated }]} />
                 )}
                 {conversation.type === 'group' && (
-                  <View style={styles.groupIndicator}>
-                    <People size={10} color={colors.white} />
+                  <View style={[styles.groupIndicator, { backgroundColor: tc.primary, borderColor: tc.bgElevated }]}>
+                    <People size={10} color="#FFFFFF" />
                   </View>
                 )}
               </View>
               
               <View style={styles.conversationContent}>
                 <View style={styles.conversationHeader}>
-                  <Text style={styles.conversationName} numberOfLines={1}>
+                  <Text style={[styles.conversationName, { color: tc.textPrimary }]} numberOfLines={1}>
                     {conversation.name}
                   </Text>
                   <Text style={[
                     styles.conversationTime,
-                    conversation.unreadCount > 0 && styles.conversationTimeUnread
+                    { color: tc.textTertiary },
+                    conversation.unreadCount > 0 && { color: tc.primary, fontWeight: '600' as const },
                   ]}>
                     {formatTime(conversation.lastMessageTime)}
                   </Text>
@@ -281,7 +292,8 @@ export default function MessagesListScreen() {
                   <Text 
                     style={[
                       styles.lastMessage,
-                      conversation.unreadCount > 0 && styles.lastMessageUnread
+                      { color: tc.textSecondary },
+                      conversation.unreadCount > 0 && { color: tc.textPrimary, fontWeight: '500' as const },
                     ]} 
                     numberOfLines={1}
                   >
@@ -289,13 +301,13 @@ export default function MessagesListScreen() {
                   </Text>
                   
                   {conversation.unreadCount > 0 ? (
-                    <View style={styles.unreadBadge}>
+                    <View style={[styles.unreadBadge, { backgroundColor: tc.primary }]}>
                       <Text style={styles.unreadBadgeText}>
                         {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
                       </Text>
                     </View>
                   ) : (
-                    <TickCircle size={16} color={colors.gray300} variant="Bold" />
+                    <TickCircle size={16} color={tc.textTertiary} variant="Bold" />
                   )}
                 </View>
               </View>
@@ -312,7 +324,6 @@ export default function MessagesListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -320,7 +331,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
   },
   backButton: {
     width: 40,
@@ -336,10 +346,8 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   headerBadge: {
-    backgroundColor: colors.error,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
@@ -347,7 +355,7 @@ const styles = StyleSheet.create({
   headerBadgeText: {
     fontSize: 12,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
   newButton: {
     width: 40,
@@ -358,18 +366,17 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
     marginHorizontal: spacing.md,
     marginTop: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.lg,
     gap: spacing.sm,
+    borderWidth: 1,
   },
   searchInput: {
     flex: 1,
     paddingVertical: spacing.md,
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
   },
   filtersContainer: {
     flexDirection: 'row',
@@ -383,19 +390,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.white,
+    borderWidth: 1,
     gap: spacing.xs,
-  },
-  filterButtonActive: {
-    backgroundColor: colors.primary,
   },
   filterText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.gray500,
-  },
-  filterTextActive: {
-    color: colors.white,
   },
   content: {
     flex: 1,
@@ -403,11 +403,11 @@ const styles = StyleSheet.create({
   conversationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
     marginHorizontal: spacing.md,
     marginBottom: spacing.sm,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
+    borderWidth: 1,
   },
   avatarContainer: {
     position: 'relative',
@@ -424,9 +424,7 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: colors.success,
     borderWidth: 2,
-    borderColor: colors.white,
   },
   groupIndicator: {
     position: 'absolute',
@@ -435,11 +433,9 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: colors.white,
   },
   conversationContent: {
     flex: 1,
@@ -454,16 +450,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
     marginRight: spacing.sm,
   },
   conversationTime: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray400,
-  },
-  conversationTimeUnread: {
-    color: colors.primary,
-    fontWeight: typography.fontWeight.semibold,
   },
   conversationFooter: {
     flexDirection: 'row',
@@ -474,15 +464,9 @@ const styles = StyleSheet.create({
   lastMessage: {
     flex: 1,
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     marginRight: spacing.sm,
   },
-  lastMessageUnread: {
-    color: colors.textPrimary,
-    fontWeight: typography.fontWeight.medium,
-  },
   unreadBadge: {
-    backgroundColor: colors.primary,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
@@ -492,7 +476,7 @@ const styles = StyleSheet.create({
   unreadBadgeText: {
     fontSize: 11,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
   emptyState: {
     alignItems: 'center',
@@ -501,12 +485,10 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginTop: spacing.md,
   },
   emptyText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     marginTop: spacing.xs,
   },
 });

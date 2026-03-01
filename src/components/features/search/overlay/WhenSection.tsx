@@ -144,8 +144,8 @@ export default function WhenSection({
           <View
             style={[
               styles.dayInner,
-              isSelected && !isStart && !isEnd && { backgroundColor: themeColors.gray200 },
-              (isStart || isEnd) && { backgroundColor: themeColors.textPrimary },
+              isSelected && !isStart && !isEnd && { backgroundColor: themeColors.primary + '20' },
+              (isStart || isEnd) && { backgroundColor: themeColors.primary },
             ]}
           >
             <Text
@@ -153,7 +153,7 @@ export default function WhenSection({
                 styles.dayText,
                 { color: themeColors.textPrimary },
                 isPast && { color: themeColors.gray300 },
-                (isStart || isEnd) && { color: themeColors.white },
+                (isStart || isEnd) && { color: '#FFFFFF' },
               ]}
             >
               {day}
@@ -185,13 +185,13 @@ export default function WhenSection({
   return (
     <View style={styles.container}>
       {/* Mode Tabs */}
-      <View style={[styles.tabsContainer, { backgroundColor: themeColors.gray100 }]}>
+      <View style={[styles.tabsContainer, { backgroundColor: themeColors.bgCard }]}>
         {(['dates', 'months', 'flexible'] as DateMode[]).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[
               styles.tab,
-              mode === tab && { backgroundColor: themeColors.white },
+              mode === tab && { backgroundColor: themeColors.bgElevated },
             ]}
             onPress={() => setMode(tab)}
             activeOpacity={0.8}

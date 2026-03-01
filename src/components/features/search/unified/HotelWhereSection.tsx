@@ -16,7 +16,8 @@ import {
 } from 'react-native';
 import { Location, SearchNormal1, CloseCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { supabase } from '@/lib/supabase/client';
 
 // Types
@@ -57,6 +58,7 @@ export default function HotelWhereSection({
   destination,
   onDestinationSelect,
 }: HotelWhereSectionProps) {
+  const { colors } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [autocompleteResults, setAutocompleteResults] = useState<PlacesAutocompleteResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -197,12 +199,12 @@ export default function HotelWhereSection({
   return (
     <View style={styles.container}>
       {/* Search Input */}
-      <View style={styles.searchInputContainer}>
-        <SearchNormal1 size={20} color={colors.gray400} />
+      <View style={[styles.searchInputContainer, { backgroundColor: colors.bgCard, borderWidth: 1, borderColor: colors.borderSubtle }]}>
+        <SearchNormal1 size={20} color={colors.textSecondary} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.textPrimary }]}
           placeholder="Search destinations"
-          placeholderTextColor={colors.gray400}
+          placeholderTextColor={colors.textSecondary}
           value={searchQuery}
           onChangeText={handleSearch}
           autoCapitalize="words"
@@ -216,13 +218,13 @@ export default function HotelWhereSection({
       {destination && (
         <View style={styles.selectedContainer}>
           <TouchableOpacity 
-            style={styles.selectedBadge}
+            style={[styles.selectedBadge, { backgroundColor: colors.textPrimary }]}
             onPress={handleClearSelection}
             activeOpacity={0.8}
           >
-            <Location size={16} color={colors.white} variant="Bold" />
-            <Text style={styles.selectedText}>{destination.name}</Text>
-            <CloseCircle size={14} color={colors.white} variant="Bold" />
+            <Location size={16} color={colors.background} variant="Bold" />
+            <Text style={[styles.selectedText, { color: colors.background }]}>{destination.name}</Text>
+            <CloseCircle size={14} color={colors.background} variant="Bold" />
           </TouchableOpacity>
         </View>
       )}
@@ -230,28 +232,30 @@ export default function HotelWhereSection({
       {/* Autocomplete Results */}
       {showAutocomplete && autocompleteResults.length > 0 && (
         <>
-          <Text style={styles.sectionTitle}>Search Results</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Search Results</Text>
           <View style={styles.autocompleteList}>
             {autocompleteResults.map((result) => (
               <TouchableOpacity
                 key={result.placeId}
                 style={[
                   styles.autocompleteItem,
-                  destination?.id === result.placeId && styles.autocompleteItemSelected,
+                  { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle },
+                  destination?.id === result.placeId && { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary },
                 ]}
                 onPress={() => handleSelectAutocomplete(result)}
                 activeOpacity={0.7}
               >
                 <Location 
                   size={18} 
-                  color={destination?.id === result.placeId ? colors.white : colors.primary} 
+                  color={destination?.id === result.placeId ? colors.background : colors.primary} 
                   variant="Bold"
                 />
                 <View style={styles.autocompleteTextContainer}>
                   <Text 
                     style={[
                       styles.autocompleteMainText,
-                      destination?.id === result.placeId && styles.autocompleteTextSelected,
+                      { color: colors.textPrimary },
+                      destination?.id === result.placeId && { color: colors.background },
                     ]}
                     numberOfLines={1}
                   >
@@ -260,7 +264,8 @@ export default function HotelWhereSection({
                   <Text 
                     style={[
                       styles.autocompleteSecondaryText,
-                      destination?.id === result.placeId && styles.autocompleteSecondaryTextSelected,
+                      { color: colors.textSecondary },
+                      destination?.id === result.placeId && { color: 'rgba(255,255,255,0.7)' },
                     ]}
                     numberOfLines={1}
                   >
@@ -276,27 +281,29 @@ export default function HotelWhereSection({
       {/* Popular Destinations - Show when not searching */}
       {!showAutocomplete && (
         <>
-          <Text style={styles.sectionTitle}>Popular Destinations</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Popular Destinations</Text>
           <View style={styles.destinationsGrid}>
             {POPULAR_DESTINATIONS.map((dest: HotelDestination) => (
               <TouchableOpacity
                 key={dest.id}
                 style={[
                   styles.destinationChip,
-                  destination?.id === dest.id && styles.destinationChipSelected,
+                  { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle },
+                  destination?.id === dest.id && { backgroundColor: colors.primary, borderColor: colors.primary },
                 ]}
                 onPress={() => handleSelectDestination(dest)}
                 activeOpacity={0.7}
               >
                 <Location 
                   size={16} 
-                  color={destination?.id === dest.id ? colors.white : colors.primary} 
+                  color={destination?.id === dest.id ? '#FFFFFF' : colors.primary} 
                   variant="Bold"
                 />
                 <Text 
                   style={[
                     styles.destinationChipText,
-                    destination?.id === dest.id && styles.destinationChipTextSelected,
+                    { color: colors.textPrimary },
+                    destination?.id === dest.id && { color: '#FFFFFF' },
                   ]}
                   numberOfLines={1}
                 >
@@ -311,8 +318,8 @@ export default function HotelWhereSection({
       {/* Empty State */}
       {showAutocomplete && autocompleteResults.length === 0 && !isSearching && (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>No destinations found</Text>
-          <Text style={styles.emptyStateSubtext}>Try a different search term</Text>
+          <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>No destinations found</Text>
+          <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>Try a different search term</Text>
         </View>
       )}
     </View>
@@ -326,7 +333,6 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray100,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
@@ -336,7 +342,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
     paddingVertical: spacing.xs,
   },
   selectedContainer: {
@@ -345,7 +350,6 @@ const styles = StyleSheet.create({
   selectedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray900,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
@@ -355,12 +359,10 @@ const styles = StyleSheet.create({
   selectedText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.white,
   },
   sectionTitle: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textSecondary,
     marginBottom: spacing.sm,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -373,25 +375,15 @@ const styles = StyleSheet.create({
   destinationChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.gray200,
     borderRadius: borderRadius.full,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     gap: spacing.xs,
   },
-  destinationChipSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
   destinationChipText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
-  },
-  destinationChipTextSelected: {
-    color: colors.white,
   },
   emptyState: {
     alignItems: 'center',
@@ -400,11 +392,9 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textSecondary,
   },
   emptyStateSubtext: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray400,
     marginTop: spacing.xs,
   },
   autocompleteList: {
@@ -413,17 +403,11 @@ const styles = StyleSheet.create({
   autocompleteItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.gray200,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     gap: spacing.sm,
-  },
-  autocompleteItemSelected: {
-    backgroundColor: colors.gray900,
-    borderColor: colors.gray900,
   },
   autocompleteTextContainer: {
     flex: 1,
@@ -431,17 +415,9 @@ const styles = StyleSheet.create({
   autocompleteMainText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.textPrimary,
-  },
-  autocompleteTextSelected: {
-    color: colors.white,
   },
   autocompleteSecondaryText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     marginTop: 2,
-  },
-  autocompleteSecondaryTextSelected: {
-    color: 'rgba(255,255,255,0.7)',
   },
 });

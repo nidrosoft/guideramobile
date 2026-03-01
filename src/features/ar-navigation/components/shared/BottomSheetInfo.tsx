@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   bottomSheet: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingHorizontal: spacing.md,

@@ -25,6 +25,7 @@ import {
   Verify,
 } from 'iconsax-react-native';
 import { colors, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { styles } from './DiscoverTabContent.styles';
 import CommunityCard from './CommunityCard';
 import BuddyMatchCard from './BuddyMatchCard';
@@ -223,6 +224,7 @@ export default function DiscoverTabContent({
   onSeeAllEvents,
   isPremium = false,
 }: DiscoverTabContentProps) {
+  const { colors: tc } = useTheme();
   const [activeSubTab, setActiveSubTab] = useState<DiscoverSubTab>('all');
   const [refreshing, setRefreshing] = useState(false);
   
@@ -347,7 +349,7 @@ export default function DiscoverTabContent({
   
   const renderGroupsContent = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>All Groups</Text>
+      <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>All Groups</Text>
       {[...MOCK_TRENDING_GROUPS, ...MOCK_TRIP_GROUPS].map((group) => (
         <CommunityCard
           key={group.id}
@@ -362,7 +364,7 @@ export default function DiscoverTabContent({
   
   const renderTravelersContent = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Recommended Travelers</Text>
+      <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Recommended Travelers</Text>
       {MOCK_TRAVELERS.map((traveler) => (
         <BuddyMatchCard
           key={traveler.id}
@@ -376,7 +378,7 @@ export default function DiscoverTabContent({
   
   const renderEventsContent = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Upcoming Events</Text>
+      <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Upcoming Events</Text>
       {MOCK_EVENTS.map((event) => (
         <EventCard
           key={event.id}
@@ -390,7 +392,7 @@ export default function DiscoverTabContent({
   
   const renderDestinationsContent = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Popular Destinations</Text>
+      <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Popular Destinations</Text>
       <View style={styles.destinationsGrid}>
         {MOCK_DESTINATIONS.map((dest) => (
           <TouchableOpacity
@@ -411,15 +413,15 @@ export default function DiscoverTabContent({
   );
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       {/* Search Bar */}
       <TouchableOpacity 
-        style={styles.searchBar}
+        style={[styles.searchBar, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
         onPress={onSearch}
         activeOpacity={0.7}
       >
-        <SearchNormal1 size={20} color={colors.gray400} />
-        <Text style={styles.searchPlaceholder}>Search groups, travelers, events...</Text>
+        <SearchNormal1 size={20} color={tc.textSecondary} />
+        <Text style={[styles.searchPlaceholder, { color: tc.textSecondary }]}>Search groups, travelers, events...</Text>
       </TouchableOpacity>
       
       {/* Sub Tabs */}
@@ -435,15 +437,15 @@ export default function DiscoverTabContent({
             return (
               <TouchableOpacity
                 key={tab.id}
-                style={[styles.subTab, isActive && styles.subTabActive]}
+                style={[styles.subTab, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }, isActive && styles.subTabActive]}
                 onPress={() => setActiveSubTab(tab.id)}
                 activeOpacity={0.7}
               >
                 <IconComponent 
                   size={16} 
-                  color={isActive ? colors.white : colors.gray500} 
+                  color={isActive ? '#FFFFFF' : tc.textSecondary} 
                 />
-                <Text style={[styles.subTabText, isActive && styles.subTabTextActive]}>
+                <Text style={[styles.subTabText, { color: tc.textSecondary }, isActive && styles.subTabTextActive]}>
                   {tab.label}
                 </Text>
               </TouchableOpacity>

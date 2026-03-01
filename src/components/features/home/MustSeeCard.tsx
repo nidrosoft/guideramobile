@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { colors, typography, spacing, borderRadius } from '@/styles';
+import { typography, spacing, borderRadius, colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Bookmark, Location, Star1, Eye } from 'iconsax-react-native';
 
 interface MustSeeCardProps {
@@ -21,8 +22,9 @@ export default function MustSeeCard({
   imageUrl,
   badge = 'Must Visit'
 }: MustSeeCardProps) {
+  const { colors } = useTheme();
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bgCard }]}>
       {/* Image Section */}
       <View style={styles.imageContainer}>
         <Image source={{ uri: imageUrl }} style={styles.image} />
@@ -34,30 +36,30 @@ export default function MustSeeCard({
         
         {/* Bookmark Button */}
         <TouchableOpacity style={styles.bookmarkButton}>
-          <Bookmark size={20} color={colors.textPrimary} variant="Outline" />
+          <Bookmark size={20} color="#1a1a1a" variant="Outline" />
         </TouchableOpacity>
       </View>
 
       {/* Info Section */}
       <View style={styles.infoContainer}>
-        <Text style={styles.name} numberOfLines={2}>{name}</Text>
-        <Text style={styles.category}>{category}</Text>
+        <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={2}>{name}</Text>
+        <Text style={[styles.category, { color: colors.textSecondary }]}>{category}</Text>
         
         <View style={styles.detailsRow}>
           <View style={styles.locationContainer}>
             <Location size={14} color={colors.primary} variant="Bold" />
-            <Text style={styles.locationText} numberOfLines={1}>{location}</Text>
+            <Text style={[styles.locationText, { color: colors.textSecondary }]} numberOfLines={1}>{location}</Text>
           </View>
         </View>
         
         <View style={styles.bottomRow}>
           <View style={styles.ratingContainer}>
             <Star1 size={14} color="#FFD700" variant="Bold" />
-            <Text style={styles.ratingText}>{rating}</Text>
+            <Text style={[styles.ratingText, { color: colors.textPrimary }]}>{rating}</Text>
           </View>
           <View style={styles.visitorsContainer}>
             <Eye size={14} color={colors.textSecondary} variant="Bold" />
-            <Text style={styles.visitorsText}>{visitors}</Text>
+            <Text style={[styles.visitorsText, { color: colors.textSecondary }]}>{visitors}</Text>
           </View>
         </View>
       </View>
@@ -68,10 +70,11 @@ export default function MustSeeCard({
 const styles = StyleSheet.create({
   container: {
     width: 280,
-    backgroundColor: colors.white,
     borderRadius: 20,
     padding: spacing.sm,
     marginRight: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   imageContainer: {
     width: '100%',
@@ -97,7 +100,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
+    color: '#1a1a1a',
   },
   bookmarkButton: {
     position: 'absolute',
@@ -116,13 +119,11 @@ const styles = StyleSheet.create({
   name: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: 4,
     lineHeight: 22,
   },
   category: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginBottom: spacing.sm,
   },
   detailsRow: {
@@ -143,7 +144,6 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -152,7 +152,6 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textPrimary,
     fontWeight: typography.fontWeight.semibold,
   },
   visitorsContainer: {
@@ -162,7 +161,6 @@ const styles = StyleSheet.create({
   },
   visitorsText: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     fontWeight: typography.fontWeight.medium,
   },
 });

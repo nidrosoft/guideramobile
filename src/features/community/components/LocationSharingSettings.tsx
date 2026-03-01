@@ -112,7 +112,7 @@ export default function LocationSharingSettings({
           <Switch
             value={localSettings.sharingEnabled}
             onValueChange={(value) => updateSettings({ sharingEnabled: value })}
-            trackColor={{ false: colors.gray200, true: colors.primary + '50' }}
+            trackColor={{ false: tc.borderSubtle, true: colors.primary + '50' }}
             thumbColor={localSettings.sharingEnabled ? colors.primary : colors.gray400}
           />
         </View>
@@ -139,7 +139,7 @@ export default function LocationSharingSettings({
                   ]}>
                     <IconComponent 
                       size={20} 
-                      color={isSelected ? colors.primary : colors.gray500} 
+                      color={isSelected ? colors.primary : colors.textSecondary} 
                     />
                   </View>
                   <View style={styles.optionContent}>
@@ -197,7 +197,7 @@ export default function LocationSharingSettings({
             
             <View style={styles.settingRow}>
               <View style={styles.settingInfo}>
-                <Clock size={20} color={colors.gray500} />
+                <Clock size={20} color={colors.textSecondary} />
                 <View style={styles.settingText}>
                   <Text style={styles.settingLabel}>Show only when active</Text>
                   <Text style={styles.settingDescription}>
@@ -208,14 +208,14 @@ export default function LocationSharingSettings({
               <Switch
                 value={localSettings.showOnlyWhenActive}
                 onValueChange={(value) => updateSettings({ showOnlyWhenActive: value })}
-                trackColor={{ false: colors.gray200, true: colors.primary + '50' }}
+                trackColor={{ false: tc.borderSubtle, true: colors.primary + '50' }}
                 thumbColor={localSettings.showOnlyWhenActive ? colors.primary : colors.gray400}
               />
             </View>
             
             <View style={styles.settingRow}>
               <View style={styles.settingInfo}>
-                <Clock size={20} color={colors.gray500} />
+                <Clock size={20} color={colors.textSecondary} />
                 <View style={styles.settingText}>
                   <Text style={styles.settingLabel}>Auto-disable after</Text>
                   <Text style={styles.settingDescription}>
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   section: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     marginBottom: spacing.md,
     padding: spacing.md,
   },
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.sm,
     borderWidth: 2,
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -381,9 +381,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     gap: 6,
   },
   statusDot: {
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
   },
   autoDisableChipSelected: {
     backgroundColor: colors.primary,

@@ -9,6 +9,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Camera, Eye, Pause, Play } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 export type TranslationMode = 'scan' | 'live';
 
@@ -161,7 +162,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   modeButtonActive: {
-    backgroundColor: colors.white, // White background for selected state
+    backgroundColor: colors.bgModal, // White background for selected state
   },
   modeText: {
     fontSize: typography.fontSize.sm,

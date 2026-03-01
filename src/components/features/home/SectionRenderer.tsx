@@ -8,7 +8,8 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { SectionConfig } from '@/config/sections.config';
 
 // Import all section components
@@ -31,6 +32,7 @@ interface SectionRendererProps {
 
 export default function SectionRenderer({ section }: SectionRendererProps) {
   const router = useRouter();
+  const { colors } = useTheme();
 
   const handleViewAll = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -74,14 +76,14 @@ export default function SectionRenderer({ section }: SectionRendererProps) {
       {/* Section Header */}
       <View style={styles.sectionHeader}>
         <View style={styles.sectionTitleContainer}>
-          <Text style={styles.sectionTitle}>{section.title}</Text>
-          <Text style={styles.sectionDescription}>{section.description}</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{section.title}</Text>
+          <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>{section.description}</Text>
         </View>
         <TouchableOpacity 
           onPress={handleViewAll}
           activeOpacity={0.7}
         >
-          <Text style={styles.viewAllText}>View All</Text>
+          <Text style={[styles.viewAllText, { color: colors.primary }]}>View All</Text>
         </TouchableOpacity>
       </View>
 
@@ -108,16 +110,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: 4,
   },
   sectionDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   viewAllText: {
     fontSize: typography.fontSize.base,
-    color: colors.primary,
     fontWeight: typography.fontWeight.semibold,
   },
 });

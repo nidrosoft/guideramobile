@@ -45,7 +45,7 @@ interface LocationState {
 export default function LiveMapScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: themeColors } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const { user } = useAuth();
   const userId = user?.id;
   const mapRef = useRef<MapView>(null);
@@ -153,19 +153,19 @@ export default function LiveMapScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Getting your location...</Text>
+      <View style={[styles.container, styles.centered, { backgroundColor: tc.background }]}>
+        <ActivityIndicator size="large" color={tc.primary} />
+        <Text style={[styles.loadingText, { color: tc.textSecondary }]}>Getting your location...</Text>
       </View>
     );
   }
 
   if (locationError) {
     return (
-      <View style={[styles.container, styles.centered]}>
-        <LocationIcon size={64} color={colors.gray400} variant="Bold" />
-        <Text style={styles.errorTitle}>Location Required</Text>
-        <Text style={styles.errorText}>{locationError}</Text>
+      <View style={[styles.container, styles.centered, { backgroundColor: tc.background }]}>
+        <LocationIcon size={64} color={tc.textTertiary} variant="Bold" />
+        <Text style={[styles.errorTitle, { color: tc.textPrimary }]}>Location Required</Text>
+        <Text style={[styles.errorText, { color: tc.textSecondary }]}>{locationError}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => router.back()}>
           <Text style={styles.retryButtonText}>Go Back</Text>
         </TouchableOpacity>
@@ -174,8 +174,8 @@ export default function LiveMapScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* Map */}
       {location && (
@@ -213,24 +213,24 @@ export default function LiveMapScreen() {
       )}
 
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? 'rgba(18,18,18,0.95)' : 'rgba(255,255,255,0.95)' }]}>
+        <TouchableOpacity style={[styles.backButton, { backgroundColor: tc.bgElevated }]} onPress={handleBack}>
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Live Map</Text>
+        <Text style={[styles.title, { color: tc.textPrimary }]}>Live Map</Text>
         <TouchableOpacity
-          style={styles.filterButton}
+          style={[styles.filterButton, { backgroundColor: tc.bgElevated }]}
           onPress={() => setShowFilters(!showFilters)}
         >
-          <Filter size={24} color={colors.textPrimary} />
+          <Filter size={24} color={tc.textPrimary} />
         </TouchableOpacity>
       </View>
 
       {/* Stats Banner */}
-      <View style={styles.statsBanner}>
+      <View style={[styles.statsBanner, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
         <View style={styles.statItem}>
-          <People size={18} color={colors.primary} />
-          <Text style={styles.statText}>
+          <People size={18} color={tc.primary} />
+          <Text style={[styles.statText, { color: tc.textPrimary }]}>
             {activities.length} Activities Nearby
           </Text>
         </View>
@@ -238,8 +238,8 @@ export default function LiveMapScreen() {
 
       {/* Floating Action Buttons */}
       <View style={[styles.fabContainer, { bottom: insets.bottom + 100 }]}>
-        <TouchableOpacity style={styles.fabSecondary} onPress={handleRecenter}>
-          <Map1 size={24} color={colors.primary} />
+        <TouchableOpacity style={[styles.fabSecondary, { backgroundColor: tc.bgElevated }]} onPress={handleRecenter}>
+          <Map1 size={24} color={tc.primary} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.fabPrimary} onPress={handleCreateActivity}>
           <Add size={28} color={colors.white} />
@@ -248,33 +248,33 @@ export default function LiveMapScreen() {
 
       {/* Selected Activity Card */}
       {selectedActivity && (
-        <View style={[styles.activityCard, { bottom: insets.bottom + 20 }]}>
+        <View style={[styles.activityCard, { bottom: insets.bottom + 20, backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
           <View style={styles.activityCardHeader}>
-            <View style={styles.activityTypeIcon}>
+            <View style={[styles.activityTypeIcon, { backgroundColor: tc.primary + '15' }]}>
               <Text style={styles.activityTypeEmoji}>
                 {getActivityIcon(selectedActivity.type)}
               </Text>
             </View>
             <View style={styles.activityCardInfo}>
-              <Text style={styles.activityCardTitle} numberOfLines={1}>
+              <Text style={[styles.activityCardTitle, { color: tc.textPrimary }]} numberOfLines={1}>
                 {selectedActivity.title}
               </Text>
-              <Text style={styles.activityCardLocation} numberOfLines={1}>
+              <Text style={[styles.activityCardLocation, { color: tc.textSecondary }]} numberOfLines={1}>
                 {selectedActivity.locationName}
               </Text>
             </View>
             <TouchableOpacity
-              style={styles.closeButton}
+              style={[styles.closeButton, { backgroundColor: tc.bgCard }]}
               onPress={() => setSelectedActivity(null)}
             >
-              <Text style={styles.closeButtonText}>×</Text>
+              <Text style={[styles.closeButtonText, { color: tc.textSecondary }]}>×</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.activityCardDetails}>
+          <View style={[styles.activityCardDetails, { borderTopColor: tc.borderSubtle }]}>
             <View style={styles.activityCardDetail}>
-              <Text style={styles.detailLabel}>When</Text>
-              <Text style={styles.detailValue}>
+              <Text style={[styles.detailLabel, { color: tc.textSecondary }]}>When</Text>
+              <Text style={[styles.detailValue, { color: tc.textPrimary }]}>
                 {selectedActivity.timing === 'now'
                   ? 'Right now'
                   : selectedActivity.timing === 'today'
@@ -283,8 +283,8 @@ export default function LiveMapScreen() {
               </Text>
             </View>
             <View style={styles.activityCardDetail}>
-              <Text style={styles.detailLabel}>Going</Text>
-              <Text style={styles.detailValue}>
+              <Text style={[styles.detailLabel, { color: tc.textSecondary }]}>Going</Text>
+              <Text style={[styles.detailValue, { color: tc.textPrimary }]}>
                 {selectedActivity.participantCount}
                 {selectedActivity.maxParticipants
                   ? `/${selectedActivity.maxParticipants}`
@@ -299,7 +299,7 @@ export default function LiveMapScreen() {
                 source={{ uri: selectedActivity.creator.avatarUrl || 'https://via.placeholder.com/32' }}
                 style={styles.creatorAvatar}
               />
-              <Text style={styles.creatorName}>
+              <Text style={[styles.creatorName, { color: tc.textSecondary }]}>
                 {selectedActivity.creator.firstName} {selectedActivity.creator.lastName}
               </Text>
             </View>
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
     top: 120,
     left: spacing.lg,
     right: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     flexDirection: 'row',
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
@@ -491,9 +491,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.15,
@@ -533,7 +535,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -547,7 +549,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
   },
   activityCardDetail: {
     flex: 1,

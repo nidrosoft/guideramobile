@@ -39,6 +39,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { usePlanningStore } from '../../../stores/usePlanningStore';
 import { AI_GENERATION_MESSAGES } from '../../../config/planning.config';
 import { generateMockAIContent } from '../../../services/aiService';
@@ -105,6 +106,7 @@ export default function GeneratingStep({
   onClose,
 }: GeneratingStepProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const {
     quickTripData,
     startGeneration,
@@ -214,7 +216,7 @@ export default function GeneratingStep({
   }));
   
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: tc.background }]}>
       {/* Floating Icons - Positioned in top area only */}
       <View style={styles.floatingIconsContainer}>
         <FloatingIcon Icon={Location} delay={0} startX={40} startY={80} />
@@ -349,7 +351,7 @@ const GeneratingItem = ({ label, isComplete }: { label: string; isComplete: bool
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   
   // Floating Icons Container - Top area

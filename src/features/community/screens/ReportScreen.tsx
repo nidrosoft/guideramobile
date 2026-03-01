@@ -174,7 +174,7 @@ export default function ReportScreen() {
               }}
             >
               <View style={[styles.reasonIcon, isSelected && styles.reasonIconSelected]}>
-                <Icon size={20} color={isSelected ? colors.white : colors.gray500} />
+                <Icon size={20} color={isSelected ? colors.white : colors.bgElevated0} />
               </View>
               <View style={styles.reasonContent}>
                 <Text style={[styles.reasonLabel, isSelected && styles.reasonLabelSelected]}>
@@ -255,9 +255,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -306,12 +306,12 @@ const styles = StyleSheet.create({
   reasonCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     marginBottom: spacing.sm,
     borderWidth: 2,
-    borderColor: colors.gray100,
+    borderColor: colors.borderSubtle,
   },
   reasonCardSelected: {
     borderColor: colors.error,
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -346,14 +346,14 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   textArea: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     fontSize: typography.fontSize.base,
     color: colors.textPrimary,
     height: 120,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   charCount: {
     fontSize: typography.fontSize.xs,
@@ -365,17 +365,19 @@ const styles = StyleSheet.create({
   blockOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   checkbox: {
     width: 24,
     height: 24,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: colors.gray300,
+    borderColor: colors.textTertiary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -398,9 +400,9 @@ const styles = StyleSheet.create({
   },
   footer: {
     padding: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
   },
   submitButton: {
     backgroundColor: colors.error,

@@ -178,7 +178,7 @@ export default function BuddyProfileScreen() {
           </View>
           
           <View style={styles.locationRow}>
-            <Location size={16} color={colors.gray500} />
+            <Location size={16} color={colors.bgElevated0} />
             <Text style={styles.locationText}>{buddy.location}</Text>
           </View>
           
@@ -277,7 +277,7 @@ export default function BuddyProfileScreen() {
                 <Text style={styles.tripDestination}>{trip.destination}</Text>
               </View>
               <View style={styles.tripDates}>
-                <Calendar size={14} color={colors.gray500} />
+                <Calendar size={14} color={colors.bgElevated0} />
                 <Text style={styles.tripDatesText}>{trip.dates}</Text>
               </View>
               <Text style={styles.tripLookingFor}>{trip.lookingFor}</Text>
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray500,
+    color: colors.bgElevated0,
   },
   bio: {
     fontSize: typography.fontSize.sm,
@@ -408,10 +408,12 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginTop: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -434,7 +436,7 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    backgroundColor: colors.gray200,
+    backgroundColor: colors.borderSubtle,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -507,7 +509,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.medium,
   },
   tag: {
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
@@ -530,10 +532,12 @@ const styles = StyleSheet.create({
     color: colors.error,
   },
   tripCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   tripHeader: {
     flexDirection: 'row',
@@ -553,7 +557,7 @@ const styles = StyleSheet.create({
   },
   tripDatesText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray500,
+    color: colors.bgElevated0,
   },
   tripLookingFor: {
     fontSize: typography.fontSize.sm,

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { CloseCircle } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Expense, ExpenseCategory, CategoryInfo, PaymentMethod } from '../types/expense.types';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -31,6 +32,7 @@ export default function AddExpenseBottomSheet({
   editingExpense,
 }: AddExpenseBottomSheetProps) {
   const { showSuccess } = useToast();
+  const { colors: tc } = useTheme();
   const [amount, setAmount] = useState(editingExpense?.amount.toString() || '');
   const [description, setDescription] = useState(editingExpense?.description || '');
   const [selectedCategory, setSelectedCategory] = useState<ExpenseCategory>(editingExpense?.category || ExpenseCategory.FOOD);
@@ -238,7 +240,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   bottomSheet: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: spacing.xl,

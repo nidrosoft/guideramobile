@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing, colors } from '@/styles';
 import { Crown, Star1, Location, Calendar } from 'iconsax-react-native';
 
 interface LuxuryEscapeCardProps {
@@ -45,7 +45,7 @@ export default function LuxuryEscapeCard({
         <View style={styles.content}>
           {/* Location */}
           <View style={styles.locationContainer}>
-            <Location size={14} color={colors.white} variant="Bold" />
+            <Location size={14} color="#FFFFFF" variant="Bold" />
             <Text style={styles.locationText}>{location}</Text>
           </View>
 
@@ -93,7 +93,8 @@ const styles = StyleSheet.create({
     height: 420,
     borderRadius: 28,
     overflow: 'hidden',
-    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     // Premium shadow
     shadowColor: '#000',
     shadowOffset: {
@@ -153,7 +154,7 @@ const styles = StyleSheet.create({
   name: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
     marginBottom: spacing.xs,
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 2 },
@@ -186,7 +187,7 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
   durationContainer: {
     flexDirection: 'row',

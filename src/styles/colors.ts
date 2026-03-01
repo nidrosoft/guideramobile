@@ -1,18 +1,172 @@
+/**
+ * DESIGN SYSTEM — COLOR TOKENS
+ *
+ * Dark-mode-first design system. Primary accent: #3FC39E (mint/teal).
+ * All screens, components, and interactions use these values.
+ */
+
 export const colors = {
-  // Primary Brand Color
-  primary: '#7257FF',
-  primaryLight: '#8F7AFF',
-  primaryDark: '#5940CC',
-  
-  // Gradient Colors (from image)
-  gradientStart: '#5336E2',
-  gradientEnd: '#2E1E7C',
-  
-  // Neutral Colors
+  // ─── PRIMARY / ACCENT ────────────────────────────────────────────────
+  primary: '#3FC39E',
+  primaryHover: '#36B08E',
+  primaryGradient: '#2D9A7A',
+  primaryText: '#121212',
+  primarySubtle: 'rgba(63, 195, 158, 0.06)',
+  primaryMedium: 'rgba(63, 195, 158, 0.08)',
+  primaryStrong: 'rgba(63, 195, 158, 0.12)',
+  primaryBorderSubtle: 'rgba(63, 195, 158, 0.10)',
+  primaryBorderMedium: 'rgba(63, 195, 158, 0.15)',
+  primaryBorderStrong: 'rgba(63, 195, 158, 0.30)',
+  // Legacy aliases
+  primaryLight: '#36B08E',
+  primaryDark: '#2D9A7A',
+
+  // ─── BACKGROUNDS ─────────────────────────────────────────────────────
+  bgPrimary: '#202020',
+  bgSecondary: '#1a1a1a',
+  bgCard: 'rgba(248, 248, 248, 0.03)',
+  bgElevated: 'rgba(248, 248, 248, 0.06)',
+  bgInput: 'rgba(248, 248, 248, 0.04)',
+  bgHover: 'rgba(248, 248, 248, 0.05)',
+  bgSunken: 'rgba(248, 248, 248, 0.02)',
+  bgOverlay: 'rgba(10, 10, 10, 0.97)',
+  bgModal: '#1a1a1a',
+  // Legacy aliases
+  background: '#202020',
+  backgroundSecondary: '#1a1a1a',
+
+  // ─── TEXT ─────────────────────────────────────────────────────────────
+  textPrimary: 'rgba(248, 248, 248, 0.95)',
+  textSecondary: 'rgba(248, 248, 248, 0.70)',
+  textTertiary: 'rgba(248, 248, 248, 0.50)',
+  textInverse: '#121212',
+
+  // ─── BORDERS ─────────────────────────────────────────────────────────
+  borderSubtle: 'rgba(255, 255, 255, 0.05)',
+  borderStandard: 'rgba(255, 255, 255, 0.06)',
+  borderMedium: 'rgba(255, 255, 255, 0.08)',
+  borderStrong: 'rgba(255, 255, 255, 0.15)',
+
+  // ─── STATUS COLORS ───────────────────────────────────────────────────
+  error: '#EF4444',
+  errorBg: 'rgba(239, 68, 68, 0.08)',
+  errorBorder: 'rgba(239, 68, 68, 0.15)',
+
+  warning: '#FFBD2E',
+  warningBg: 'rgba(255, 189, 46, 0.08)',
+  warningBorder: 'rgba(255, 189, 46, 0.15)',
+
+  success: '#28C840',
+  successBg: 'rgba(40, 200, 64, 0.08)',
+  successBorder: 'rgba(40, 200, 64, 0.15)',
+
+  info: '#3B82F6',
+  infoBg: 'rgba(59, 130, 246, 0.08)',
+  infoBorder: 'rgba(59, 130, 246, 0.15)',
+
+  // ─── ADDITIONAL COLORS (charts, categories, agents) ──────────────────
+  purple: '#A855F7',
+  orange: '#F97316',
+  pink: '#EC4899',
+  yellow: '#EAB308',
+  cyan: '#06B6D4',
+
+  // ─── NEUTRALS ────────────────────────────────────────────────────────
   white: '#FFFFFF',
   black: '#000000',
-  
-  // Gray Scale
+
+  // ─── GRADIENT ────────────────────────────────────────────────────────
+  gradientStart: '#3FC39E',
+  gradientEnd: '#2D9A7A',
+
+  // ─── GRAY SCALE (dark-mode adapted) ──────────────────────────────────
+  // Low numbers = subtle surfaces, mid = borders, high = lighter text
+  gray50: '#272727',
+  gray100: '#2e2e2e',
+  gray200: '#383838',
+  gray300: '#444444',
+  gray400: '#666666',
+  gray500: '#888888',
+  gray600: '#aaaaaa',
+  gray700: '#cccccc',
+  gray800: '#dddddd',
+  gray900: '#eeeeee',
+};
+
+// Dark mode colors — identical to `colors`
+export const darkColors = { ...colors };
+
+// ─── LIGHT MODE ──────────────────────────────────────────────────────────────
+export const lightColors: ColorScheme = {
+  // PRIMARY / ACCENT (same hue, both modes)
+  primary: '#3FC39E',
+  primaryHover: '#36B08E',
+  primaryGradient: '#2D9A7A',
+  primaryText: '#FFFFFF',
+  primarySubtle: 'rgba(63, 195, 158, 0.06)',
+  primaryMedium: 'rgba(63, 195, 158, 0.08)',
+  primaryStrong: 'rgba(63, 195, 158, 0.12)',
+  primaryBorderSubtle: 'rgba(63, 195, 158, 0.10)',
+  primaryBorderMedium: 'rgba(63, 195, 158, 0.15)',
+  primaryBorderStrong: 'rgba(63, 195, 158, 0.30)',
+  primaryLight: '#36B08E',
+  primaryDark: '#2D9A7A',
+
+  // BACKGROUNDS
+  bgPrimary: '#F8F8F8',
+  bgSecondary: '#FFFFFF',
+  bgCard: '#FFFFFF',
+  bgElevated: '#FFFFFF',
+  bgInput: 'rgba(0, 0, 0, 0.04)',
+  bgHover: 'rgba(0, 0, 0, 0.03)',
+  bgSunken: '#F0F0F0',
+  bgOverlay: 'rgba(0, 0, 0, 0.50)',
+  bgModal: '#FFFFFF',
+  background: '#F8F8F8',
+  backgroundSecondary: '#FFFFFF',
+
+  // TEXT
+  textPrimary: 'rgba(18, 18, 18, 0.95)',
+  textSecondary: 'rgba(18, 18, 18, 0.60)',
+  textTertiary: 'rgba(18, 18, 18, 0.40)',
+  textInverse: '#F8F8F8',
+
+  // BORDERS
+  borderSubtle: 'rgba(0, 0, 0, 0.05)',
+  borderStandard: 'rgba(0, 0, 0, 0.08)',
+  borderMedium: 'rgba(0, 0, 0, 0.12)',
+  borderStrong: 'rgba(0, 0, 0, 0.20)',
+
+  // STATUS COLORS (identical both modes)
+  error: '#EF4444',
+  errorBg: 'rgba(239, 68, 68, 0.08)',
+  errorBorder: 'rgba(239, 68, 68, 0.15)',
+  warning: '#FFBD2E',
+  warningBg: 'rgba(255, 189, 46, 0.08)',
+  warningBorder: 'rgba(255, 189, 46, 0.15)',
+  success: '#28C840',
+  successBg: 'rgba(40, 200, 64, 0.08)',
+  successBorder: 'rgba(40, 200, 64, 0.15)',
+  info: '#3B82F6',
+  infoBg: 'rgba(59, 130, 246, 0.08)',
+  infoBorder: 'rgba(59, 130, 246, 0.15)',
+
+  // ADDITIONAL COLORS
+  purple: '#A855F7',
+  orange: '#F97316',
+  pink: '#EC4899',
+  yellow: '#EAB308',
+  cyan: '#06B6D4',
+
+  // NEUTRALS
+  white: '#FFFFFF',
+  black: '#000000',
+
+  // GRADIENT
+  gradientStart: '#3FC39E',
+  gradientEnd: '#2D9A7A',
+
+  // GRAY SCALE (light-mode)
   gray50: '#F9FAFB',
   gray100: '#F3F4F6',
   gray200: '#E5E7EB',
@@ -23,66 +177,6 @@ export const colors = {
   gray700: '#374151',
   gray800: '#1F2937',
   gray900: '#111827',
-  
-  // Semantic Colors
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-  info: '#3B82F6',
-  
-  // Background
-  background: '#F4F6F7',
-  backgroundSecondary: '#FFFFFF',
-  
-  // Text
-  textPrimary: '#111827',
-  textSecondary: '#6B7280',
-  textTertiary: '#9CA3AF',
-  textInverse: '#FFFFFF',
-};
-
-// Dark mode colors
-export const darkColors = {
-  // Primary Brand Color (same - works well on dark)
-  primary: '#8B7AFF',
-  primaryLight: '#A899FF',
-  primaryDark: '#6B5AD9',
-  
-  // Gradient Colors
-  gradientStart: '#6B5AD9',
-  gradientEnd: '#3D2E99',
-  
-  // Neutral Colors (inverted)
-  white: '#1C1C1E',
-  black: '#FFFFFF',
-  
-  // Gray Scale (inverted for dark mode)
-  gray50: '#1C1C1E',
-  gray100: '#2C2C2E',
-  gray200: '#3A3A3C',
-  gray300: '#48484A',
-  gray400: '#636366',
-  gray500: '#8E8E93',
-  gray600: '#AEAEB2',
-  gray700: '#C7C7CC',
-  gray800: '#D1D1D6',
-  gray900: '#E5E5EA',
-  
-  // Semantic Colors (slightly adjusted for dark backgrounds)
-  success: '#30D158',
-  warning: '#FFD60A',
-  error: '#FF453A',
-  info: '#64D2FF',
-  
-  // Background
-  background: '#000000',
-  backgroundSecondary: '#1C1C1E',
-  
-  // Text
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E8E93',
-  textTertiary: '#636366',
-  textInverse: '#000000',
 };
 
 export type ColorScheme = typeof colors;

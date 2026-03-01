@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Location, Clock, People, Star1, Heart } from 'iconsax-react-native';
 
 interface LocalExperienceViewCardProps {
@@ -69,13 +70,13 @@ export default function LocalExperienceViewCard({
 }
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: colors.white, borderRadius: 20, overflow: 'hidden', marginBottom: spacing.lg, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  container: { backgroundColor: colors.bgElevated, borderRadius: 20, overflow: 'hidden', marginBottom: spacing.lg, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
   imageContainer: { width: '100%', height: 200, position: 'relative' },
   image: { width: '100%', height: '100%' },
   gradient: { ...StyleSheet.absoluteFillObject },
   nearbyBadge: { position: 'absolute', top: spacing.md, left: spacing.md, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.primary, paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: 12 },
   nearbyText: { fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.bold, color: colors.white },
-  heartButton: { position: 'absolute', top: spacing.md, right: spacing.md, width: 36, height: 36, borderRadius: 18, backgroundColor: colors.white, justifyContent: 'center', alignItems: 'center' },
+  heartButton: { position: 'absolute', top: spacing.md, right: spacing.md, width: 36, height: 36, borderRadius: 18, backgroundColor: colors.bgElevated, justifyContent: 'center', alignItems: 'center' },
   categoryBadge: { position: 'absolute', bottom: spacing.md, left: spacing.md, backgroundColor: 'rgba(255,255,255,0.9)', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: 16 },
   categoryText: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.textPrimary },
   infoContainer: { padding: spacing.md },

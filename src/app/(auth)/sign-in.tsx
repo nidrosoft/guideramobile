@@ -7,6 +7,7 @@ import CountryPicker, { Country, CountryCode } from 'react-native-country-picker
 import PhoneIcon from '@/components/common/icons/PhoneIcon';
 import CloseIcon from '@/components/common/icons/CloseIcon';
 import { colors, typography, spacing, borderRadius, shadows } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useSignIn, useSSO } from '@clerk/clerk-expo';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
@@ -321,7 +322,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   continueButtonDisabled: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
     borderColor: colors.gray300,
   },
@@ -349,7 +350,7 @@ const styles = StyleSheet.create({
   },
   googleButton: {
     height: 56,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.gray300,
@@ -364,7 +365,7 @@ const styles = StyleSheet.create({
   },
   emailButton: {
     height: 56,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.gray300,

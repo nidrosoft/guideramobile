@@ -19,6 +19,7 @@ import {
   FlatList,
   TouchableOpacity,
   TextInput,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -29,8 +30,11 @@ import {
   Map,
   Setting2,
   DocumentText,
+  People,
+  Star1,
 } from 'iconsax-react-native';
-import { colors } from '@/styles';
+import { colors, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import {
   ListingCategory,
   LISTING_CATEGORIES,
@@ -39,7 +43,8 @@ import {
 } from '../types/guide.types';
 import GuideCard from '../components/GuideCard';
 import ListingCard from '../components/ListingCard';
-import BecomeGuideCard from '../components/BecomeGuideCard';
+import PartnerInviteCard from '../components/PartnerInviteCard';
+import PartnerProgramSheet from '../components/PartnerProgramSheet';
 import {
   MOCK_GUIDES,
   MOCK_LISTINGS,
@@ -50,11 +55,13 @@ type FilterCategory = 'all' | ListingCategory;
 
 export default function GuidesTabContent() {
   const router = useRouter();
+  const { colors: tc } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<FilterCategory>('all');
   const [selectedExpertise, setSelectedExpertise] = useState<ExpertiseArea | null>(null);
+  const [showPartnerSheet, setShowPartnerSheet] = useState(false);
 
-  const isGuide = false; // TODO: check from user profile
+  const isPartner = false; // TODO: check from user profile
 
   const filteredGuides = useMemo(() => {
     let guides = MOCK_GUIDES;
@@ -103,54 +110,54 @@ export default function GuidesTabContent() {
   ];
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
+    <><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.container, { backgroundColor: tc.background }]}>
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <SearchNormal1 size={18} color={colors.textTertiary} />
+        <View style={[styles.searchBar, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
+          <SearchNormal1 size={18} color={tc.textSecondary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: tc.textPrimary }]}
             placeholder="Search guides, tours, services..."
-            placeholderTextColor={colors.textTertiary}
+            placeholderTextColor={tc.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
         </View>
       </View>
 
-      {/* Become a Guide Banner */}
-      {!isGuide && (
+      {/* Partner Program Banner */}
+      {!isPartner && (
         <View style={styles.sectionPadded}>
-          <BecomeGuideCard onPress={() => router.push('/community/become-guide')} />
+          <PartnerInviteCard onPress={() => setShowPartnerSheet(true)} />
         </View>
       )}
 
       {/* Featured Guides */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Featured Local Guides</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Featured Local Guides</Text>
           <TouchableOpacity style={styles.seeAllBtn} onPress={() => {}}>
-            <Text style={styles.seeAllText}>See All</Text>
-            <ArrowRight2 size={14} color={colors.primary} />
+            <Text style={[styles.seeAllText, { color: tc.primary }]}>See All</Text>
+            <ArrowRight2 size={14} color={tc.primary} />
           </TouchableOpacity>
         </View>
 
         {/* Expertise Filter */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
           <TouchableOpacity
-            style={[styles.filterChip, !selectedExpertise && styles.filterChipActive]}
+            style={[styles.filterChip, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }, !selectedExpertise && styles.filterChipActive]}
             onPress={() => setSelectedExpertise(null)}
           >
-            <Text style={[styles.filterChipText, !selectedExpertise && styles.filterChipTextActive]}>All</Text>
+            <Text style={[styles.filterChipText, { color: tc.textSecondary }, !selectedExpertise && styles.filterChipTextActive]}>All</Text>
           </TouchableOpacity>
           {EXPERTISE_OPTIONS.slice(0, 6).map(opt => (
             <TouchableOpacity
               key={opt.id}
-              style={[styles.filterChip, selectedExpertise === opt.id && styles.filterChipActive]}
+              style={[styles.filterChip, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }, selectedExpertise === opt.id && styles.filterChipActive]}
               onPress={() => setSelectedExpertise(selectedExpertise === opt.id ? null : opt.id)}
             >
               <Text style={styles.filterEmoji}>{opt.emoji}</Text>
-              <Text style={[styles.filterChipText, selectedExpertise === opt.id && styles.filterChipTextActive]}>
+              <Text style={[styles.filterChipText, { color: tc.textSecondary }, selectedExpertise === opt.id && styles.filterChipTextActive]}>
                 {opt.label.split(' ')[0]}
               </Text>
             </TouchableOpacity>
@@ -175,7 +182,7 @@ export default function GuidesTabContent() {
             </View>
           )}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>No guides match your search</Text>
+            <Text style={[styles.emptyText, { color: tc.textSecondary }]}>No guides match your search</Text>
           }
         />
       </View>
@@ -183,7 +190,7 @@ export default function GuidesTabContent() {
       {/* Listings by Category */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Browse Listings</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Browse Listings</Text>
         </View>
 
         {/* Category Filters */}
@@ -191,10 +198,10 @@ export default function GuidesTabContent() {
           {CATEGORY_FILTERS.map(cat => (
             <TouchableOpacity
               key={cat.id}
-              style={[styles.filterChip, selectedCategory === cat.id && styles.filterChipActive]}
+              style={[styles.filterChip, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }, selectedCategory === cat.id && styles.filterChipActive]}
               onPress={() => setSelectedCategory(cat.id)}
             >
-              <Text style={[styles.filterChipText, selectedCategory === cat.id && styles.filterChipTextActive]}>
+              <Text style={[styles.filterChipText, { color: tc.textSecondary }, selectedCategory === cat.id && styles.filterChipTextActive]}>
                 {cat.label}
               </Text>
             </TouchableOpacity>
@@ -204,7 +211,7 @@ export default function GuidesTabContent() {
         {/* Listing Cards */}
         <View style={styles.sectionPadded}>
           {filteredListings.length === 0 ? (
-            <Text style={styles.emptyText}>No listings in this category</Text>
+            <Text style={[styles.emptyText, { color: tc.textSecondary }]}>No listings in this category</Text>
           ) : (
             filteredListings.map(listing => (
               <ListingCard
@@ -221,26 +228,37 @@ export default function GuidesTabContent() {
       {/* Featured Communities */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Top Communities with Guides</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Top Communities with Guides</Text>
           <TouchableOpacity style={styles.seeAllBtn}>
-            <Text style={styles.seeAllText}>See All</Text>
-            <ArrowRight2 size={14} color={colors.primary} />
+            <Text style={[styles.seeAllText, { color: tc.primary }]}>See All</Text>
+            <ArrowRight2 size={14} color={tc.primary} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.sectionPadded}>
           {MOCK_GUIDE_COMMUNITIES.map(comm => (
-            <TouchableOpacity key={comm.id} style={styles.communityRow}>
-              <View style={styles.communityInfo}>
-                <Text style={styles.communityName}>{comm.name}</Text>
-                <Text style={styles.communityMeta}>
-                  {comm.memberCount.toLocaleString()} members · {comm.guideCount} guides · {comm.postsPerWeek}/wk posts
-                </Text>
-                <Text style={styles.communityDesc} numberOfLines={2}>{comm.description}</Text>
+            <TouchableOpacity key={comm.id} style={[styles.communityCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+              {/* Cover Image */}
+              <Image source={{ uri: comm.coverImage }} style={styles.communityCover} />
+              {/* Trust Badge Overlay */}
+              <View style={[styles.trustBadgeOverlay, { backgroundColor: tc.bgElevated }]}> 
+                <Star1 size={12} color="#F59E0B" variant="Bold" />
+                <Text style={[styles.trustBadgeText, { color: tc.textPrimary }]}>{comm.trustRating}</Text>
               </View>
-              <View style={styles.communityTrust}>
-                <Text style={styles.communityTrustValue}>{comm.trustRating}</Text>
-                <Text style={styles.communityTrustLabel}>trust</Text>
+              {/* Content */}
+              <View style={styles.communityCardContent}>
+                <Text style={[styles.communityName, { color: tc.textPrimary }]} numberOfLines={1}>{comm.name}</Text>
+                <Text style={[styles.communityDesc, { color: tc.textSecondary }]} numberOfLines={2}>{comm.description}</Text>
+                <View style={styles.communityStats}>
+                  <View style={styles.communityStat}>
+                    <People size={13} color={tc.textSecondary} />
+                    <Text style={[styles.communityStatText, { color: tc.textSecondary }]}>{comm.memberCount.toLocaleString()}</Text>
+                  </View>
+                  <Text style={[styles.communityStatDot, { color: tc.textTertiary }]}>·</Text>
+                  <Text style={[styles.communityStatText, { color: tc.textSecondary }]}>{comm.guideCount} guides</Text>
+                  <Text style={[styles.communityStatDot, { color: tc.textTertiary }]}>·</Text>
+                  <Text style={[styles.communityStatText, { color: tc.textSecondary }]}>{comm.postsPerWeek}/wk</Text>
+                </View>
               </View>
             </TouchableOpacity>
           ))}
@@ -249,7 +267,17 @@ export default function GuidesTabContent() {
 
       <View style={{ height: 40 }} />
     </ScrollView>
-  );
+
+    {/* Partner Program Bottom Sheet */}
+    <PartnerProgramSheet
+      visible={showPartnerSheet}
+      onClose={() => setShowPartnerSheet(false)}
+      onApply={() => {
+        setShowPartnerSheet(false);
+        router.push('/community/partner-apply' as any);
+      }}
+    />
+  </>);
 }
 
 const styles = StyleSheet.create({
@@ -264,13 +292,13 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
     gap: 8,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   searchInput: {
     flex: 1,
@@ -322,9 +350,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   filterChipActive: {
     backgroundColor: colors.primary + '15',
@@ -350,56 +378,77 @@ const styles = StyleSheet.create({
     marginRight: 0,
   },
 
-  // Communities
-  communityRow: {
+  // Community Cards
+  communityCard: {
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
+    marginBottom: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  communityCover: {
+    width: '100%',
+    height: 110,
+  },
+  trustBadgeOverlay: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 1,
+    elevation: 2,
   },
-  communityInfo: {
-    flex: 1,
-    marginRight: 12,
+  trustBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  communityCardContent: {
+    padding: 14,
   },
   communityName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: 3,
-  },
-  communityMeta: {
-    fontSize: 11,
-    color: colors.textTertiary,
     marginBottom: 4,
   },
   communityDesc: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  communityStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  communityStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  communityStatText: {
     fontSize: 12,
     color: colors.textSecondary,
-    lineHeight: 17,
-  },
-  communityTrust: {
-    alignItems: 'center',
-    backgroundColor: colors.gray50,
-    borderRadius: 10,
-    padding: 10,
-    minWidth: 50,
-  },
-  communityTrustValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.primary,
-  },
-  communityTrustLabel: {
-    fontSize: 10,
-    color: colors.textTertiary,
     fontWeight: '500',
+  },
+  communityStatDot: {
+    fontSize: 12,
+    color: colors.textTertiary,
   },
 
   emptyText: {

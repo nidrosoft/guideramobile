@@ -7,6 +7,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, ViewStyle } from 'react-native';
 import { colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useReducedMotion } from '@/utils/accessibility';
 
 interface SkeletonProps {
@@ -168,7 +169,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 16,
@@ -202,7 +203,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   flightCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -226,7 +227,7 @@ const styles = StyleSheet.create({
   },
   hotelCard: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 16,
     padding: 12,
     marginBottom: 12,

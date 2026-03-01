@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     fontSize: typography.fontSize.base,
     color: colors.textPrimary,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   errorText: {
     fontSize: typography.fontSize.sm,

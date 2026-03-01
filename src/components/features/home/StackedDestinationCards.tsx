@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import { colors, typography, spacing, borderRadius } from '@/styles';
+import { typography, spacing, borderRadius, colors } from '@/styles';
 import { Bookmark, ArrowRight, Star1, Ticket, TrendUp, Crown } from 'iconsax-react-native';
 import { useHomepageDataSafe, useInteractionTracking } from '@/features/homepage';
 
@@ -163,7 +163,7 @@ export default function StackedDestinationCards() {
                 <Text style={styles.trendingText}>{destination.trending}</Text>
               </View>
               <TouchableOpacity style={styles.bookmarkButton}>
-                <Bookmark size={20} color={colors.textPrimary} variant="Outline" />
+                <Bookmark size={20} color="#1a1a1a" variant="Outline" />
               </TouchableOpacity>
             </View>
 
@@ -181,7 +181,7 @@ export default function StackedDestinationCards() {
                       <Text style={styles.infoText}>{destination.rating}</Text>
                     </View>
                     <View style={styles.infoItem}>
-                      <Ticket size={14} color={colors.white} variant="Bold" />
+                      <Ticket size={14} color="#FFFFFF" variant="Bold" />
                       <Text style={styles.infoText}>{destination.entryFee}</Text>
                     </View>
                     <View style={styles.infoItem}>
@@ -198,7 +198,7 @@ export default function StackedDestinationCards() {
                   style={styles.arrowButton}
                   onPress={() => handleCardPress(destination, index)}
                 >
-                  <ArrowRight size={20} color={colors.textPrimary} variant="Outline" />
+                  <ArrowRight size={20} color="#1a1a1a" variant="Outline" />
                 </TouchableOpacity>
               </View>
             </BlurView>
@@ -223,7 +223,8 @@ const styles = StyleSheet.create({
     height: 420,
     borderRadius: 32,
     overflow: 'hidden',
-    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   cardImage: {
     width: '100%',
@@ -292,13 +293,13 @@ const styles = StyleSheet.create({
   },
   location: {
     fontSize: typography.fontSize.sm,
-    color: colors.white,
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   name: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
+    color: '#FFFFFF',
     marginBottom: spacing.sm,
   },
   keyInfoRow: {
@@ -318,7 +319,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: typography.fontSize.sm,
-    color: colors.white,
+    color: '#FFFFFF',
     fontWeight: typography.fontWeight.semibold,
   },
   visitors: {

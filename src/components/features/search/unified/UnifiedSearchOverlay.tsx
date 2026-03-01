@@ -278,7 +278,7 @@ export default function UnifiedSearchOverlay({
   }, [onClose]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header with Background Image */}
       <UnifiedSearchHeader
         title={title}
@@ -384,7 +384,6 @@ export default function UnifiedSearchOverlay({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
   },
   keyboardView: {
     flex: 1,

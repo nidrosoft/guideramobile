@@ -8,7 +8,8 @@
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { useState } from 'react';
 import * as Haptics from 'expo-haptics';
-import { colors, typography, spacing, borderRadius } from '@/styles';
+import { typography, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { 
   Scan, 
   LanguageSquare, 
@@ -110,6 +111,7 @@ export default function ScanBottomSheet({
   onClose, 
   onSelectAction 
 }: ScanBottomSheetProps) {
+  const { colors, isDark } = useTheme();
   const [selectedAction, setSelectedAction] = useState<ScanActionType | null>(null);
 
   const handleSelectAction = (action: ScanAction) => {
@@ -145,10 +147,10 @@ export default function ScanBottomSheet({
           onPress={onClose}
         />
         
-        <View style={styles.bottomSheet}>
+        <View style={[styles.bottomSheet, { backgroundColor: isDark ? '#1A1A1A' : colors.bgElevated }]}>
           {/* Handle */}
           <View style={styles.handleContainer}>
-            <View style={styles.handle} />
+            <View style={[styles.handle, { backgroundColor: colors.gray300 }]} />
           </View>
 
           {/* Close Button */}
@@ -162,8 +164,8 @@ export default function ScanBottomSheet({
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Quick Actions</Text>
-            <Text style={styles.subtitle}>Explore the world through your camera</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>Quick Actions</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Explore the world through your camera</Text>
           </View>
 
           {/* Actions List */}
@@ -193,19 +195,21 @@ export default function ScanBottomSheet({
                   <View style={styles.titleRow}>
                     <Text style={[
                       styles.actionTitle,
-                      action.comingSoon && styles.actionTitleDisabled,
+                      { color: colors.textPrimary },
+                      action.comingSoon && { color: colors.gray400 },
                     ]}>
                       {action.title}
                     </Text>
                     {action.comingSoon && (
-                      <View style={styles.comingSoonBadge}>
-                        <Text style={styles.comingSoonText}>Coming Soon</Text>
+                      <View style={[styles.comingSoonBadge, { backgroundColor: colors.bgSecondary }]}>
+                        <Text style={[styles.comingSoonText, { color: colors.textTertiary }]}>Coming Soon</Text>
                       </View>
                     )}
                   </View>
                   <Text style={[
                     styles.actionDescription,
-                    action.comingSoon && styles.actionDescriptionDisabled,
+                    { color: colors.textSecondary },
+                    action.comingSoon && { color: colors.gray300 },
                   ]}>
                     {action.description}
                   </Text>
@@ -226,10 +230,9 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
   },
   bottomSheet: {
-    backgroundColor: colors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: 40,
@@ -242,7 +245,6 @@ const styles = StyleSheet.create({
   handle: {
     width: 40,
     height: 4,
-    backgroundColor: colors.gray300,
     borderRadius: 2,
   },
   closeButton: {
@@ -260,12 +262,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   subtitle: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
   },
   actionsList: {
     paddingHorizontal: spacing.xl,
@@ -293,18 +293,10 @@ const styles = StyleSheet.create({
   actionTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
     marginBottom: 2,
-  },
-  actionTitleDisabled: {
-    color: colors.gray400,
   },
   actionDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-  },
-  actionDescriptionDisabled: {
-    color: colors.gray300,
   },
   actionItemDisabled: {
     opacity: 0.7,
@@ -318,7 +310,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   comingSoonBadge: {
-    backgroundColor: colors.gray100,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: borderRadius.full,
@@ -326,6 +317,5 @@ const styles = StyleSheet.create({
   comingSoonText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: colors.gray500,
   },
 });

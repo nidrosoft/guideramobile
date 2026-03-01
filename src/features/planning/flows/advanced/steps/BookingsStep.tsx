@@ -31,6 +31,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAdvancedPlanningStore } from '../../../stores/useAdvancedPlanningStore';
 
 interface BookingsStepProps {
@@ -81,6 +82,7 @@ export default function BookingsStep({
   isOptional,
 }: BookingsStepProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const {
     advancedTripData,
     addLinkedBooking,
@@ -111,7 +113,7 @@ export default function BookingsStep({
   const hasAnyBookings = Object.values(advancedTripData.linkedBookings).some(arr => arr.length > 0);
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -315,7 +317,7 @@ const styles = StyleSheet.create({
   bookingCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
     ...shadows.sm,
@@ -397,7 +399,7 @@ const styles = StyleSheet.create({
   
   // Reminder Card
   reminderCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     ...shadows.sm,

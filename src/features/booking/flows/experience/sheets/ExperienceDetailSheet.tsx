@@ -31,9 +31,10 @@ import {
   Shield,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { Experience, CANCELLATION_POLICY_LABELS } from '../../../types/experience.types';
+import { BookOnProviderButton } from '../../../components/shared';
+import { useDealRedirect } from '@/hooks/useDeals';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -51,6 +52,7 @@ export default function ExperienceDetailSheet({
   experience,
 }: ExperienceDetailSheetProps) {
   const insets = useSafeAreaInsets();
+  const { redirect } = useDealRedirect();
   const [isFavorite, setIsFavorite] = useState(false);
 
   if (!experience) return null;
@@ -78,9 +80,35 @@ export default function ExperienceDetailSheet({
     setIsFavorite(!isFavorite);
   };
 
-  const handleSelect = () => {
+  const handleBookOnProvider = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onSelect(experience);
+    const exp = experience as any;
+    const expName = exp.name || exp.title || 'Experience';
+    const locName = exp.location?.name || exp.location?.city || '';
+    const dur = typeof exp.duration === 'number' ? String(exp.duration) : (exp.duration || '');
+    await redirect({
+      deal_type: 'experience',
+      provider: 'getyourguide',
+      affiliate_url: '',
+      deal_snapshot: {
+        title: expName,
+        subtitle: locName,
+        provider: { code: 'getyourguide', name: 'GetYourGuide' },
+        price: experience.price,
+        experience: {
+          name: expName,
+          duration: dur,
+          rating: exp.rating,
+          reviewCount: exp.reviewCount,
+          date: '',
+          participants: 1,
+        },
+      },
+      price_amount: experience.price.amount,
+      source: 'search',
+      query: expName,
+      destination: locName,
+    });
   };
 
   return (
@@ -214,16 +242,13 @@ export default function ExperienceDetailSheet({
               <Text style={styles.priceValue}>{experience.price.formatted}</Text>
               <Text style={styles.priceUnit}>/ person</Text>
             </View>
-            <TouchableOpacity style={styles.selectButton} onPress={handleSelect}>
-              <LinearGradient
-                colors={[colors.primary, colors.primaryDark]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.selectGradient}
-              >
-                <Text style={styles.selectText}>Check Availability</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <BookOnProviderButton
+                provider="getyourguide"
+                price={experience.price.formatted}
+                onPress={handleBookOnProvider}
+              />
+            </View>
           </View>
         </View>
       </View>
@@ -238,7 +263,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
     height: '90%',
@@ -281,7 +306,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -421,7 +446,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.gray100,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
   },
   priceContainer: {
     flex: 1,

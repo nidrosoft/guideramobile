@@ -25,11 +25,13 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import * as ExpoLocation from 'expo-location';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { profileService, UpdateProfileInput } from '@/services/profile.service';
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  const { colors: tc } = useTheme();
   const { profile, refreshProfile, user } = useAuth();
   
   // Form state - initialized from profile
@@ -228,15 +230,15 @@ export default function EditProfileScreen() {
   };
   
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: tc.background }]}>
+      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Edit Profile</Text>
+        <Text style={[styles.title, { color: tc.textPrimary }]}>Edit Profile</Text>
         <TouchableOpacity 
           onPress={handleSave} 
           style={styles.saveButton}
@@ -351,9 +353,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -427,14 +429,14 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
   input: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: typography.fontSize.base,
     color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   textArea: {
     height: 100,

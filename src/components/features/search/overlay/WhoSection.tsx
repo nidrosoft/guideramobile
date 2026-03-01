@@ -65,7 +65,7 @@ function GuestRow({
   };
 
   return (
-    <View style={[styles.guestRow, { borderBottomColor: themeColors.gray200 }]}>
+    <View style={[styles.guestRow, { borderBottomColor: themeColors.borderSubtle }]}>
       <View style={styles.guestInfo}>
         <Text style={[styles.guestTitle, { color: themeColors.textPrimary }]}>
           {title}

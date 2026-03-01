@@ -34,6 +34,7 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 type EventType = 'in_person' | 'virtual' | 'hybrid';
 
@@ -63,6 +64,7 @@ const POPULAR_TAGS = ['meetup', 'food', 'nightlife', 'hiking', 'photography', 'c
 export default function CreateEventScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: tc, isDark } = useTheme();
   const { communityId } = useLocalSearchParams<{ communityId: string }>();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -165,15 +167,15 @@ export default function CreateEventScreen() {
   };
   
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Event</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Create Event</Text>
         <View style={{ width: 40 }} />
       </View>
       
@@ -188,9 +190,9 @@ export default function CreateEventScreen() {
           {formData.coverImage ? (
             <Image source={{ uri: formData.coverImage }} style={styles.coverImage} />
           ) : (
-            <View style={styles.coverPlaceholder}>
-              <Gallery size={32} color={colors.gray400} />
-              <Text style={styles.coverText}>Add Cover Photo</Text>
+            <View style={[styles.coverPlaceholder, { backgroundColor: tc.bgCard }]}>
+              <Gallery size={32} color={tc.textTertiary} />
+              <Text style={[styles.coverText, { color: tc.textTertiary }]}>Add Cover Photo</Text>
             </View>
           )}
           <View style={styles.coverBadge}>
@@ -200,11 +202,11 @@ export default function CreateEventScreen() {
         
         {/* Title */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Event Title *</Text>
+          <Text style={[styles.label, { color: tc.textPrimary }]}>Event Title *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
             placeholder="e.g., Tokyo Food Tour Meetup"
-            placeholderTextColor={colors.gray400}
+            placeholderTextColor={tc.textTertiary}
             value={formData.title}
             onChangeText={(text) => setFormData(prev => ({ ...prev, title: text }))}
             maxLength={100}
@@ -213,11 +215,11 @@ export default function CreateEventScreen() {
         
         {/* Description */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Description</Text>
+          <Text style={[styles.label, { color: tc.textPrimary }]}>Description</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.textArea, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
             placeholder="Tell people what to expect..."
-            placeholderTextColor={colors.gray400}
+            placeholderTextColor={tc.textTertiary}
             value={formData.description}
             onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
             multiline
@@ -229,7 +231,7 @@ export default function CreateEventScreen() {
         
         {/* Event Type */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Event Type</Text>
+          <Text style={[styles.label, { color: tc.textPrimary }]}>Event Type</Text>
           <View style={styles.typeOptions}>
             {EVENT_TYPES.map(type => {
               const Icon = type.icon;
@@ -237,14 +239,14 @@ export default function CreateEventScreen() {
               return (
                 <TouchableOpacity
                   key={type.id}
-                  style={[styles.typeOption, isSelected && styles.typeOptionSelected]}
+                  style={[styles.typeOption, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }, isSelected && { borderColor: tc.primary, backgroundColor: tc.primary + '10' }]}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setFormData(prev => ({ ...prev, type: type.id }));
                   }}
                 >
-                  <Icon size={20} color={isSelected ? colors.primary : colors.gray500} />
-                  <Text style={[styles.typeOptionText, isSelected && styles.typeOptionTextSelected]}>
+                  <Icon size={20} color={isSelected ? tc.primary : tc.textSecondary} />
+                  <Text style={[styles.typeOptionText, { color: tc.textSecondary }, isSelected && { color: tc.primary }]}>
                     {type.label}
                   </Text>
                 </TouchableOpacity>
@@ -255,35 +257,35 @@ export default function CreateEventScreen() {
         
         {/* Date & Time */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Date & Time</Text>
+          <Text style={[styles.label, { color: tc.textPrimary }]}>Date & Time</Text>
           
           <TouchableOpacity 
-            style={styles.dateTimeRow}
+            style={[styles.dateTimeRow, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
             onPress={() => setShowDatePicker(true)}
           >
-            <Calendar size={20} color={colors.primary} />
-            <Text style={styles.dateTimeText}>{formatDate(formData.date)}</Text>
+            <Calendar size={20} color={tc.primary} />
+            <Text style={[styles.dateTimeText, { color: tc.textPrimary }]}>{formatDate(formData.date)}</Text>
           </TouchableOpacity>
           
           <View style={styles.timeRow}>
             <TouchableOpacity 
-              style={styles.timeButton}
+              style={[styles.timeButton, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
               onPress={() => setShowStartTimePicker(true)}
             >
               <Clock size={18} color={colors.success} />
-              <Text style={styles.timeLabel}>Start</Text>
-              <Text style={styles.timeValue}>{formatTime(formData.startTime)}</Text>
+              <Text style={[styles.timeLabel, { color: tc.textSecondary }]}>Start</Text>
+              <Text style={[styles.timeValue, { color: tc.textPrimary }]}>{formatTime(formData.startTime)}</Text>
             </TouchableOpacity>
             
-            <Text style={styles.timeSeparator}>to</Text>
+            <Text style={[styles.timeSeparator, { color: tc.textSecondary }]}>to</Text>
             
             <TouchableOpacity 
-              style={styles.timeButton}
+              style={[styles.timeButton, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
               onPress={() => setShowEndTimePicker(true)}
             >
               <Clock size={18} color={colors.error} />
-              <Text style={styles.timeLabel}>End</Text>
-              <Text style={styles.timeValue}>{formatTime(formData.endTime)}</Text>
+              <Text style={[styles.timeLabel, { color: tc.textSecondary }]}>End</Text>
+              <Text style={[styles.timeValue, { color: tc.textPrimary }]}>{formatTime(formData.endTime)}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -291,21 +293,21 @@ export default function CreateEventScreen() {
         {/* Location (for in-person/hybrid) */}
         {formData.type !== 'virtual' && (
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Location *</Text>
-            <View style={styles.inputWithIcon}>
-              <Location size={20} color={colors.gray400} />
+            <Text style={[styles.label, { color: tc.textPrimary }]}>Location *</Text>
+            <View style={[styles.inputWithIcon, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+              <Location size={20} color={tc.textTertiary} />
               <TextInput
-                style={styles.inputInner}
+                style={[styles.inputInner, { color: tc.textPrimary }]}
                 placeholder="Venue name"
-                placeholderTextColor={colors.gray400}
+                placeholderTextColor={tc.textTertiary}
                 value={formData.location}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, location: text }))}
               />
             </View>
             <TextInput
-              style={[styles.input, { marginTop: spacing.sm }]}
+              style={[styles.input, { marginTop: spacing.sm, backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
               placeholder="Full address"
-              placeholderTextColor={colors.gray400}
+              placeholderTextColor={tc.textTertiary}
               value={formData.address}
               onChangeText={(text) => setFormData(prev => ({ ...prev, address: text }))}
             />
@@ -315,13 +317,13 @@ export default function CreateEventScreen() {
         {/* Virtual Link (for virtual/hybrid) */}
         {formData.type !== 'in_person' && (
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Virtual Meeting Link *</Text>
-            <View style={styles.inputWithIcon}>
-              <Video size={20} color={colors.gray400} />
+            <Text style={[styles.label, { color: tc.textPrimary }]}>Virtual Meeting Link *</Text>
+            <View style={[styles.inputWithIcon, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+              <Video size={20} color={tc.textTertiary} />
               <TextInput
-                style={styles.inputInner}
+                style={[styles.inputInner, { color: tc.textPrimary }]}
                 placeholder="https://zoom.us/j/..."
-                placeholderTextColor={colors.gray400}
+                placeholderTextColor={tc.textTertiary}
                 value={formData.virtualLink}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, virtualLink: text }))}
                 autoCapitalize="none"
@@ -333,13 +335,13 @@ export default function CreateEventScreen() {
         
         {/* Max Attendees */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Max Attendees (Optional)</Text>
-          <View style={styles.inputWithIcon}>
-            <People size={20} color={colors.gray400} />
+          <Text style={[styles.label, { color: tc.textPrimary }]}>Max Attendees (Optional)</Text>
+          <View style={[styles.inputWithIcon, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+            <People size={20} color={tc.textTertiary} />
             <TextInput
-              style={styles.inputInner}
+              style={[styles.inputInner, { color: tc.textPrimary }]}
               placeholder="Leave empty for unlimited"
-              placeholderTextColor={colors.gray400}
+              placeholderTextColor={tc.textTertiary}
               value={formData.maxAttendees}
               onChangeText={(text) => setFormData(prev => ({ ...prev, maxAttendees: text.replace(/[^0-9]/g, '') }))}
               keyboardType="number-pad"
@@ -349,17 +351,17 @@ export default function CreateEventScreen() {
         
         {/* Tags */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Tags</Text>
+          <Text style={[styles.label, { color: tc.textPrimary }]}>Tags</Text>
           <View style={styles.tagsContainer}>
             {POPULAR_TAGS.map(tag => {
               const isSelected = formData.tags.includes(tag);
               return (
                 <TouchableOpacity
                   key={tag}
-                  style={[styles.tag, isSelected && styles.tagSelected]}
+                  style={[styles.tag, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }, isSelected && { borderColor: tc.primary, backgroundColor: tc.primary + '10' }]}
                   onPress={() => toggleTag(tag)}
                 >
-                  <Text style={[styles.tagText, isSelected && styles.tagTextSelected]}>
+                  <Text style={[styles.tagText, { color: tc.textSecondary }, isSelected && { color: tc.primary }]}>
                     {tag}
                   </Text>
                 </TouchableOpacity>
@@ -372,7 +374,7 @@ export default function CreateEventScreen() {
       </ScrollView>
       
       {/* Footer */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom || spacing.md }]}>
+      <View style={[styles.footer, { paddingBottom: insets.bottom || spacing.md, backgroundColor: tc.bgElevated, borderTopColor: tc.borderSubtle }]}>
         <TouchableOpacity
           style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
           onPress={handleSubmit}
@@ -438,9 +440,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -474,7 +476,7 @@ const styles = StyleSheet.create({
   coverPlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -505,14 +507,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   input: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: typography.fontSize.base,
     color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   textArea: {
     height: 100,
@@ -521,11 +523,11 @@ const styles = StyleSheet.create({
   inputWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     gap: spacing.sm,
   },
   inputInner: {
@@ -544,11 +546,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     gap: spacing.xs,
   },
   typeOptionSelected: {
@@ -558,7 +560,7 @@ const styles = StyleSheet.create({
   typeOptionText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.gray500,
+    color: colors.bgElevated0,
   },
   typeOptionTextSelected: {
     color: colors.primary,
@@ -567,11 +569,11 @@ const styles = StyleSheet.create({
   dateTimeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     gap: spacing.sm,
   },
   dateTimeText: {
@@ -588,11 +590,11 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     gap: spacing.xs,
   },
   timeLabel: {
@@ -616,7 +618,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   tag: {
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
@@ -634,9 +636,9 @@ const styles = StyleSheet.create({
   // Footer
   footer: {
     padding: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
   },
   submitButton: {
     backgroundColor: colors.primary,

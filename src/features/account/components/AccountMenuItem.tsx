@@ -10,7 +10,8 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { ArrowRight2, Star1 } from 'iconsax-react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { AccountMenuItem as MenuItemType } from '../types/account.types';
 
 interface AccountMenuItemProps {
@@ -21,6 +22,7 @@ interface AccountMenuItemProps {
 
 export default function AccountMenuItem({ item, isFirst, isLast }: AccountMenuItemProps) {
   const router = useRouter();
+  const { colors } = useTheme();
   const Icon = item.icon;
   
   const handlePress = () => {
@@ -39,6 +41,7 @@ export default function AccountMenuItem({ item, isFirst, isLast }: AccountMenuIt
     <TouchableOpacity
       style={[
         styles.container,
+        { backgroundColor: colors.bgCard, borderBottomColor: colors.borderSubtle },
         isFirst && styles.firstItem,
         isLast && styles.lastItem,
         item.disabled && styles.disabled,
@@ -50,13 +53,11 @@ export default function AccountMenuItem({ item, isFirst, isLast }: AccountMenuIt
       {/* Icon */}
       <View style={[
         styles.iconContainer,
-        item.destructive && styles.destructiveIcon,
-        item.iconColor === colors.error && !item.destructive && styles.specialIcon,
-        item.iconColor === colors.warning && styles.premiumIcon,
+        { backgroundColor: item.destructive ? colors.error + '10' : colors.bgElevated },
       ]}>
         <Icon
           size={22}
-          color={item.iconColor || colors.gray900}
+          color={item.iconColor || colors.textPrimary}
           variant={item.iconVariant || 'Bold'}
         />
       </View>
@@ -66,19 +67,19 @@ export default function AccountMenuItem({ item, isFirst, isLast }: AccountMenuIt
         <View style={styles.titleRow}>
           <Text style={[
             styles.title,
-            item.destructive && styles.destructiveText,
+            { color: item.destructive ? colors.error : colors.textPrimary },
           ]}>
             {item.title}
           </Text>
           {item.premium && (
-            <View style={styles.premiumBadge}>
+            <View style={[styles.premiumBadge, { backgroundColor: colors.warning + '15' }]}>
               <Star1 size={10} color={colors.warning} variant="Bold" />
-              <Text style={styles.premiumText}>PRO</Text>
+              <Text style={[styles.premiumText, { color: colors.warning }]}>PRO</Text>
             </View>
           )}
         </View>
         {item.subtitle && (
-          <Text style={styles.subtitle} numberOfLines={1}>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>
             {item.subtitle}
           </Text>
         )}
@@ -91,7 +92,7 @@ export default function AccountMenuItem({ item, isFirst, isLast }: AccountMenuIt
             styles.badge,
             { backgroundColor: item.badgeColor || colors.primary },
           ]}>
-            <Text style={styles.badgeText}>{item.badge}</Text>
+            <Text style={[styles.badgeText, { color: colors.white }]}>{item.badge}</Text>
           </View>
         )}
         {item.showChevron && (
@@ -106,11 +107,9 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
   },
   firstItem: {
     borderTopLeftRadius: borderRadius.lg,
@@ -128,18 +127,8 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: colors.gray100,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  destructiveIcon: {
-    backgroundColor: colors.error + '10',
-  },
-  specialIcon: {
-    backgroundColor: colors.error + '10',
-  },
-  premiumIcon: {
-    backgroundColor: colors.warning + '10',
   },
   content: {
     flex: 1,
@@ -153,21 +142,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
-  },
-  destructiveText: {
-    color: colors.error,
   },
   subtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     marginTop: 2,
   },
   premiumBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-    backgroundColor: colors.warning + '15',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -175,7 +158,6 @@ const styles = StyleSheet.create({
   premiumText: {
     fontSize: 9,
     fontWeight: typography.fontWeight.bold,
-    color: colors.warning,
   },
   rightContainer: {
     flexDirection: 'row',
@@ -193,6 +175,5 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
   },
 });

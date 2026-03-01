@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   content: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 24,
     padding: spacing.xl,
     alignItems: 'center',

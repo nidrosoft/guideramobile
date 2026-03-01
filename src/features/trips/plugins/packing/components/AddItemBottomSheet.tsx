@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { CloseCircle } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { PackingCategory } from '../types/packing.types';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -39,6 +40,7 @@ export default function AddItemBottomSheet({
   onAdd,
 }: AddItemBottomSheetProps) {
   const { showSuccess } = useToast();
+  const { colors: tc } = useTheme();
   const [itemName, setItemName] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<PackingCategory>(PackingCategory.CUSTOM);
   const [quantity, setQuantity] = useState('1');
@@ -174,7 +176,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   bottomSheet: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: spacing.xl,

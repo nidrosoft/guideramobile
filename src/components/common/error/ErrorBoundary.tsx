@@ -7,6 +7,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { colors, typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { RefreshCircle, Warning2, MessageQuestion } from 'iconsax-react-native';
 import { captureException, addBreadcrumb } from '@/services/sentry';
 
@@ -210,7 +211,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   containerGlobal: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   content: {
     alignItems: 'center',
@@ -270,7 +271,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     borderRadius: 12,

@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { colors, typography, spacing, borderRadius } from '@/styles';
+import { typography, spacing, borderRadius, colors } from '@/styles';
 
 interface DealCardProps {
   title: string;
@@ -54,6 +54,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     position: 'relative',
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   decorativeCircle1: {
     position: 'absolute',
@@ -90,18 +92,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
+    color: '#FFFFFF',
     marginBottom: spacing.xs,
     maxWidth: '60%',
   },
   discount: {
     fontSize: typography.fontSize['4xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
     marginBottom: spacing.lg,
   },
   button: {
-    backgroundColor: colors.white,
+    backgroundColor: '#FFFFFF',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.xl,
     borderRadius: 24,
@@ -111,7 +113,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary,
+    color: '#3FC39E',
   },
   image: {
     position: 'absolute',

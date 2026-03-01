@@ -21,11 +21,13 @@ import { ArrowLeft, TickCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { changeLanguage, getCurrentLanguage, SUPPORTED_LANGUAGES, LanguageCode } from '@/lib/i18n';
 
 export default function LanguageSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const { t, i18n } = useTranslation();
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode>('en');
   const [isLoading, setIsLoading] = useState(true);
@@ -56,20 +58,20 @@ export default function LanguageSettingsScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <StatusBar style="dark" />
+        <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
   
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('settings.items.language')}</Text>
         <View style={styles.headerSpacer} />
@@ -153,9 +155,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -221,18 +223,18 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   languageList: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.gray100,
+    borderColor: colors.borderSubtle,
   },
   languageItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   languageItemSelected: {
     backgroundColor: colors.primary + '08',

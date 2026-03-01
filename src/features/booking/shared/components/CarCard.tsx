@@ -245,11 +245,11 @@ export default function CarCard({
 const styles = StyleSheet.create({
   // Card Container - Premium with depth
   container: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg, // Use design system: 24px
+    backgroundColor: colors.bgElevated,
+    borderRadius: 24, // Card container standard
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray200, // Use design system border color
+    borderColor: colors.borderSubtle,
     overflow: 'hidden',
     // Premium shadow
     shadowColor: '#000',

@@ -37,6 +37,7 @@ import {
   Map1,
 } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useHotelStore } from '../../../stores/useHotelStore';
 import { useHotelSearch } from '@/hooks/useProviderSearch';
 import { HotelSearchParams as ProviderHotelSearchParams } from '@/types/unified';
@@ -71,6 +72,7 @@ export default function HotelSearchLoadingScreen({
   onComplete,
 }: HotelSearchLoadingScreenProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const { searchParams, setSearchResults, setSearchError } = useHotelStore();
   const [messageIndex, setMessageIndex] = useState(0);
   const [iconIndex, setIconIndex] = useState(0);
@@ -263,7 +265,7 @@ export default function HotelSearchLoadingScreen({
   const CurrentIcon = TRAVEL_ICONS[iconIndex].Icon;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <ImageBackground
         source={require('../../../../../../assets/images/bookingbg.png')}
         style={[styles.background, { paddingTop: insets.top }]}

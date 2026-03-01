@@ -51,7 +51,7 @@ export default function SearchSectionCard({
   if (!isExpanded) {
     return (
       <TouchableOpacity
-        style={[styles.collapsedCard, { backgroundColor: themeColors.white }]}
+        style={[styles.collapsedCard, { backgroundColor: themeColors.bgElevated, borderWidth: 1, borderColor: themeColors.borderSubtle }]}
         onPress={onPress}
         activeOpacity={0.8}
       >
@@ -67,7 +67,7 @@ export default function SearchSectionCard({
 
   // Expanded state - shows full content
   return (
-    <View style={[styles.expandedCard, { backgroundColor: themeColors.white }]}>
+    <View style={[styles.expandedCard, { backgroundColor: themeColors.bgElevated, borderWidth: 1, borderColor: themeColors.borderSubtle }]}>
       <Text style={[styles.expandedTitle, { color: themeColors.textPrimary }]}>
         {title}?
       </Text>

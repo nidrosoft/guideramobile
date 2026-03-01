@@ -89,7 +89,7 @@ export default function CategoryTabs({
                 ]}>
                   <Icon 
                     size={20} 
-                    color={isActive ? colors.white : isComplete ? colors.success : colors.gray500}
+                    color={isActive ? '#FFFFFF' : isComplete ? colors.success : colors.textSecondary}
                     variant={isComplete ? 'Bold' : 'Linear'}
                   />
                 </View>
@@ -123,9 +123,9 @@ export default function CategoryTabs({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   scrollContent: {
     paddingHorizontal: spacing.md,
@@ -136,9 +136,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgCard,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   tabActive: {
     backgroundColor: colors.primary,
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.bgCard,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   tabLabelActive: {
-    color: colors.white,
+    color: '#FFFFFF',
     fontWeight: typography.fontWeight.semibold,
   },
   tabLabelComplete: {

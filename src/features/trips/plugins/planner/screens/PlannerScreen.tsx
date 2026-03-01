@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Airplane, Building, Location, DirectRight, Clock, Star1, Car } from 'iconsax-react-native';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import AddActivityBottomSheet from '../components/AddActivityBottomSheet';
 
@@ -195,6 +196,7 @@ export default function PlannerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const tripId = params.tripId as string;
+  const { colors, isDark } = useTheme();
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
   
   const [selectedDay, setSelectedDay] = useState(0);
@@ -264,29 +266,29 @@ export default function PlannerScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgPrimary} />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgPrimary }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.gray900} variant="Linear" />
+          <ArrowLeft size={24} color={colors.textPrimary} variant="Linear" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Trip Plan</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Trip Plan</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Notification Card */}
-        <View style={styles.notificationCard}>
+        <View style={[styles.notificationCard, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
           <View style={styles.notificationIcon}>
             <Location size={24} color={colors.primary} variant="Bold" />
           </View>
           <View style={styles.notificationContent}>
-            <Text style={styles.notificationTitle}>
+            <Text style={[styles.notificationTitle, { color: colors.textPrimary }]}>
               Your tour at the Eiffel tower is at 5PM
             </Text>
-            <Text style={styles.notificationSubtitle}>
+            <Text style={[styles.notificationSubtitle, { color: colors.textSecondary }]}>
               You have <Text style={styles.notificationTime}>1h. 32 Mins</Text> to get ready
             </Text>
           </View>
@@ -310,16 +312,19 @@ export default function PlannerScreen() {
             >
               <View style={[
                 styles.tabIndicator,
+                { backgroundColor: colors.gray300 },
                 selectedDay === index && styles.tabIndicatorActive
               ]} />
               <Text style={[
                 styles.tabTitle,
+                { color: colors.textTertiary },
                 selectedDay === index && styles.tabTitleActive
               ]}>
                 Day {day.dayNumber}
               </Text>
               <Text style={[
                 styles.tabDate,
+                { color: colors.textTertiary },
                 selectedDay === index && styles.tabDateActive
               ]}>
                 {day.date}
@@ -331,7 +336,7 @@ export default function PlannerScreen() {
         {/* Itinerary Section */}
         <View style={styles.itinerarySection}>
           <View style={styles.itineraryHeader}>
-            <Text style={styles.itineraryTitle}>Itinerary</Text>
+            <Text style={[styles.itineraryTitle, { color: colors.textPrimary }]}>Itinerary</Text>
           </View>
 
           {/* Activities Timeline */}
@@ -347,40 +352,40 @@ export default function PlannerScreen() {
                     {index < currentDay.activities.length - 1 && (
                       <View style={[
                         styles.timelineLine,
-                        { backgroundColor: isActivityCompleted(activity.time) ? colors.primary : colors.gray200 }
+                        { backgroundColor: isActivityCompleted(activity.time) ? colors.primary : colors.borderMedium }
                       ]} />
                     )}
                   </View>
 
                   {/* Activity Content */}
                   <View style={styles.activityContent}>
-                    <View style={styles.activityCard}>
+                    <View style={[styles.activityCard, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
                       <View style={styles.activityHeader}>
                         <View style={styles.activityInfo}>
-                          <Text style={styles.activityTitle}>{activity.title}</Text>
+                          <Text style={[styles.activityTitle, { color: colors.textPrimary }]}>{activity.title}</Text>
                           {activity.location && (
-                            <Text style={styles.activityLocation}>{activity.location}</Text>
+                            <Text style={[styles.activityLocation, { color: colors.textSecondary }]}>{activity.location}</Text>
                           )}
-                          <Text style={styles.activityTime}>{activity.time}</Text>
+                          <Text style={[styles.activityTime, { color: colors.textTertiary }]}>{activity.time}</Text>
                         </View>
                         {activity.code && (
-                          <Text style={styles.activityCode}>{activity.code}</Text>
+                          <Text style={[styles.activityCode, { color: colors.textPrimary }]}>{activity.code}</Text>
                         )}
                       </View>
 
                       {/* Expandable Content */}
                       {activity.expandable && expandedActivity === activity.id && (
-                        <View style={styles.expandedContent}>
+                        <View style={[styles.expandedContent, { borderTopColor: colors.borderSubtle }]}>
                           {activity.rating && (
                             <View style={styles.ratingRow}>
                               <Star1 size={16} color="#F59E0B" variant="Bold" />
-                              <Text style={styles.ratingText}>{activity.rating}</Text>
+                              <Text style={[styles.ratingText, { color: colors.textSecondary }]}>{activity.rating}</Text>
                             </View>
                           )}
                           {activity.hours && (
                             <View style={styles.hoursRow}>
                               <Clock size={16} color={colors.primary} variant="Bold" />
-                              <Text style={styles.hoursText}>{activity.hours}</Text>
+                              <Text style={[styles.hoursText, { color: colors.textSecondary }]}>{activity.hours}</Text>
                             </View>
                           )}
                           {activity.hasDirection && (
@@ -395,12 +400,12 @@ export default function PlannerScreen() {
                       {/* Expand Button */}
                       {activity.expandable && (
                         <TouchableOpacity
-                          style={styles.expandButton}
+                          style={[styles.expandButton, { backgroundColor: isDark ? colors.bgElevated : colors.gray100 }]}
                           onPress={() => setExpandedActivity(
                             expandedActivity === activity.id ? null : activity.id
                           )}
                         >
-                          <Text style={styles.expandButtonText}>
+                          <Text style={[styles.expandButtonText, { color: colors.textSecondary }]}>
                             {expandedActivity === activity.id ? '−' : '∨'}
                           </Text>
                         </TouchableOpacity>
@@ -413,7 +418,7 @@ export default function PlannerScreen() {
                 {index < currentDay.activities.length - 1 && (
                   <View style={styles.addActivityRow}>
                     <View style={styles.timelineColumn}>
-                      <View style={styles.separator} />
+                      <View style={[styles.separator, { backgroundColor: colors.borderMedium }]} />
                       <TouchableOpacity 
                         style={styles.addActivityButton}
                         onPress={() => {
@@ -423,7 +428,7 @@ export default function PlannerScreen() {
                       >
                         <Text style={styles.addActivityText}>+</Text>
                       </TouchableOpacity>
-                      <View style={styles.separator} />
+                      <View style={[styles.separator, { backgroundColor: colors.borderMedium }]} />
                     </View>
                   </View>
                 )}
@@ -450,11 +455,9 @@ export default function PlannerScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -462,9 +465,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
   },
   backButton: {
     width: 40,
@@ -475,7 +476,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '600',
-    color: colors.gray900,
   },
   content: {
     flex: 1,
@@ -483,12 +483,11 @@ const styles = StyleSheet.create({
   notificationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     padding: spacing.md,
     borderRadius: borderRadius.lg,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -498,7 +497,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: 'rgba(63, 195, 158, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -509,12 +508,10 @@ const styles = StyleSheet.create({
   notificationTitle: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray900,
     marginBottom: 4,
   },
   notificationSubtitle: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray600,
   },
   notificationTime: {
     color: '#F97316',
@@ -524,7 +521,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.primary,
+    backgroundColor: '#3FC39E',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: spacing.sm,
@@ -545,27 +542,23 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.gray300,
     marginBottom: spacing.xs,
   },
   tabIndicatorActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#3FC39E',
   },
   tabTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray400,
     marginBottom: 2,
   },
   tabTitleActive: {
-    color: colors.primary,
+    color: '#3FC39E',
   },
   tabDate: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray400,
   },
   tabDateActive: {
-    color: colors.gray600,
   },
   itinerarySection: {
     marginTop: spacing.xl,
@@ -577,10 +570,8 @@ const styles = StyleSheet.create({
   itineraryTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
-    color: colors.gray900,
   },
   activitiesButton: {
-    backgroundColor: colors.gray900,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: 20,
@@ -588,7 +579,6 @@ const styles = StyleSheet.create({
   activitiesButtonText: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.white,
   },
   timeline: {
     marginTop: spacing.md,
@@ -618,10 +608,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   activityCard: {
-    backgroundColor: colors.white,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -637,28 +626,23 @@ const styles = StyleSheet.create({
   activityTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray900,
     marginBottom: 4,
   },
   activityLocation: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
     marginBottom: 4,
   },
   activityTime: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray500,
   },
   activityCode: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.gray900,
   },
   expandedContent: {
     marginTop: spacing.md,
     paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.gray200,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -667,7 +651,6 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray700,
     marginLeft: spacing.xs,
   },
   hoursRow: {
@@ -677,13 +660,12 @@ const styles = StyleSheet.create({
   },
   hoursText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray700,
     marginLeft: spacing.xs,
   },
   directionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${colors.primary}10`,
+    backgroundColor: 'rgba(63, 195, 158, 0.06)',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: 8,
@@ -692,7 +674,7 @@ const styles = StyleSheet.create({
   directionText: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.primary,
+    color: '#3FC39E',
     marginLeft: spacing.xs,
   },
   expandButton: {
@@ -702,13 +684,11 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.gray100,
     alignItems: 'center',
     justifyContent: 'center',
   },
   expandButtonText: {
     fontSize: 16,
-    color: colors.gray600,
     fontWeight: '600',
   },
   addActivityRow: {
@@ -719,18 +699,17 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: 'rgba(63, 195, 158, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   addActivityText: {
     fontSize: 20,
-    color: colors.primary,
+    color: '#3FC39E',
     fontWeight: '600',
   },
   separator: {
     width: 2,
     height: 24,
-    backgroundColor: colors.gray200,
   },
 });

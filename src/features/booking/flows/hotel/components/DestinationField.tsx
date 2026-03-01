@@ -51,13 +51,13 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md + 2,
     gap: spacing.md,
     borderWidth: 1,
-    borderColor: '#E6E9EB',
+    borderColor: colors.borderSubtle,
   },
   iconContainer: {
     width: 40,

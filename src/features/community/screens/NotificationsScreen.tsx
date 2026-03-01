@@ -30,6 +30,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 type NotificationType = 'message' | 'join_request' | 'approved' | 'denied' | 'new_member' | 'event';
 
@@ -145,6 +146,7 @@ const MOCK_NOTIFICATIONS: CommunityNotification[] = [
 export default function NotificationsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: tc, isDark } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
   
@@ -220,7 +222,7 @@ export default function NotificationsScreen() {
       case 'denied': return { icon: CloseCircle, color: colors.error };
       case 'new_member': return { icon: People, color: colors.info };
       case 'event': return { icon: Calendar, color: colors.primary };
-      default: return { icon: Notification, color: colors.gray500 };
+      default: return { icon: Notification, color: colors.textTertiary };
     }
   };
   
@@ -233,7 +235,7 @@ export default function NotificationsScreen() {
     return (
       <TouchableOpacity
         key={notification.id}
-        style={[styles.notificationCard, !notification.isRead && styles.notificationUnread]}
+        style={[styles.notificationCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }, !notification.isRead && { backgroundColor: tc.primary + '05', borderLeftWidth: 3, borderLeftColor: tc.primary }]}
         onPress={() => handleNotificationPress(notification)}
         activeOpacity={0.7}
       >
@@ -248,17 +250,17 @@ export default function NotificationsScreen() {
           {isJoinRequest && notification.userAvatar && (
             <View style={styles.userRow}>
               <Image source={{ uri: notification.userAvatar }} style={styles.userAvatar} />
-              <Text style={styles.userName}>{notification.userName}</Text>
+              <Text style={[styles.userName, { color: tc.textPrimary }]}>{notification.userName}</Text>
             </View>
           )}
           
           {/* Main content */}
-          <Text style={styles.notificationTitle}>
+          <Text style={[styles.notificationTitle, { color: tc.textPrimary }]}>
             {isJoinRequest ? notification.message : notification.title}
           </Text>
           
           {!isJoinRequest && (
-            <Text style={styles.notificationMessage} numberOfLines={2}>
+            <Text style={[styles.notificationMessage, { color: tc.textSecondary }]} numberOfLines={2}>
               {notification.message}
             </Text>
           )}
@@ -266,8 +268,8 @@ export default function NotificationsScreen() {
           {/* Group info */}
           <View style={styles.groupRow}>
             <Image source={{ uri: notification.groupAvatar }} style={styles.groupAvatar} />
-            <Text style={styles.groupName}>{notification.groupName}</Text>
-            <Text style={styles.timeText}>{formatTime(notification.createdAt)}</Text>
+            <Text style={[styles.groupName, { color: tc.textSecondary }]}>{notification.groupName}</Text>
+            <Text style={[styles.timeText, { color: tc.textTertiary }]}>{formatTime(notification.createdAt)}</Text>
           </View>
           
           {/* Action buttons for join requests */}
@@ -281,10 +283,10 @@ export default function NotificationsScreen() {
                 <Text style={styles.denyButtonText}>Deny</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.approveButton}
+                style={[styles.approveButton, { backgroundColor: tc.primary }]}
                 onPress={() => handleApprove(notification)}
               >
-                <TickCircle size={18} color={colors.white} variant="Bold" />
+                <TickCircle size={18} color="#FFFFFF" variant="Bold" />
                 <Text style={styles.approveButtonText}>Approve</Text>
               </TouchableOpacity>
             </View>
@@ -298,28 +300,28 @@ export default function NotificationsScreen() {
   };
   
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Notifications</Text>
         <TouchableOpacity style={styles.settingsButton}>
-          <Setting2 size={22} color={colors.textPrimary} />
+          <Setting2 size={22} color={tc.textPrimary} />
         </TouchableOpacity>
       </View>
       
       {/* Unread count & Mark all read */}
       {unreadCount > 0 && (
-        <View style={styles.unreadBar}>
-          <Text style={styles.unreadText}>
+        <View style={[styles.unreadBar, { backgroundColor: tc.primary + '10' }]}>
+          <Text style={[styles.unreadText, { color: tc.primary }]}>
             {unreadCount} unread notification{unreadCount > 1 ? 's' : ''}
           </Text>
           <TouchableOpacity onPress={handleMarkAllRead}>
-            <Text style={styles.markReadText}>Mark all read</Text>
+            <Text style={[styles.markReadText, { color: tc.primary }]}>Mark all read</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -333,15 +335,15 @@ export default function NotificationsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.primary}
+            tintColor={tc.primary}
           />
         }
       >
         {notifications.length === 0 ? (
           <View style={styles.emptyState}>
-            <Notification size={64} color={colors.gray300} variant="Bold" />
-            <Text style={styles.emptyTitle}>No notifications</Text>
-            <Text style={styles.emptyText}>
+            <Notification size={64} color={tc.textTertiary} variant="Bold" />
+            <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No notifications</Text>
+            <Text style={[styles.emptyText, { color: tc.textSecondary }]}>
               You'll see group activity here
             </Text>
           </View>
@@ -366,9 +368,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -413,11 +415,13 @@ const styles = StyleSheet.create({
   },
   notificationCard: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     marginBottom: spacing.sm,
     position: 'relative',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   notificationUnread: {
     backgroundColor: colors.primary + '05',

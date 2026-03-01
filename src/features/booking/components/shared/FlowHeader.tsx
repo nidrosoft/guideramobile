@@ -34,7 +34,8 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, CloseCircle, Warning2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius, shadows } from '@/styles';
+import { colors as staticColors, spacing, typography, borderRadius, shadows } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -107,6 +108,7 @@ export default function FlowHeader({
 }: FlowHeaderProps) {
   const insets = useSafeAreaInsets();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const { colors } = useTheme();
   
   // Show back button only on step 2 and beyond
   const showBackButton = currentStep > 1 && onBack;
@@ -245,27 +247,27 @@ export default function FlowHeader({
         animationType="fade"
         onRequestClose={handleCancelClose}
       >
-        <View style={styles.modalOverlay}>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.bgOverlay }]}>
           <Animated.View 
             entering={FadeInDown.duration(300).springify()}
-            style={styles.modalContent}
+            style={[styles.modalContent, { backgroundColor: colors.bgCard }]}
           >
-            <View style={styles.modalIconContainer}>
+            <View style={[styles.modalIconContainer, { backgroundColor: colors.warning + '15' }]}>
               <Warning2 size={48} color={colors.warning} variant="Bold" />
             </View>
             
-            <Text style={styles.modalTitle}>Cancel Booking?</Text>
-            <Text style={styles.modalMessage}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Cancel Booking?</Text>
+            <Text style={[styles.modalMessage, { color: colors.textSecondary }]}>
               Are you sure you want to cancel? All your progress will be lost and won't be saved.
             </Text>
             
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.modalButtonSecondary}
+                style={[styles.modalButtonSecondary, { backgroundColor: colors.bgElevated }]}
                 onPress={handleCancelClose}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalButtonSecondaryText}>Keep Editing</Text>
+                <Text style={[styles.modalButtonSecondaryText, { color: colors.textPrimary }]}>Keep Editing</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
@@ -316,7 +318,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
+    color: staticColors.white,
     textAlign: 'center',
   },
   subtitle: {
@@ -345,19 +347,17 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   progressSegmentCompleted: {
-    backgroundColor: colors.white,
+    backgroundColor: staticColors.white,
   },
   
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.lg,
   },
   modalContent: {
-    backgroundColor: colors.white,
     borderRadius: borderRadius.xl,
     padding: spacing.xl,
     width: '100%',
@@ -369,7 +369,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.warning + '15',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
@@ -377,13 +376,11 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.sm,
     textAlign: 'center',
   },
   modalMessage: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: spacing.lg,
@@ -397,24 +394,22 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.lg,
-    backgroundColor: colors.gray100,
     alignItems: 'center',
   },
   modalButtonSecondaryText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   modalButtonPrimary: {
     flex: 1,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.lg,
-    backgroundColor: colors.error,
+    backgroundColor: staticColors.error,
     alignItems: 'center',
   },
   modalButtonPrimaryText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
+    color: staticColors.white,
   },
 });

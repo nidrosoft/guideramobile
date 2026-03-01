@@ -1,14 +1,12 @@
 /**
  * EXPERIENCE BOOKING FLOW
  * 
- * Screen-based orchestrator for experience/activity booking.
- * Follows the same plugin architecture as FlightBookingFlow, HotelBookingFlow, and CarBookingFlow.
+ * Screen-based orchestrator for experience/activity search + deal redirect.
  * 
  * Screens:
  * 1. search - Experience search with destination, date, participants, category
  * 2. loading - Animated loading while searching
- * 3. results - Experience list with filters and detail sheet
- * 4. checkout - Combined: time slot, traveler details, payment
+ * 3. results - Experience list with filters, detail sheet, and "Book on [Provider]" redirect
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -17,16 +15,13 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/styles';
 import { useExperienceStore } from '../../stores/useExperienceStore';
-import { useBookingStore } from '../../stores/useBookingStore';
 import { Experience } from '../../types/experience.types';
 
 // Import screens
 import ExperienceSearchScreen from './screens/ExperienceSearchScreen';
 import ExperienceSearchLoadingScreen from './screens/ExperienceSearchLoadingScreen';
 import ExperienceResultsScreen from './screens/ExperienceResultsScreen';
-import ExperienceCheckoutScreen from './screens/ExperienceCheckoutScreen';
-
-type ExperienceScreen = 'search' | 'loading' | 'results' | 'checkout';
+type ExperienceScreen = 'search' | 'loading' | 'results';
 
 interface ExperienceBookingFlowProps {
   visible: boolean;
@@ -39,14 +34,6 @@ export default function ExperienceBookingFlow({ visible, onClose }: ExperienceBo
   const [selectedExperience, setSelectedExperience] = useState<Experience | null>(null);
   
   const experienceStore = useExperienceStore();
-  const bookingStore = useBookingStore();
-
-  // Reset stores on mount
-  useEffect(() => {
-    if (visible) {
-      bookingStore.startBookingSession('experience');
-    }
-  }, [visible]);
 
   // Navigation helpers
   const navigateTo = useCallback((screen: ExperienceScreen) => {
@@ -68,12 +55,11 @@ export default function ExperienceBookingFlow({ visible, onClose }: ExperienceBo
   const handleClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     experienceStore.reset();
-    bookingStore.endBookingSession();
     setCurrentScreen('search');
     setScreenHistory(['search']);
     setSelectedExperience(null);
     onClose();
-  }, [onClose, experienceStore, bookingStore]);
+  }, [onClose, experienceStore]);
 
   // Screen handlers
   const handleSearch = useCallback(() => {
@@ -89,27 +75,13 @@ export default function ExperienceBookingFlow({ visible, onClose }: ExperienceBo
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedExperience(experience);
     experienceStore.selectExperience(experience);
-    navigateTo('checkout');
-  }, [navigateTo, experienceStore]);
+    // Detail sheet opens from results screen with "Book on Provider" button
+  }, [experienceStore]);
 
   const handleBackFromResults = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     goBack();
   }, [goBack]);
-
-  const handleBackFromCheckout = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    goBack();
-  }, [goBack]);
-
-  const handleConfirmBooking = useCallback(() => {
-    // Generate booking reference
-    const reference = `EXP${Date.now().toString(36).toUpperCase()}`;
-    experienceStore.setBookingReference(reference);
-    experienceStore.confirmBooking();
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    handleClose();
-  }, [experienceStore, handleClose]);
 
   // Reset screen when modal opens
   useEffect(() => {
@@ -165,22 +137,6 @@ export default function ExperienceBookingFlow({ visible, onClose }: ExperienceBo
             />
           </Animated.View>
         );
-
-      case 'checkout':
-        return selectedExperience ? (
-          <Animated.View 
-            key="checkout"
-            entering={FadeIn.duration(300)}
-            style={styles.screen}
-          >
-            <ExperienceCheckoutScreen
-              experience={selectedExperience}
-              onConfirm={handleConfirmBooking}
-              onBack={handleBackFromCheckout}
-              onClose={handleClose}
-            />
-          </Animated.View>
-        ) : null;
 
       default:
         return null;

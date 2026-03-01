@@ -51,7 +51,7 @@ export default function TripTypeTabs({ selected, onSelect }: TripTypeTabsProps) 
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#E6E9EB',
+    backgroundColor: colors.gray200,
     borderRadius: borderRadius.full,
     padding: 5,
   },
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabSelected: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   tabText: {
     fontSize: typography.fontSize.sm,

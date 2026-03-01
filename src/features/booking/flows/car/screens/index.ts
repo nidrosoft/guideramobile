@@ -5,4 +5,3 @@
 export { default as CarSearchScreen } from './CarSearchScreen';
 export { default as CarSearchLoadingScreen } from './CarSearchLoadingScreen';
 export { default as CarResultsScreen } from './CarResultsScreen';
-export { default as CarCheckoutScreen } from './CarCheckoutScreen';

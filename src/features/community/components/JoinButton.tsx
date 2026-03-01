@@ -8,6 +8,7 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
 import { TickCircle, Clock, Add, LogoutCurve } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useCommunityMembership } from '../hooks/useCommunityMembership';
 import { CommunityPrivacy, MembershipStatus } from '../types/community.types';
 

@@ -33,6 +33,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 type SearchTab = 'all' | 'groups' | 'buddies' | 'events';
 type SortOption = 'relevance' | 'popular' | 'recent' | 'nearby';
@@ -71,6 +72,7 @@ const RECENT_SEARCHES = ['Tokyo groups', 'travel buddies NYC', 'hiking events'];
 export default function SearchScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: tc, isDark } = useTheme();
   const inputRef = useRef<TextInput>(null);
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -185,7 +187,7 @@ export default function SearchScreen() {
       return (
         <TouchableOpacity
           key={item.id}
-          style={styles.resultCard}
+          style={[styles.resultCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             router.push(`/community/${item.id}` as any);
@@ -194,23 +196,23 @@ export default function SearchScreen() {
           <Image source={{ uri: item.avatar }} style={styles.resultAvatar} />
           <View style={styles.resultContent}>
             <View style={styles.resultHeader}>
-              <Text style={styles.resultName} numberOfLines={1}>{item.name}</Text>
-              {item.isVerified && <Verify size={14} color={colors.primary} variant="Bold" />}
-              {item.privacy === 'private' && <Lock size={12} color={colors.gray400} />}
+              <Text style={[styles.resultName, { color: tc.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+              {item.isVerified && <Verify size={14} color={tc.primary} variant="Bold" />}
+              {item.privacy === 'private' && <Lock size={12} color={tc.textTertiary} />}
             </View>
             {item.destination && (
               <View style={styles.resultLocation}>
-                <Location size={12} color={colors.gray400} />
-                <Text style={styles.resultLocationText}>{item.destination}</Text>
+                <Location size={12} color={tc.textTertiary} />
+                <Text style={[styles.resultLocationText, { color: tc.textSecondary }]}>{item.destination}</Text>
               </View>
             )}
             <View style={styles.resultFooter}>
-              <People size={14} color={colors.gray500} />
-              <Text style={styles.resultMeta}>{item.memberCount.toLocaleString()} members</Text>
+              <People size={14} color={tc.textSecondary} />
+              <Text style={[styles.resultMeta, { color: tc.textSecondary }]}>{item.memberCount.toLocaleString()} members</Text>
             </View>
           </View>
-          <View style={styles.resultBadge}>
-            <Text style={styles.resultBadgeText}>Group</Text>
+          <View style={[styles.resultBadge, { backgroundColor: tc.primary + '15' }]}>
+            <Text style={[styles.resultBadgeText, { color: tc.primary }]}>Group</Text>
           </View>
         </TouchableOpacity>
       );
@@ -220,7 +222,7 @@ export default function SearchScreen() {
       return (
         <TouchableOpacity
           key={item.id}
-          style={styles.resultCard}
+          style={[styles.resultCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             router.push(`/community/buddy/${item.id}` as any);
@@ -228,17 +230,17 @@ export default function SearchScreen() {
         >
           <View style={styles.buddyAvatarContainer}>
             <Image source={{ uri: item.avatar }} style={styles.resultAvatar} />
-            {item.isOnline && <View style={styles.onlineIndicator} />}
+            {item.isOnline && <View style={[styles.onlineIndicator, { borderColor: tc.bgElevated }]} />}
           </View>
           <View style={styles.resultContent}>
-            <Text style={styles.resultName}>{item.name}</Text>
+            <Text style={[styles.resultName, { color: tc.textPrimary }]}>{item.name}</Text>
             <View style={styles.resultLocation}>
-              <Location size={12} color={colors.gray400} />
-              <Text style={styles.resultLocationText}>{item.location}</Text>
+              <Location size={12} color={tc.textTertiary} />
+              <Text style={[styles.resultLocationText, { color: tc.textSecondary }]}>{item.location}</Text>
             </View>
             <View style={styles.resultFooter}>
               <Star1 size={14} color={colors.warning} variant="Bold" />
-              <Text style={styles.resultMeta}>{item.rating} · {item.trips} trips</Text>
+              <Text style={[styles.resultMeta, { color: tc.textSecondary }]}>{item.rating} · {item.trips} trips</Text>
             </View>
           </View>
           <View style={[styles.resultBadge, { backgroundColor: colors.success + '15' }]}>
@@ -252,7 +254,7 @@ export default function SearchScreen() {
       return (
         <TouchableOpacity
           key={item.id}
-          style={styles.resultCard}
+          style={[styles.resultCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             router.push(`/community/event/${item.id}` as any);
@@ -260,14 +262,14 @@ export default function SearchScreen() {
         >
           <Image source={{ uri: item.image }} style={styles.resultAvatar} />
           <View style={styles.resultContent}>
-            <Text style={styles.resultName}>{item.title}</Text>
+            <Text style={[styles.resultName, { color: tc.textPrimary }]}>{item.title}</Text>
             <View style={styles.resultLocation}>
-              <Calendar size={12} color={colors.gray400} />
-              <Text style={styles.resultLocationText}>{item.date}</Text>
+              <Calendar size={12} color={tc.textTertiary} />
+              <Text style={[styles.resultLocationText, { color: tc.textSecondary }]}>{item.date}</Text>
             </View>
             <View style={styles.resultFooter}>
-              <Location size={14} color={colors.gray500} />
-              <Text style={styles.resultMeta}>{item.location} · {item.attendees} going</Text>
+              <Location size={14} color={tc.textSecondary} />
+              <Text style={[styles.resultMeta, { color: tc.textSecondary }]}>{item.location} · {item.attendees} going</Text>
             </View>
           </View>
           <View style={[styles.resultBadge, { backgroundColor: colors.warning + '15' }]}>
@@ -281,23 +283,23 @@ export default function SearchScreen() {
   };
   
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: tc.bgElevated }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         
         {/* Search Input */}
-        <View style={styles.searchContainer}>
-          <SearchNormal1 size={20} color={colors.gray400} />
+        <View style={[styles.searchContainer, { backgroundColor: tc.bgCard }]}>
+          <SearchNormal1 size={20} color={tc.textTertiary} />
           <TextInput
             ref={inputRef}
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: tc.textPrimary }]}
             placeholder="Search groups, buddies, events..."
-            placeholderTextColor={colors.gray400}
+            placeholderTextColor={tc.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoFocus
@@ -305,17 +307,17 @@ export default function SearchScreen() {
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={clearSearch}>
-              <CloseCircle size={20} color={colors.gray400} variant="Bold" />
+              <CloseCircle size={20} color={tc.textTertiary} variant="Bold" />
             </TouchableOpacity>
           )}
         </View>
         
         {/* Filter Button */}
         <TouchableOpacity 
-          style={[styles.filterButton, showFilters && styles.filterButtonActive]}
+          style={[styles.filterButton, { backgroundColor: tc.primary + '15' }, showFilters && styles.filterButtonActive]}
           onPress={toggleFilters}
         >
-          <Filter size={20} color={showFilters ? colors.white : colors.primary} />
+          <Filter size={20} color={showFilters ? colors.white : tc.primary} />
           {activeFiltersCount > 0 && (
             <View style={styles.filterBadge}>
               <Text style={styles.filterBadgeText}>{activeFiltersCount}</Text>
@@ -325,7 +327,7 @@ export default function SearchScreen() {
       </View>
       
       {/* Tabs */}
-      <View style={styles.tabsContainer}>
+      <View style={[styles.tabsContainer, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         {[
           { id: 'all' as SearchTab, label: 'All' },
           { id: 'groups' as SearchTab, label: 'Groups' },
@@ -340,7 +342,7 @@ export default function SearchScreen() {
               setActiveTab(tab.id);
             }}
           >
-            <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
+            <Text style={[styles.tabText, { color: tc.textSecondary }, activeTab === tab.id && { color: tc.primary }]}>
               {tab.label}
             </Text>
           </TouchableOpacity>
@@ -348,18 +350,18 @@ export default function SearchScreen() {
       </View>
       
       {/* Filters Panel */}
-      <Animated.View style={[styles.filtersPanel, { height: filterHeight }]}>
+      <Animated.View style={[styles.filtersPanel, { height: filterHeight, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Privacy Filter */}
-          <Text style={styles.filterLabel}>Privacy</Text>
+          <Text style={[styles.filterLabel, { color: tc.textPrimary }]}>Privacy</Text>
           <View style={styles.filterOptions}>
             {['all', 'public', 'private'].map(option => (
               <TouchableOpacity
                 key={option}
-                style={[styles.filterOption, filters.privacy === option && styles.filterOptionActive]}
+                style={[styles.filterOption, { backgroundColor: tc.bgCard }, filters.privacy === option && styles.filterOptionActive]}
                 onPress={() => setFilters(prev => ({ ...prev, privacy: option as any }))}
               >
-                <Text style={[styles.filterOptionText, filters.privacy === option && styles.filterOptionTextActive]}>
+                <Text style={[styles.filterOptionText, { color: tc.textSecondary }, filters.privacy === option && styles.filterOptionTextActive]}>
                   {option.charAt(0).toUpperCase() + option.slice(1)}
                 </Text>
               </TouchableOpacity>
@@ -367,7 +369,7 @@ export default function SearchScreen() {
           </View>
           
           {/* Group Size Filter */}
-          <Text style={styles.filterLabel}>Group Size</Text>
+          <Text style={[styles.filterLabel, { color: tc.textPrimary }]}>Group Size</Text>
           <View style={styles.filterOptions}>
             {[
               { id: 'all', label: 'Any' },
@@ -377,10 +379,10 @@ export default function SearchScreen() {
             ].map(option => (
               <TouchableOpacity
                 key={option.id}
-                style={[styles.filterOption, filters.memberCount === option.id && styles.filterOptionActive]}
+                style={[styles.filterOption, { backgroundColor: tc.bgCard }, filters.memberCount === option.id && styles.filterOptionActive]}
                 onPress={() => setFilters(prev => ({ ...prev, memberCount: option.id as any }))}
               >
-                <Text style={[styles.filterOptionText, filters.memberCount === option.id && styles.filterOptionTextActive]}>
+                <Text style={[styles.filterOptionText, { color: tc.textSecondary }, filters.memberCount === option.id && styles.filterOptionTextActive]}>
                   {option.label}
                 </Text>
               </TouchableOpacity>
@@ -388,15 +390,15 @@ export default function SearchScreen() {
           </View>
           
           {/* Tags */}
-          <Text style={styles.filterLabel}>Tags</Text>
+          <Text style={[styles.filterLabel, { color: tc.textPrimary }]}>Tags</Text>
           <View style={styles.tagsContainer}>
             {POPULAR_TAGS.map(tag => (
               <TouchableOpacity
                 key={tag}
-                style={[styles.tag, filters.tags.includes(tag) && styles.tagActive]}
+                style={[styles.tag, { backgroundColor: tc.bgCard }, filters.tags.includes(tag) && styles.tagActive]}
                 onPress={() => toggleTag(tag)}
               >
-                <Text style={[styles.tagText, filters.tags.includes(tag) && styles.tagTextActive]}>
+                <Text style={[styles.tagText, { color: tc.textSecondary }, filters.tags.includes(tag) && styles.tagTextActive]}>
                   {tag}
                 </Text>
               </TouchableOpacity>
@@ -422,44 +424,44 @@ export default function SearchScreen() {
         {searchQuery.length === 0 ? (
           <>
             {/* Recent Searches */}
-            <Text style={styles.sectionTitle}>Recent Searches</Text>
+            <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Recent Searches</Text>
             {RECENT_SEARCHES.map((query, index) => (
               <TouchableOpacity
                 key={index}
                 style={styles.recentItem}
                 onPress={() => handleRecentSearch(query)}
               >
-                <SearchNormal1 size={18} color={colors.gray400} />
-                <Text style={styles.recentText}>{query}</Text>
+                <SearchNormal1 size={18} color={tc.textTertiary} />
+                <Text style={[styles.recentText, { color: tc.textSecondary }]}>{query}</Text>
               </TouchableOpacity>
             ))}
             
             {/* Popular Tags */}
-            <Text style={[styles.sectionTitle, { marginTop: spacing.xl }]}>Popular Tags</Text>
+            <Text style={[styles.sectionTitle, { marginTop: spacing.xl, color: tc.textPrimary }]}>Popular Tags</Text>
             <View style={styles.tagsContainer}>
               {POPULAR_TAGS.slice(0, 6).map(tag => (
                 <TouchableOpacity
                   key={tag}
-                  style={styles.popularTag}
+                  style={[styles.popularTag, { backgroundColor: tc.primary + '15' }]}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setSearchQuery(tag);
                   }}
                 >
-                  <Text style={styles.popularTagText}>#{tag}</Text>
+                  <Text style={[styles.popularTagText, { color: tc.primary }]}>#{tag}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </>
         ) : results.length === 0 ? (
           <View style={styles.emptyState}>
-            <SearchNormal1 size={48} color={colors.gray300} />
-            <Text style={styles.emptyTitle}>No results found</Text>
-            <Text style={styles.emptyText}>Try different keywords or filters</Text>
+            <SearchNormal1 size={48} color={tc.textTertiary} />
+            <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No results found</Text>
+            <Text style={[styles.emptyText, { color: tc.textSecondary }]}>Try different keywords or filters</Text>
           </View>
         ) : (
           <>
-            <Text style={styles.resultsCount}>
+            <Text style={[styles.resultsCount, { color: tc.textSecondary }]}>
               {results.length} result{results.length !== 1 ? 's' : ''}
             </Text>
             {results.map(renderResult)}
@@ -482,7 +484,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     gap: spacing.sm,
   },
   backButton: {
@@ -495,7 +497,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.lg,
     gap: spacing.sm,
@@ -535,11 +537,11 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   tab: {
     paddingHorizontal: spacing.md,
@@ -553,17 +555,17 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.gray500,
+    color: colors.bgElevated0,
   },
   tabTextActive: {
     color: colors.primary,
   },
   filtersPanel: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingHorizontal: spacing.lg,
     overflow: 'hidden',
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   filterLabel: {
     fontSize: typography.fontSize.sm,
@@ -580,7 +582,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
   },
   filterOptionActive: {
     backgroundColor: colors.primary,
@@ -601,7 +603,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
   },
   tagActive: {
     backgroundColor: colors.primary,
@@ -663,10 +665,12 @@ const styles = StyleSheet.create({
   resultCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   resultAvatar: {
     width: 56,
@@ -720,7 +724,7 @@ const styles = StyleSheet.create({
   },
   resultMeta: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray500,
+    color: colors.bgElevated0,
   },
   resultBadge: {
     backgroundColor: colors.primary + '15',

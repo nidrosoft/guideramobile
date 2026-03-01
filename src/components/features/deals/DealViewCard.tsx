@@ -63,7 +63,7 @@ export default function DealViewCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 22,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.lg,

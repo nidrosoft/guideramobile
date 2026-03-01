@@ -80,8 +80,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   itemsContainer: {
-    borderRadius: 16,
+    borderRadius: 24,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,

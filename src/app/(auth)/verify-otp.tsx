@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   verifyButtonDisabled: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
     borderColor: colors.gray300,
   },

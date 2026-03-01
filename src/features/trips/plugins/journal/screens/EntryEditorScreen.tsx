@@ -22,6 +22,7 @@ import {
   Trash,
 } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { BlockType, BlockSize, ContentBlock, LayoutType } from '../types/journal.types';
 import { useToast } from '@/contexts/ToastContext';
 import * as Haptics from 'expo-haptics';
@@ -46,6 +47,7 @@ const LAYOUT_TEMPLATES: Record<LayoutType, { size: BlockSize; position: number }
 
 export default function EntryEditorScreen() {
   const router = useRouter();
+  const { colors: tc } = useTheme();
   const params = useLocalSearchParams();
   const { showSuccess } = useToast();
   
@@ -403,7 +405,7 @@ export default function EntryEditorScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   safeArea: {
     flex: 1,
@@ -415,13 +417,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: colors.black,
@@ -448,7 +450,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   titleSection: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     marginBottom: spacing.md,
@@ -489,7 +491,7 @@ const styles = StyleSheet.create({
   },
   emptyBlock: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderWidth: 2,
     borderColor: `${colors.primary}30`,
     borderStyle: 'dashed',
@@ -526,7 +528,7 @@ const styles = StyleSheet.create({
   },
   textBlockInput: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     padding: spacing.md,
     fontSize: typography.fontSize.sm,
     color: colors.gray900,
@@ -578,7 +580,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   sheetContent: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: spacing.xl,

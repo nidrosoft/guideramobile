@@ -43,6 +43,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAdvancedPlanningStore } from '../../../stores/useAdvancedPlanningStore';
 import { 
   TRIP_TYPE_OPTIONS,
@@ -83,6 +84,7 @@ export default function AdvancedReviewStep({
   onComplete,
 }: AdvancedReviewStepProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const {
     advancedTripData,
     saveDraft,
@@ -202,7 +204,7 @@ export default function AdvancedReviewStep({
   });
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       {/* Hero Image with Parallax */}
       <Animated.View style={[styles.heroContainer, imageAnimatedStyle]}>
         <Image 
@@ -509,7 +511,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.lg,
@@ -549,7 +551,7 @@ const styles = StyleSheet.create({
   
   // Info Card
   infoCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     ...shadows.sm,
@@ -574,7 +576,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderTopWidth: 1,
     borderTopColor: colors.gray100,
     ...shadows.lg,

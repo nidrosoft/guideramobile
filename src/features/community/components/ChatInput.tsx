@@ -30,6 +30,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 interface MediaAttachment {
   type: 'image' | 'video' | 'location';
@@ -50,6 +51,7 @@ export default function ChatInput({
   disabled = false,
   isPremium = true,
 }: ChatInputProps) {
+  const { colors: tc } = useTheme();
   const [message, setMessage] = useState('');
   const [attachments, setAttachments] = useState<MediaAttachment[]>([]);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
@@ -168,7 +170,7 @@ export default function ChatInput({
   });
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
       {/* Attachments Preview */}
       {attachments.length > 0 && (
         <View style={styles.attachmentsPreview}>
@@ -176,8 +178,8 @@ export default function ChatInput({
             <View key={index} style={styles.attachmentItem}>
               {attachment.type === 'location' ? (
                 <View style={styles.locationPreview}>
-                  <Location size={24} color={colors.primary} />
-                  <Text style={styles.locationText} numberOfLines={1}>
+                  <Location size={24} color={tc.primary} />
+                  <Text style={[styles.locationText, { color: tc.primary }]} numberOfLines={1}>
                     {attachment.location?.name}
                   </Text>
                 </View>
@@ -200,6 +202,8 @@ export default function ChatInput({
         style={[
           styles.attachMenu,
           {
+            backgroundColor: tc.bgElevated,
+            borderTopColor: tc.borderSubtle,
             transform: [{ translateY: attachMenuTranslateY }],
             opacity: attachMenuOpacity,
           },
@@ -207,24 +211,24 @@ export default function ChatInput({
         pointerEvents={showAttachMenu ? 'auto' : 'none'}
       >
         <TouchableOpacity style={styles.attachOption} onPress={() => pickImage(true)}>
-          <View style={[styles.attachOptionIcon, { backgroundColor: colors.primary + '15' }]}>
-            <Camera size={24} color={colors.primary} />
+          <View style={[styles.attachOptionIcon, { backgroundColor: tc.primary + '15' }]}>
+            <Camera size={24} color={tc.primary} />
           </View>
-          <Text style={styles.attachOptionText}>Camera</Text>
+          <Text style={[styles.attachOptionText, { color: tc.textSecondary }]}>Camera</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.attachOption} onPress={() => pickImage(false)}>
-          <View style={[styles.attachOptionIcon, { backgroundColor: colors.success + '15' }]}>
-            <Gallery size={24} color={colors.success} />
+          <View style={[styles.attachOptionIcon, { backgroundColor: tc.success + '15' }]}>
+            <Gallery size={24} color={tc.success} />
           </View>
-          <Text style={styles.attachOptionText}>Gallery</Text>
+          <Text style={[styles.attachOptionText, { color: tc.textSecondary }]}>Gallery</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.attachOption} onPress={shareLocation}>
-          <View style={[styles.attachOptionIcon, { backgroundColor: colors.warning + '15' }]}>
-            <Location size={24} color={colors.warning} />
+          <View style={[styles.attachOptionIcon, { backgroundColor: tc.warning + '15' }]}>
+            <Location size={24} color={tc.warning} />
           </View>
-          <Text style={styles.attachOptionText}>Location</Text>
+          <Text style={[styles.attachOptionText, { color: tc.textSecondary }]}>Location</Text>
         </TouchableOpacity>
       </Animated.View>
       
@@ -232,24 +236,24 @@ export default function ChatInput({
       <View style={styles.inputRow}>
         {/* Attach Button */}
         <TouchableOpacity
-          style={[styles.iconButton, showAttachMenu && styles.iconButtonActive]}
+          style={[styles.iconButton, showAttachMenu && { backgroundColor: tc.primary + '15', borderRadius: 22 }]}
           onPress={toggleAttachMenu}
           disabled={disabled}
         >
           <Paperclip2 
             size={22} 
-            color={showAttachMenu ? colors.primary : colors.gray500} 
+            color={showAttachMenu ? tc.primary : tc.textSecondary} 
             style={{ transform: [{ rotate: showAttachMenu ? '45deg' : '0deg' }] }}
           />
         </TouchableOpacity>
         
         {/* Text Input */}
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { backgroundColor: tc.bgCard }]}>
           <TextInput
             ref={inputRef}
-            style={styles.input}
+            style={[styles.input, { color: tc.textPrimary }]}
             placeholder={placeholder}
-            placeholderTextColor={colors.gray400}
+            placeholderTextColor={tc.textSecondary}
             value={message}
             onChangeText={setMessage}
             multiline
@@ -265,18 +269,18 @@ export default function ChatInput({
           
           {/* Emoji Button */}
           <TouchableOpacity style={styles.emojiButton}>
-            <Happyemoji size={22} color={colors.gray400} />
+            <Happyemoji size={22} color={tc.textSecondary} />
           </TouchableOpacity>
         </View>
         
         {/* Send/Voice Button */}
         {canSend ? (
           <TouchableOpacity
-            style={[styles.sendButton, !isPremium && styles.sendButtonDisabled]}
+            style={[styles.sendButton, { backgroundColor: tc.primary }, !isPremium && { backgroundColor: tc.borderSubtle }]}
             onPress={handleSend}
             disabled={disabled}
           >
-            <Send2 size={22} color={colors.white} variant="Bold" />
+            <Send2 size={22} color={'#FFFFFF'} variant="Bold" />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -293,7 +297,7 @@ export default function ChatInput({
           >
             <Microphone2 
               size={22} 
-              color={isRecording ? colors.error : colors.gray500} 
+              color={isRecording ? tc.error : tc.textSecondary} 
               variant={isRecording ? 'Bold' : 'Outline'}
             />
           </TouchableOpacity>
@@ -313,9 +317,9 @@ export default function ChatInput({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
   },
   attachmentsPreview: {
     flexDirection: 'row',
@@ -358,7 +362,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xl,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
   },
   attachOption: {
     alignItems: 'center',
@@ -396,7 +400,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-end',
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     borderRadius: borderRadius.xl,
     paddingHorizontal: spacing.md,
     paddingVertical: Platform.OS === 'ios' ? spacing.sm : 0,

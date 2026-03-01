@@ -33,6 +33,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { rewardsService, MembershipTier, MembershipTierInfo, MEMBERSHIP_TIERS } from '@/services/rewards.service';
 
@@ -54,6 +55,7 @@ export default function MembershipScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [currentTier, setCurrentTier] = useState<MembershipTier>('free');
   const [expiresAt, setExpiresAt] = useState<string | undefined>();
@@ -128,7 +130,7 @@ export default function MembershipScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: tc.background }]}>
         <StatusBar style="light" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -138,7 +140,7 @@ export default function MembershipScreen() {
   }
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <StatusBar style="light" />
       
       {/* Animated Header */}
@@ -150,7 +152,7 @@ export default function MembershipScreen() {
           style={[styles.headerGradient, { paddingTop: insets.top }]}
         >
           {/* Fixed Navigation Row - always visible and touchable */}
-          <View style={styles.header}>
+          <View style={[styles.header, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
             <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <ArrowLeft size={24} color={colors.white} />
             </TouchableOpacity>
@@ -374,7 +376,7 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   loadingContainer: {
     flex: 1,
@@ -507,7 +509,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   benefitsCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
     shadowColor: '#000',
@@ -544,7 +546,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   planOptionActive: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -572,7 +574,7 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   upgradeCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     overflow: 'hidden',
     marginBottom: spacing.md,
@@ -652,7 +654,7 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   multiplierCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
     shadowColor: '#000',

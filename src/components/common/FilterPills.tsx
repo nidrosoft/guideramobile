@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { colors, typography, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { ArrowDown2 } from 'iconsax-react-native';
 
 interface FilterOption {
@@ -91,7 +92,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: 24,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
     borderColor: colors.gray200,
     gap: spacing.md,
@@ -112,7 +113,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: 24,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
     borderColor: colors.gray200,
     gap: spacing.xs,
@@ -139,7 +140,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   badgeSelected: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   badgeText: {
     fontSize: 11,

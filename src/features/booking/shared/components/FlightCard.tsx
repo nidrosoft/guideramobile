@@ -347,12 +347,12 @@ export default function FlightCard({
 const styles = StyleSheet.create({
   // Card Container - Premium with depth
   card: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg + 4, // Increased by 4px for more rounded corners
+    backgroundColor: colors.bgElevated,
+    borderRadius: 24, // Card container standard
     padding: spacing.lg,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
     // Premium shadow with depth
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },

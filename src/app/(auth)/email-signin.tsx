@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 import { Sms } from 'iconsax-react-native';
 import CloseIcon from '@/components/common/icons/CloseIcon';
 import { colors, typography, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useSignIn } from '@clerk/clerk-expo';
 
 export default function EmailSignIn() {
@@ -219,7 +220,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     fontSize: typography.fontSize.base,
     color: colors.textPrimary,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
@@ -268,7 +269,7 @@ const styles = StyleSheet.create({
   },
   googleButton: {
     height: 56,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.gray300,

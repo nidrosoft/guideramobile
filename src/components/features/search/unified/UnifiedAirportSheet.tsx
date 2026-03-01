@@ -194,7 +194,7 @@ export default function UnifiedAirportSheet({
         onPress={() => handleSelect(item)}
         activeOpacity={0.7}
       >
-        <View style={[styles.airportIcon, { backgroundColor: themeColors.gray100 }]}>
+        <View style={[styles.airportIcon, { backgroundColor: themeColors.bgCard }]}>
           <Airplane size={18} color={themeColors.primary} />
         </View>
         <View style={styles.airportInfo}>
@@ -241,7 +241,7 @@ export default function UnifiedAirportSheet({
           style={[
             styles.sheet,
             { 
-              backgroundColor: themeColors.white,
+              backgroundColor: themeColors.background,
               paddingBottom: insets.bottom + spacing.md,
             },
           ]}
@@ -262,8 +262,8 @@ export default function UnifiedAirportSheet({
 
             {/* Search Input */}
             <View style={[styles.searchContainer, { 
-              backgroundColor: themeColors.gray100,
-              borderColor: themeColors.gray200,
+              backgroundColor: themeColors.bgCard,
+              borderColor: themeColors.borderSubtle,
             }]}>
               <SearchNormal1 size={20} color={themeColors.textSecondary} />
               <TextInput
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   sheet: {
     borderTopLeftRadius: 24,

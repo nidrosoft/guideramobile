@@ -13,7 +13,8 @@ import Animated, {
   withTiming,
   interpolateColor,
 } from 'react-native-reanimated';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { colors as staticColors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { StepConfig } from '../../types/booking.types';
 
 interface BookingProgressProps {
@@ -33,21 +34,22 @@ export default function BookingProgress({
   showLabels = false,
   compact = false,
 }: BookingProgressProps) {
+  const { colors } = useTheme();
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
   
   if (variant === 'bar') {
     return (
       <View style={[styles.barContainer, compact && styles.barCompact]}>
-        <View style={styles.barBackground}>
+        <View style={[styles.barBackground, { backgroundColor: colors.borderSubtle }]}>
           <Animated.View 
             style={[
               styles.barFill,
-              { width: `${progress}%` },
+              { width: `${progress}%`, backgroundColor: colors.primary },
             ]} 
           />
         </View>
         {showLabels && (
-          <Text style={styles.barLabel}>
+          <Text style={[styles.barLabel, { color: colors.textSecondary }]}>
             Step {currentStepIndex + 1} of {steps.length}
           </Text>
         )}
@@ -67,8 +69,9 @@ export default function BookingProgress({
               key={step.id}
               style={[
                 styles.dot,
-                isCompleted && styles.dotCompleted,
-                isCurrent && styles.dotCurrent,
+                { backgroundColor: colors.borderSubtle },
+                isCompleted && { backgroundColor: colors.primary },
+                isCurrent && { backgroundColor: colors.primary, width: 24 },
               ]}
             />
           );
@@ -96,8 +99,8 @@ export default function BookingProgress({
               <View 
                 style={[
                   styles.connector,
-                  isCompleted && styles.connectorCompleted,
-                  isCurrent && styles.connectorCurrent,
+                  { backgroundColor: colors.borderSubtle },
+                  isCompleted && { backgroundColor: colors.primary },
                 ]} 
               />
             )}
@@ -106,19 +109,20 @@ export default function BookingProgress({
             <View
               style={[
                 styles.stepCircle,
-                isCompleted && styles.stepCircleCompleted,
-                isCurrent && styles.stepCircleCurrent,
-                isUpcoming && styles.stepCircleUpcoming,
+                { backgroundColor: colors.borderSubtle },
+                isCompleted && { backgroundColor: colors.primary },
+                isCurrent && { backgroundColor: colors.primary, borderWidth: 3, borderColor: colors.primary + '30' },
+                isUpcoming && { backgroundColor: colors.bgElevated, borderWidth: 1, borderColor: colors.borderSubtle },
               ]}
             >
               {isCompleted ? (
-                <TickCircle size={16} color={colors.white} variant="Bold" />
+                <TickCircle size={16} color="#FFFFFF" variant="Bold" />
               ) : (
                 <Text
                   style={[
                     styles.stepNumber,
-                    isCurrent && styles.stepNumberCurrent,
-                    isUpcoming && styles.stepNumberUpcoming,
+                    { color: '#FFFFFF' },
+                    isUpcoming && { color: colors.textSecondary },
                   ]}
                 >
                   {index + 1}
@@ -131,8 +135,9 @@ export default function BookingProgress({
               <Text
                 style={[
                   styles.stepLabel,
-                  isCurrent && styles.stepLabelCurrent,
-                  isUpcoming && styles.stepLabelUpcoming,
+                  { color: colors.textSecondary },
+                  isCurrent && { color: colors.primary, fontWeight: typography.fontWeight.medium },
+                  isUpcoming && { color: colors.textSecondary },
                 ]}
                 numberOfLines={1}
               >
@@ -157,18 +162,15 @@ const styles = StyleSheet.create({
   },
   barBackground: {
     height: 4,
-    backgroundColor: colors.gray200,
     borderRadius: 2,
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
-    backgroundColor: colors.primary,
     borderRadius: 2,
   },
   barLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginTop: spacing.xs,
     textAlign: 'center',
   },
@@ -184,15 +186,6 @@ const styles = StyleSheet.create({
   dot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.gray300,
-  },
-  dotCompleted: {
-    backgroundColor: colors.primary,
-  },
-  dotCurrent: {
-    backgroundColor: colors.primary,
-    width: 24,
     borderRadius: 4,
   },
   
@@ -210,59 +203,23 @@ const styles = StyleSheet.create({
   connector: {
     width: 32,
     height: 2,
-    backgroundColor: colors.gray200,
     marginHorizontal: spacing.xs,
-  },
-  connectorCompleted: {
-    backgroundColor: colors.primary,
-  },
-  connectorCurrent: {
-    backgroundColor: colors.gray200,
   },
   stepCircle: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.gray200,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  stepCircleCompleted: {
-    backgroundColor: colors.primary,
-  },
-  stepCircleCurrent: {
-    backgroundColor: colors.primary,
-    borderWidth: 3,
-    borderColor: colors.primary + '30',
-  },
-  stepCircleUpcoming: {
-    backgroundColor: colors.gray100,
-    borderWidth: 1,
-    borderColor: colors.gray300,
   },
   stepNumber: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
-  },
-  stepNumberCurrent: {
-    color: colors.white,
-  },
-  stepNumberUpcoming: {
-    color: colors.gray400,
   },
   stepLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginTop: spacing.xs,
     maxWidth: 60,
     textAlign: 'center',
-  },
-  stepLabelCurrent: {
-    color: colors.primary,
-    fontWeight: typography.fontWeight.medium,
-  },
-  stepLabelUpcoming: {
-    color: colors.gray400,
   },
 });

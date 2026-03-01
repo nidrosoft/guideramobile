@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing, colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Bookmark, Star1, Location, People, TickCircle, ArrowRight } from 'iconsax-react-native';
 
 interface FamilyFriendlyCardProps {
@@ -28,6 +29,7 @@ export default function FamilyFriendlyCard({
   imageUrl,
   index
 }: FamilyFriendlyCardProps) {
+  const { colors } = useTheme();
   return (
     <View style={styles.container}>
       <View style={styles.card}>
@@ -44,7 +46,7 @@ export default function FamilyFriendlyCard({
           
           {/* Bookmark Button */}
           <TouchableOpacity style={styles.bookmarkButton}>
-            <Bookmark size={20} color={colors.textPrimary} variant="Outline" />
+            <Bookmark size={20} color="#1a1a1a" variant="Outline" />
           </TouchableOpacity>
         </View>
 
@@ -95,7 +97,7 @@ export default function FamilyFriendlyCard({
 
             {/* Arrow Button */}
             <TouchableOpacity style={styles.arrowButton}>
-              <ArrowRight size={20} color={colors.textPrimary} variant="Outline" />
+              <ArrowRight size={20} color="#1a1a1a" variant="Outline" />
             </TouchableOpacity>
           </BlurView>
         </View>
@@ -113,8 +115,9 @@ const styles = StyleSheet.create({
     height: 480,
     borderRadius: 32,
     overflow: 'hidden',
-    backgroundColor: colors.white,
     position: 'relative',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   backgroundImage: {
     width: '100%',
@@ -142,13 +145,13 @@ const styles = StyleSheet.create({
   familyBadgeText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
+    color: '#1a1a1a',
   },
   bookmarkButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -173,7 +176,7 @@ const styles = StyleSheet.create({
   name: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
     marginBottom: spacing.sm,
   },
   detailsRow: {
@@ -188,7 +191,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: typography.fontSize.sm,
-    color: colors.white,
+    color: '#FFFFFF',
     fontWeight: typography.fontWeight.medium,
   },
   familyInfoRow: {
@@ -208,14 +211,14 @@ const styles = StyleSheet.create({
   },
   familyInfoText: {
     fontSize: typography.fontSize.xs,
-    color: colors.white,
+    color: '#FFFFFF',
     fontWeight: typography.fontWeight.medium,
   },
   arrowButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'flex-end',

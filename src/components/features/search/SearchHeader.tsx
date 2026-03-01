@@ -36,7 +36,7 @@ export default function SearchHeader({
   const { colors } = useTheme();
 
   const dynamicStyles = useMemo(() => ({
-    header: { backgroundColor: colors.white },
+    header: { backgroundColor: colors.bgElevated },
     searchBar: { backgroundColor: colors.gray100 },
     searchInput: { color: colors.textPrimary },
     filterButton: { backgroundColor: colors.gray100 },

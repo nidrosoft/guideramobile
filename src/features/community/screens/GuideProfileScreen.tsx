@@ -109,8 +109,8 @@ export default function GuideProfileScreen() {
     ];
 
     return (
-      <View style={styles.trustSection}>
-        <Text style={styles.sectionTitle}>Trust & Verification</Text>
+      <View style={[styles.trustSection, { backgroundColor: themeColors.bgCard }]}>
+        <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Trust & Verification</Text>
         <View style={styles.trustBadgeLarge}>
           <TrustBadge tier={guide.trustTier} size="large" />
         </View>
@@ -119,7 +119,7 @@ export default function GuideProfileScreen() {
             <Text style={[styles.trustCheckIcon, check.done && styles.trustCheckDone]}>
               {check.done ? '✅' : '⬜'}
             </Text>
-            <Text style={[styles.trustCheckText, !check.done && styles.trustCheckPending]}>
+            <Text style={[styles.trustCheckText, { color: themeColors.textPrimary }, !check.done && styles.trustCheckPending]}>
               {check.label}
             </Text>
           </View>
@@ -132,20 +132,20 @@ export default function GuideProfileScreen() {
     <View style={styles.tabContent}>
       {/* Bio */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
-        <Text style={styles.bioText}>{guide.bio}</Text>
+        <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>About</Text>
+        <Text style={[styles.bioText, { color: themeColors.textSecondary }]}>{guide.bio}</Text>
       </View>
 
       {/* Expertise */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Expertise</Text>
+        <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Expertise</Text>
         <View style={styles.expertiseGrid}>
           {guide.expertiseAreas.map((area, i) => {
             const opt = EXPERTISE_OPTIONS.find(o => o.id === area);
             return opt ? (
-              <View key={i} style={styles.expertiseChip}>
+              <View key={i} style={[styles.expertiseChip, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle }]}>
                 <Text style={styles.expertiseEmoji}>{opt.emoji}</Text>
-                <Text style={styles.expertiseLabel}>{opt.label}</Text>
+                <Text style={[styles.expertiseLabel, { color: themeColors.textPrimary }]}>{opt.label}</Text>
               </View>
             ) : null;
           })}
@@ -157,12 +157,12 @@ export default function GuideProfileScreen() {
 
       {/* Languages */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Languages</Text>
+        <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Languages</Text>
         <View style={styles.langChips}>
           {guide.languages.map((lang, i) => (
-            <View key={i} style={styles.langChip}>
-              <LanguageSquare size={14} color={colors.primary} />
-              <Text style={styles.langChipText}>{lang}</Text>
+            <View key={i} style={[styles.langChip, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle }]}>
+              <LanguageSquare size={14} color={themeColors.primary} />
+              <Text style={[styles.langChipText, { color: themeColors.textPrimary }]}>{lang}</Text>
             </View>
           ))}
         </View>
@@ -171,11 +171,11 @@ export default function GuideProfileScreen() {
       {/* Credentials */}
       {guide.credentials && guide.credentials.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Credentials</Text>
+          <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Credentials</Text>
           {guide.credentials.map((cred, i) => (
             <View key={i} style={styles.credRow}>
               <Verify size={16} color="#22C55E" variant="Bold" />
-              <Text style={styles.credText}>{cred}</Text>
+              <Text style={[styles.credText, { color: themeColors.textPrimary }]}>{cred}</Text>
             </View>
           ))}
         </View>
@@ -184,7 +184,7 @@ export default function GuideProfileScreen() {
       {/* Portfolio */}
       {guide.portfolioPhotos && guide.portfolioPhotos.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Portfolio</Text>
+          <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Portfolio</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {guide.portfolioPhotos.map((photo, i) => (
               <Image key={i} source={{ uri: photo }} style={styles.portfolioPhoto} />
@@ -196,13 +196,13 @@ export default function GuideProfileScreen() {
       {/* Communities */}
       {guide.activeCommunities && guide.activeCommunities.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Active Communities</Text>
+          <Text style={[styles.sectionTitle, { color: themeColors.textPrimary }]}>Active Communities</Text>
           {guide.activeCommunities.map((comm, i) => (
-            <TouchableOpacity key={i} style={styles.communityRow}>
-              <People size={16} color={colors.primary} />
+            <TouchableOpacity key={i} style={[styles.communityRow, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle }]}>
+              <People size={16} color={themeColors.primary} />
               <View style={styles.communityInfo}>
-                <Text style={styles.communityName}>{comm.name}</Text>
-                <Text style={styles.communityMembers}>{comm.memberCount.toLocaleString()} members</Text>
+                <Text style={[styles.communityName, { color: themeColors.textPrimary }]}>{comm.name}</Text>
+                <Text style={[styles.communityMembers, { color: themeColors.textSecondary }]}>{comm.memberCount.toLocaleString()} members</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -231,14 +231,14 @@ export default function GuideProfileScreen() {
   const renderReviewsTab = () => (
     <View style={styles.tabContent}>
       {/* Rating Summary */}
-      <View style={styles.ratingSummary}>
-        <Text style={styles.ratingBig}>{guide.rating}</Text>
+      <View style={[styles.ratingSummary, { backgroundColor: themeColors.bgCard }]}>
+        <Text style={[styles.ratingBig, { color: themeColors.textPrimary }]}>{guide.rating}</Text>
         <View style={styles.ratingStars}>
           {Array.from({ length: 5 }, (_, i) => (
-            <Star1 key={i} size={18} color={i < Math.round(guide.rating) ? '#F59E0B' : colors.gray200} variant="Bold" />
+            <Star1 key={i} size={18} color={i < Math.round(guide.rating) ? '#F59E0B' : colors.borderSubtle} variant="Bold" />
           ))}
         </View>
-        <Text style={styles.ratingCount}>{guide.reviewCount} reviews</Text>
+        <Text style={[styles.ratingCount, { color: themeColors.textSecondary }]}>{guide.reviewCount} reviews</Text>
       </View>
 
       {reviews.length === 0 ? (
@@ -253,10 +253,10 @@ export default function GuideProfileScreen() {
 
   const renderVouchesTab = () => (
     <View style={styles.tabContent}>
-      <View style={styles.vouchSummary}>
-        <Text style={styles.vouchCount}>{guide.vouchCount}</Text>
-        <Text style={styles.vouchLabel}>Vouches from verified guides</Text>
-        <Text style={styles.vouchExplain}>
+      <View style={[styles.vouchSummary, { backgroundColor: themeColors.bgCard }]}>
+        <Text style={[styles.vouchCount, { color: themeColors.primary }]}>{guide.vouchCount}</Text>
+        <Text style={[styles.vouchLabel, { color: themeColors.textPrimary }]}>Vouches from verified guides</Text>
+        <Text style={[styles.vouchExplain, { color: themeColors.textSecondary }]}>
           Each vouch is a personal endorsement. Vouchers put their own reputation on the line.
         </Text>
       </View>
@@ -307,10 +307,10 @@ export default function GuideProfileScreen() {
             <View style={[styles.availIndicator, { backgroundColor: availInfo.color }]} />
           </View>
 
-          <Text style={styles.displayName}>{guide.displayName}</Text>
+          <Text style={[styles.displayName, { color: themeColors.textPrimary }]}>{guide.displayName}</Text>
           <View style={styles.locationRow}>
-            <Location size={14} color={colors.textSecondary} />
-            <Text style={styles.locationText}>
+            <Location size={14} color={themeColors.textSecondary} />
+            <Text style={[styles.locationText, { color: themeColors.textSecondary }]}>
               {guide.city}, {guide.country}
             </Text>
           </View>
@@ -319,22 +319,22 @@ export default function GuideProfileScreen() {
           <TrustBadge tier={guide.trustTier} size="medium" />
 
           {/* Quick Stats */}
-          <View style={styles.statsRow}>
+          <View style={[styles.statsRow, { backgroundColor: themeColors.bgCard }]}>
             <View style={styles.statItem}>
               <Star1 size={16} color="#F59E0B" variant="Bold" />
-              <Text style={styles.statValue}>{guide.rating}</Text>
-              <Text style={styles.statLabel}>({guide.reviewCount})</Text>
+              <Text style={[styles.statValue, { color: themeColors.textPrimary }]}>{guide.rating}</Text>
+              <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>({guide.reviewCount})</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: themeColors.borderSubtle }]} />
             <View style={styles.statItem}>
               <ShieldTick size={16} color={tierInfo.color} variant="Bold" />
-              <Text style={styles.statValue}>{guide.vouchCount}</Text>
-              <Text style={styles.statLabel}>vouches</Text>
+              <Text style={[styles.statValue, { color: themeColors.textPrimary }]}>{guide.vouchCount}</Text>
+              <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>vouches</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: themeColors.borderSubtle }]} />
             <View style={styles.statItem}>
-              <Clock size={16} color={colors.textTertiary} />
-              <Text style={styles.statLabel}>{guide.responseTime.replace('Usually responds within ', '~')}</Text>
+              <Clock size={16} color={themeColors.textSecondary} />
+              <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>{guide.responseTime.replace('Usually responds within ', '~')}</Text>
             </View>
           </View>
 
@@ -350,26 +350,26 @@ export default function GuideProfileScreen() {
               <Message size={18} color={colors.white} variant="Bold" />
               <Text style={styles.messageButtonText}>Message {guide.firstName}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-              <Heart size={18} color={isSaved ? '#EF4444' : colors.textSecondary} variant={isSaved ? 'Bold' : 'Linear'} />
+            <TouchableOpacity style={[styles.saveButton, { backgroundColor: themeColors.bgCard, borderColor: themeColors.borderSubtle }]} onPress={handleSave}>
+              <Heart size={18} color={isSaved ? '#EF4444' : themeColors.textSecondary} variant={isSaved ? 'Bold' : 'Linear'} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Tab Bar */}
-        <View style={styles.tabBar}>
+        <View style={[styles.tabBar, { borderBottomColor: themeColors.borderSubtle }]}>
           {TABS.map(tab => (
             <TouchableOpacity
               key={tab.id}
               style={[styles.tabItem, activeTab === tab.id && styles.tabItemActive]}
               onPress={() => setActiveTab(tab.id)}
             >
-              <Text style={[styles.tabLabel, activeTab === tab.id && styles.tabLabelActive]}>
+              <Text style={[styles.tabLabel, { color: themeColors.textSecondary }, activeTab === tab.id && styles.tabLabelActive]}>
                 {tab.label}
               </Text>
               {tab.count !== undefined && (
-                <View style={[styles.tabBadge, activeTab === tab.id && styles.tabBadgeActive]}>
-                  <Text style={[styles.tabBadgeText, activeTab === tab.id && styles.tabBadgeTextActive]}>
+                <View style={[styles.tabBadge, { backgroundColor: themeColors.bgCard }, activeTab === tab.id && styles.tabBadgeActive]}>
+                  <Text style={[styles.tabBadgeText, { color: themeColors.textSecondary }, activeTab === tab.id && styles.tabBadgeTextActive]}>
                     {tab.count}
                   </Text>
                 </View>
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 16,
-    backgroundColor: colors.gray200,
+    backgroundColor: colors.borderSubtle,
   },
   availBadge: {
     flexDirection: 'row',
@@ -554,18 +554,18 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 14,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
 
   // Tab Bar
   tabBar: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
     paddingHorizontal: 16,
     marginTop: 8,
   },
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   tabBadge: {
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 1,
@@ -636,12 +636,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: colors.gray100,
+    borderColor: colors.borderSubtle,
   },
   expertiseEmoji: {
     fontSize: 16,
@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
   // Trust Section
   trustSection: {
     marginBottom: 24,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     borderRadius: 16,
     padding: 16,
   },
@@ -723,7 +723,7 @@ const styles = StyleSheet.create({
     height: 140,
     borderRadius: 12,
     marginRight: 10,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
   },
 
   // Communities
@@ -733,7 +733,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   communityInfo: {
     flex: 1,
@@ -751,7 +751,7 @@ const styles = StyleSheet.create({
   // Reviews
   ratingSummary: {
     alignItems: 'center',
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -774,7 +774,7 @@ const styles = StyleSheet.create({
   // Vouches
   vouchSummary: {
     alignItems: 'center',
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,

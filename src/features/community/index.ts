@@ -41,6 +41,8 @@ export { default as ChatMessageBubble } from './components/ChatMessageBubble';
 export { default as ProfileCompletenessCard } from './components/ProfileCompletenessCard';
 export { default as EventsTabContent } from './components/EventsTabContent';
 export { default as DiscoverTabContent } from './components/DiscoverTabContent';
+export { default as DiscoverFeed } from './components/DiscoverFeed';
+export { default as GroupsTabContent } from './components/GroupsTabContent';
 export { default as LocationSharingSettings } from './components/LocationSharingSettings';
 
 // Guide Components

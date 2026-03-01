@@ -23,7 +23,8 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Location, InfoCircle, Global, TickCircle, CloseCircle, Like1, Dislike } from 'iconsax-react-native';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import { useToast } from '@/contexts/ToastContext';
 import * as Haptics from 'expo-haptics';
@@ -227,6 +228,7 @@ export default function DosDontsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { showSuccess } = useToast();
+  const { colors, isDark } = useTheme();
   const tripId = params.tripId as string;
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
 
@@ -354,17 +356,17 @@ export default function DosDontsScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgPrimary} />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgPrimary }]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ArrowLeft size={24} color={colors.gray900} />
+            <ArrowLeft size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Do's & Don'ts</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Do's & Don'ts</Text>
           <TouchableOpacity
-            style={styles.infoButton}
+            style={[styles.infoButton, { backgroundColor: `${colors.primary}15` }]}
             onPress={() => setShowInfoSheet(true)}
           >
             <InfoCircle size={20} color={colors.primary} variant="Bold" />
@@ -373,27 +375,27 @@ export default function DosDontsScreen() {
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Hero Card - AI: Update with destination-specific info */}
-          <View style={styles.heroCard}>
+          <View style={[styles.heroCard, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
             <View style={styles.heroHeader}>
-              <View style={styles.heroIconContainer}>
+              <View style={[styles.heroIconContainer, { backgroundColor: `${colors.primary}15` }]}>
                 <Global size={28} color={colors.primary} variant="Bold" />
               </View>
               <View style={styles.heroTextContainer}>
-                <Text style={styles.heroTitle}>{trip.destination.city} Travel Guide</Text>
-                <Text style={styles.heroSubtitle}>
+                <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>{trip.destination.city} Travel Guide</Text>
+                <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
                   {stats.dos} Do's • {stats.donts} Don'ts
                 </Text>
               </View>
             </View>
-            <View style={styles.aiPoweredBadge}>
-              <Text style={styles.aiPoweredText}>✨ AI-Powered Insights</Text>
+            <View style={[styles.aiPoweredBadge, { backgroundColor: `${colors.primary}10` }]}>
+              <Text style={[styles.aiPoweredText, { color: colors.primary }]}>✨ AI-Powered Insights</Text>
             </View>
           </View>
 
           {/* Context Banner - AI: Update based on trip phase and location */}
-          <View style={styles.contextBanner}>
+          <View style={[styles.contextBanner, { backgroundColor: `${colors.primary}08`, borderColor: `${colors.primary}20` }]}>
             <Location size={20} color={colors.primary} variant="Bold" />
-            <Text style={styles.contextText}>
+            <Text style={[styles.contextText, { color: colors.primary }]}>
               Preparing for your trip to {trip.destination.city}
             </Text>
           </View>
@@ -406,21 +408,21 @@ export default function DosDontsScreen() {
             contentContainerStyle={styles.categoriesContent}
           >
             <TouchableOpacity
-              style={[styles.categoryChip, selectedCategory === 'all' && styles.categoryChipActive]}
+              style={[styles.categoryChip, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF', borderColor: colors.borderSubtle }, selectedCategory === 'all' && { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary }]}
               onPress={() => setSelectedCategory('all')}
             >
-              <Text style={[styles.categoryChipText, selectedCategory === 'all' && styles.categoryChipTextActive]}>
+              <Text style={[styles.categoryChipText, { color: colors.textSecondary }, selectedCategory === 'all' && { color: '#FFFFFF' }]}>
                 All
               </Text>
             </TouchableOpacity>
             {CATEGORIES.map(category => (
               <TouchableOpacity
                 key={category.id}
-                style={[styles.categoryChip, selectedCategory === category.id && styles.categoryChipActive]}
+                style={[styles.categoryChip, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF', borderColor: colors.borderSubtle }, selectedCategory === category.id && { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary }]}
                 onPress={() => setSelectedCategory(category.id)}
               >
                 <Text style={styles.categoryChipEmoji}>{category.icon}</Text>
-                <Text style={[styles.categoryChipText, selectedCategory === category.id && styles.categoryChipTextActive]}>
+                <Text style={[styles.categoryChipText, { color: colors.textSecondary }, selectedCategory === category.id && { color: '#FFFFFF' }]}>
                   {category.name}
                 </Text>
               </TouchableOpacity>
@@ -428,7 +430,7 @@ export default function DosDontsScreen() {
           </ScrollView>
 
           {/* Do's & Don'ts Toggle */}
-          <View style={styles.toggleContainer}>
+          <View style={[styles.toggleContainer, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
             <TouchableOpacity
               style={[styles.toggleTab, (showDos && showDonts) && styles.toggleTabActive]}
               onPress={() => {
@@ -436,7 +438,7 @@ export default function DosDontsScreen() {
                 setShowDonts(true);
               }}
             >
-              <Text style={[styles.toggleTabText, (showDos && showDonts) && styles.toggleTabTextActive]}>
+              <Text style={[styles.toggleTabText, { color: colors.textSecondary }, (showDos && showDonts) && styles.toggleTabTextActive]}>
                 All
               </Text>
             </TouchableOpacity>
@@ -447,7 +449,7 @@ export default function DosDontsScreen() {
                 setShowDonts(false);
               }}
             >
-              <Text style={[styles.toggleTabText, (showDos && !showDonts) && styles.toggleTabTextActive]}>
+              <Text style={[styles.toggleTabText, { color: colors.textSecondary }, (showDos && !showDonts) && styles.toggleTabTextActive]}>
                 Do's
               </Text>
             </TouchableOpacity>
@@ -458,7 +460,7 @@ export default function DosDontsScreen() {
                 setShowDonts(true);
               }}
             >
-              <Text style={[styles.toggleTabText, (!showDos && showDonts) && styles.toggleTabTextActive]}>
+              <Text style={[styles.toggleTabText, { color: colors.textSecondary }, (!showDos && showDonts) && styles.toggleTabTextActive]}>
                 Don'ts
               </Text>
             </TouchableOpacity>
@@ -473,6 +475,7 @@ export default function DosDontsScreen() {
                   key={tip.id}
                   style={[
                     styles.tipCard,
+                    { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' },
                     tip.isDo ? styles.tipCardDo : styles.tipCardDont,
                   ]}
                   activeOpacity={0.7}
@@ -481,11 +484,11 @@ export default function DosDontsScreen() {
                   <View style={styles.tipHeader}>
                     <View style={[
                       styles.tipBadge,
-                      { backgroundColor: tip.isDo ? `${colors.success}15` : '#EF444415' }
+                      { backgroundColor: tip.isDo ? '#10B98115' : '#EF444415' }
                     ]}>
                       <Text style={[
                         styles.tipBadgeText,
-                        { color: tip.isDo ? colors.success : '#EF4444' }
+                        { color: tip.isDo ? '#10B981' : '#EF4444' }
                       ]}>
                         {tip.isDo ? '✅ DO' : '❌ DON\'T'}
                       </Text>
@@ -497,23 +500,23 @@ export default function DosDontsScreen() {
                   </View>
 
                   {/* Tip Content */}
-                  <Text style={styles.tipTitle}>{tip.title}</Text>
-                  <Text style={styles.tipDescription}>{tip.description}</Text>
+                  <Text style={[styles.tipTitle, { color: colors.textPrimary }]}>{tip.title}</Text>
+                  <Text style={[styles.tipDescription, { color: colors.textSecondary }]}>{tip.description}</Text>
 
                   {/* Tip Footer */}
-                  <View style={styles.tipFooter}>
+                  <View style={[styles.tipFooter, { borderTopColor: colors.borderSubtle }]}>
                     <View style={styles.tipMeta}>
-                      <Text style={styles.tipMetaText}>
+                      <Text style={[styles.tipMetaText, { color: colors.textTertiary }]}>
                         {getImportanceLabel(tip.importance)}
                       </Text>
-                      <Text style={styles.tipMetaDot}>•</Text>
-                      <Text style={styles.tipMetaText}>{categoryInfo?.name}</Text>
+                      <Text style={[styles.tipMetaDot, { color: colors.textTertiary }]}>•</Text>
+                      <Text style={[styles.tipMetaText, { color: colors.textTertiary }]}>{categoryInfo?.name}</Text>
                     </View>
                   </View>
 
                   {/* Feedback Section */}
-                  <View style={styles.feedbackSection}>
-                    <Text style={styles.feedbackLabel}>Was this helpful?</Text>
+                  <View style={[styles.feedbackSection, { borderTopColor: colors.borderSubtle }]}>
+                    <Text style={[styles.feedbackLabel, { color: colors.textSecondary }]}>Was this helpful?</Text>
                     <View style={styles.feedbackButtons}>
                       <TouchableOpacity
                         style={[
@@ -524,7 +527,7 @@ export default function DosDontsScreen() {
                       >
                         <Like1
                           size={18}
-                          color={tipFeedback[tip.id] === 'helpful' ? colors.success : colors.gray400}
+                          color={tipFeedback[tip.id] === 'helpful' ? '#10B981' : colors.textTertiary}
                           variant={tipFeedback[tip.id] === 'helpful' ? 'Bold' : 'Outline'}
                         />
                       </TouchableOpacity>
@@ -537,7 +540,7 @@ export default function DosDontsScreen() {
                       >
                         <Dislike
                           size={18}
-                          color={tipFeedback[tip.id] === 'not_helpful' ? '#EF4444' : colors.gray400}
+                          color={tipFeedback[tip.id] === 'not_helpful' ? '#EF4444' : colors.textTertiary}
                           variant={tipFeedback[tip.id] === 'not_helpful' ? 'Bold' : 'Outline'}
                         />
                       </TouchableOpacity>
@@ -551,8 +554,8 @@ export default function DosDontsScreen() {
           {/* Empty State */}
           {filteredTips.length === 0 && (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No tips found</Text>
-              <Text style={styles.emptyStateSubtext}>Try selecting a different category</Text>
+              <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>No tips found</Text>
+              <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>Try selecting a different category</Text>
             </View>
           )}
         </ScrollView>
@@ -564,11 +567,9 @@ export default function DosDontsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -576,9 +577,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
   },
   backButton: {
     width: 40,
@@ -589,13 +588,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.gray900,
   },
   infoButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: `${colors.primary}15`,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -603,12 +600,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   heroCard: {
-    backgroundColor: colors.white,
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -623,7 +619,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: `${colors.primary}15`,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -634,15 +629,12 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
-    color: colors.gray900,
     marginBottom: spacing.xs,
   },
   heroSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
   },
   aiPoweredBadge: {
-    backgroundColor: `${colors.primary}10`,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
@@ -651,25 +643,21 @@ const styles = StyleSheet.create({
   aiPoweredText: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.primary,
   },
   contextBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: `${colors.primary}08`,
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     padding: spacing.md,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: `${colors.primary}20`,
   },
   contextText: {
     flex: 1,
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.primary,
   },
   categoriesScroll: {
     marginTop: spacing.lg,
@@ -680,12 +668,11 @@ const styles = StyleSheet.create({
   },
   toggleContainer: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     padding: spacing.xs,
     borderRadius: borderRadius.full,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -699,15 +686,14 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   toggleTabActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#7C3AED',
   },
   toggleTabText: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray600,
   },
   toggleTabTextActive: {
-    color: colors.white,
+    color: '#FFFFFF',
   },
   categoryChip: {
     flexDirection: 'row',
@@ -716,13 +702,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.gray200,
-  },
-  categoryChipActive: {
-    backgroundColor: colors.gray900,
-    borderColor: colors.gray900,
   },
   categoryChipEmoji: {
     fontSize: 16,
@@ -730,10 +710,6 @@ const styles = StyleSheet.create({
   categoryChipText: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray700,
-  },
-  categoryChipTextActive: {
-    color: colors.white,
   },
   tipsSection: {
     paddingHorizontal: spacing.lg,
@@ -741,11 +717,10 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   tipCard: {
-    backgroundColor: colors.white,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.md,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -753,7 +728,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   tipCardDo: {
-    borderColor: `${colors.success}30`,
+    borderColor: '#10B98130',
   },
   tipCardDont: {
     borderColor: '#EF444430',
@@ -781,18 +756,15 @@ const styles = StyleSheet.create({
   tipTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.gray900,
     marginBottom: spacing.sm,
   },
   tipDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray700,
     lineHeight: 20,
     marginBottom: spacing.md,
   },
   tipFooter: {
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
     paddingTop: spacing.md,
   },
   tipMeta: {
@@ -802,16 +774,13 @@ const styles = StyleSheet.create({
   },
   tipMetaText: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray500,
     fontWeight: '600',
   },
   tipMetaDot: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray300,
   },
   feedbackSection: {
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
     paddingTop: spacing.md,
     marginTop: spacing.md,
     flexDirection: 'row',
@@ -820,7 +789,6 @@ const styles = StyleSheet.create({
   },
   feedbackLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
   },
   feedbackButtons: {
     flexDirection: 'row',
@@ -830,13 +798,11 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.gray50,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  feedbackButtonActive: {
-    backgroundColor: colors.white,
-  },
+  feedbackButtonActive: {},
+
   emptyState: {
     alignItems: 'center',
     paddingVertical: spacing.xl * 2,
@@ -844,12 +810,10 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: typography.fontSize.lg,
     fontWeight: '600',
-    color: colors.gray900,
     marginBottom: spacing.sm,
   },
   emptyStateSubtext: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
     textAlign: 'center',
   },
 });

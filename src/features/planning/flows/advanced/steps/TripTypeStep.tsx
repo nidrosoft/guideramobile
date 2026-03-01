@@ -29,6 +29,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAdvancedPlanningStore } from '../../../stores/useAdvancedPlanningStore';
 import { TRIP_TYPE_OPTIONS } from '../../../config/planning.config';
 import { AdvancedTripType } from '../../../types/planning.types';
@@ -45,6 +46,7 @@ export default function TripTypeStep({
   onClose,
 }: TripTypeStepProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const { advancedTripData, setTripType, isTripTypeValid } = useAdvancedPlanningStore();
   
   const handleSelectType = useCallback((type: AdvancedTripType) => {
@@ -82,7 +84,7 @@ export default function TripTypeStep({
   };
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -246,7 +248,7 @@ const styles = StyleSheet.create({
   // Segmented Control - Matches Flight SearchStep
   segmentedContainer: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.xs,
     marginBottom: spacing.lg,
@@ -277,7 +279,7 @@ const styles = StyleSheet.create({
   descriptionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
     marginBottom: spacing.lg,
@@ -309,7 +311,7 @@ const styles = StyleSheet.create({
   
   // Visual Guide
   visualGuide: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
     ...shadows.sm,

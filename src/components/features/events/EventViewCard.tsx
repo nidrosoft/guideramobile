@@ -93,7 +93,7 @@ export default function EventViewCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 24,
     padding: spacing.lg,
     marginBottom: spacing.lg,

@@ -100,10 +100,12 @@ export default function TripCard({ trip, onPress }: TripCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.xl,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 24,
     marginBottom: spacing.md,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -114,8 +116,8 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 180,
     backgroundColor: colors.gray100,
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   stateBadge: {
     position: 'absolute',

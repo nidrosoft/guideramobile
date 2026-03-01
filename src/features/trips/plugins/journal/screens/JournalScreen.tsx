@@ -20,7 +20,8 @@ import {
   Microphone2,
   Location,
 } from 'iconsax-react-native';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import { JournalEntry, BlockType, LayoutType } from '../types/journal.types';
 import CreateEntryBottomSheet from '../components/CreateEntryBottomSheet';
@@ -132,6 +133,7 @@ export default function JournalScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const tripId = params.tripId as string;
+  const { colors, isDark } = useTheme();
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
   
   const [entries, setEntries] = useState<JournalEntry[]>(MOCK_JOURNAL_ENTRIES);
@@ -198,15 +200,15 @@ export default function JournalScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgPrimary} />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgPrimary }]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ArrowLeft size={24} color={colors.gray900} variant="Linear" />
+            <ArrowLeft size={24} color={colors.textPrimary} variant="Linear" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Journal</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Journal</Text>
           <TouchableOpacity 
             style={styles.addButton}
             onPress={() => setCreateEntryVisible(true)}
@@ -217,14 +219,14 @@ export default function JournalScreen() {
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Progress Card */}
-          <View style={styles.progressCard}>
+          <View style={[styles.progressCard, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
             <View style={styles.progressHeader}>
               <View style={styles.progressIconContainer}>
                 <Book1 size={24} color={colors.primary} variant="Bold" />
               </View>
               <View style={styles.progressTextContainer}>
-                <Text style={styles.progressTitle}>Keep Your Memories Alive</Text>
-                <Text style={styles.progressSubtitle}>
+                <Text style={[styles.progressTitle, { color: colors.textPrimary }]}>Keep Your Memories Alive</Text>
+                <Text style={[styles.progressSubtitle, { color: colors.textSecondary }]}>
                   You have {totalEntries} journal {totalEntries === 1 ? 'entry' : 'entries'}
                 </Text>
               </View>
@@ -232,20 +234,20 @@ export default function JournalScreen() {
 
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{formattedWords}</Text>
-                <Text style={styles.statLabel}>words written</Text>
+                <Text style={[styles.statValue, { color: colors.primary }]}>{formattedWords}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>words written</Text>
               </View>
-              <View style={styles.statDivider} />
+              <View style={[styles.statDivider, { backgroundColor: colors.borderSubtle }]} />
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{totalEntries}</Text>
-                <Text style={styles.statLabel}>{totalEntries === 1 ? 'entry' : 'entries'}</Text>
+                <Text style={[styles.statValue, { color: colors.primary }]}>{totalEntries}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{totalEntries === 1 ? 'entry' : 'entries'}</Text>
               </View>
             </View>
           </View>
 
           {/* Journal Entries */}
           <View style={styles.entriesSection}>
-            <Text style={styles.sectionTitle}>Your Journal Memo</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Your Journal Memo</Text>
             
             {entries.map(entry => {
               const previewImage = getPreviewImage(entry);
@@ -258,7 +260,7 @@ export default function JournalScreen() {
               return (
                 <TouchableOpacity
                   key={entry.id}
-                  style={styles.entryCard}
+                  style={[styles.entryCard, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}
                   activeOpacity={0.7}
                   onPress={() => {
                     // TODO: Navigate to entry detail
@@ -267,8 +269,8 @@ export default function JournalScreen() {
                 >
                   {/* Entry Header */}
                   <View style={styles.entryHeader}>
-                    <Text style={styles.entryTitle}>{entry.title}</Text>
-                    <Text style={styles.entryDate}>{formatDate(entry.date)}</Text>
+                    <Text style={[styles.entryTitle, { color: colors.textPrimary }]}>{entry.title}</Text>
+                    <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(entry.date)}</Text>
                   </View>
 
                   {/* Content Grid - Show actual blocks */}
@@ -350,9 +352,9 @@ export default function JournalScreen() {
 
                           {/* Text Block */}
                           {block.content.type === BlockType.TEXT && (
-                            <View style={styles.textBlock}>
-                              <DocumentText size={24} color={colors.gray400} variant="Bold" />
-                              <Text style={styles.textBlockPreview} numberOfLines={3}>
+                            <View style={[styles.textBlock, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
+                              <DocumentText size={24} color={colors.textTertiary} variant="Bold" />
+                              <Text style={[styles.textBlockPreview, { color: colors.textSecondary }]} numberOfLines={3}>
                                 {block.content.data.text}
                               </Text>
                             </View>
@@ -367,27 +369,27 @@ export default function JournalScreen() {
                     <View style={styles.contentIcons}>
                       <View style={styles.iconBadge}>
                         <DocumentText size={16} color="#3B82F6" variant="Bold" />
-                        <Text style={styles.iconBadgeText}>{entry.wordCount} words</Text>
+                        <Text style={[styles.iconBadgeText, { color: colors.textSecondary }]}>{entry.wordCount} words</Text>
                       </View>
                       
                       {photoCount > 0 && (
                         <View style={styles.iconBadge}>
                           <Gallery size={16} color="#10B981" variant="Bold" />
-                          <Text style={styles.iconBadgeText}>{photoCount} {photoCount === 1 ? 'photo' : 'photos'}</Text>
+                          <Text style={[styles.iconBadgeText, { color: colors.textSecondary }]}>{photoCount} {photoCount === 1 ? 'photo' : 'photos'}</Text>
                         </View>
                       )}
 
                       {hasAudio && (
                         <View style={styles.iconBadge}>
                           <Microphone2 size={16} color="#8B5CF6" variant="Bold" />
-                          <Text style={styles.iconBadgeText}>Audio</Text>
+                          <Text style={[styles.iconBadgeText, { color: colors.textSecondary }]}>Audio</Text>
                         </View>
                       )}
 
                       {hasMap && (
                         <View style={styles.iconBadge}>
                           <Location size={16} color="#EF4444" variant="Bold" />
-                          <Text style={styles.iconBadgeText}>Location</Text>
+                          <Text style={[styles.iconBadgeText, { color: colors.textSecondary }]}>Location</Text>
                         </View>
                       )}
                     </View>
@@ -399,12 +401,12 @@ export default function JournalScreen() {
 
           {/* Add Entry Button */}
           <TouchableOpacity
-            style={styles.addEntryButton}
+            style={[styles.addEntryButton, { backgroundColor: isDark ? '#1A1A1A' : colors.white, borderColor: `${colors.primary}30` }]}
             onPress={() => setCreateEntryVisible(true)}
             activeOpacity={0.7}
           >
             <Add size={24} color={colors.primary} variant="Bold" />
-            <Text style={styles.addEntryText}>Add New Entry</Text>
+            <Text style={[styles.addEntryText, { color: colors.primary }]}>Add New Entry</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -422,11 +424,9 @@ export default function JournalScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -434,9 +434,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
   },
   backButton: {
     width: 40,
@@ -447,13 +445,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '600',
-    color: colors.gray900,
   },
   addButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: 'rgba(63, 195, 158, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -461,12 +458,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   progressCard: {
-    backgroundColor: colors.white,
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -481,7 +477,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: 'rgba(63, 195, 158, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -492,12 +488,10 @@ const styles = StyleSheet.create({
   progressTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray900,
     marginBottom: 4,
   },
   progressSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
   },
   statsRow: {
     flexDirection: 'row',
@@ -511,17 +505,14 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
-    color: colors.primary,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray600,
   },
   statDivider: {
     width: 1,
     height: 40,
-    backgroundColor: colors.gray200,
   },
   entriesSection: {
     marginTop: spacing.lg,
@@ -530,15 +521,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.gray900,
     marginBottom: spacing.md,
   },
   entryCard: {
-    backgroundColor: colors.white,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.md,
     overflow: 'hidden',
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -550,13 +539,11 @@ const styles = StyleSheet.create({
   entryTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray900,
     marginBottom: 4,
     fontStyle: 'italic',
   },
   entryDate: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray500,
   },
   contentGrid: {
     flexDirection: 'row',
@@ -566,7 +553,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   contentBlock: {
-    backgroundColor: colors.gray100,
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -604,12 +590,12 @@ const styles = StyleSheet.create({
   blockLabel: {
     fontSize: typography.fontSize.xs,
     fontWeight: '600',
-    color: colors.white,
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   audioBlock: {
     flex: 1,
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: 'rgba(63, 195, 158, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.sm,
@@ -618,7 +604,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.primary,
+    backgroundColor: '#3FC39E',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xs,
@@ -626,7 +612,7 @@ const styles = StyleSheet.create({
   audioDuration: {
     fontSize: typography.fontSize.xs,
     fontWeight: '600',
-    color: colors.primary,
+    color: '#3FC39E',
   },
   imageBlock: {
     width: '100%',
@@ -644,13 +630,11 @@ const styles = StyleSheet.create({
   },
   textBlock: {
     flex: 1,
-    backgroundColor: colors.white,
     padding: spacing.md,
     justifyContent: 'flex-start',
   },
   textBlockPreview: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray600,
     marginTop: spacing.xs,
     lineHeight: 18,
   },
@@ -669,25 +653,21 @@ const styles = StyleSheet.create({
   },
   iconBadgeText: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray600,
   },
   addEntryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
     marginHorizontal: spacing.lg,
     marginVertical: spacing.xl,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
     borderWidth: 2,
-    borderColor: `${colors.primary}30`,
     borderStyle: 'dashed',
   },
   addEntryText: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.primary,
     marginLeft: spacing.sm,
   },
 });

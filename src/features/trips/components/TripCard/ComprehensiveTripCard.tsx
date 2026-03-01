@@ -6,7 +6,8 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Trip, BookingType } from '../../types/trip.types';
 import { TRIP_STATE_CONFIG } from '../../config/trip-states.config';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius, colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { 
   Calendar, 
   User, 
@@ -24,6 +25,7 @@ interface ComprehensiveTripCardProps {
 }
 
 export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTripCardProps) {
+  const { colors } = useTheme();
   const stateConfig = TRIP_STATE_CONFIG[trip.state];
   const duration = Math.ceil(
     (trip.endDate.getTime() - trip.startDate.getTime()) / (1000 * 60 * 60 * 24)
@@ -41,9 +43,9 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
   );
 
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, { backgroundColor: colors.bgCard, borderWidth: 1, borderColor: colors.borderSubtle }]}>
       <TouchableOpacity
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.bgCard }]}
         onPress={onPress}
         activeOpacity={0.7}
       >
@@ -95,10 +97,10 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
       {/* Content */}
       <View>
         {/* Date Range */}
-        <View style={styles.dateSection}>
+        <View style={[styles.dateSection, { borderBottomColor: colors.borderSubtle }]}>
           <View style={styles.dateRow}>
             <Calendar size={18} color={colors.primary} variant="Bold" />
-            <Text style={styles.dateText}>
+            <Text style={[styles.dateText, { color: colors.textPrimary }]}>
               {trip.startDate.toLocaleDateString('en-US', { 
                 month: 'short', 
                 day: 'numeric',
@@ -112,7 +114,7 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
               })}
             </Text>
           </View>
-          <View style={styles.durationBadge}>
+          <View style={[styles.durationBadge, { backgroundColor: colors.primary }]}>
             <Text style={styles.durationText}>{duration} days</Text>
           </View>
         </View>
@@ -120,7 +122,7 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
         {/* Bookings Summary */}
         {trip.bookings.length > 0 && (
           <View style={styles.bookingsSection}>
-            <Text style={styles.sectionTitle}>Bookings</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Bookings</Text>
             <View style={styles.bookingsGrid}>
               {/* Top Row: Flight, Hotel, Car */}
               <View style={styles.bookingsRow}>
@@ -131,8 +133,8 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
                       <Airplane size={18} color={colors.primary} variant="Bold" />
                     </View>
                     <View style={styles.bookingInfo}>
-                      <Text style={styles.bookingCount}>{flights.length}</Text>
-                      <Text style={styles.bookingLabel}>
+                      <Text style={[styles.bookingCount, { color: colors.textPrimary }]}>{flights.length}</Text>
+                      <Text style={[styles.bookingLabel, { color: colors.textSecondary }]}>
                         {flights.length === 1 ? 'Flight' : 'Flights'}
                       </Text>
                     </View>
@@ -146,8 +148,8 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
                       <Building size={18} color={colors.success} variant="Bold" />
                     </View>
                     <View style={styles.bookingInfo}>
-                      <Text style={styles.bookingCount}>{hotels.length}</Text>
-                      <Text style={styles.bookingLabel}>
+                      <Text style={[styles.bookingCount, { color: colors.textPrimary }]}>{hotels.length}</Text>
+                      <Text style={[styles.bookingLabel, { color: colors.textSecondary }]}>
                         {hotels.length === 1 ? 'Hotel' : 'Hotels'}
                       </Text>
                     </View>
@@ -161,8 +163,8 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
                       <Car size={18} color={colors.warning} variant="Bold" />
                     </View>
                     <View style={styles.bookingInfo}>
-                      <Text style={styles.bookingCount}>{cars.length}</Text>
-                      <Text style={styles.bookingLabel}>
+                      <Text style={[styles.bookingCount, { color: colors.textPrimary }]}>{cars.length}</Text>
+                      <Text style={[styles.bookingLabel, { color: colors.textSecondary }]}>
                         {cars.length === 1 ? 'Car' : 'Cars'}
                       </Text>
                     </View>
@@ -179,8 +181,8 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
                       <Location size={18} color={colors.info} variant="Bold" />
                     </View>
                     <View style={styles.bookingInfo}>
-                      <Text style={styles.bookingCount}>{activities.length}</Text>
-                      <Text style={styles.bookingLabel}>
+                      <Text style={[styles.bookingCount, { color: colors.textPrimary }]}>{activities.length}</Text>
+                      <Text style={[styles.bookingLabel, { color: colors.textSecondary }]}>
                         {activities.length === 1 ? 'Activity' : 'Activities'}
                       </Text>
                     </View>
@@ -193,8 +195,8 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
                     <User size={18} color="#9333EA" variant="Bold" />
                   </View>
                   <View style={styles.bookingInfo}>
-                    <Text style={styles.bookingCount}>{trip.travelers.length || 1}</Text>
-                    <Text style={styles.bookingLabel}>
+                    <Text style={[styles.bookingCount, { color: colors.textPrimary }]}>{trip.travelers.length || 1}</Text>
+                    <Text style={[styles.bookingLabel, { color: colors.textSecondary }]}>
                       {trip.travelers.length === 1 ? 'Traveler' : 'Travelers'}
                     </Text>
                   </View>
@@ -214,32 +216,31 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    borderRadius: 24,
     padding: spacing.md,
     marginBottom: spacing.lg,
-    shadowColor: colors.black,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
   },
   container: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    borderRadius: 20,
     overflow: 'hidden',
   },
   imageContainer: {
     position: 'relative',
     height: 200,
-    borderTopLeftRadius: borderRadius.lg,
-    borderTopRightRadius: borderRadius.lg,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     overflow: 'hidden',
   },
   coverImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: colors.gray100,
   },
   gradientOverlay: {
     position: 'absolute',
@@ -256,7 +257,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: 20,
-    shadowColor: colors.black,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -264,7 +265,7 @@ const styles = StyleSheet.create({
   },
   stateText: {
     fontSize: typography.fontSize.xs,
-    color: colors.white,
+    color: '#FFFFFF',
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -283,7 +284,7 @@ const styles = StyleSheet.create({
   },
   daysUntilText: {
     fontSize: typography.fontSize.xs,
-    color: colors.white,
+    color: '#FFFFFF',
     fontWeight: '600',
   },
   titleOverlay: {
@@ -301,7 +302,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
-    color: colors.white,
+    color: '#FFFFFF',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
@@ -310,7 +311,7 @@ const styles = StyleSheet.create({
   priceOverlay: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.white,
+    color: '#FFFFFF',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
@@ -323,7 +324,7 @@ const styles = StyleSheet.create({
   },
   destination: {
     fontSize: typography.fontSize.sm,
-    color: colors.white,
+    color: '#FFFFFF',
     fontWeight: '500',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
@@ -336,7 +337,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
   },
   dateRow: {
     flexDirection: 'row',
@@ -346,19 +346,17 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray900,
     fontWeight: '600',
     flex: 1,
   },
   durationBadge: {
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: 12,
   },
   durationText: {
     fontSize: typography.fontSize.xs,
-    color: colors.white,
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   bookingsSection: {
@@ -368,7 +366,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.gray700,
     marginBottom: spacing.md,
     marginTop: spacing.md,
   },
@@ -399,10 +396,8 @@ const styles = StyleSheet.create({
   bookingCount: {
     fontSize: typography.fontSize.base,
     fontWeight: '700',
-    color: colors.gray900,
   },
   bookingLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray600,
   },
 });

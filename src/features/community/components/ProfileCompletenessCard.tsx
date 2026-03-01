@@ -194,9 +194,11 @@ export default function ProfileCompletenessCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
     padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -228,7 +230,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 8,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     borderRadius: 4,
     overflow: 'hidden',
     marginBottom: spacing.md,
@@ -246,7 +248,7 @@ const styles = StyleSheet.create({
   sectionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
@@ -259,7 +261,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -309,9 +311,11 @@ const styles = StyleSheet.create({
   compactContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
     padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -325,7 +329,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },

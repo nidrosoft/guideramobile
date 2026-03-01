@@ -194,7 +194,7 @@ export default function UnifiedDateSheet({
           style={[
             styles.sheet,
             { 
-              backgroundColor: themeColors.white,
+              backgroundColor: themeColors.background,
               paddingBottom: insets.bottom + spacing.md,
             },
           ]}
@@ -223,7 +223,7 @@ export default function UnifiedDateSheet({
             <TouchableOpacity
               style={[
                 styles.confirmButton,
-                { backgroundColor: tempSelected ? themeColors.primary : themeColors.gray300 },
+                { backgroundColor: tempSelected ? themeColors.primary : themeColors.textSecondary },
               ]}
               onPress={handleConfirm}
               disabled={!tempSelected}

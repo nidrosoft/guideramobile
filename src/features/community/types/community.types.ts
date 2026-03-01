@@ -84,6 +84,7 @@ export interface CommunityPreview {
   type: CommunityType;
   privacy: CommunityPrivacy;
   memberCount: number;
+  description?: string;
   destination?: {
     city: string;
     country: string;

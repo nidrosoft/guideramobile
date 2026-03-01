@@ -55,6 +55,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { usePlanningStore } from '../../../stores/usePlanningStore';
 import { TRIP_STYLES, COMPANION_OPTIONS } from '../../../config/planning.config';
 import { DayPlan, PlannedActivity } from '../../../types/planning.types';
@@ -89,6 +90,7 @@ export default function ReviewStep({
   onComplete,
 }: ReviewStepProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const {
     quickTripData,
     aiContent,
@@ -260,7 +262,7 @@ export default function ReviewStep({
   };
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       {/* Hero Image with Parallax */}
       <Animated.View style={[styles.heroContainer, imageAnimatedStyle]}>
         <Image 
@@ -667,7 +669,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg, // More rounded like TripDetailScreen
     padding: spacing.md,
     marginBottom: spacing.lg,
@@ -704,7 +706,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg, // More rounded like TripDetailScreen
     padding: spacing.lg,
     marginBottom: spacing.lg,
@@ -838,7 +840,7 @@ const styles = StyleSheet.create({
   // Activity Card
   activityCard: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginLeft: spacing.sm,
@@ -903,7 +905,7 @@ const styles = StyleSheet.create({
     width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm) / 2,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     gap: spacing.sm,
@@ -931,7 +933,7 @@ const styles = StyleSheet.create({
   },
   insightCard: {
     width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm) / 2,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     alignItems: 'center',
@@ -967,7 +969,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderTopWidth: 1,
     borderTopColor: colors.gray100,
     ...shadows.lg,

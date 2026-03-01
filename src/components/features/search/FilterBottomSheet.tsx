@@ -82,7 +82,7 @@ export default function FilterBottomSheet({
   const [localFilters, setLocalFilters] = useState<SearchFilters>(filters);
 
   const dynamicStyles = useMemo(() => ({
-    sheet: { backgroundColor: colors.white },
+    sheet: { backgroundColor: colors.bgModal },
     handle: { backgroundColor: colors.gray200 },
     title: { color: colors.textPrimary },
     resetText: { color: colors.primary },
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
     maxHeight: '85%',

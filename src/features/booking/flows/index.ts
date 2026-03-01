@@ -10,7 +10,7 @@ export { FlightBookingFlow } from './flight';
 // Hotel Booking
 export { HotelBookingFlow } from './hotel';
 
-// Package Booking
+// Package Deals
 export { PackageBookingFlow } from './package';
 
 // Car Rental

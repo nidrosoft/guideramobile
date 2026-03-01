@@ -20,6 +20,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Car, Location, Calendar } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useCarStore } from '../../../stores/useCarStore';
 import { useCarSearch } from '@/hooks/useProviderSearch';
 import { CarSearchParams as ProviderCarSearchParams } from '@/types/unified';
@@ -30,6 +31,7 @@ interface CarSearchLoadingScreenProps {
 
 export default function CarSearchLoadingScreen({ onComplete }: CarSearchLoadingScreenProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const { searchParams, setResults, getRentalDays } = useCarStore();
   const [searchState, { search }] = useCarSearch();
   const searchInitiated = useRef(false);
@@ -532,7 +534,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: spacing.md,

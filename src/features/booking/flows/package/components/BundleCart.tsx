@@ -30,9 +30,11 @@ import {
   ArrowRight2,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { usePackageStore, PackageCategory } from '../../../stores/usePackageStore';
+import { BookOnProviderButton } from '../../../components/shared';
+import { useDealRedirect } from '@/hooks/useDeals';
 
 interface BundleCartProps {
   onContinue: () => void;
@@ -54,6 +56,8 @@ export default function BundleCart({
   showContinue = true,
   bottomInset = 0,
 }: BundleCartProps) {
+  const { colors: tc } = useTheme();
+  const { redirect } = useDealRedirect();
   const {
     tripSetup,
     selections,
@@ -172,7 +176,7 @@ export default function BundleCart({
                     onPress={() => handleRemove(category)}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
-                    <CloseCircle size={16} color={colors.gray400} />
+                    <CloseCircle size={16} color={colors.textTertiary} />
                   </TouchableOpacity>
                 </View>
               </TouchableOpacity>
@@ -204,30 +208,42 @@ export default function BundleCart({
         </Animated.View>
       )}
       
-      {/* Total & Continue */}
+      {/* Total & Book on Provider */}
       <View style={styles.footer}>
         <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>Package Total</Text>
-          <Text style={styles.totalAmount}>${pricing.total.toFixed(2)}</Text>
+          <Text style={[styles.totalLabel, { color: tc.textSecondary }]}>Package Total</Text>
+          <Text style={[styles.totalAmount, { color: tc.textPrimary }]}>${pricing.total.toFixed(2)}</Text>
         </View>
         
         {showContinue && (
-          <TouchableOpacity
-            style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}
-            onPress={onContinue}
-            disabled={!canContinue}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={canContinue ? [colors.primary, colors.primaryDark] : [colors.gray300, colors.gray400]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.continueGradient}
-            >
-              <Text style={styles.continueText}>Continue</Text>
-              <ArrowRight2 size={18} color={colors.white} />
-            </LinearGradient>
-          </TouchableOpacity>
+          <View style={{ flex: 1, marginLeft: spacing.md }}>
+            <BookOnProviderButton
+              provider="kiwi"
+              price={`$${pricing.total.toFixed(0)}`}
+              onPress={async () => {
+                if (!canContinue) {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                  return;
+                }
+                await redirect({
+                  deal_type: 'flight',
+                  provider: 'kiwi',
+                  affiliate_url: '',
+                  deal_snapshot: {
+                    title: `${tripSetup.origin?.name || ''} → ${tripSetup.destination?.name || ''}`,
+                    subtitle: 'Package Deal',
+                    provider: { code: 'kiwi', name: 'Kiwi.com' },
+                    price: { amount: pricing.total, currency: 'USD', formatted: `$${pricing.total.toFixed(0)}` },
+                  },
+                  price_amount: pricing.total,
+                  source: 'search',
+                  origin: tripSetup.origin?.code,
+                  destination: tripSetup.destination?.code,
+                });
+              }}
+              disabled={!canContinue}
+            />
+          </View>
         )}
       </View>
     </Animated.View>
@@ -236,9 +252,9 @@ export default function BundleCart({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: borderRadius.lg, // 24px for consistency
-    borderTopRightRadius: borderRadius.lg, // 24px for consistency
+    backgroundColor: colors.bgElevated,
+    borderTopLeftRadius: borderRadius.lg,
+    borderTopRightRadius: borderRadius.lg,
     paddingTop: spacing.md,
     // paddingBottom is applied dynamically with bottomInset
     // Strong shadow for elevation
@@ -259,7 +275,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgCard,
     borderRadius: borderRadius.lg,
   },
   iconContainer: {
@@ -335,7 +351,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
     marginTop: spacing.sm,
   },
   totalContainer: {},

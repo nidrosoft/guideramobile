@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   itemsContainer: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 24,
     padding: spacing.md,
   },

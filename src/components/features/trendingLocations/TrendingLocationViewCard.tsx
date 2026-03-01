@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { colors, typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Bookmark, ArrowRight, TrendUp, Star1 } from 'iconsax-react-native';
 
 interface TrendingLocationViewCardProps {
@@ -115,7 +116,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
@@ -184,7 +185,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: spacing.md,

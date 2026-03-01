@@ -1,8 +1,16 @@
 import { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { Stack } from 'expo-router';
+import { useFonts } from 'expo-font';
+import {
+  Rubik_300Light,
+  Rubik_400Regular,
+  Rubik_500Medium,
+  Rubik_600SemiBold,
+  Rubik_700Bold,
+} from '@expo-google-fonts/rubik';
+import { HostGrotesk_700Bold } from '@expo-google-fonts/host-grotesk';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { StripeProvider } from '@stripe/stripe-react-native';
 import { ClerkProvider } from '@clerk/clerk-expo';
 import { tokenCache } from '@clerk/clerk-expo/token-cache';
 import { ToastProvider } from '@/contexts/ToastContext';
@@ -17,9 +25,6 @@ import { logger } from '@/services/logging';
 import { initSentry } from '@/services/sentry';
 import '@/lib/i18n'; // Initialize i18n
 import { loadSavedLanguage } from '@/lib/i18n';
-
-// Stripe publishable key - replace with your actual key
-const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder';
 
 // Clerk publishable key
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || '';
@@ -40,6 +45,15 @@ const queryClient = new QueryClient({
 });
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    'Rubik-Light': Rubik_300Light,
+    'Rubik-Regular': Rubik_400Regular,
+    'Rubik-Medium': Rubik_500Medium,
+    'Rubik-SemiBold': Rubik_600SemiBold,
+    'Rubik-Bold': Rubik_700Bold,
+    'HostGrotesk-Bold': HostGrotesk_700Bold,
+  });
+
   useEffect(() => {
     // Initialize app services
     logger.info('App started');
@@ -55,10 +69,18 @@ export default function RootLayout() {
     };
   }, []);
 
+  // Show loading screen while fonts load
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3FC39E" />
+      </View>
+    );
+  }
+
   return (
     <ErrorBoundary level="global">
       <QueryClientProvider client={queryClient}>
-        <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
           <ThemeProvider>
             <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
               <AuthProvider>
@@ -81,7 +103,6 @@ export default function RootLayout() {
               </AuthProvider>
             </ClerkProvider>
           </ThemeProvider>
-        </StripeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
@@ -90,5 +111,11 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#202020',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

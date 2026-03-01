@@ -23,6 +23,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { FlowHeader } from '@/features/booking/components/shared';
 import { usePlanningStore } from '../../stores/usePlanningStore';
 import { QUICK_TRIP_STEPS } from '../../config/planning.config';
@@ -59,6 +60,7 @@ export default function QuickTripFlow({
   onClose,
   onComplete,
 }: QuickTripFlowProps) {
+  const { colors: themeColors } = useTheme();
   const {
     currentStepIndex,
     setCurrentStep,
@@ -205,7 +207,7 @@ export default function QuickTripFlow({
       onRequestClose={handleClose}
     >
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      <Animated.View style={[styles.container, containerStyle]}>
+      <Animated.View style={[styles.container, containerStyle, { backgroundColor: themeColors.background }]}>
         {/* Header with background image */}
         {showHeader && (
           <FlowHeader
@@ -232,7 +234,7 @@ export default function QuickTripFlow({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    // backgroundColor set dynamically via useTheme()
   },
   content: {
     flex: 1,

@@ -26,6 +26,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAdvancedPlanningStore } from '../../../stores/useAdvancedPlanningStore';
 import { 
   TRANSPORT_MODE_OPTIONS,
@@ -52,6 +53,7 @@ export default function TransportationStep({
   isOptional,
 }: TransportationStepProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const {
     advancedTripData,
     setTransportMode,
@@ -106,7 +108,7 @@ export default function TransportationStep({
   const showFlightOptions = advancedTripData.transportation.gettingThere === 'flight';
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -361,7 +363,7 @@ const styles = StyleSheet.create({
   },
   modeCard: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     alignItems: 'center',
@@ -388,7 +390,7 @@ const styles = StyleSheet.create({
   
   // Flight Section
   flightSection: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.xl,
@@ -429,7 +431,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
   },
   segmentSelected: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   segmentText: {
     fontSize: typography.fontSize.xs,
@@ -449,7 +451,7 @@ const styles = StyleSheet.create({
   timeChip: {
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.full,
     borderWidth: 1.5,
     borderColor: colors.gray200,
@@ -474,7 +476,7 @@ const styles = StyleSheet.create({
   localCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     borderWidth: 1.5,

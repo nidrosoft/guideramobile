@@ -1,20 +1,30 @@
 /**
- * ICON COLOR PALETTE
- * 
- * Top 5 colors for icons throughout the app
- * Use these consistently for all icon backgrounds
+ * DESIGN SYSTEM — ICON COLOR PALETTE
+ *
+ * Used for category icons, chart legends, agent avatars.
+ * Each color has a solid value plus bg (8%) and border (15%) variants.
  */
 
 export const iconColors = {
-  purple: '#8B5CF6',   // Purple - for location, time
-  blue: '#3B82F6',     // Blue - for language, info
-  yellow: '#F59E0B',   // Yellow/Gold - for ratings, stars
-  green: '#10B981',    // Green - for verified, success
-  pink: '#EC4899',     // Pink - for favorites, highlights
+  primary: '#3FC39E',
+  purple: '#A855F7',
+  blue: '#3B82F6',
+  yellow: '#EAB308',
+  green: '#28C840',
+  pink: '#EC4899',
+  orange: '#F97316',
+  cyan: '#06B6D4',
 };
 
 // Helper to get icon color by index (cycles through colors)
 export const getIconColor = (index: number): string => {
-  const colors = Object.values(iconColors);
-  return colors[index % colors.length];
+  const vals = Object.values(iconColors);
+  return vals[index % vals.length];
 };
+
+// Helper to get icon container styles (bg + border) for a given color
+export const getIconContainerStyle = (color: string) => ({
+  backgroundColor: `${color}10`,  // ~6% opacity
+  borderWidth: 1,
+  borderColor: `${color}1A`,      // ~10% opacity
+});

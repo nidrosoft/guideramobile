@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { Add, CloseCircle, Sms, TickCircle } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import * as Haptics from 'expo-haptics';
 
 interface InviteTravelersBottomSheetProps {
@@ -40,6 +41,7 @@ export default function InviteTravelersBottomSheet({
   tripDestination,
   onInvite,
 }: InviteTravelersBottomSheetProps) {
+  const { colors: tc } = useTheme();
   const [emails, setEmails] = useState<string[]>(['']);
   const [currentEmail, setCurrentEmail] = useState('');
 
@@ -250,7 +252,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingHorizontal: spacing.md,

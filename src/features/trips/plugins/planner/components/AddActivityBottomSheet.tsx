@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { CloseCircle, Clock, SearchNormal } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
 
 interface AddActivityBottomSheetProps {
@@ -32,6 +33,7 @@ export default function AddActivityBottomSheet({
   onAdd,
 }: AddActivityBottomSheetProps) {
   const { showSuccess } = useToast();
+  const { colors: tc } = useTheme();
   const [activityName, setActivityName] = useState('');
   const [place, setPlace] = useState('');
   const [startTime, setStartTime] = useState('8:30 AM');
@@ -208,7 +210,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   bottomSheet: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: spacing.xl,

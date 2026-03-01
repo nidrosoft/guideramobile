@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Star1, Like1, Dislike } from 'iconsax-react-native';
 import { colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { GuideReview } from '../types/guide.types';
 
 interface ReviewCardProps {
@@ -16,6 +17,7 @@ interface ReviewCardProps {
 }
 
 export default function ReviewCard({ review, onHelpful }: ReviewCardProps) {
+  const { colors: tc } = useTheme();
   const [expanded, setExpanded] = useState(false);
   const isLong = review.content.length > 180;
 
@@ -24,25 +26,25 @@ export default function ReviewCard({ review, onHelpful }: ReviewCardProps) {
       <Star1
         key={i}
         size={14}
-        color={i < rating ? '#F59E0B' : colors.gray200}
+        color={i < rating ? '#F59E0B' : colors.borderSubtle}
         variant={i < rating ? 'Bold' : 'Linear'}
       />
     ));
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
       {/* Reviewer Info */}
       <View style={styles.header}>
         <Image source={{ uri: review.reviewerAvatar }} style={styles.avatar} />
         <View style={styles.headerInfo}>
-          <Text style={styles.name}>{review.reviewerName}</Text>
+          <Text style={[styles.name, { color: tc.textPrimary }]}>{review.reviewerName}</Text>
           {review.reviewerLocation && (
-            <Text style={styles.location}>{review.reviewerLocation}</Text>
+            <Text style={[styles.location, { color: tc.textSecondary }]}>{review.reviewerLocation}</Text>
           )}
         </View>
         {review.visitDate && (
-          <Text style={styles.visitDate}>Visited {review.visitDate}</Text>
+          <Text style={[styles.visitDate, { color: tc.textSecondary }]}>Visited {review.visitDate}</Text>
         )}
       </View>
 
@@ -52,12 +54,12 @@ export default function ReviewCard({ review, onHelpful }: ReviewCardProps) {
       </View>
 
       {/* Content */}
-      <Text style={styles.content} numberOfLines={expanded ? undefined : 4}>
+      <Text style={[styles.content, { color: tc.textPrimary }]} numberOfLines={expanded ? undefined : 4}>
         {review.content}
       </Text>
       {isLong && !expanded && (
         <TouchableOpacity onPress={() => setExpanded(true)}>
-          <Text style={styles.readMore}>Read more</Text>
+          <Text style={[styles.readMore, { color: tc.primary }]}>Read more</Text>
         </TouchableOpacity>
       )}
 
@@ -74,17 +76,17 @@ export default function ReviewCard({ review, onHelpful }: ReviewCardProps) {
 
       {/* Guide Response */}
       {review.guideResponse && (
-        <View style={styles.responseBox}>
-          <Text style={styles.responseLabel}>Guide's Response</Text>
-          <Text style={styles.responseText}>{review.guideResponse}</Text>
+        <View style={[styles.responseBox, { backgroundColor: tc.bgCard, borderLeftColor: tc.primary }]}>
+          <Text style={[styles.responseLabel, { color: tc.primary }]}>Guide's Response</Text>
+          <Text style={[styles.responseText, { color: tc.textSecondary }]}>{review.guideResponse}</Text>
         </View>
       )}
 
       {/* Actions */}
       {onHelpful && (
-        <TouchableOpacity style={styles.helpfulBtn} onPress={onHelpful}>
-          <Like1 size={14} color={colors.textTertiary} />
-          <Text style={styles.helpfulText}>Helpful</Text>
+        <TouchableOpacity style={[styles.helpfulBtn, { backgroundColor: tc.bgCard }]} onPress={onHelpful}>
+          <Like1 size={14} color={tc.textSecondary} />
+          <Text style={[styles.helpfulText, { color: tc.textSecondary }]}>Helpful</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -93,10 +95,12 @@ export default function ReviewCard({ review, onHelpful }: ReviewCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
-    borderRadius: 14,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 24,
     padding: 14,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -167,7 +171,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   responseBox: {
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.borderSubtle,
     borderRadius: 10,
     padding: 10,
     marginTop: 10,
@@ -194,7 +198,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 8,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.borderSubtle,
   },
   helpfulText: {
     fontSize: 12,

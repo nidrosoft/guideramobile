@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { colors, typography, spacing, borderRadius } from '@/styles';
+import { typography, spacing, borderRadius, colors } from '@/styles';
 import { Bookmark, Location, Star1, ArrowRight, Award } from 'iconsax-react-native';
 
 interface EditorChoiceCardProps {
@@ -29,7 +29,7 @@ export default function EditorChoiceCard({ name, location, reason, rating, image
         
         {/* Bookmark Button */}
         <TouchableOpacity style={styles.bookmarkButton}>
-          <Bookmark size={20} color={colors.textPrimary} variant="Outline" />
+          <Bookmark size={20} color="#1a1a1a" variant="Outline" />
         </TouchableOpacity>
       </View>
 
@@ -37,7 +37,7 @@ export default function EditorChoiceCard({ name, location, reason, rating, image
       <View style={styles.bottomSection}>
         {/* Location */}
         <View style={styles.locationContainer}>
-          <Location size={14} color={colors.white} variant="Bold" />
+          <Location size={14} color="#FFFFFF" variant="Bold" />
           <Text style={styles.locationText}>{location}</Text>
         </View>
         
@@ -58,7 +58,7 @@ export default function EditorChoiceCard({ name, location, reason, rating, image
         
         {/* Swipe Button */}
         <TouchableOpacity style={styles.swipeButton}>
-          <ArrowRight size={24} color={colors.textPrimary} variant="Outline" />
+          <ArrowRight size={24} color="#1a1a1a" variant="Outline" />
         </TouchableOpacity>
       </View>
     </View>
@@ -73,6 +73,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginRight: spacing.md,
     position: 'relative',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   backgroundImage: {
     width: '100%',
@@ -101,7 +103,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
+    color: '#1a1a1a',
   },
   bookmarkButton: {
     width: 44,
@@ -126,13 +128,13 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: typography.fontSize.sm,
-    color: colors.white,
+    color: '#FFFFFF',
     fontWeight: typography.fontWeight.medium,
   },
   placeName: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
     marginBottom: spacing.sm,
   },
   reasonContainer: {
@@ -146,7 +148,7 @@ const styles = StyleSheet.create({
   },
   reasonText: {
     fontSize: typography.fontSize.sm,
-    color: colors.white,
+    color: '#FFFFFF',
     fontWeight: typography.fontWeight.medium,
     lineHeight: 18,
   },
@@ -158,14 +160,14 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: typography.fontSize.sm,
-    color: colors.white,
+    color: '#FFFFFF',
     fontWeight: typography.fontWeight.semibold,
   },
   swipeButton: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'flex-start',

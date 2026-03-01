@@ -11,6 +11,7 @@ import MapView, { Marker, Polyline, Circle, PROVIDER_GOOGLE } from 'react-native
 import * as Haptics from 'expo-haptics';
 import { Gps } from 'iconsax-react-native';
 import { colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { POI, Route, Coordinates, DangerZone } from '../types/cityNavigator.types';
 import { UserMarker } from './POIMarker';
 
@@ -275,7 +276,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',

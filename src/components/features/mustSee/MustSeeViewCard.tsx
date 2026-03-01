@@ -69,7 +69,7 @@ export default function MustSeeViewCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 20,
     padding: spacing.sm,
     marginBottom: spacing.lg,

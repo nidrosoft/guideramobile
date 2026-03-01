@@ -75,13 +75,13 @@ export default function FlightWhereSection({
   return (
     <View style={styles.container}>
       {/* Trip Type Toggle */}
-      <View style={[styles.tripTypeContainer, { backgroundColor: themeColors.gray100 }]}>
+      <View style={[styles.tripTypeContainer, { backgroundColor: themeColors.bgCard }]}>
         {tripTypes.map((item) => (
           <TouchableOpacity
             key={item.type}
             style={[
               styles.tripTypeTab,
-              tripType === item.type && { backgroundColor: themeColors.white },
+              tripType === item.type && { backgroundColor: themeColors.bgElevated },
             ]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -109,8 +109,8 @@ export default function FlightWhereSection({
           style={[
             styles.locationField,
             { 
-              backgroundColor: themeColors.gray100,
-              borderColor: themeColors.gray200,
+              backgroundColor: themeColors.bgCard,
+              borderColor: themeColors.borderSubtle,
               borderWidth: 1,
             },
           ]}
@@ -150,8 +150,8 @@ export default function FlightWhereSection({
           style={[
             styles.locationField,
             { 
-              backgroundColor: themeColors.gray100,
-              borderColor: themeColors.gray200,
+              backgroundColor: themeColors.bgCard,
+              borderColor: themeColors.borderSubtle,
               borderWidth: 1,
             },
           ]}

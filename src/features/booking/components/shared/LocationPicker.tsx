@@ -28,7 +28,8 @@ import {
   ArrowRight2,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
+import { spacing, typography, shadows, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Location as LocationType } from '../../types/booking.types';
 
 interface LocationPickerProps {
@@ -51,6 +52,7 @@ export default function LocationPicker({
   selectedId,
 }: LocationPickerProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   
   const filteredLocations = useMemo(() => {
@@ -84,24 +86,24 @@ export default function LocationPicker({
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
+        <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
           <TouchableOpacity
             style={styles.closeButton}
             onPress={handleClose}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <CloseCircle size={24} color={colors.gray400} variant="Bold" />
+            <CloseCircle size={24} color={colors.textSecondary} variant="Bold" />
           </TouchableOpacity>
         </View>
         
         {/* Search Box - Matching DestinationStep style */}
-        <View style={styles.searchContainer}>
+        <View style={[styles.searchContainer, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
           <SearchNormal1 size={20} color={colors.textSecondary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.textPrimary }]}
             placeholder={placeholder}
             placeholderTextColor={colors.textSecondary}
             value={searchQuery}
@@ -110,7 +112,7 @@ export default function LocationPicker({
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <CloseCircle size={18} color={colors.gray400} />
+              <CloseCircle size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
@@ -126,27 +128,28 @@ export default function LocationPicker({
               <TouchableOpacity
                 style={[
                   styles.locationItem,
-                  selectedId === item.id && styles.locationItemSelected,
+                  { borderBottomColor: colors.borderSubtle },
+                  selectedId === item.id && { backgroundColor: colors.primary + '08' },
                 ]}
                 onPress={() => handleSelect(item)}
                 activeOpacity={0.7}
               >
                 {/* Icon with soft circle background */}
-                <View style={styles.locationIcon}>
+                <View style={[styles.locationIcon, { backgroundColor: colors.primary + '15' }]}>
                   <Location size={20} color={colors.primary} />
                 </View>
                 
                 {/* Location Info */}
                 <View style={styles.locationInfo}>
-                  <Text style={styles.locationName}>{item.name}</Text>
-                  <Text style={styles.locationCountry}>{item.country}</Text>
+                  <Text style={[styles.locationName, { color: colors.textPrimary }]}>{item.name}</Text>
+                  <Text style={[styles.locationCountry, { color: colors.textSecondary }]}>{item.country}</Text>
                 </View>
               </TouchableOpacity>
             </Animated.View>
           )}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No locations found</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No locations found</Text>
             </View>
           }
         />
@@ -171,27 +174,30 @@ export function LocationTrigger({
   placeholder = 'Select location',
   onPress,
   icon,
-  iconColor = colors.primary,
+  iconColor,
 }: LocationTriggerProps) {
+  const { colors } = useTheme();
+  const resolvedIconColor = iconColor || colors.primary;
   return (
     <TouchableOpacity
-      style={styles.triggerContainer}
+      style={[styles.triggerContainer, { backgroundColor: colors.bgElevated, borderWidth: 1, borderColor: colors.borderSubtle }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View style={[styles.triggerIcon, { backgroundColor: iconColor + '15' }]}>
-        {icon || <Location size={20} color={iconColor} variant="Bold" />}
+      <View style={[styles.triggerIcon, { backgroundColor: resolvedIconColor + '15' }]}>
+        {icon || <Location size={20} color={resolvedIconColor} variant="Bold" />}
       </View>
       <View style={styles.triggerContent}>
-        <Text style={styles.triggerLabel}>{label}</Text>
+        <Text style={[styles.triggerLabel, { color: colors.textSecondary }]}>{label}</Text>
         <Text style={[
           styles.triggerValue,
-          !value && styles.triggerPlaceholder,
+          { color: colors.textPrimary },
+          !value && { color: colors.textSecondary },
         ]}>
           {value || placeholder}
         </Text>
       </View>
-      <ArrowRight2 size={20} color={colors.gray400} />
+      <ArrowRight2 size={20} color={colors.textSecondary} />
     </TouchableOpacity>
   );
 }
@@ -199,7 +205,6 @@ export function LocationTrigger({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
   },
   header: {
     flexDirection: 'row',
@@ -208,12 +213,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
   },
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
   },
   closeButton: {
     padding: spacing.xs,
@@ -223,20 +226,17 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
     borderRadius: borderRadius.full,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     marginHorizontal: spacing.lg,
     marginVertical: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray200,
   },
   searchInput: {
     flex: 1,
     marginLeft: spacing.sm,
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
     paddingVertical: spacing.xs,
   },
   
@@ -250,10 +250,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
-  },
-  locationItemSelected: {
-    backgroundColor: colors.primary + '08',
   },
   
   // Location Icon - Soft circle background
@@ -261,7 +257,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.primary + '15',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
@@ -274,12 +269,10 @@ const styles = StyleSheet.create({
   locationName: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
     marginBottom: 2,
   },
   locationCountry: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   
   // Empty State
@@ -289,17 +282,14 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
   },
   
   // Trigger Styles
   triggerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.xl,
+    borderRadius: 20,
     padding: spacing.md,
-    ...shadows.sm,
   },
   triggerIcon: {
     width: 40,
@@ -314,15 +304,10 @@ const styles = StyleSheet.create({
   },
   triggerLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginBottom: 2,
   },
   triggerValue: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
-  },
-  triggerPlaceholder: {
-    color: colors.textSecondary,
   },
 });

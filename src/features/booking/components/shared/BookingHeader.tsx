@@ -9,7 +9,8 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, CloseCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography } from '@/styles';
+import { spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 interface BookingHeaderProps {
   title: string;
@@ -33,6 +34,7 @@ export default function BookingHeader({
   rightComponent,
 }: BookingHeaderProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -48,7 +50,7 @@ export default function BookingHeader({
     <View 
       style={[
         styles.container, 
-        { paddingTop: insets.top + spacing.sm },
+        { paddingTop: insets.top + spacing.sm, backgroundColor: colors.bgElevated, borderBottomColor: colors.borderSubtle },
         transparent && styles.transparent,
       ]}
     >
@@ -57,7 +59,7 @@ export default function BookingHeader({
         <View style={styles.leftSection}>
           {showBack && onBack && (
             <TouchableOpacity
-              style={styles.iconButton}
+              style={[styles.iconButton, { backgroundColor: colors.bgCard }]}
               onPress={handleBack}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
@@ -68,11 +70,11 @@ export default function BookingHeader({
         
         {/* Center - Title */}
         <View style={styles.centerSection}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
             {title}
           </Text>
           {subtitle && (
-            <Text style={styles.subtitle} numberOfLines={1}>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>
               {subtitle}
             </Text>
           )}
@@ -84,7 +86,7 @@ export default function BookingHeader({
             rightComponent
           ) : showClose && onClose ? (
             <TouchableOpacity
-              style={styles.iconButton}
+              style={[styles.iconButton, { backgroundColor: colors.bgCard }]}
               onPress={handleClose}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
@@ -99,9 +101,7 @@ export default function BookingHeader({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
   },
   transparent: {
     backgroundColor: 'transparent',
@@ -130,19 +130,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.gray50,
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginTop: 2,
     textAlign: 'center',
   },

@@ -115,12 +115,12 @@ export default function CarCard({ car, onPress, index = 0 }: CarCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: '#E6E9EB',
+    borderColor: colors.borderSubtle,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

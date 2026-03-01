@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { colors, typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Star1, Location, Heart, TickCircle } from 'iconsax-react-native';
 
 interface BudgetFriendlyViewCardProps {
@@ -76,7 +77,7 @@ export default function BudgetFriendlyViewCard({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 20,
     padding: spacing.md,
     marginBottom: spacing.lg,
@@ -119,7 +120,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     justifyContent: 'center',
     alignItems: 'center',
   },

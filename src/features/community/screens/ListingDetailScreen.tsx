@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   photo: {
     width: SCREEN_WIDTH,
     height: 280,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
   },
   photoDots: {
     position: 'absolute',
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.5)',
   },
   photoDotActive: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     width: 20,
   },
   photoOverlay: {
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   },
   photoPlaceholder: {
     height: 200,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   priceBox: {
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.bgElevated,
     borderRadius: 12,
     padding: 12,
     minWidth: 100,
@@ -511,9 +511,11 @@ const styles = StyleSheet.create({
   guideCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: 16,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
     padding: 14,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -576,11 +578,11 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingHorizontal: 18,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.06,

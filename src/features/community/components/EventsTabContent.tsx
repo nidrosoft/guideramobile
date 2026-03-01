@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Calendar, Location, Add, Filter } from 'iconsax-react-native';
 import { colors, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import EventCard from './EventCard';
 import { EventPreview } from '../types/event.types';
 
@@ -122,6 +123,7 @@ export default function EventsTabContent({
   currentLocation = 'Paris',
   onLocationChange,
 }: EventsTabContentProps) {
+  const { colors: tc } = useTheme();
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [refreshing, setRefreshing] = useState(false);
   
@@ -202,16 +204,16 @@ export default function EventsTabContent({
   }, [filteredEvents]);
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Events</Text>
+        <Text style={[styles.title, { color: tc.textPrimary }]}>Events</Text>
         <TouchableOpacity 
           style={styles.locationButton}
           onPress={onLocationChange}
           activeOpacity={0.7}
         >
-          <Location size={16} color={colors.primary} variant="Bold" />
+          <Location size={16} color={tc.primary} variant="Bold" />
           <Text style={styles.locationText}>{currentLocation}</Text>
         </TouchableOpacity>
       </View>
@@ -243,7 +245,7 @@ export default function EventsTabContent({
           ))}
         </ScrollView>
         <TouchableOpacity style={styles.filterButton}>
-          <Filter size={20} color={colors.gray500} />
+          <Filter size={20} color={tc.textSecondary} />
         </TouchableOpacity>
       </View>
       
@@ -257,9 +259,9 @@ export default function EventsTabContent({
       >
         {groupedEvents.length === 0 ? (
           <View style={styles.emptyState}>
-            <Calendar size={48} color={colors.gray300} />
-            <Text style={styles.emptyTitle}>No events found</Text>
-            <Text style={styles.emptySubtitle}>
+            <Calendar size={48} color={tc.textSecondary} />
+            <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No events found</Text>
+            <Text style={[styles.emptySubtitle, { color: tc.textSecondary }]}>
               {dateFilter === 'today' 
                 ? 'No events scheduled for today'
                 : 'Try adjusting your filters'}
@@ -296,7 +298,7 @@ export default function EventsTabContent({
           onPress={onCreateEvent}
           activeOpacity={0.8}
         >
-          <Add size={28} color={colors.white} />
+          <Add size={28} color={'#FFFFFF'} />
         </TouchableOpacity>
       )}
     </View>
@@ -348,9 +350,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   filterChipActive: {
     backgroundColor: colors.primary,
@@ -383,7 +385,7 @@ const styles = StyleSheet.create({
   dateLine: {
     flex: 1,
     height: 1,
-    backgroundColor: colors.gray200,
+    backgroundColor: colors.borderSubtle,
   },
   dateLabel: {
     fontSize: 12,
@@ -419,10 +421,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.primary,
+    backgroundColor: '#000000',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.primary,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

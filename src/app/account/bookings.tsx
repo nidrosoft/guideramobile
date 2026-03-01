@@ -1,11 +1,11 @@
 /**
- * MY BOOKINGS SCREEN
+ * MY DEALS SCREEN
  * 
- * User's flight, hotel, car, and experience bookings.
- * Organized by upcoming and past with status indicators.
+ * User's saved deals and recent deal clicks.
+ * Organized by Saved and Recent tabs.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -14,7 +14,6 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  Dimensions,
   ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -28,145 +27,53 @@ import {
   Calendar,
   TicketStar,
   ArrowRight2,
+  Heart,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
-import { useAuth } from '@/context/AuthContext';
-import { bookingService, Booking, BookingType, BookingStatus } from '@/services/booking.service';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { useTheme } from '@/context/ThemeContext';
+import { useSavedDeals, useRecentClicks } from '@/hooks/useDeals';
+import type { SavedDeal, DealClick, DealType } from '@/services/deal';
+import { getProviderDisplayName } from '@/services/deal';
 
 const TABS = [
-  { label: 'Upcoming', value: 'upcoming' },
-  { label: 'Past', value: 'past' },
+  { label: 'Saved', value: 'saved' },
+  { label: 'Recent', value: 'recent' },
 ];
 
-const TYPE_ICONS: Record<BookingType, any> = {
+const TYPE_ICONS: Record<DealType, any> = {
   flight: Airplane,
   hotel: Building,
   car: Car,
   experience: Activity,
-  package: TicketStar,
 };
 
-const TYPE_COLORS: Record<BookingType, string> = {
+const TYPE_COLORS: Record<DealType, string> = {
   flight: colors.info,
   hotel: colors.primary,
   car: colors.warning,
   experience: colors.success,
-  package: colors.error,
-};
-
-const STATUS_COLORS: Record<BookingStatus, { bg: string; text: string }> = {
-  pending: { bg: '#FFF3E0', text: '#E65100' },
-  confirmed: { bg: '#E8F5E9', text: '#2E7D32' },
-  cancelled: { bg: '#FFEBEE', text: '#C62828' },
-  completed: { bg: '#E3F2FD', text: '#1565C0' },
-  refunded: { bg: '#F3E5F5', text: '#7B1FA2' },
 };
 
 export default function BookingsScreen() {
   const router = useRouter();
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
-  const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([]);
-  const [pastBookings, setPastBookings] = useState<Booking[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { colors: tc } = useTheme();
+  const [activeTab, setActiveTab] = useState<'saved' | 'recent'>('saved');
+  const { deals: savedDeals, isLoading: savedLoading, refresh: refreshSaved, remove } = useSavedDeals();
+  const { clicks: recentClicks, isLoading: recentLoading, refresh: refreshRecent } = useRecentClicks();
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchBookings = useCallback(async () => {
-    if (!user?.id) return;
-    
-    try {
-      const [upcomingRes, pastRes] = await Promise.all([
-        bookingService.getUpcomingBookings(user.id),
-        bookingService.getPastBookings(user.id),
-      ]);
-      
-      if (upcomingRes.data) setUpcomingBookings(upcomingRes.data);
-      if (pastRes.data) setPastBookings(pastRes.data);
-    } catch (error) {
-      console.error('Error fetching bookings:', error);
-    } finally {
-      setIsLoading(false);
-      setRefreshing(false);
-    }
-  }, [user?.id]);
+  const isLoading = activeTab === 'saved' ? savedLoading : recentLoading;
 
-  useEffect(() => {
-    fetchBookings();
-  }, [fetchBookings]);
-
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    fetchBookings();
-  }, [fetchBookings]);
+    await (activeTab === 'saved' ? refreshSaved() : refreshRecent());
+    setRefreshing(false);
+  }, [activeTab, refreshSaved, refreshRecent]);
   
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.back();
-  };
-
-  const handleBookingPress = (booking: Booking) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({
-      pathname: '/account/booking-detail',
-      params: { id: booking.id },
-    } as any);
-  };
-
-  const currentBookings = activeTab === 'upcoming' ? upcomingBookings : pastBookings;
-
-  const getBookingTitle = (booking: Booking): string => {
-    switch (booking.type) {
-      case 'flight':
-        const flight = booking.flight_booking;
-        if (flight?.outbound_flight) {
-          return `${flight.outbound_flight.departure?.city || 'Origin'} → ${flight.outbound_flight.arrival?.city || 'Destination'}`;
-        }
-        return 'Flight Booking';
-      case 'hotel':
-        return booking.hotel_booking?.hotel?.name || 'Hotel Booking';
-      case 'car':
-        return booking.car_booking?.car?.name || 'Car Rental';
-      case 'experience':
-        return booking.experience_booking?.experience?.name || 'Experience';
-      case 'package':
-        return 'Travel Package';
-      default:
-        return 'Booking';
-    }
-  };
-
-  const getBookingSubtitle = (booking: Booking): string => {
-    switch (booking.type) {
-      case 'flight':
-        const flight = booking.flight_booking;
-        if (flight?.outbound_flight?.departure?.date) {
-          return formatDate(flight.outbound_flight.departure.date);
-        }
-        return booking.reference_number;
-      case 'hotel':
-        const hotel = booking.hotel_booking;
-        if (hotel?.check_in_date) {
-          return `${formatDate(hotel.check_in_date)} - ${formatDate(hotel.check_out_date)}`;
-        }
-        return booking.reference_number;
-      case 'car':
-        const car = booking.car_booking;
-        if (car?.pickup_datetime) {
-          return formatDate(car.pickup_datetime);
-        }
-        return booking.reference_number;
-      case 'experience':
-        const exp = booking.experience_booking;
-        if (exp?.date) {
-          return formatDate(exp.date);
-        }
-        return booking.reference_number;
-      default:
-        return booking.reference_number;
-    }
   };
 
   const formatDate = (dateStr: string): string => {
@@ -190,15 +97,15 @@ export default function BookingsScreen() {
   };
   
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: tc.background }]}>
+      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.title}>My Bookings</Text>
+        <Text style={[styles.title, { color: tc.textPrimary }]}>My Deals</Text>
         <View style={styles.placeholder} />
       </View>
       
@@ -213,7 +120,7 @@ export default function BookingsScreen() {
             ]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setActiveTab(tab.value as 'upcoming' | 'past');
+              setActiveTab(tab.value as 'saved' | 'recent');
             }}
           >
             <Text style={[
@@ -222,9 +129,9 @@ export default function BookingsScreen() {
             ]}>
               {tab.label}
             </Text>
-            {tab.value === 'upcoming' && upcomingBookings.length > 0 && (
+            {tab.value === 'saved' && savedDeals.length > 0 && (
               <View style={styles.tabBadge}>
-                <Text style={styles.tabBadgeText}>{upcomingBookings.length}</Text>
+                <Text style={styles.tabBadgeText}>{savedDeals.length}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -244,86 +151,145 @@ export default function BookingsScreen() {
           <View style={styles.loadingState}>
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
-        ) : currentBookings.length === 0 ? (
-          <View style={styles.emptyState}>
-            <TicketStar size={48} color={colors.gray300} variant="Bold" />
-            <Text style={styles.emptyTitle}>
-              {activeTab === 'upcoming' ? 'No upcoming bookings' : 'No past bookings'}
-            </Text>
-            <Text style={styles.emptyText}>
-              {activeTab === 'upcoming' 
-                ? 'Your upcoming trips will appear here'
-                : 'Your completed trips will appear here'}
-            </Text>
-          </View>
+        ) : activeTab === 'saved' ? (
+          savedDeals.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Heart size={48} color={colors.gray300} variant="Bold" />
+              <Text style={styles.emptyTitle}>No saved deals</Text>
+              <Text style={styles.emptyText}>Deals you save will appear here</Text>
+            </View>
+          ) : (
+            savedDeals.map(deal => (
+              <DealCard
+                key={deal.id}
+                deal={deal}
+                formatCurrency={formatCurrency}
+                formatDate={formatDate}
+              />
+            ))
+          )
         ) : (
-          currentBookings.map(booking => (
-            <BookingCard
-              key={booking.id}
-              booking={booking}
-              title={getBookingTitle(booking)}
-              subtitle={getBookingSubtitle(booking)}
-              onPress={() => handleBookingPress(booking)}
-              formatCurrency={formatCurrency}
-            />
-          ))
+          recentClicks.length === 0 ? (
+            <View style={styles.emptyState}>
+              <TicketStar size={48} color={colors.gray300} variant="Bold" />
+              <Text style={styles.emptyTitle}>No recent activity</Text>
+              <Text style={styles.emptyText}>Deals you click will appear here</Text>
+            </View>
+          ) : (
+            recentClicks.map(click => (
+              <ClickCard
+                key={click.id}
+                click={click}
+                formatCurrency={formatCurrency}
+                formatDate={formatDate}
+              />
+            ))
+          )
         )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// Booking Card Component
-interface BookingCardProps {
-  booking: Booking;
-  title: string;
-  subtitle: string;
-  onPress: () => void;
+// Saved Deal Card
+interface DealCardProps {
+  deal: SavedDeal;
   formatCurrency: (amount: number, currency?: string) => string;
+  formatDate: (dateStr: string) => string;
 }
 
-function BookingCard({ booking, title, subtitle, onPress, formatCurrency }: BookingCardProps) {
-  const TypeIcon = TYPE_ICONS[booking.type] || TicketStar;
-  const typeColor = TYPE_COLORS[booking.type] || colors.primary;
-  const statusStyle = STATUS_COLORS[booking.status] || STATUS_COLORS.pending;
+function DealCard({ deal, formatCurrency, formatDate }: DealCardProps) {
+  const TypeIcon = TYPE_ICONS[deal.deal_type] || TicketStar;
+  const typeColor = TYPE_COLORS[deal.deal_type] || colors.primary;
+  const snapshot = deal.deal_snapshot as any;
   
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
+    <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={[styles.typeIcon, { backgroundColor: `${typeColor}15` }]}>
           <TypeIcon size={20} color={typeColor} variant="Bold" />
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-          <Text style={[styles.statusText, { color: statusStyle.text }]}>
-            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-          </Text>
-        </View>
+        <Text style={styles.providerBadge}>
+          {getProviderDisplayName(deal.provider)}
+        </Text>
       </View>
       
-      <Text style={styles.cardTitle} numberOfLines={1}>{title}</Text>
+      <Text style={styles.cardTitle} numberOfLines={1}>
+        {snapshot?.title || `${deal.deal_type} deal`}
+      </Text>
       
       <View style={styles.cardDetails}>
         <View style={styles.detailRow}>
           <Calendar size={14} color={colors.textSecondary} />
-          <Text style={styles.detailText}>{subtitle}</Text>
+          <Text style={styles.detailText}>{formatDate(deal.created_at)}</Text>
         </View>
-        <Text style={styles.refNumber}>#{booking.reference_number}</Text>
+        {deal.price_changed && deal.price_change_pct && (
+          <Text style={[styles.priceChange, {
+            color: deal.price_change_pct < 0 ? '#10B981' : '#EF4444'
+          }]}>
+            {deal.price_change_pct > 0 ? '+' : ''}{deal.price_change_pct.toFixed(0)}%
+          </Text>
+        )}
       </View>
       
       <View style={styles.cardFooter}>
         <Text style={styles.totalAmount}>
-          {formatCurrency(booking.total, booking.currency)}
+          {formatCurrency(deal.current_price || deal.price_at_save, deal.price_currency)}
         </Text>
         <ArrowRight2 size={18} color={colors.gray400} />
       </View>
-    </TouchableOpacity>
+    </View>
+  );
+}
+
+// Recent Click Card
+interface ClickCardProps {
+  click: DealClick;
+  formatCurrency: (amount: number, currency?: string) => string;
+  formatDate: (dateStr: string) => string;
+}
+
+function ClickCard({ click, formatCurrency, formatDate }: ClickCardProps) {
+  const TypeIcon = TYPE_ICONS[click.deal_type] || TicketStar;
+  const typeColor = TYPE_COLORS[click.deal_type] || colors.primary;
+  const snapshot = click.deal_snapshot as any;
+  
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={[styles.typeIcon, { backgroundColor: `${typeColor}15` }]}>
+          <TypeIcon size={20} color={typeColor} variant="Bold" />
+        </View>
+        <Text style={styles.providerBadge}>
+          {getProviderDisplayName(click.provider)}
+        </Text>
+      </View>
+      
+      <Text style={styles.cardTitle} numberOfLines={1}>
+        {snapshot?.title || `${click.deal_type} deal`}
+      </Text>
+      
+      <View style={styles.cardDetails}>
+        <View style={styles.detailRow}>
+          <Calendar size={14} color={colors.textSecondary} />
+          <Text style={styles.detailText}>{formatDate(click.clicked_at)}</Text>
+        </View>
+      </View>
+      
+      <View style={styles.cardFooter}>
+        <Text style={styles.totalAmount}>
+          {formatCurrency(click.price_amount, click.price_currency)}
+        </Text>
+        <ArrowRight2 size={18} color={colors.gray400} />
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   header: {
     flexDirection: 'row',
@@ -331,7 +297,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   backButton: {
     width: 40,
@@ -351,9 +317,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   tab: {
     flex: 1,
@@ -376,7 +342,7 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   tabBadge: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 10,
@@ -419,8 +385,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   card: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
     padding: spacing.md,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -441,14 +407,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  statusBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.full,
-  },
-  statusText: {
-    fontSize: 11,
+  providerBadge: {
+    fontSize: 12,
     fontWeight: typography.fontWeight.semibold,
+    color: colors.textSecondary,
+  },
+  priceChange: {
+    fontSize: 13,
+    fontWeight: typography.fontWeight.bold,
   },
   cardTitle: {
     fontSize: typography.fontSize.base,
@@ -482,7 +448,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
+    borderTopColor: colors.borderSubtle,
   },
   totalAmount: {
     fontSize: typography.fontSize.lg,

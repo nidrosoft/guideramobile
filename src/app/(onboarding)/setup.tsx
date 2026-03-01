@@ -136,7 +136,7 @@ export default function Setup() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   content: {
     flex: 1,

@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 import { Sms } from 'iconsax-react-native';
 import CloseIcon from '@/components/common/icons/CloseIcon';
 import { colors, typography, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useSignUp } from '@clerk/clerk-expo';
 import CountryPicker, { Country, CountryCode } from 'react-native-country-picker-modal';
 
@@ -456,7 +457,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     fontSize: typography.fontSize.base,
     color: colors.textPrimary,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
   },
   phoneInputRow: {
     flexDirection: 'row',
@@ -465,7 +466,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.gray300,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     overflow: 'hidden',
   },
   countryCodeButton: {
@@ -532,7 +533,7 @@ const styles = StyleSheet.create({
   },
   googleButton: {
     height: 56,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.gray300,

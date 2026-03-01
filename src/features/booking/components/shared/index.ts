@@ -13,3 +13,9 @@ export { default as FlowHeader } from './FlowHeader';
 export { default as LocationPicker, LocationTrigger } from './LocationPicker';
 export { default as AirportPicker } from './AirportPicker';
 export type { Airport } from './AirportPicker';
+
+// Deal aggregator components
+export { default as DealBadge } from './DealBadge';
+export { default as BookOnProviderButton } from './BookOnProviderButton';
+export { default as PriceAlertButton } from './PriceAlertButton';
+export { default as PriceHistoryChart } from './PriceHistoryChart';

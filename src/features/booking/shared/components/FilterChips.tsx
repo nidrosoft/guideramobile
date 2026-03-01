@@ -27,7 +27,8 @@ import {
   TickCircle,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 // Filter option type
 export interface FilterOption {
@@ -78,7 +79,7 @@ interface FilterChipsProps {
 }
 
 // Get icon for filter type
-const getFilterIcon = (iconType: string, isActive: boolean) => {
+const getFilterIcon = (iconType: string, isActive: boolean, colors: any) => {
   const iconColor = isActive ? colors.primary : colors.textPrimary;
   const size = 16;
   
@@ -121,6 +122,7 @@ export default function FilterChips({
   onFilterSelect,
   onToggleFilter,
 }: FilterChipsProps) {
+  const { colors } = useTheme();
   const handleChipPress = (filter: FilterOption) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
@@ -160,19 +162,20 @@ export default function FilterChips({
               key={filter.id}
               style={[
                 styles.chip,
-                isActive && styles.chipActive,
+                { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle },
+                isActive && { backgroundColor: colors.primary + '10', borderColor: colors.primary },
               ]}
               onPress={() => handleChipPress(filter)}
               activeOpacity={0.7}
             >
-              {getFilterIcon(filter.icon, isActive)}
-              <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+              {getFilterIcon(filter.icon, isActive, colors)}
+              <Text style={[styles.chipText, { color: colors.textPrimary }, isActive && { color: colors.primary, fontWeight: typography.fontWeight.medium }]}>
                 {selectedFilters[filter.id] || filter.label}
               </Text>
               {!isToggle && (
                 <ArrowDown2 
                   size={14} 
-                  color={isActive ? colors.primary : colors.textSecondary}
+                  color={isActive ? colors.primary : colors.textSecondary} 
                   style={isDropdownOpen ? styles.arrowUp : undefined}
                 />
               )}
@@ -186,7 +189,7 @@ export default function FilterChips({
         <Animated.View 
           entering={FadeIn.duration(150)}
           exiting={FadeOut.duration(100)}
-          style={styles.dropdown}
+          style={[styles.dropdown, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}
         >
           {activeFilterOptions.values.map((value, index) => {
             const isSelected = selectedFilters[activeFilter] === value;
@@ -195,16 +198,18 @@ export default function FilterChips({
               <TouchableOpacity
                 key={value}
                 style={[
-                  styles.dropdownOption, 
-                  isSelected && styles.dropdownOptionSelected,
+                  styles.dropdownOption,
+                  { borderBottomColor: colors.borderSubtle },
+                  isSelected && { backgroundColor: colors.primary + '08' },
                   isLast && styles.dropdownOptionLast,
                 ]}
                 onPress={() => handleOptionSelect(activeFilter, value)}
                 activeOpacity={0.7}
               >
                 <Text style={[
-                  styles.dropdownOptionText, 
-                  isSelected && styles.dropdownOptionTextSelected
+                  styles.dropdownOptionText,
+                  { color: colors.textPrimary },
+                  isSelected && { color: colors.primary, fontWeight: typography.fontWeight.medium },
                 ]}>
                   {value}
                 </Text>
@@ -238,22 +243,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.gray200,
     gap: 6,
-  },
-  chipActive: {
-    backgroundColor: colors.primary + '10',
-    borderColor: colors.primary,
   },
   chipText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textPrimary,
-  },
-  chipTextActive: {
-    color: colors.primary,
-    fontWeight: typography.fontWeight.medium,
   },
   arrowUp: {
     transform: [{ rotate: '180deg' }],
@@ -261,13 +255,11 @@ const styles = StyleSheet.create({
   // Vertical dropdown menu - matches standalone flow behavior
   dropdown: {
     position: 'absolute',
-    top: 48, // Below the filter chips row
+    top: 48,
     left: 0,
     right: 0,
-    backgroundColor: colors.white,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: '#E6E9EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -284,20 +276,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
-  },
-  dropdownOptionSelected: {
-    backgroundColor: colors.primary + '08',
   },
   dropdownOptionLast: {
     borderBottomWidth: 0,
   },
   dropdownOptionText: {
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
-  },
-  dropdownOptionTextSelected: {
-    color: colors.primary,
-    fontWeight: typography.fontWeight.medium,
   },
 });

@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing, colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Star1, Location, Heart, TickCircle } from 'iconsax-react-native';
 
 interface BudgetFriendlyCardProps {
@@ -21,8 +22,9 @@ export default function BudgetFriendlyCard({
   savingsPercent,
   imageUrl 
 }: BudgetFriendlyCardProps) {
+  const { colors } = useTheme();
   return (
-    <TouchableOpacity style={styles.container}>
+    <TouchableOpacity style={[styles.container, { backgroundColor: colors.bgCard }]}>
       {/* Image Section */}
       <View style={styles.imageContainer}>
         <Image source={{ uri: imageUrl }} style={styles.image} />
@@ -43,7 +45,7 @@ export default function BudgetFriendlyCard({
         {/* Rating */}
         <View style={styles.ratingContainer}>
           <Star1 size={14} color="#FFD700" variant="Bold" />
-          <Text style={styles.ratingText}>{rating}</Text>
+          <Text style={[styles.ratingText, { color: colors.textSecondary }]}>{rating}</Text>
         </View>
         
         {/* Verified Badge */}
@@ -53,19 +55,19 @@ export default function BudgetFriendlyCard({
         </View>
 
         {/* Name */}
-        <Text style={styles.name} numberOfLines={2}>{name}</Text>
+        <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={2}>{name}</Text>
 
         {/* Category */}
-        <Text style={styles.category}>{category}</Text>
+        <Text style={[styles.category, { color: colors.textSecondary }]}>{category}</Text>
 
         {/* Location */}
         <View style={styles.locationContainer}>
           <Location size={12} color={colors.textSecondary} variant="Bold" />
-          <Text style={styles.locationText} numberOfLines={1}>{location}</Text>
+          <Text style={[styles.locationText, { color: colors.textSecondary }]} numberOfLines={1}>{location}</Text>
         </View>
 
         {/* Price */}
-        <Text style={styles.price}>{price}</Text>
+        <Text style={[styles.price, { color: colors.primary }]}>{price}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -75,10 +77,11 @@ const styles = StyleSheet.create({
   container: {
     width: 360,
     flexDirection: 'row',
-    backgroundColor: colors.white,
     borderRadius: 20,
     padding: spacing.md,
     marginRight: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -105,7 +108,7 @@ const styles = StyleSheet.create({
   savingsText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
   heartButton: {
     position: 'absolute',
@@ -114,7 +117,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -146,19 +149,16 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     fontWeight: typography.fontWeight.medium,
   },
   name: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: 4,
     lineHeight: 20,
   },
   category: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
   locationContainer: {
@@ -169,12 +169,10 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     flex: 1,
   },
   price: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary,
   },
 });

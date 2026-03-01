@@ -39,6 +39,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { rewardsService, Referral, ReferralStatus } from '@/services/rewards.service';
 
@@ -58,6 +59,7 @@ export default function ReferralsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [stats, setStats] = useState({
@@ -198,7 +200,7 @@ export default function ReferralsScreen() {
   };
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <StatusBar style="light" />
       
       {/* Animated Header */}
@@ -211,7 +213,7 @@ export default function ReferralsScreen() {
           style={[styles.headerGradient, { paddingTop: insets.top }]}
         >
           {/* Fixed Navigation Row - always visible and touchable */}
-          <View style={styles.header}>
+          <View style={[styles.header, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
             <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <ArrowLeft size={24} color={colors.white} />
             </TouchableOpacity>
@@ -574,7 +576,7 @@ const styles = StyleSheet.create({
   compactShareButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
@@ -594,7 +596,7 @@ const styles = StyleSheet.create({
   codeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     paddingLeft: spacing.lg,
     paddingRight: spacing.sm,
@@ -619,7 +621,7 @@ const styles = StyleSheet.create({
   shareButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.full,
@@ -652,8 +654,8 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
     padding: spacing.md,
     alignItems: 'center',
     shadowColor: '#000',
@@ -684,7 +686,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   stepsCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     shadowColor: '#000',
@@ -700,7 +702,7 @@ const styles = StyleSheet.create({
   },
   stepItemBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   stepNumber: {
     width: 32,
@@ -744,7 +746,7 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   emptyState: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.xl,
     alignItems: 'center',
@@ -765,8 +767,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 20,
     padding: spacing.md,
     marginBottom: spacing.sm,
     shadowColor: '#000',
@@ -830,7 +832,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
     paddingBottom: spacing.xl,
@@ -841,7 +843,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: colors.borderSubtle,
   },
   modalTitle: {
     fontSize: typography.fontSize.lg,
@@ -869,7 +871,7 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderSubtle,
   },
   modalFooter: {
     flexDirection: 'row',

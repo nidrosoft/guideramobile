@@ -8,6 +8,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Verify, Location, Crown } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { BuddyMatch } from '../types/buddy.types';
 
 interface BuddyMatchCardProps {
@@ -17,15 +18,16 @@ interface BuddyMatchCardProps {
 }
 
 export default function BuddyMatchCard({ buddy, onPress, isPremium }: BuddyMatchCardProps) {
+  const { colors: tc } = useTheme();
   const getMatchColor = (score: number) => {
     if (score >= 80) return colors.success;
     if (score >= 60) return colors.warning;
-    return colors.gray400;
+    return colors.borderSubtle;
   };
   
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[styles.container, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -42,7 +44,7 @@ export default function BuddyMatchCard({ buddy, onPress, isPremium }: BuddyMatch
       {/* Content */}
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.name}>{buddy.firstName} {buddy.lastName}</Text>
+          <Text style={[styles.name, { color: tc.textPrimary }]}>{buddy.firstName} {buddy.lastName}</Text>
           <View style={[styles.matchBadge, { backgroundColor: getMatchColor(buddy.matchScore) + '20' }]}>
             <Text style={[styles.matchText, { color: getMatchColor(buddy.matchScore) }]}>
               {buddy.matchScore}% match
@@ -52,14 +54,14 @@ export default function BuddyMatchCard({ buddy, onPress, isPremium }: BuddyMatch
         
         {buddy.sharedTrip && (
           <View style={styles.tripRow}>
-            <Location size={14} color={colors.primary} variant="Bold" />
-            <Text style={styles.tripText}>
+            <Location size={14} color={tc.primary} variant="Bold" />
+            <Text style={[styles.tripText, { color: tc.textSecondary }]}>
               {buddy.sharedTrip.destination} • {buddy.sharedTrip.dates}
             </Text>
           </View>
         )}
         
-        <Text style={styles.bio} numberOfLines={2}>{buddy.bio}</Text>
+        <Text style={[styles.bio, { color: tc.textSecondary }]} numberOfLines={2}>{buddy.bio}</Text>
         
         {/* Match Reasons */}
         <View style={styles.reasons}>
@@ -94,11 +96,13 @@ export default function BuddyMatchCard({ buddy, onPress, isPremium }: BuddyMatch
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -111,7 +115,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: 20,
   },
   verifiedBadge: {
     position: 'absolute',
@@ -119,12 +123,12 @@ const styles = StyleSheet.create({
     right: 0,
     width: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: 20,
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   content: {
     flex: 1,
@@ -172,7 +176,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   reasonTag: {
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: borderRadius.full,
@@ -196,7 +200,7 @@ const styles = StyleSheet.create({
   pendingBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.borderSubtle,
     borderRadius: borderRadius.full,
   },
   pendingText: {

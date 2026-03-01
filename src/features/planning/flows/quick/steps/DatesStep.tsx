@@ -27,6 +27,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, shadows, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { usePlanningStore } from '../../../stores/usePlanningStore';
 import { DURATION_PRESETS } from '../../../config/planning.config';
 
@@ -45,6 +46,7 @@ export default function DatesStep({
   onClose,
 }: DatesStepProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const {
     quickTripData,
     setStartDate,
@@ -109,7 +111,7 @@ export default function DatesStep({
   };
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -311,7 +313,7 @@ const styles = StyleSheet.create({
   },
   presetCard: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     alignItems: 'center',
@@ -344,7 +346,7 @@ const styles = StyleSheet.create({
   selectedDatesContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.lg,
@@ -383,7 +385,7 @@ const styles = StyleSheet.create({
   openCalendarButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.lg,
@@ -407,7 +409,7 @@ const styles = StyleSheet.create({
   flexibilityToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     ...shadows.sm,

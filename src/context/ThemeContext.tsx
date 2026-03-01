@@ -1,14 +1,14 @@
 /**
  * THEME CONTEXT
  * 
- * Provides theme management with light/dark mode support.
- * Persists user preference to AsyncStorage.
+ * Dark-mode-first design system. Primary accent: #3FC39E.
+ * Supports light / dark / system toggle.
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { useColorScheme, StatusBar } from 'react-native';
+import { StatusBar, useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors, darkColors, ColorScheme } from '@/styles/colors';
+import { colors as darkColors, lightColors, ColorScheme } from '@/styles/colors';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -25,9 +25,9 @@ const STORAGE_KEY = '@guidera_theme_mode';
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemColorScheme = useColorScheme();
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
+  const [themeMode, setThemeModeState] = useState<ThemeMode>('dark');
   const [isLoaded, setIsLoaded] = useState(false);
+  const systemColorScheme = useColorScheme();
 
   // Load saved theme preference
   useEffect(() => {
@@ -46,20 +46,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     loadTheme();
   }, []);
 
-  // Determine if dark mode is active
+  // Resolve isDark from themeMode + system preference
   const isDark = useMemo(() => {
-    if (themeMode === 'system') {
-      return systemColorScheme === 'dark';
-    }
-    return themeMode === 'dark';
+    if (themeMode === 'dark') return true;
+    if (themeMode === 'light') return false;
+    return systemColorScheme === 'dark';
   }, [themeMode, systemColorScheme]);
 
-  // Get active color scheme
-  const activeColors = useMemo(() => {
-    return isDark ? darkColors : colors;
-  }, [isDark]);
+  // Return the correct color set
+  const activeColors = isDark ? darkColors : lightColors;
 
-  // Set theme mode
+  // Set theme mode and persist
   const setThemeMode = useCallback(async (mode: ThemeMode) => {
     setThemeModeState(mode);
     try {
@@ -71,9 +68,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Toggle between light and dark
   const toggleTheme = useCallback(async () => {
-    const newMode = isDark ? 'light' : 'dark';
-    await setThemeMode(newMode);
-  }, [isDark, setThemeMode]);
+    const next: ThemeMode = themeMode === 'dark' ? 'light' : 'dark';
+    await setThemeMode(next);
+  }, [themeMode, setThemeMode]);
 
   const value = useMemo(() => ({
     themeMode,

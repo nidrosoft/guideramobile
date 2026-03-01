@@ -82,7 +82,7 @@ export default function ReviewCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     borderRadius: 16,
     padding: spacing.lg,
     marginBottom: spacing.md,

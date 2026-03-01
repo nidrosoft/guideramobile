@@ -8,6 +8,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { GuideVouch } from '../types/guide.types';
 import TrustBadge from './TrustBadge';
 
@@ -17,11 +18,12 @@ interface VouchCardProps {
 }
 
 export default function VouchCard({ vouch, onVoucherPress }: VouchCardProps) {
+  const { colors: tc } = useTheme();
   const timeSince = getTimeSince(vouch.createdAt);
 
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[styles.container, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
       onPress={onVoucherPress}
       activeOpacity={onVoucherPress ? 0.7 : 1}
       disabled={!onVoucherPress}
@@ -29,15 +31,15 @@ export default function VouchCard({ vouch, onVoucherPress }: VouchCardProps) {
       <Image source={{ uri: vouch.voucherAvatar }} style={styles.avatar} />
       <View style={styles.content}>
         <View style={styles.nameRow}>
-          <Text style={styles.name}>{vouch.voucherName}</Text>
+          <Text style={[styles.name, { color: tc.textPrimary }]}>{vouch.voucherName}</Text>
           <TrustBadge tier={vouch.voucherTrustTier} size="small" showLabel={false} />
         </View>
         {vouch.message ? (
-          <Text style={styles.message} numberOfLines={2}>"{vouch.message}"</Text>
+          <Text style={[styles.message, { color: tc.textSecondary }]} numberOfLines={2}>"{vouch.message}"</Text>
         ) : (
-          <Text style={styles.vouched}>Vouched for this guide</Text>
+          <Text style={[styles.vouched, { color: colors.textTertiary }]}>Vouched for this guide</Text>
         )}
-        <Text style={styles.time}>{timeSince}</Text>
+        <Text style={[styles.time, { color: colors.textTertiary }]}>{timeSince}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -59,10 +61,12 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: colors.white,
-    borderRadius: 12,
+    backgroundColor: colors.bgElevated,
+    borderRadius: 24,
     padding: 12,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.03,

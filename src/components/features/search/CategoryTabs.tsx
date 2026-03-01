@@ -32,7 +32,7 @@ export default function CategoryTabs({
   const { colors } = useTheme();
 
   const dynamicStyles = useMemo(() => ({
-    container: { backgroundColor: colors.white, borderBottomColor: colors.gray100 },
+    container: { backgroundColor: colors.bgElevated, borderBottomColor: colors.gray100 },
     tab: { backgroundColor: colors.gray100 },
     tabActive: { backgroundColor: colors.primary },
     tabText: { color: colors.textSecondary },

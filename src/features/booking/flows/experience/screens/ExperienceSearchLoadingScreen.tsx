@@ -20,6 +20,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Map1, Ticket, Coffee, Activity, Star1 } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useExperienceStore } from '../../../stores/useExperienceStore';
 import { useExperienceSearch } from '@/hooks/useProviderSearch';
 import { ExperienceSearchParams as ProviderExperienceSearchParams } from '@/types/unified';
@@ -40,6 +41,7 @@ export default function ExperienceSearchLoadingScreen({
   onComplete,
 }: ExperienceSearchLoadingScreenProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const { searchParams, setResults } = useExperienceStore();
   const [messageIndex, setMessageIndex] = useState(0);
   const [searchState, { search }] = useExperienceSearch();
@@ -298,7 +300,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgElevated,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',

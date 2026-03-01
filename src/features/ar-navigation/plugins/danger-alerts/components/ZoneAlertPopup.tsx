@@ -24,6 +24,7 @@ import {
   Danger,
 } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { DangerLevel } from '../types/dangerAlerts.types';
 
 const { width } = Dimensions.get('window');
@@ -310,7 +311,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 16,
   },
   infoCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgModal,
     marginTop: -8,
     marginHorizontal: spacing.sm,
     paddingTop: spacing.md + 8,
