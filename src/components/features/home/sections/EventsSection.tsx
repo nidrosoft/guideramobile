@@ -12,6 +12,7 @@ import StackedEventCards from '@/components/features/home/StackedEventCards';
 import type { EventCardData } from '@/components/features/home/StackedEventCards';
 import { useEvents } from '@/hooks/useEvents';
 import { eventsService, DiscoveredEvent } from '@/services/events.service';
+import { useAuth } from '@/context/AuthContext';
 
 const DEFAULT_CITY = 'San Diego';
 const DEFAULT_COUNTRY = 'United States';
@@ -59,11 +60,19 @@ function resolveMetroArea(city: string): string | undefined {
 }
 
 export default function EventsSection() {
+  const { profile } = useAuth();
   const [city, setCity] = useState(DEFAULT_CITY);
   const [country, setCountry] = useState(DEFAULT_COUNTRY);
 
-  // Attempt to resolve user location to city/country
+  // Use profile location as primary, GPS as fallback only if profile has no city
   useEffect(() => {
+    if (profile?.city) {
+      setCity(profile.city);
+      if (profile?.country) setCountry(profile.country);
+      return;
+    }
+
+    // Fallback: detect via GPS (only if profile has no location set)
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
@@ -81,7 +90,7 @@ export default function EventsSection() {
         // Fall back to defaults
       }
     })();
-  }, []);
+  }, [profile?.city, profile?.country]);
 
   const metroArea = resolveMetroArea(city);
 

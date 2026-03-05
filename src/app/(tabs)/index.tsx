@@ -13,7 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { SearchNormal1, Archive, Notification } from 'iconsax-react-native';
+import { SearchNormal1, Archive, Notification, Location } from 'iconsax-react-native';
 import TripReminder from '@/components/features/home/TripReminder';
 import SectionRenderer from '@/components/features/home/SectionRenderer';
 import PlanBottomSheet from '@/components/features/home/PlanBottomSheet';
@@ -22,7 +22,6 @@ import { FlightBookingFlow, HotelBookingFlow, PackageBookingFlow, CarBookingFlow
 import { categories } from '@/data/categories';
 import { SECTIONS_CONFIG } from '@/config/sections.config';
 import { useAuth } from '@/context/AuthContext';
-import { profileService } from '@/services/profile.service';
 import { useHomepageData } from '@/features/homepage';
 
 export default function Home() {
@@ -128,17 +127,32 @@ export default function Home() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Image
-            source={{ uri: profile?.avatar_url || 'https://i.pravatar.cc/150?img=12' }}
-            style={styles.profileImage}
-          />
+          {profile?.avatar_url ? (
+            <Image
+              source={{ uri: profile.avatar_url }}
+              style={styles.profileImage}
+            />
+          ) : (
+            <View style={[styles.profileImage, styles.avatarFallback, { backgroundColor: colors.primary }]}>
+              <Text style={styles.avatarInitial}>
+                {(profile?.first_name?.[0] || 'T').toUpperCase()}
+              </Text>
+            </View>
+          )}
           <View style={styles.welcomeContainer}>
             <Text style={[styles.welcomeText, dynamicStyles.welcomeText]}>
               {t('home.welcomeUser', { name: profile?.first_name || 'Traveler' })}
             </Text>
-            <Text style={[styles.locationText, dynamicStyles.locationText]}>
-              {profile?.location_name || profile?.city || t('home.setLocation')}
-            </Text>
+            <TouchableOpacity
+              style={styles.locationRow}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/account/location-settings' as any); }}
+              activeOpacity={0.7}
+            >
+              <Location size={14} color={colors.textSecondary} variant="Bold" />
+              <Text style={[styles.locationText, dynamicStyles.locationText]} numberOfLines={1}>
+                {profile?.location_name || profile?.city || t('home.setLocation')}
+              </Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
@@ -291,9 +305,23 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
   },
+  avatarFallback: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitial: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: '#FFFFFF',
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
   locationText: {
     fontSize: typography.fontSize.sm,
-    marginTop: 2,
   },
   headerActions: {
     flexDirection: 'row',

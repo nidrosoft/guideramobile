@@ -189,13 +189,6 @@ const styles = StyleSheet.create({
   loadingContainer: {
     minHeight: 180,
   },
-  skeletonCard: {
-    width: 240,
-    height: 170,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   card: {
     width: 240,
     height: 170,

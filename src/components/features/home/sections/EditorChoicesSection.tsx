@@ -3,7 +3,7 @@
  * 
  * Displays editor's choice destinations with horizontal scrolling cards.
  * Extracted from homepage for better modularity.
- * Now uses real data from database with mock data fallback.
+ * Uses real data from the homepage API.
  */
 
 import { ScrollView, StyleSheet, TouchableOpacity } from 'react-native';

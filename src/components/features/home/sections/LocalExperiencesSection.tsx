@@ -91,14 +91,12 @@ export default function LocalExperiencesSection() {
               originalPrice={
                 exp.price.originalPrice && exp.price.originalPrice > exp.price.amount
                   ? `$${Math.round(exp.price.originalPrice)}`
-                  : exp.price.amount > 0
-                    ? `$${Math.round(exp.price.amount * 1.85)}`
-                    : undefined
+                  : undefined
               }
               discountPercent={
                 exp.price.discountPercent && exp.price.discountPercent > 0
                   ? exp.price.discountPercent
-                  : exp.price.amount > 0 ? 46 : undefined
+                  : undefined
               }
               freeCancellation={exp.freeCancellation}
               instantConfirmation={exp.instantConfirmation}
@@ -129,23 +127,5 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: typography.fontSize.sm,
     textAlign: 'center',
-  },
-  // Skeleton loading
-  skeleton: {
-    width: 280,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  skeletonImage: {
-    width: '100%',
-    height: 170,
-  },
-  skeletonInfo: {
-    padding: spacing.md,
-    gap: 8,
-  },
-  skeletonLine: {
-    height: 12,
-    borderRadius: 6,
   },
 });

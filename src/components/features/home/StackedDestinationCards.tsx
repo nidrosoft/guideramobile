@@ -15,7 +15,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { typography, spacing } from '@/styles';
-import { Bookmark, ArrowRight, Star1, Ticket, TrendUp, Crown } from 'iconsax-react-native';
+import { ArrowRight, Star1, Ticket } from 'iconsax-react-native';
 import { useHomepageDataSafe, useInteractionTracking, filterByCategory, useSectionVisibility } from '@/features/homepage';
 import { useTheme } from '@/context/ThemeContext';
 import SaveButton from '@/components/common/SaveButton';
@@ -27,78 +27,9 @@ const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 const SWIPE_VELOCITY_THRESHOLD = 500;
 const MAX_ROTATION = 12; // degrees
 
-// Mock data fallback
-const mockDestinations = [
-  {
-    id: '1',
-    city: 'Brazil',
-    country: 'Rio de Janeiro',
-    name: 'Christ the Redeemer',
-    rating: 4.8,
-    visitors: '2M/year',
-    entryFee: '$25',
-    bestTime: 'Apr-Oct',
-    image: 'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?w=600',
-    isUNESCO: true,
-    trending: '+15%',
-  },
-  {
-    id: '2',
-    city: 'France',
-    country: 'Paris',
-    name: 'Eiffel Tower',
-    rating: 4.9,
-    visitors: '7M/year',
-    entryFee: '€26',
-    bestTime: 'Apr-Jun',
-    image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=600',
-    isUNESCO: false,
-    trending: '+22%',
-  },
-  {
-    id: '3',
-    city: 'Egypt',
-    country: 'Giza',
-    name: 'Great Pyramid',
-    rating: 4.7,
-    visitors: '14M/year',
-    entryFee: '$20',
-    bestTime: 'Oct-Apr',
-    image: 'https://images.unsplash.com/photo-1539768942893-daf53e736b68?w=600',
-    isUNESCO: true,
-    trending: '+18%',
-  },
-  {
-    id: '4',
-    city: 'India',
-    country: 'Agra',
-    name: 'Taj Mahal',
-    rating: 4.9,
-    visitors: '8M/year',
-    entryFee: '₹1050',
-    bestTime: 'Nov-Feb',
-    image: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=600',
-    isUNESCO: true,
-    trending: '+25%',
-  },
-  {
-    id: '5',
-    city: 'USA',
-    country: 'New York',
-    name: 'Statue of Liberty',
-    rating: 4.6,
-    visitors: '4.5M/year',
-    entryFee: '$24',
-    bestTime: 'May-Sep',
-    image: 'https://images.unsplash.com/photo-1485738422979-f5c462d49f04?w=600',
-    isUNESCO: true,
-    trending: '+12%',
-  },
-];
-
 export default function StackedDestinationCards() {
   const router = useRouter();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
   const homepageData = useHomepageDataSafe();
   const { trackDetailView } = useInteractionTracking();
@@ -115,16 +46,13 @@ export default function StackedDestinationCards() {
         city: item.location?.city || 'Unknown',
         country: item.location?.country || 'Unknown',
         name: item.title,
-        rating: item.rating || 4.5,
-        visitors: item.matchScore ? `${(item.matchScore / 100).toFixed(1)}M/year` : '',
-        entryFee: item.price?.formatted || '',
-        bestTime: item.tags?.includes('spring') ? 'Mar-May' : item.tags?.includes('summer') ? 'Jun-Aug' : 'Year-round',
+        rating: item.rating || 0,
+        price: item.price?.formatted || '',
         image: item.imageUrl || item.thumbnailUrl,
-        isUNESCO: item.badges?.some(b => b.text?.includes('Editor')) || (item.rating != null && item.rating >= 4.8),
-        trending: item.badges?.some(b => b.type === 'trending') ? `+${Math.round((item.matchScore || 500) / 50)}%` : '',
+        badge: item.badges?.[0]?.text || '',
       }));
     }
-    return mockDestinations;
+    return [];
   }, [homepageData?.sections]);
 
   const activeCategory = homepageData?.activeCategory ?? 'all';
@@ -262,16 +190,11 @@ export default function StackedDestinationCards() {
 
             {/* Top Badges */}
             <View style={styles.topContainer}>
-              {destination.isUNESCO ? (
-                <View style={styles.unescoBadge}>
-                  <Crown size={14} color="#FFD700" variant="Bold" />
-                  <Text style={styles.unescoBadgeText}>UNESCO</Text>
+              {destination.badge ? (
+                <View style={styles.badgeContainer}>
+                  <Text style={styles.badgeText}>{destination.badge}</Text>
                 </View>
               ) : null}
-              <View style={styles.trendingBadge}>
-                <TrendUp size={14} color="#4CAF50" variant="Bold" />
-                <Text style={styles.trendingText}>{destination.trending}</Text>
-              </View>
               <SaveButton destinationId={destination.id} />
             </View>
 
@@ -282,20 +205,19 @@ export default function StackedDestinationCards() {
                   <Text style={styles.location}>{destination.city}, {destination.country}</Text>
                   <Text style={styles.name}>{destination.name}</Text>
                   <View style={styles.keyInfoRow}>
-                    <View style={styles.infoItem}>
-                      <Star1 size={14} color="#FFD700" variant="Bold" />
-                      <Text style={styles.infoText}>{destination.rating}</Text>
-                    </View>
-                    <View style={styles.infoItem}>
-                      <Ticket size={14} color="#FFFFFF" variant="Bold" />
-                      <Text style={styles.infoText}>{destination.entryFee}</Text>
-                    </View>
-                    <View style={styles.infoItem}>
-                      <Text style={styles.infoLabel}>Best:</Text>
-                      <Text style={styles.infoText}>{destination.bestTime}</Text>
-                    </View>
+                    {destination.rating > 0 ? (
+                      <View style={styles.infoItem}>
+                        <Star1 size={14} color="#FFD700" variant="Bold" />
+                        <Text style={styles.infoText}>{destination.rating}</Text>
+                      </View>
+                    ) : null}
+                    {destination.price ? (
+                      <View style={styles.infoItem}>
+                        <Ticket size={14} color="#FFFFFF" variant="Bold" />
+                        <Text style={styles.infoText}>{destination.price}</Text>
+                      </View>
+                    ) : null}
                   </View>
-                  <Text style={styles.visitors}>{destination.visitors} visitors</Text>
                 </View>
                 <TouchableOpacity
                   style={styles.arrowButton}
@@ -351,42 +273,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
   },
-  unescoBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  badgeContainer: {
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: 20,
   },
-  unescoBadgeText: {
+  badgeText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
-    color: '#FFD700',
-  },
-  trendingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 20,
-  },
-  trendingText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.bold,
-    color: '#4CAF50',
-  },
-  bookmarkButton: {
-    marginLeft: 'auto',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    color: '#FFFFFF',
   },
   bottomContainer: {
     position: 'absolute',
@@ -425,20 +321,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  infoLabel: {
-    fontSize: typography.fontSize.xs,
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontWeight: typography.fontWeight.medium,
-  },
   infoText: {
     fontSize: typography.fontSize.sm,
     color: '#FFFFFF',
     fontWeight: typography.fontWeight.semibold,
-  },
-  visitors: {
-    fontSize: typography.fontSize.xs,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: typography.fontWeight.medium,
   },
   arrowButton: {
     width: 48,

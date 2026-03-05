@@ -83,6 +83,18 @@ export default function SectionRenderer({ section }: SectionRendererProps) {
 
   if (isHidden) return null;
 
+  // Conditionally show View All only when section has enough items
+  const MIN_ITEMS_FOR_VIEW_ALL = 3;
+  const sectionSlugMap: Record<string, string> = {
+    deals: 'deals', destinations: 'popular-destinations', places: 'places',
+    events: 'events', mustSee: 'must-see', editorChoices: 'editors-choice',
+    trending: 'trending', bestDiscover: 'best-discover', budgetFriendly: 'budget-friendly',
+    luxuryEscapes: 'luxury-escapes', localExperiences: 'local-experiences', familyFriendly: 'family-friendly',
+  };
+  const slug = sectionSlugMap[section.componentType];
+  const sectionData = slug ? homepageData?.sections?.find(s => s.slug === slug) : null;
+  const showViewAll = isDealsSection || !sectionData || (sectionData.items?.length ?? 0) > MIN_ITEMS_FOR_VIEW_ALL;
+
   return (
     <View style={styles.section}>
       {/* Section Header */}
@@ -91,12 +103,14 @@ export default function SectionRenderer({ section }: SectionRendererProps) {
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{section.title}</Text>
           <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>{section.description}</Text>
         </View>
-        <TouchableOpacity 
-          onPress={handleViewAll}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.viewAllText, { color: colors.primary }]}>View All</Text>
-        </TouchableOpacity>
+        {showViewAll ? (
+          <TouchableOpacity 
+            onPress={handleViewAll}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.viewAllText, { color: colors.primary }]}>View All</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {/* Section Content */}

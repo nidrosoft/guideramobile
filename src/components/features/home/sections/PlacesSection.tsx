@@ -3,7 +3,7 @@
  * 
  * Displays popular places with horizontal scrolling cards.
  * Extracted from homepage for better modularity.
- * Now uses real data from database with mock data fallback.
+ * Uses real data from the homepage API.
  */
 
 import { ScrollView, StyleSheet } from 'react-native';
@@ -19,10 +19,9 @@ export default function PlacesSection() {
   const router = useRouter();
   const homepageData = useHomepageDataSafe();
   
-  // Map database data to card props format, fallback to mock data
+  // Map database data to card props format
   const displayData = useMemo(() => {
-    const popularSection = homepageData?.sections?.find(s => s.slug === 'places')
-      || homepageData?.sections?.find(s => s.slug === 'popular-destinations');
+    const popularSection = homepageData?.sections?.find(s => s.slug === 'places');
     
     if (popularSection?.items?.length) {
       return popularSection.items.map((item, index) => ({

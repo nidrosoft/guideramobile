@@ -121,10 +121,10 @@ export default function SearchResultsScreen() {
   const handleResultPress = (result: SearchResult) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const routes: Record<string, string> = {
-      destination: `/destination/${result.id}`,
-      hotel: `/hotel/${result.id}`,
-      experience: `/experience/${result.id}`,
-      place: `/place/${result.id}`,
+      destination: `/destinations/${result.id}`,
+      hotel: `/destinations/${result.id}`,
+      experience: `/local-experiences/${result.id}`,
+      place: `/destinations/${result.id}`,
     };
     const route = routes[result.type];
     if (route) router.push(route as any);

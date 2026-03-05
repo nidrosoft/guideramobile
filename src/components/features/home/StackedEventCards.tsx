@@ -269,14 +269,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
     marginTop: spacing.xl,
   },
-  centeredContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: typography.fontSize.sm,
-    marginTop: spacing.sm,
-  },
   card: {
     position: 'absolute',
     width: CARD_WIDTH,

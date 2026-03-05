@@ -3,7 +3,7 @@
  * 
  * Displays must-see attractions with horizontal scrolling cards.
  * Extracted from homepage for better modularity.
- * Now uses real data from database with mock data fallback.
+ * Uses real data from the homepage API.
  */
 
 import { ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
@@ -24,10 +24,9 @@ export default function MustSeeSection() {
     router.push({ pathname: '/destinations/[id]' as any, params: { id: String(id) } });
   };
   
-  // Map database data to card props format, fallback to mock data
+  // Map database data to card props format
   const displayData = useMemo(() => {
-    const section = homepageData?.sections?.find(s => s.slug === 'must-see') 
-      || homepageData?.sections?.find(s => s.slug === 'editors-choice');
+    const section = homepageData?.sections?.find(s => s.slug === 'must-see');
     
     if (section?.items?.length) {
       return section.items.slice(0, 6).map((item, index) => ({
