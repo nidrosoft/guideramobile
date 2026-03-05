@@ -9,6 +9,7 @@ interface PopularPlaceCardProps {
   visitors: string;
   rating: number;
   imageUrl: string;
+  onPress?: () => void;
 }
 
 export default function PopularPlaceCard({ 
@@ -16,12 +17,13 @@ export default function PopularPlaceCard({
   country, 
   visitors, 
   rating, 
-  imageUrl 
+  imageUrl,
+  onPress,
 }: PopularPlaceCardProps) {
   const { colors } = useTheme();
 
   return (
-    <TouchableOpacity style={[styles.container, { backgroundColor: colors.bgCard, shadowColor: '#000' }]}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle, shadowColor: '#000' }]}>
       <View style={styles.imageContainer}>
         <Image source={{ uri: imageUrl }} style={styles.image} />
         
@@ -52,7 +54,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,

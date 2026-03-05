@@ -11,7 +11,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, Modal, StatusBar } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/styles';
 import { useExperienceStore } from '../../stores/useExperienceStore';
@@ -100,6 +100,7 @@ export default function ExperienceBookingFlow({ visible, onClose }: ExperienceBo
           <Animated.View 
             key="search"
             entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(200)}
             style={styles.screen}
           >
             <ExperienceSearchScreen
@@ -115,6 +116,7 @@ export default function ExperienceBookingFlow({ visible, onClose }: ExperienceBo
           <Animated.View 
             key="loading"
             entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(200)}
             style={styles.screen}
           >
             <ExperienceSearchLoadingScreen
@@ -128,6 +130,7 @@ export default function ExperienceBookingFlow({ visible, onClose }: ExperienceBo
           <Animated.View 
             key="results"
             entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(200)}
             style={styles.screen}
           >
             <ExperienceResultsScreen
@@ -150,7 +153,7 @@ export default function ExperienceBookingFlow({ visible, onClose }: ExperienceBo
       presentationStyle="fullScreen"
       onRequestClose={handleClose}
     >
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
       <View style={styles.container}>
         {renderScreen()}
       </View>

@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { View, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Alert, Share } from 'react-native';
 import Animated, { 
   useAnimatedScrollHandler, 
   useSharedValue, 
@@ -17,10 +17,13 @@ import Animated, {
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MessageQuestion } from 'iconsax-react-native';
-import { colors, spacing } from '@/styles';
+import { spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useSaveDestination } from '@/hooks/useSaveDestination';
 import * as Haptics from 'expo-haptics';
 import { Linking } from 'react-native';
 import { PlanTripSheet } from '@/components/features/search';
+import AIChatSheet from '@/components/features/ai/AIChatSheet';
 import type { TripPlanData } from '@/components/features/search/PlanTripSheet';
 import { QuickTripFlow, AdvancedTripFlow } from '@/features/planning';
 import { usePlanningStore } from '@/features/planning/stores/usePlanningStore';
@@ -51,6 +54,8 @@ interface DetailPageTemplateProps {
     rating: number;
     category: string;
     visitors: string;
+    bestTime?: string;
+    budget?: string;
     description: string;
     practicalInfo: any[];
     places?: any[];
@@ -65,10 +70,13 @@ interface DetailPageTemplateProps {
 }
 
 export default function DetailPageTemplate({ type, id, data }: DetailPageTemplateProps) {
+  const { colors, isDark } = useTheme();
+  const { isSaved, toggleSave } = useSaveDestination(id);
   const scrollOffset = useSharedValue(0);
   
   // Plan Trip states
   const [showPlanSheet, setShowPlanSheet] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
   const [showQuickTripFlow, setShowQuickTripFlow] = useState(false);
   const [showAdvancedTripFlow, setShowAdvancedTripFlow] = useState(false);
   
@@ -129,10 +137,19 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
     Linking.openURL(`https://maps.google.com/?q=${query}`);
   };
 
+  const handleShare = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      await Share.share({
+        title: data.name,
+        message: `Check out ${data.name} in ${data.location} on Guidera! Rated ${data.rating}/5 — ${data.description?.slice(0, 100) || ''}...`,
+      });
+    } catch (_) {}
+  };
+
   const handleAIAssistant = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('AI Assistant', `Ask me anything about ${data.name}!`);
-    // TODO: Open AI chat interface
+    setShowAIChat(true);
   };
 
   // Trip plan data from destination
@@ -182,8 +199,8 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" translucent={false} />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} translucent={false} />
       
       <Animated.ScrollView 
         style={styles.scrollView}
@@ -198,7 +215,7 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
         </Animated.View>
 
         {/* Content Card with Rounded Top - Fixed 32px corners */}
-        <View style={styles.contentCard}>
+        <View style={[styles.contentCard, { backgroundColor: colors.background, shadowColor: colors.black }]}>
           {/* Basic Info Section */}
           <BasicInfoSection
           name={data.name}
@@ -206,6 +223,8 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
           rating={data.rating}
           category={data.category}
           visitors={data.visitors}
+          bestTime={data.bestTime}
+          budget={data.budget}
         />
 
         {/* Insight Section */}
@@ -227,10 +246,11 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
           <SafetyInfoSection safetyInfo={data.safetyInfo} />
         )}
 
-        {/* Creators Content Section */}
-        {data.creatorContent && data.creatorContent.length > 0 && (
-          <CreatorsContentSection content={data.creatorContent} />
-        )}
+        {/* Creators Content Section — Live TikTok videos */}
+        <CreatorsContentSection
+          content={data.creatorContent}
+          destinationName={data.name}
+        />
 
         {/* Vibes Around Here Section */}
         {data.vibes && data.vibes.length > 0 && (
@@ -259,11 +279,11 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
       </Animated.ScrollView>
 
       {/* Header Background - Fades in on scroll */}
-      <Animated.View style={[styles.headerBackground, headerAnimatedStyle]} />
+      <Animated.View style={[styles.headerBackground, headerAnimatedStyle, { backgroundColor: colors.background, borderBottomColor: colors.gray200 }]} />
       
       {/* Header Buttons - Always visible */}
       <View style={styles.headerContainer}>
-        <DetailHeader title={data.name} />
+        <DetailHeader title={data.name} isSaved={isSaved} onSave={toggleSave} onShare={handleShare} />
       </View>
 
       {/* Floating AI Assistant Button */}
@@ -273,17 +293,17 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
         activeOpacity={0.9}
       >
         <LinearGradient
-          colors={['#8B5CF6', '#6366F1']}
+          colors={['#3FC39E', '#2D9A7A']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.aiGradient}
         >
-          <MessageQuestion size={28} color={colors.white} variant="Bold" />
+          <MessageQuestion size={28} color="#FFFFFF" variant="Bold" />
         </LinearGradient>
       </TouchableOpacity>
 
       {/* Fixed Bottom Action Button */}
-      <View style={styles.fixedBottomButton}>
+      <View style={[styles.fixedBottomButton, { backgroundColor: colors.background, borderTopColor: colors.gray200, shadowColor: colors.black }]}>
         <ActionButton 
           type={type as any}
           onPress={handleAction}
@@ -310,6 +330,26 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
         visible={showAdvancedTripFlow}
         onClose={() => setShowAdvancedTripFlow(false)}
       />
+
+      {/* AI Chat Sheet - context-aware for this destination */}
+      <AIChatSheet
+        visible={showAIChat}
+        onClose={() => setShowAIChat(false)}
+        contextType="destination"
+        contextData={{
+          id,
+          name: data.name,
+          location: data.location,
+          budget: data.budget,
+          bestTime: data.bestTime,
+          description: data.description,
+          category: data.category,
+          rating: data.rating,
+          highlights: data.places?.slice(0, 8).map((p: any) => typeof p === 'string' ? p : p.name || p.title).filter(Boolean),
+          safetyInfo: data.safetyInfo?.slice(0, 6).map((s: any) => typeof s === 'string' ? s : s.text || s.title || s.description).filter(Boolean),
+          practicalInfo: data.practicalInfo?.slice(0, 6).map((p: any) => typeof p === 'string' ? p : `${p.label || p.title}: ${p.value || p.description}`).filter(Boolean),
+        }}
+      />
     </View>
   );
 }
@@ -317,7 +357,6 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -331,19 +370,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   contentCard: {
-    backgroundColor: colors.background,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    marginTop: -120, // Increased overlap - pulls card much higher
+    marginTop: -120,
     paddingTop: 0,
     minHeight: '100%',
-    shadowColor: colors.black,
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 8,
-    overflow: 'hidden', // Ensures rounded corners clip properly
-    zIndex: 1, // Below header but above image
+    overflow: 'hidden',
+    zIndex: 1,
   },
   headerBackground: {
     position: 'absolute',
@@ -351,9 +388,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 100,
-    backgroundColor: colors.background,
-    borderBottomWidth: 0.5, // Very thin line
-    borderBottomColor: colors.gray200,
+    borderBottomWidth: 0.5,
     zIndex: 99,
   },
   headerContainer: {
@@ -368,11 +403,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.background,
     borderTopWidth: 1,
-    borderTopColor: colors.gray200,
     paddingBottom: 20,
-    shadowColor: colors.black,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -385,7 +417,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    shadowColor: colors.black,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

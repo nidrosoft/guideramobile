@@ -31,5 +31,9 @@ export {
   useHomepageDataSafe 
 } from './context/HomepageDataContext'
 
+// Utils
+export { matchesCategory, filterByCategory } from './utils/categoryFilter'
+export { useSectionVisibility } from './hooks/useSectionVisibility'
+
 // Components
 export { TrackableCard, useInteractionTracking } from './components/TrackableCard'

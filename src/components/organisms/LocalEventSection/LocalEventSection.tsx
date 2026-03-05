@@ -5,9 +5,10 @@
  * Adapted from StackedEventCards with Add to Calendar CTA
  */
 
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ScrollView, Alert, Linking } from 'react-native';
 import { useState } from 'react';
-import { colors, typography, spacing } from '@/styles';
+import { useRouter } from 'expo-router';
+import { typography, spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { Clock, Location, Calendar as CalendarIcon, InfoCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
@@ -23,6 +24,7 @@ interface LocalEvent {
   time: string;
   description: string;
   image: string;
+  dbId?: string;
 }
 
 interface LocalEventSectionProps {
@@ -49,7 +51,8 @@ const generateCalendarDays = () => {
 };
 
 export default function LocalEventSection({ events }: LocalEventSectionProps) {
-  const { colors: tc } = useTheme();
+  const { colors } = useTheme();
+  const router = useRouter();
   const [selectedDate, setSelectedDate] = useState(0);
   const [currentIndex, setCurrentIndex] = useState(0);
   const calendarDays = generateCalendarDays();
@@ -65,23 +68,44 @@ export default function LocalEventSection({ events }: LocalEventSectionProps) {
     setCurrentIndex((prev) => (prev + 1) % events.length);
   };
 
-  const handleAddToCalendar = (event: LocalEvent) => {
+  const handleAddToCalendar = async (event: LocalEvent) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Add to Calendar', `"${event.title}" will be added to your calendar.`);
-    // TODO: Implement actual calendar integration
+    try {
+      // Build Google Calendar URL — works on all platforms without native module
+      const title = encodeURIComponent(event.title);
+      const details = encodeURIComponent(event.description);
+      const location = encodeURIComponent(event.location);
+      // Use a future date placeholder since events have recurring descriptions (e.g. 'Every Saturday')
+      const now = new Date();
+      const start = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      const end = new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      const calUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}&location=${location}`;
+      const supported = await Linking.canOpenURL(calUrl);
+      if (supported) {
+        await Linking.openURL(calUrl);
+      } else {
+        Alert.alert('Add to Calendar', `"${event.title}" — ${event.date} at ${event.time}\n${event.location}`, [
+          { text: 'Close', style: 'cancel' },
+        ]);
+      }
+    } catch {
+      Alert.alert('Add to Calendar', `"${event.title}" — ${event.date} at ${event.time}`);
+    }
   };
 
   const handleEventDetail = (event: LocalEvent) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // TODO: Navigate to event detail page
+    // Navigate to event detail page using the DB id
+    const eventId = event.dbId || event.id;
+    router.push(`/events/${eventId}`);
   };
 
   return (
     <View style={styles.container}>
       {/* Section Header */}
       <View style={styles.header}>
-        <Text style={styles.sectionTitle}>Local Event</Text>
-        <Text style={styles.sectionSubtitle}>Discover upcoming events and activities happening soon</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Local Event</Text>
+        <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Discover upcoming events and activities happening soon</Text>
       </View>
       
       {/* Calendar Filter */}
@@ -96,20 +120,23 @@ export default function LocalEventSection({ events }: LocalEventSectionProps) {
             key={index}
             style={[
               styles.dayButton,
-              selectedDate === index && styles.dayButtonActive
+              { backgroundColor: colors.bgElevated, borderColor: colors.borderMedium },
+              selectedDate === index && { backgroundColor: colors.primary, borderColor: colors.primary }
             ]}
             onPress={() => handleDateSelect(index)}
             activeOpacity={0.7}
           >
             <Text style={[
               styles.dayNumber,
-              selectedDate === index && styles.dayNumberActive
+              { color: colors.textPrimary },
+              selectedDate === index && { color: '#FFFFFF' }
             ]}>
               {day.day}
             </Text>
             <Text style={[
               styles.dayName,
-              selectedDate === index && styles.dayNameActive
+              { color: colors.textSecondary },
+              selectedDate === index && { color: '#FFFFFF' }
             ]}>
               {day.dayName}
             </Text>
@@ -137,7 +164,8 @@ export default function LocalEventSection({ events }: LocalEventSectionProps) {
               key={event.id}
               style={[
                 styles.card,
-                position > 0 && styles.cardBehind,
+                { backgroundColor: colors.bgElevated },
+                position > 0 && { borderWidth: 1, borderColor: colors.borderMedium },
                 {
                   transform: [{ scale }, { translateY }, { rotate }],
                   opacity,
@@ -154,7 +182,7 @@ export default function LocalEventSection({ events }: LocalEventSectionProps) {
 
               {/* Event Info */}
               <View style={styles.eventInfo}>
-                <Text style={styles.eventTitle} numberOfLines={2}>
+                <Text style={[styles.eventTitle, { color: colors.textPrimary }]} numberOfLines={2}>
                   {event.title}
                 </Text>
 
@@ -164,8 +192,8 @@ export default function LocalEventSection({ events }: LocalEventSectionProps) {
                     <Location size={16} color={colors.primary} variant="Bold" />
                   </View>
                   <View>
-                    <Text style={styles.infoLabel}>Location</Text>
-                    <Text style={styles.infoValue}>{event.location}</Text>
+                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Location</Text>
+                    <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{event.location}</Text>
                   </View>
                 </View>
 
@@ -175,8 +203,8 @@ export default function LocalEventSection({ events }: LocalEventSectionProps) {
                     <Clock size={16} color={colors.success} variant="Bold" />
                   </View>
                   <View>
-                    <Text style={styles.infoLabel}>Open Hours</Text>
-                    <Text style={styles.infoValue}>{event.time}</Text>
+                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Open Hours</Text>
+                    <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{event.time}</Text>
                   </View>
                 </View>
 
@@ -184,9 +212,9 @@ export default function LocalEventSection({ events }: LocalEventSectionProps) {
                 <View style={styles.descriptionSection}>
                   <View style={styles.descriptionHeader}>
                     <InfoCircle size={16} color={colors.textSecondary} variant="Bold" />
-                    <Text style={styles.descriptionLabel}>Description</Text>
+                    <Text style={[styles.descriptionLabel, { color: colors.textSecondary }]}>Description</Text>
                   </View>
-                  <Text style={styles.descriptionText} numberOfLines={2}>
+                  <Text style={[styles.descriptionText, { color: colors.textSecondary }]} numberOfLines={2}>
                     {event.description}
                   </Text>
                 </View>
@@ -194,12 +222,12 @@ export default function LocalEventSection({ events }: LocalEventSectionProps) {
                 {/* Add to Calendar Button */}
                 {position === 0 && (
                   <TouchableOpacity 
-                    style={styles.calendarButton}
+                    style={[styles.calendarButton, { borderColor: colors.primary, backgroundColor: colors.bgElevated }]}
                     onPress={() => handleAddToCalendar(event)}
                     activeOpacity={0.8}
                   >
                     <CalendarIcon size={20} color={colors.primary} variant="Bold" />
-                    <Text style={styles.calendarButtonText}>Add To Calendar</Text>
+                    <Text style={[styles.calendarButtonText, { color: colors.primary }]}>Add To Calendar</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -224,12 +252,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   sectionSubtitle: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
   },
   calendarScroll: {
     marginBottom: spacing.lg,
@@ -243,31 +269,17 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
     borderRadius: 20,
-    backgroundColor: colors.bgElevated,
     borderWidth: 1,
-    borderColor: colors.gray300,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  dayButtonActive: {
-    backgroundColor: colors.black,
-    borderColor: colors.black,
   },
   dayNumber: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: 4,
-  },
-  dayNumberActive: {
-    color: colors.white,
   },
   dayName: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
-  },
-  dayNameActive: {
-    color: colors.white,
   },
   cardsContainer: {
     height: 500,
@@ -278,18 +290,12 @@ const styles = StyleSheet.create({
   card: {
     position: 'absolute',
     width: CARD_WIDTH,
-    backgroundColor: colors.bgElevated,
     borderRadius: 24,
     overflow: 'hidden',
-  },
-  cardBehind: {
-    borderWidth: 1,
-    borderColor: colors.gray200,
   },
   imageContainer: {
     width: '100%',
     height: 160,
-    backgroundColor: colors.gray100,
   },
   eventImage: {
     width: '100%',
@@ -301,7 +307,6 @@ const styles = StyleSheet.create({
   eventTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.sm,
     lineHeight: 24,
   },
@@ -315,19 +320,17 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.gray100,
+    backgroundColor: 'rgba(63, 195, 158, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   infoLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginBottom: 2,
   },
   infoValue: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   descriptionSection: {
     marginTop: spacing.xs,
@@ -341,12 +344,10 @@ const styles = StyleSheet.create({
   },
   descriptionLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
   },
   descriptionText: {
     fontSize: typography.fontSize.sm,
     lineHeight: 20,
-    color: colors.textSecondary,
   },
   calendarButton: {
     flexDirection: 'row',
@@ -356,12 +357,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: colors.primary,
-    backgroundColor: colors.bgElevated,
   },
   calendarButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary,
   },
 });

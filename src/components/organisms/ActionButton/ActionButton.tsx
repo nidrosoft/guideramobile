@@ -9,7 +9,7 @@
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Routing, TicketStar, Call, Calendar } from 'iconsax-react-native';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing } from '@/styles';
 import * as Haptics from 'expo-haptics';
 
 interface ActionButtonProps {
@@ -29,37 +29,37 @@ export default function ActionButton({
       case 'destination':
         return {
           label: 'Make Plans',
-          icon: <Calendar size={24} color={colors.white} variant="Bold" />,
+          icon: <Calendar size={24} color="#FFFFFF" variant="Bold" />,
           gradient: ['#6366F1', '#8B5CF6'] as const,
         };
       case 'restaurant':
         return {
           label: 'Reserve Table',
-          icon: <Call size={24} color={colors.white} variant="Bold" />,
+          icon: <Call size={24} color="#FFFFFF" variant="Bold" />,
           gradient: ['#F59E0B', '#EF4444'] as const,
         };
       case 'event':
         return {
           label: 'Buy Tickets',
-          icon: <TicketStar size={24} color={colors.white} variant="Bold" />,
+          icon: <TicketStar size={24} color="#FFFFFF" variant="Bold" />,
           gradient: ['#EC4899', '#8B5CF6'] as const,
         };
       case 'activity':
         return {
           label: 'Book Now',
-          icon: <Calendar size={24} color={colors.white} variant="Bold" />,
+          icon: <Calendar size={24} color="#FFFFFF" variant="Bold" />,
           gradient: ['#10B981', '#06B6D4'] as const,
         };
       case 'accommodation':
         return {
           label: 'Check Availability',
-          icon: <Calendar size={24} color={colors.white} variant="Bold" />,
+          icon: <Calendar size={24} color="#FFFFFF" variant="Bold" />,
           gradient: ['#3B82F6', '#8B5CF6'] as const,
         };
       default:
         return {
           label: 'Learn More',
-          icon: <Routing size={24} color={colors.white} variant="Bold" />,
+          icon: <Routing size={24} color="#FFFFFF" variant="Bold" />,
           gradient: ['#6366F1', '#8B5CF6'] as const,
         };
     }
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   button: {
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: colors.black,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
@@ -125,6 +125,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
 });

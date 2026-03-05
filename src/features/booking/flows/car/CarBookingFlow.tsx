@@ -153,7 +153,7 @@ export default function CarBookingFlow({ visible, onClose }: CarBookingFlowProps
       presentationStyle="fullScreen"
       onRequestClose={handleClose}
     >
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
       <View style={styles.container}>
         {renderScreen()}
       </View>

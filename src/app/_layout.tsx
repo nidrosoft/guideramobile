@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
 import {
@@ -79,32 +80,34 @@ export default function RootLayout() {
   }
 
   return (
-    <ErrorBoundary level="global">
-      <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
-            <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
-              <AuthProvider>
-                <AuthGuard>
-                <HomepageDataProvider>
-                  <ToastProvider>
-                    <View style={styles.container}>
-                      <Stack
-                        screenOptions={{
-                          headerShown: false,
-                          animation: 'slide_from_right',
-                          animationDuration: 300,
-                        }}
-                      />
-                      <OfflineBanner />
-                    </View>
-                  </ToastProvider>
-                </HomepageDataProvider>
-                </AuthGuard>
-              </AuthProvider>
-            </ClerkProvider>
-          </ThemeProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
+    <GestureHandlerRootView style={styles.container}>
+      <ErrorBoundary level="global">
+        <QueryClientProvider client={queryClient}>
+            <ThemeProvider>
+              <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
+                <AuthProvider>
+                  <AuthGuard>
+                  <HomepageDataProvider>
+                    <ToastProvider>
+                      <View style={styles.container}>
+                        <Stack
+                          screenOptions={{
+                            headerShown: false,
+                            animation: 'slide_from_right',
+                            animationDuration: 300,
+                          }}
+                        />
+                        <OfflineBanner />
+                      </View>
+                    </ToastProvider>
+                  </HomepageDataProvider>
+                  </AuthGuard>
+                </AuthProvider>
+              </ClerkProvider>
+            </ThemeProvider>
+        </QueryClientProvider>
+      </ErrorBoundary>
+    </GestureHandlerRootView>
   );
 }
 

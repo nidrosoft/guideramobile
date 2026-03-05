@@ -71,6 +71,8 @@ export interface ContentItem {
   tags?: string[]
   distanceKm?: number | null
   distanceText?: string | null
+  safetyRating?: number | null
+  bestFor?: string[]
 }
 
 export interface PriceInfo {

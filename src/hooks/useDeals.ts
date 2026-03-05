@@ -19,6 +19,7 @@ import {
   getPriceHistory,
   generateAffiliateLink,
   getProviderConfig,
+  getPersonalizedDeals,
 } from '@/services/deal';
 import type {
   DealClick,
@@ -29,6 +30,7 @@ import type {
   DealType,
   PriceHistoryPoint,
   GenerateAffiliateLinkParams,
+  PersonalizedDeal,
 } from '@/services/deal';
 
 // ============================================
@@ -236,4 +238,35 @@ export function useIsDealSaved(routeKey: string | null) {
   }, [user?.id, routeKey]);
 
   return saved;
+}
+
+// ============================================
+// useGilDeals — GIL personalized deal feed
+// ============================================
+
+export function useGilDeals(dealType?: DealType, limit = 8) {
+  const { user } = useAuth();
+  const [deals, setDeals] = useState<PersonalizedDeal[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await getPersonalizedDeals(user?.id || null, dealType, limit);
+      if (result.error) throw result.error;
+      setDeals(result.data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.id, dealType, limit]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return { deals, isLoading, error, refresh: load };
 }

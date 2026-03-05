@@ -1,122 +1,193 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
-import { useState } from 'react';
-import { typography, spacing, borderRadius, colors } from '@/styles';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+  interpolate,
+  runOnJS,
+  Easing,
+} from 'react-native-reanimated';
+import { typography, spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useHomepageDataSafe, filterByCategory, useSectionVisibility } from '@/features/homepage';
 import { Clock, Location, People, Ticket, Calendar } from 'iconsax-react-native';
+import { SkeletonStackedEvents } from '@/components/common/SkeletonLoader';
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = width - 48;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = SCREEN_WIDTH - 48;
+const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
+const SWIPE_VELOCITY_THRESHOLD = 500;
+const MAX_ROTATION = 10;
 
-const events = [
-  {
-    id: 1,
-    eventName: 'Rhyme in the Horizon',
-    category: 'Music & Nightlife',
-    venue: 'Leonor Nightclub',
-    city: 'Westbrook',
-    date: 'Dec 15, 2024',
-    time: '8:00 PM',
-    ticketPrice: '$45',
-    attendees: '2.5k',
-    rating: 4.7,
-    image: 'https://picsum.photos/seed/event1/600/600',
-  },
-  {
-    id: 2,
-    eventName: 'Summer Music Festival',
-    category: 'Festival',
-    venue: 'Central Park Arena',
-    city: 'Downtown',
-    date: 'Dec 17, 2024',
-    time: '6:00 PM',
-    ticketPrice: '$85',
-    attendees: '15k',
-    rating: 4.9,
-    image: 'https://picsum.photos/seed/event2/600/600',
-  },
-  {
-    id: 3,
-    eventName: 'Art & Wine Night',
-    category: 'Art & Culture',
-    venue: 'Gallery 21',
-    city: 'Uptown',
-    date: 'Dec 20, 2024',
-    time: '7:30 PM',
-    ticketPrice: '$35',
-    attendees: '500',
-    rating: 4.6,
-    image: 'https://picsum.photos/seed/event3/600/600',
-  },
-  {
-    id: 4,
-    eventName: 'Tech Conference 2024',
-    category: 'Conference',
-    venue: 'Convention Center',
-    city: 'Silicon Valley',
-    date: 'Dec 25, 2024',
-    time: '9:00 AM',
-    ticketPrice: '$150',
-    attendees: '5k',
-    rating: 4.8,
-    image: 'https://picsum.photos/seed/event4/600/600',
-  },
-  {
-    id: 5,
-    eventName: 'Food & Culture Fair',
-    category: 'Food & Drink',
-    venue: 'City Square',
-    city: 'Midtown',
-    date: 'Dec 18, 2024',
-    time: '12:00 PM',
-    ticketPrice: 'Free',
-    attendees: '8k',
-    rating: 4.7,
-    image: 'https://picsum.photos/seed/event5/600/600',
-  },
-];
+export interface EventCardData {
+  id: string | number;
+  eventName: string;
+  category: string;
+  venue: string;
+  city: string;
+  date: string;
+  time: string;
+  ticketPrice: string;
+  attendees: string;
+  rating: number | null;
+  image: string;
+}
 
-export default function StackedEventCards() {
-  const { colors } = useTheme();
+interface StackedEventCardsProps {
+  events?: EventCardData[];
+  loading?: boolean;
+}
+
+export default function StackedEventCards({ events = [], loading = false }: StackedEventCardsProps) {
+  const { colors, isDark } = useTheme();
+  const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const homepageData = useHomepageDataSafe();
+  const activeCategory = homepageData?.activeCategory ?? 'all';
 
-  const handleSwipe = () => {
-    setCurrentIndex((prev) => (prev + 1) % events.length);
+  const filteredEvents = useMemo(() => {
+    if (activeCategory === 'all') return events;
+    return events.filter(e => {
+      // For 'events' pill, show all events
+      if (activeCategory === 'events') return true;
+      // Otherwise match against category keywords
+      return filterByCategory([{ title: e.eventName, category: e.category, tags: [e.category] }], activeCategory).length > 0;
+    });
+  }, [events, activeCategory]);
+
+  useSectionVisibility('events', filteredEvents.length);
+
+  // Reset card index when filter changes
+  useEffect(() => { setCurrentIndex(0); }, [activeCategory]);
+
+  const handleCardTap = useCallback(() => {
+    const event = filteredEvents[currentIndex];
+    if (!event) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(`/events/${event.id}`);
+  }, [router, filteredEvents, currentIndex]);
+
+  // Swipe animated values
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+
+  const advanceCard = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setCurrentIndex(prev => (prev + 1) % filteredEvents.length);
+  }, [filteredEvents.length]);
+
+  // Pan gesture for swiping
+  const panGesture = Gesture.Pan()
+    .activeOffsetX([-15, 15])
+    .onUpdate((e) => {
+      translateX.value = e.translationX;
+      translateY.value = e.translationY * 0.4;
+    })
+    .onEnd((e) => {
+      const swipedRight = translateX.value > SWIPE_THRESHOLD || e.velocityX > SWIPE_VELOCITY_THRESHOLD;
+      const swipedLeft = translateX.value < -SWIPE_THRESHOLD || e.velocityX < -SWIPE_VELOCITY_THRESHOLD;
+
+      if (swipedRight || swipedLeft) {
+        const direction = swipedRight ? 1 : -1;
+        translateX.value = withTiming(direction * SCREEN_WIDTH * 1.5, {
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+        }, () => {
+          runOnJS(advanceCard)();
+          translateX.value = withDelay(50, withTiming(0, { duration: 0 }));
+          translateY.value = withDelay(50, withTiming(0, { duration: 0 }));
+        });
+        translateY.value = withTiming(translateY.value * 1.5, { duration: 300 });
+      } else {
+        translateX.value = withSpring(0, { damping: 20, stiffness: 200, mass: 0.8 });
+        translateY.value = withSpring(0, { damping: 20, stiffness: 200, mass: 0.8 });
+      }
+    });
+
+  // Front card animated style
+  const frontCardStyle = useAnimatedStyle(() => {
+    const rotation = interpolate(
+      translateX.value,
+      [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
+      [-MAX_ROTATION, 0, MAX_ROTATION]
+    );
+    return {
+      transform: [
+        { translateX: translateX.value },
+        { translateY: translateY.value },
+        { rotate: `${rotation}deg` },
+      ],
+    };
+  });
+
+  // Second card — tilted left, scales up as front card is swiped
+  const secondCardStyle = useAnimatedStyle(() => {
+    const progress = Math.min(Math.abs(translateX.value) / SWIPE_THRESHOLD, 1);
+    const scale = interpolate(progress, [0, 1], [0.95, 1]);
+    const ty = interpolate(progress, [0, 1], [-15, 0]);
+    const rot = interpolate(progress, [0, 1], [-3, 0]);
+    const opacity = interpolate(progress, [0, 1], [0.85, 1]);
+    return { transform: [{ scale }, { translateY: ty }, { rotate: `${rot}deg` }], opacity };
+  });
+
+  // Third card — tilted right, scales up slightly as front card is swiped
+  const thirdCardStyle = useAnimatedStyle(() => {
+    const progress = Math.min(Math.abs(translateX.value) / SWIPE_THRESHOLD, 1);
+    const scale = interpolate(progress, [0, 1], [0.9, 0.95]);
+    const ty = interpolate(progress, [0, 1], [-30, -15]);
+    const rot = interpolate(progress, [0, 1], [3, -3]);
+    const opacity = interpolate(progress, [0, 1], [0.7, 0.85]);
+    return { transform: [{ scale }, { translateY: ty }, { rotate: `${rot}deg` }], opacity };
+  });
+
+  const getCardStyle = (position: number) => {
+    if (position === 0) return frontCardStyle;
+    if (position === 1) return secondCardStyle;
+    if (position === 2) return thirdCardStyle;
+    return {};
   };
+
+  // Loading state
+  if (loading) {
+    return <SkeletonStackedEvents />;
+  }
+
+  // Empty state
+  if (filteredEvents.length === 0) {
+    return null;
+  }
+
+  // Render cards in reverse order so front card is on top
+  const visibleCards = filteredEvents
+    .map((event, index) => {
+      const position = (index - currentIndex + filteredEvents.length) % filteredEvents.length;
+      if (position > 2) return null;
+      return { event, index, position };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b!.position - a!.position) as { event: EventCardData; index: number; position: number }[];
 
   return (
     <View style={styles.container}>
-      {/* Stacked Cards */}
-      {events.map((event, index) => {
-        const position = (index - currentIndex + events.length) % events.length;
-        
-        if (position > 4) return null; // Show 5 cards
-
-        const scale = 1 - (position * 0.03);
-        const translateY = position * -12;
-        const opacity = position === 0 ? 1 : 0.7;
-        
-        // Alternating rotation: 0 = straight, 1 = left, 2 = right, 3 = left, 4 = right
-        let rotate = '0deg';
-        if (position === 1) rotate = '-3deg';
-        if (position === 2) rotate = '3deg';
-        if (position === 3) rotate = '-3deg';
-        if (position === 4) rotate = '3deg';
-
-        return (
-          <TouchableOpacity
+      {visibleCards.map(({ event, index, position }) => {
+        const cardContent = (
+          <Animated.View
             key={event.id}
             style={[
               styles.card,
-              { backgroundColor: colors.bgCard },
-              position > 0 && { borderWidth: 1, borderColor: colors.borderSubtle },
               {
-                transform: [{ scale }, { translateY }, { rotate }],
-                opacity,
-                zIndex: events.length - position,
+                backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF',
+                borderColor: colors.borderSubtle,
+                zIndex: filteredEvents.length - position,
               },
+              getCardStyle(position),
             ]}
-            onPress={position === 0 ? handleSwipe : undefined}
-            activeOpacity={0.9}
           >
             {/* Header Section */}
             <View style={styles.headerSection}>
@@ -135,13 +206,11 @@ export default function StackedEventCards() {
             <View style={styles.eventInfoSection}>
               <Text style={[styles.eventName, { color: colors.textPrimary }]}>{event.eventName}</Text>
               
-              {/* Venue & City */}
               <View style={styles.venueRow}>
                 <Location size={16} color={colors.textSecondary} variant="Bold" />
                 <Text style={[styles.venueText, { color: colors.textSecondary }]}>{event.venue}, {event.city}</Text>
               </View>
               
-              {/* Date & Time Row */}
               <View style={styles.dateTimeRow}>
                 <View style={[styles.dateContainer, { backgroundColor: colors.primary + '10' }]}>
                   <Calendar size={14} color={colors.primary} variant="Bold" />
@@ -153,7 +222,6 @@ export default function StackedEventCards() {
                 </View>
               </View>
               
-              {/* Attendees & Price Row */}
               <View style={styles.bottomInfoRow}>
                 <View style={styles.attendeesContainer}>
                   <People size={14} color={colors.textSecondary} variant="Bold" />
@@ -167,11 +235,27 @@ export default function StackedEventCards() {
             </View>
 
             {/* Event Image */}
-            <View style={styles.imageContainer}>
-              <Image source={{ uri: event.image }} style={styles.eventImage} />
-            </View>
-          </TouchableOpacity>
+            {event.image ? (
+              <View style={styles.imageContainer}>
+                <Image source={{ uri: event.image }} style={styles.eventImage} />
+              </View>
+            ) : null}
+          </Animated.View>
         );
+
+        if (position === 0) {
+          const tapGesture = Gesture.Tap().onEnd(() => {
+            runOnJS(handleCardTap)();
+          });
+          const composed = Gesture.Race(panGesture, tapGesture);
+          return (
+            <GestureDetector key={event.id} gesture={composed}>
+              {cardContent}
+            </GestureDetector>
+          );
+        }
+
+        return cardContent;
       })}
     </View>
   );
@@ -185,6 +269,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
     marginTop: spacing.xl,
   },
+  centeredContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: typography.fontSize.sm,
+    marginTop: spacing.sm,
+  },
   card: {
     position: 'absolute',
     width: CARD_WIDTH,
@@ -192,7 +284,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
   },
   headerSection: {
     flexDirection: 'row',

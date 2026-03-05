@@ -51,7 +51,14 @@ class HomepageService {
       if (accessToken) {
         try {
           const { data, error } = await supabase.functions.invoke(EDGE_FUNCTION_NAME, {
-            body: {},
+            body: {
+              user_id: params.userId,
+              lat: params.latitude?.toString(),
+              lng: params.longitude?.toString(),
+              timezone: params.timezone,
+              refresh: params.refresh || false,
+              categories: params.categories,
+            },
             headers: {
               'Content-Type': 'application/json',
             },
@@ -105,141 +112,95 @@ class HomepageService {
 
       // Generate sections from destinations
       if (destinations && destinations.length > 0) {
-        // Popular Destinations
+        const MIN = 2 // Minimum items to show a section
+
+        // 1. Popular Destinations (stacked swipe cards)
         const popularDests = destinations
-          .filter(d => d.primary_category === 'popular' || d.popularity_score > 800)
-          .slice(0, 12)
-
-        if (popularDests.length >= 3) {
-          sections.push(this.createSection(
-            'popular',
-            'popular-destinations',
-            'Popular Destinations',
-            "Travelers' top picks this season",
-            popularDests,
-            savedIds,
-            3
-          ))
+          .filter(d => d.primary_category === 'popular' || d.popularity_score > 700)
+          .sort((a, b) => b.popularity_score - a.popularity_score)
+          .slice(0, 10)
+        if (popularDests.length >= MIN) {
+          sections.push(this.createSection('popular', 'popular-destinations', 'Popular Destinations', "Travelers' top picks this season", popularDests, savedIds, 1))
         }
 
-        // Trending
-        const trendingDests = destinations.filter(d => d.is_trending).slice(0, 10)
-        if (trendingDests.length >= 3) {
-          sections.push(this.createSection(
-            'trending',
-            'trending',
-            'Trending Now 📈',
-            'What travelers are loving right now',
-            trendingDests,
-            savedIds,
-            5
-          ))
+        // 2. Popular Places (horizontal scroll — different sort from popular destinations)
+        const placesDests = destinations
+          .sort((a, b) => (b.editor_rating || 0) - (a.editor_rating || 0))
+          .slice(0, 10)
+        if (placesDests.length >= MIN) {
+          sections.push(this.createSection('places', 'places', 'Popular Places', 'Most visited attractions worldwide', placesDests, savedIds, 3))
         }
 
-        // Editor's Choice
-        const editorDests = destinations
-          .filter(d => d.is_featured && d.editor_rating >= 4.5)
+        // 3. Must See (highest-rated featured destinations)
+        const mustSeeDests = destinations
+          .filter(d => d.is_featured && (d.editor_rating || 0) >= 4.5)
+          .sort((a, b) => (b.editor_rating || 0) - (a.editor_rating || 0))
           .slice(0, 8)
-
-        if (editorDests.length >= 3) {
-          sections.push(this.createSection(
-            'editors-choice',
-            'editors-choice',
-            "Editor's Choice ✨",
-            'Handpicked by our travel experts',
-            editorDests,
-            savedIds,
-            6,
-            'featured_large',
-            'large'
-          ))
+        if (mustSeeDests.length >= MIN) {
+          sections.push(this.createSection('must-see', 'must-see', 'Must See', 'Iconic landmarks worldwide', mustSeeDests, savedIds, 4))
         }
 
-        // Budget Friendly
+        // 4. Editor's Choice
+        const editorDests = destinations
+          .filter(d => d.is_featured)
+          .sort((a, b) => (b.editor_rating || 0) - (a.editor_rating || 0))
+          .slice(0, 8)
+        if (editorDests.length >= MIN) {
+          sections.push(this.createSection('editors-choice', 'editors-choice', "Editor's Choice", 'Handpicked by our travel experts', editorDests, savedIds, 5, 'featured_large', 'large'))
+        }
+
+        // 5. Trending
+        const trendingDests = destinations
+          .filter(d => d.is_trending)
+          .sort((a, b) => b.popularity_score - a.popularity_score)
+          .slice(0, 10)
+        if (trendingDests.length >= MIN) {
+          sections.push(this.createSection('trending', 'trending', 'Trending Now', 'What travelers are loving right now', trendingDests, savedIds, 6))
+        }
+
+        // 6. Best Discover / Hidden Gems
+        const hiddenGems = destinations
+          .filter(d => d.primary_category === 'off_beaten_path' || d.primary_category === 'cultural' || (d.popularity_score < 600 && (d.editor_rating || 0) >= 4.3))
+          .sort((a, b) => (b.editor_rating || 0) - (a.editor_rating || 0))
+          .slice(0, 8)
+        if (hiddenGems.length >= MIN) {
+          sections.push(this.createSection('hidden-gems', 'hidden-gems', 'Best Discover', 'Hidden gems & off the beaten path', hiddenGems, savedIds, 7))
+        }
+
+        // 7. Budget Friendly
         const budgetDests = destinations
           .filter(d => d.budget_level <= 2)
+          .sort((a, b) => (a.estimated_daily_budget_usd || 999) - (b.estimated_daily_budget_usd || 999))
           .slice(0, 10)
-
-        if (budgetDests.length >= 3) {
-          sections.push(this.createSection(
-            'budget-friendly',
-            'budget-friendly',
-            'Budget Friendly 💰',
-            "Amazing experiences that won't break the bank",
-            budgetDests,
-            savedIds,
-            7
-          ))
+        if (budgetDests.length >= MIN) {
+          sections.push(this.createSection('budget-friendly', 'budget-friendly', 'Budget Friendly', "Amazing experiences that won't break the bank", budgetDests, savedIds, 8))
         }
 
-        // Luxury Escapes
+        // 8. Luxury Escapes
         const luxuryDests = destinations
           .filter(d => d.budget_level >= 4 || d.primary_category === 'luxury')
+          .sort((a, b) => (b.editor_rating || 0) - (a.editor_rating || 0))
           .slice(0, 8)
-
-        if (luxuryDests.length >= 3) {
-          sections.push(this.createSection(
-            'luxury',
-            'luxury-escapes',
-            'Luxury Escapes 👑',
-            'Indulge in extraordinary experiences',
-            luxuryDests,
-            savedIds,
-            8,
-            'horizontal_scroll',
-            'large'
-          ))
+        if (luxuryDests.length >= MIN) {
+          sections.push(this.createSection('luxury', 'luxury-escapes', 'Luxury Escapes', 'Indulge in extraordinary experiences', luxuryDests, savedIds, 9, 'horizontal_scroll', 'large'))
         }
 
-        // Adventure
-        const adventureDests = destinations
-          .filter(d => d.primary_category === 'adventure' || d.travel_style?.includes('adventurer'))
+        // 9. Local Experiences (adventure + diverse destinations)
+        const experienceDests = destinations
+          .filter(d => d.primary_category === 'adventure' || d.travel_style?.includes('adventurer') || d.tags?.includes('culture'))
+          .sort((a, b) => b.popularity_score - a.popularity_score)
           .slice(0, 10)
-
-        if (adventureDests.length >= 3) {
-          sections.push(this.createSection(
-            'adventure',
-            'adventure',
-            'Adventure Awaits 🏔️',
-            'For the thrill seekers and explorers',
-            adventureDests,
-            savedIds,
-            9
-          ))
+        if (experienceDests.length >= MIN) {
+          sections.push(this.createSection('local-experiences', 'local-experiences', 'Local Experiences', 'Unique activities & cultural immersion', experienceDests, savedIds, 10))
         }
 
-        // Beach & Islands
-        const beachDests = destinations
-          .filter(d => d.primary_category === 'beach' || d.tags?.includes('beach'))
-          .slice(0, 10)
-
-        if (beachDests.length >= 3) {
-          sections.push(this.createSection(
-            'beach',
-            'beach-islands',
-            'Beach & Islands 🏝️',
-            'Sun, sand, and paradise found',
-            beachDests,
-            savedIds,
-            10
-          ))
-        }
-
-        // Family Friendly
+        // 10. Family Friendly
         const familyDests = destinations
           .filter(d => d.best_for?.includes('families') || d.primary_category === 'family')
+          .sort((a, b) => (b.safety_rating || 0) - (a.safety_rating || 0))
           .slice(0, 10)
-
-        if (familyDests.length >= 3) {
-          sections.push(this.createSection(
-            'family',
-            'family-friendly',
-            'Family Adventures 👨‍👩‍👧‍👦',
-            'Perfect destinations for the whole family',
-            familyDests,
-            savedIds,
-            11
-          ))
+        if (familyDests.length >= MIN) {
+          sections.push(this.createSection('family', 'family-friendly', 'Family Friendly', 'Perfect destinations for the whole family', familyDests, savedIds, 11))
         }
       }
 
@@ -328,7 +289,7 @@ class HomepageService {
         distanceKm: null,
         distanceText: null,
       },
-      matchScore: 0,
+      matchScore: dest.popularity_score || 0,
       matchReasons: this.generateMatchReasons(dest),
       badges: this.generateBadges(dest),
       ctaText: 'Explore',
@@ -337,6 +298,8 @@ class HomepageService {
       slug: dest.slug,
       budgetLevel: dest.budget_level,
       tags: dest.tags,
+      safetyRating: dest.safety_rating,
+      bestFor: dest.best_for,
     }
   }
 

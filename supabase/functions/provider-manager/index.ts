@@ -11,6 +11,10 @@ import { corsHeaders } from '../_shared/cors.ts'
 import * as amadeus from '../_shared/providers/amadeus.ts'
 import * as kiwi from '../_shared/providers/kiwi.ts'
 import * as expedia from '../_shared/providers/expedia.ts'
+import * as carsAdapter from '../_shared/providers/cars.ts'
+import * as experiencesAdapter from '../_shared/providers/experiences.ts'
+import * as serpApiFlights from '../_shared/providers/serpapi-flights.ts'
+import * as serpApiHotels from '../_shared/providers/serpapi-hotels.ts'
 
 // Types
 interface ProviderManagerRequest {
@@ -504,20 +508,10 @@ async function executeSearch(
         return await executeHotelSearch(providers, params, startTime)
         
       case 'cars':
-        // Cars not yet implemented with direct adapters
-        return {
-          items: generateMockResults(category, params),
-          totalCount: 1,
-          responseTimeMs: Date.now() - startTime,
-        }
+        return await executeCarSearch(providers, params, startTime)
         
       case 'experiences':
-        // Experiences not yet implemented with direct adapters
-        return {
-          items: generateMockResults(category, params),
-          totalCount: 1,
-          responseTimeMs: Date.now() - startTime,
-        }
+        return await executeExperienceSearch(providers, params, startTime)
         
       default:
         return {
@@ -529,11 +523,7 @@ async function executeSearch(
     
   } catch (error) {
     console.error(`Error in ${category} search:`, error)
-    return {
-      items: [],
-      totalCount: 0,
-      responseTimeMs: Date.now() - startTime,
-    }
+    throw error
   }
 }
 
@@ -578,9 +568,34 @@ async function executeFlightSearch(
   const providerCodes = providers.map(p => p.providerCode)
   const searchPromises: Promise<unknown[]>[] = []
   
-  // Always try both Amadeus and Kiwi for flights (per Doc 7 routing)
-  // In production, this would be based on provider scoring
-  if (providerCodes.includes('amadeus') || providerCodes.length === 0) {
+  // Primary: SerpAPI Google Flights — ALWAYS called (best data, Google aggregated prices)
+  searchPromises.push(
+    serpApiFlights.searchFlights(searchParams)
+      .then(results => {
+        console.log(`SerpAPI Google Flights returned ${results.length} flights`)
+        return results
+      })
+      .catch(err => {
+        console.error('SerpAPI Google Flights error:', err.message)
+        return []
+      })
+  )
+  
+  // Secondary: Kiwi.com (affiliate links + creative routes)
+  searchPromises.push(
+    kiwi.searchFlights(searchParams)
+      .then(results => {
+        console.log(`Kiwi returned ${results.length} flights`)
+        return results
+      })
+      .catch(err => {
+        console.error('Kiwi search error:', err.message)
+        return []
+      })
+  )
+  
+  // Fallback: Amadeus (deprecated — sunset July 2026, only if explicitly requested)
+  if (providerCodes.includes('amadeus')) {
     searchPromises.push(
       amadeus.searchFlights(searchParams)
         .then(results => {
@@ -589,20 +604,6 @@ async function executeFlightSearch(
         })
         .catch(err => {
           console.error('Amadeus search error:', err.message)
-          return []
-        })
-    )
-  }
-  
-  if (providerCodes.includes('kiwi') || providerCodes.length === 0) {
-    searchPromises.push(
-      kiwi.searchFlights(searchParams)
-        .then(results => {
-          console.log(`Kiwi returned ${results.length} flights`)
-          return results
-        })
-        .catch(err => {
-          console.error('Kiwi search error:', err.message)
           return []
         })
     )
@@ -667,16 +668,26 @@ async function executeHotelSearch(
   // Call Booking.com adapter (via expedia module which now uses Booking.com RapidAPI)
   const providerCodes = providers.map(p => p.providerCode)
   
+  // Primary: SerpAPI Google Hotels (aggregates Booking.com, Expedia, Hotels.com, etc.)
+  // Fallback: Booking.com via RapidAPI (if SerpAPI fails)
   try {
-    // Use Booking.com for hotel searches
-    const results = await expedia.searchHotels(searchParams)
+    let results: any[] = []
     
-    console.log(`Booking.com returned ${results.length} hotels`)
+    // Try SerpAPI Google Hotels first
+    try {
+      results = await serpApiHotels.searchHotels(searchParams as any)
+      console.log(`SerpAPI Google Hotels returned ${results.length} hotels`)
+    } catch (serpErr: any) {
+      console.error('SerpAPI Google Hotels error, falling back to Booking.com:', serpErr.message)
+      // Fall back to Booking.com RapidAPI
+      results = await expedia.searchHotels(searchParams)
+      console.log(`Booking.com fallback returned ${results.length} hotels`)
+    }
     
     // Calculate price range
     let priceRange: { min: number; max: number } | undefined
     if (results.length > 0) {
-      const prices = results.map(h => h.lowestPrice?.amount || 0).filter(p => p > 0)
+      const prices = results.map((h: any) => h.lowestPrice?.amount || 0).filter((p: number) => p > 0)
       if (prices.length > 0) {
         priceRange = {
           min: Math.min(...prices),
@@ -692,7 +703,7 @@ async function executeHotelSearch(
       priceRange,
     }
   } catch (error) {
-    console.error('Hotel search error:', error)
+    console.error('Hotel search error (all providers failed):', error)
     return {
       items: [],
       totalCount: 0,
@@ -701,52 +712,117 @@ async function executeHotelSearch(
   }
 }
 
-function generateMockResults(category: string, params: Record<string, unknown>): unknown[] {
-  // Generate mock results for testing
-  // Real implementation would call actual provider APIs
+// Execute car search using car adapter
+async function executeCarSearch(
+  providers: { providerId: string; providerCode: string }[],
+  params: Record<string, unknown>,
+  startTime: number
+): Promise<{ items: unknown[]; totalCount: number; responseTimeMs: number; priceRange?: { min: number; max: number } }> {
   
-  switch (category) {
-    case 'flights':
-      return [{
-        id: 'mock-flight-1',
-        type: 'flight',
-        provider: { code: 'amadeus', name: 'Amadeus' },
-        price: { amount: 450, currency: 'USD', formatted: '$450.00' },
-        tripType: 'round_trip',
-        totalStops: 1,
-        totalDurationMinutes: 480,
-      }]
+  const searchParams = {
+    pickupLocation: (params.pickupLocation || params.pickup_location || params.origin || '') as string,
+    dropoffLocation: (params.dropoffLocation || params.dropoff_location || params.destination || '') as string,
+    pickupDate: (params.pickupDate || params.pickup_date || params.startDate) as string,
+    dropoffDate: (params.dropoffDate || params.dropoff_date || params.endDate) as string,
+    pickupTime: (params.pickupTime || params.pickup_time || '10:00') as string,
+    dropoffTime: (params.dropoffTime || params.dropoff_time || '10:00') as string,
+    driverAge: (params.driverAge || params.driver_age || 30) as number,
+    currency: (params.currency as string) || 'USD',
+    limit: (params.limit as number) || 20,
+  }
+  
+  console.log(`Executing car search with params:`, JSON.stringify(searchParams).substring(0, 200))
+  
+  try {
+    const results = await carsAdapter.searchCars(searchParams)
     
-    case 'hotels':
-      return [{
-        id: 'mock-hotel-1',
-        type: 'hotel',
-        provider: { code: 'expedia', name: 'Expedia' },
-        name: 'Sample Hotel',
-        starRating: 4,
-        lowestPrice: { amount: 150, currency: 'USD', formatted: '$150.00' },
-      }]
+    console.log(`Car adapter returned ${results.length} cars`)
     
-    case 'cars':
-      return [{
-        id: 'mock-car-1',
-        type: 'car',
-        provider: { code: 'cartrawler', name: 'Cartrawler' },
-        vehicle: { name: 'Economy Car', category: 'economy' },
-        price: { amount: 45, currency: 'USD', formatted: '$45.00' },
-      }]
+    let priceRange: { min: number; max: number } | undefined
+    if (results.length > 0) {
+      const prices = results.map(c => c.price.amount).filter(p => p > 0)
+      if (prices.length > 0) {
+        priceRange = {
+          min: Math.min(...prices),
+          max: Math.max(...prices),
+        }
+      }
+    }
     
-    case 'experiences':
-      return [{
-        id: 'mock-experience-1',
-        type: 'experience',
-        provider: { code: 'getyourguide', name: 'GetYourGuide' },
-        title: 'City Walking Tour',
-        price: { amount: 35, currency: 'USD', formatted: '$35.00' },
-      }]
+    return {
+      items: results,
+      totalCount: results.length,
+      responseTimeMs: Date.now() - startTime,
+      priceRange,
+    }
+  } catch (error) {
+    console.error('Car search error:', error)
+    throw error
+  }
+}
+
+// Execute experience search using experience adapter
+async function executeExperienceSearch(
+  providers: { providerId: string; providerCode: string }[],
+  params: Record<string, unknown>,
+  startTime: number
+): Promise<{ items: unknown[]; totalCount: number; responseTimeMs: number; priceRange?: { min: number; max: number } }> {
+  
+  // Build destination from various param formats
+  let destinationValue = ''
+  if (typeof params.destination === 'string') {
+    destinationValue = params.destination
+  } else if (params.destination && typeof params.destination === 'object') {
+    const dest = params.destination as { value?: string; type?: string }
+    destinationValue = dest.value || ''
+  }
+  
+  const searchParams = {
+    destination: {
+      type: 'city' as const,
+      value: destinationValue,
+    },
+    dates: {
+      startDate: (params.startDate || params.date || new Date().toISOString().split('T')[0]) as string,
+      endDate: params.endDate as string | undefined,
+      flexibleDates: (params.flexibleDates as boolean) || false,
+    },
+    participants: {
+      adults: (params.adults as number) || (params.participants as { adults?: number })?.adults || 2,
+      children: (params.children as number) || (params.participants as { children?: number })?.children || 0,
+    },
+    category: params.category as string | undefined,
+    currency: (params.currency as string) || 'USD',
+    limit: (params.limit as number) || 15,
+  }
+  
+  console.log(`Executing experience search with params:`, JSON.stringify(searchParams).substring(0, 200))
+  
+  try {
+    const results = await experiencesAdapter.searchExperiences(searchParams)
     
-    default:
-      return []
+    console.log(`Experience adapter returned ${results.length} experiences`)
+    
+    let priceRange: { min: number; max: number } | undefined
+    if (results.length > 0) {
+      const prices = results.map(e => e.price.amount).filter(p => p > 0)
+      if (prices.length > 0) {
+        priceRange = {
+          min: Math.min(...prices),
+          max: Math.max(...prices),
+        }
+      }
+    }
+    
+    return {
+      items: results,
+      totalCount: results.length,
+      responseTimeMs: Date.now() - startTime,
+      priceRange,
+    }
+  } catch (error) {
+    console.error('Experience search error:', error)
+    throw error
   }
 }
 

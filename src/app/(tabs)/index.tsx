@@ -13,7 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { SearchNormal1 } from 'iconsax-react-native';
+import { SearchNormal1, Archive, Notification } from 'iconsax-react-native';
 import TripReminder from '@/components/features/home/TripReminder';
 import SectionRenderer from '@/components/features/home/SectionRenderer';
 import PlanBottomSheet from '@/components/features/home/PlanBottomSheet';
@@ -140,12 +140,21 @@ export default function Home() {
               {profile?.location_name || profile?.city || t('home.setLocation')}
             </Text>
           </View>
-          <View style={styles.notificationContainer}>
-            <View style={[styles.notificationBadge, dynamicStyles.notificationBadge]}>
-              <Text style={[styles.notificationCount, dynamicStyles.notificationCount]}>3</Text>
-            </View>
-            <View style={[styles.notificationIcon, dynamicStyles.notificationIcon]}>
-              <Text style={styles.bellIcon}>🔔</Text>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={[styles.headerActionBtn, { backgroundColor: colors.bgCard }]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/deals/saved' as any); }}
+              activeOpacity={0.7}
+            >
+              <Archive size={20} color={colors.textPrimary} variant="Bold" />
+            </TouchableOpacity>
+            <View style={styles.notificationContainer}>
+              <View style={[styles.notificationBadge, dynamicStyles.notificationBadge]}>
+                <Text style={[styles.notificationCount, dynamicStyles.notificationCount]}>3</Text>
+              </View>
+              <TouchableOpacity style={[styles.notificationIcon, dynamicStyles.notificationIcon]} activeOpacity={0.7}>
+                <Notification size={20} color={colors.textPrimary} variant="Bold" />
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -286,6 +295,18 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     marginTop: 2,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerActionBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   notificationContainer: {
     position: 'relative',
   },
@@ -310,9 +331,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  bellIcon: {
-    fontSize: 20,
   },
   searchBarFull: {
     flexDirection: 'row',

@@ -6,15 +6,23 @@
  * Now uses real data from database with mock data fallback.
  */
 
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useMemo } from 'react';
+import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import BudgetFriendlyCard from '@/components/features/home/BudgetFriendlyCard';
-import { budgetFriendlyPlaces } from '@/data/budgetFriendly';
-import { useHomepageDataSafe } from '@/features/homepage';
+import { useHomepageDataSafe, filterByCategory, useSectionVisibility } from '@/features/homepage';
 import { spacing } from '@/styles';
+import { SkeletonBudgetCards } from '@/components/common/SkeletonLoader';
 
 export default function BudgetFriendlySection() {
+  const router = useRouter();
   const homepageData = useHomepageDataSafe();
+
+  const handleCardPress = (id: string | number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push({ pathname: '/destinations/[id]' as any, params: { id: String(id) } });
+  };
   
   // Map database data to card props format, fallback to mock data
   const displayData = useMemo(() => {
@@ -28,13 +36,23 @@ export default function BudgetFriendlySection() {
         category: item.tags?.[0] || 'Budget Travel',
         rating: item.rating || 4.5,
         price: item.price?.formatted || `$${item.price?.amount || 50}/day`,
-        savingsPercent: String(Math.floor(Math.random() * 30) + 15),
-        imageUrl: item.imageUrl || item.thumbnailUrl || 'https://picsum.photos/seed/budget/800/500',
+        savingsPercent: item.budgetLevel ? String(Math.round((5 - item.budgetLevel) * 15)) : '',
+        imageUrl: item.imageUrl || item.thumbnailUrl,
       }));
     }
     
-    return budgetFriendlyPlaces;
+    return [];
   }, [homepageData?.sections]);
+
+  const activeCategory = homepageData?.activeCategory ?? 'all';
+  const filteredData = filterByCategory(displayData, activeCategory);
+  useSectionVisibility('budgetFriendly', filteredData.length);
+
+  if (homepageData?.isLoading && displayData.length === 0) {
+    return <SkeletonBudgetCards />;
+  }
+
+  if (filteredData.length === 0) return null;
 
   return (
     <ScrollView 
@@ -42,17 +60,18 @@ export default function BudgetFriendlySection() {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.budgetFriendlyContainer}
     >
-      {displayData.map((place) => (
-        <BudgetFriendlyCard
-          key={place.id}
-          name={place.name}
-          location={place.location}
-          category={place.category}
-          rating={place.rating}
-          price={place.price}
-          savingsPercent={place.savingsPercent}
-          imageUrl={place.imageUrl}
-        />
+      {filteredData.map((place) => (
+        <TouchableOpacity key={place.id} activeOpacity={0.8} onPress={() => handleCardPress(place.id)}>
+          <BudgetFriendlyCard
+            name={place.name}
+            location={place.location}
+            category={place.category}
+            rating={place.rating}
+            price={place.price}
+            savingsPercent={place.savingsPercent}
+            imageUrl={place.imageUrl}
+          />
+        </TouchableOpacity>
       ))}
     </ScrollView>
   );

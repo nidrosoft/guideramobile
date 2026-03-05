@@ -79,8 +79,7 @@ export default function CarSearchLoadingScreen({ onComplete }: CarSearchLoadingS
         await search(providerParams);
       } catch (error) {
         console.error('Car search error:', error);
-        // Fall back to mock results
-        generateMockResults();
+        setResults([]);
         onComplete();
       }
     };
@@ -149,8 +148,7 @@ export default function CarSearchLoadingScreen({ onComplete }: CarSearchLoadingS
       setResults(mappedResults);
       onComplete();
     } else if (!searchState.isLoading && searchState.error) {
-      // Fall back to mock results on error
-      generateMockResults();
+      setResults([]);
       onComplete();
     }
   }, [searchState.isLoading, searchState.results, searchState.error]);
@@ -210,199 +208,17 @@ export default function CarSearchLoadingScreen({ onComplete }: CarSearchLoadingS
       )
     );
 
-    // Fallback timeout if search takes too long
+    // Timeout if search takes too long
     const fallbackTimer = setTimeout(() => {
       if (searchState.isLoading) {
-        generateMockResults();
+        console.warn('Car search timed out after 10s');
+        setResults([]);
         onComplete();
       }
     }, 10000);
 
     return () => clearTimeout(fallbackTimer);
   }, []);
-
-  const generateMockResults = () => {
-    const rentalDays = getRentalDays();
-    const mockCars = [
-      {
-        id: '1',
-        name: 'Toyota Corolla',
-        category: 'compact' as const,
-        make: 'Toyota',
-        model: 'Corolla',
-        year: 2024,
-        images: ['https://images.unsplash.com/photo-1623869675781-80aa31012a5a?w=400'],
-        features: [
-          { id: 'bluetooth', name: 'Bluetooth', icon: 'bluetooth', included: true },
-          { id: 'usb', name: 'USB Port', icon: 'usb', included: true },
-        ],
-        specs: {
-          seats: 5,
-          doors: 4,
-          luggage: { large: 2, small: 1 },
-          transmission: 'automatic' as const,
-          fuelType: 'petrol' as const,
-          fuelPolicy: 'full_to_full' as const,
-          airConditioning: true,
-          mileage: 'unlimited' as const,
-        },
-        rental: {
-          company: { id: 'hertz', name: 'Hertz', logo: '', rating: 4.5, reviewCount: 1250, locations: 50 },
-          pricePerDay: { amount: 45, currency: 'USD', formatted: '$45' },
-          totalPrice: { amount: 45 * rentalDays, currency: 'USD', formatted: `$${45 * rentalDays}` },
-          deposit: 200,
-          currency: 'USD',
-          insurance: [],
-          extras: [],
-          policies: {
-            minAge: 21,
-            licenseRequirements: 'Valid driver license',
-            internationalLicense: false,
-            crossBorder: false,
-            oneWayAllowed: true,
-            cancellation: { freeBefore: 48, penalty: 50 },
-            noShow: 100,
-            lateReturn: { gracePeriod: 30, hourlyFee: 15 },
-          },
-        },
-        available: true,
-        popularChoice: true,
-      },
-      {
-        id: '2',
-        name: 'Honda CR-V',
-        category: 'suv_standard' as const,
-        make: 'Honda',
-        model: 'CR-V',
-        year: 2024,
-        images: ['https://images.unsplash.com/photo-1568844293986-8c8f3a5f5c8a?w=400'],
-        features: [
-          { id: 'bluetooth', name: 'Bluetooth', icon: 'bluetooth', included: true },
-          { id: 'backup_camera', name: 'Backup Camera', icon: 'camera', included: true },
-        ],
-        specs: {
-          seats: 5,
-          doors: 4,
-          luggage: { large: 3, small: 2 },
-          transmission: 'automatic' as const,
-          fuelType: 'petrol' as const,
-          fuelPolicy: 'full_to_full' as const,
-          airConditioning: true,
-          mileage: 'unlimited' as const,
-        },
-        rental: {
-          company: { id: 'avis', name: 'Avis', logo: '', rating: 4.3, reviewCount: 980, locations: 45 },
-          pricePerDay: { amount: 65, currency: 'USD', formatted: '$65' },
-          totalPrice: { amount: 65 * rentalDays, currency: 'USD', formatted: `$${65 * rentalDays}` },
-          deposit: 300,
-          currency: 'USD',
-          insurance: [],
-          extras: [],
-          policies: {
-            minAge: 21,
-            licenseRequirements: 'Valid driver license',
-            internationalLicense: false,
-            crossBorder: false,
-            oneWayAllowed: true,
-            cancellation: { freeBefore: 48, penalty: 50 },
-            noShow: 100,
-            lateReturn: { gracePeriod: 30, hourlyFee: 20 },
-          },
-        },
-        available: true,
-        popularChoice: false,
-      },
-      {
-        id: '3',
-        name: 'Ford Mustang',
-        category: 'sports' as const,
-        make: 'Ford',
-        model: 'Mustang',
-        year: 2024,
-        images: ['https://images.unsplash.com/photo-1584345604476-8ec5f82bd3a3?w=400'],
-        features: [
-          { id: 'bluetooth', name: 'Bluetooth', icon: 'bluetooth', included: true },
-          { id: 'leather', name: 'Leather Seats', icon: 'seat', included: true },
-        ],
-        specs: {
-          seats: 4,
-          doors: 2,
-          luggage: { large: 1, small: 1 },
-          transmission: 'automatic' as const,
-          fuelType: 'petrol' as const,
-          fuelPolicy: 'full_to_full' as const,
-          airConditioning: true,
-          mileage: 'unlimited' as const,
-        },
-        rental: {
-          company: { id: 'enterprise', name: 'Enterprise', logo: '', rating: 4.6, reviewCount: 2100, locations: 60 },
-          pricePerDay: { amount: 95, currency: 'USD', formatted: '$95' },
-          totalPrice: { amount: 95 * rentalDays, currency: 'USD', formatted: `$${95 * rentalDays}` },
-          deposit: 500,
-          currency: 'USD',
-          insurance: [],
-          extras: [],
-          policies: {
-            minAge: 25,
-            licenseRequirements: 'Valid driver license',
-            internationalLicense: false,
-            crossBorder: false,
-            oneWayAllowed: false,
-            cancellation: { freeBefore: 48, penalty: 50 },
-            noShow: 100,
-            lateReturn: { gracePeriod: 30, hourlyFee: 30 },
-          },
-        },
-        available: true,
-        popularChoice: true,
-      },
-      {
-        id: '4',
-        name: 'Nissan Altima',
-        category: 'midsize' as const,
-        make: 'Nissan',
-        model: 'Altima',
-        year: 2024,
-        images: ['https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=400'],
-        features: [
-          { id: 'bluetooth', name: 'Bluetooth', icon: 'bluetooth', included: true },
-        ],
-        specs: {
-          seats: 5,
-          doors: 4,
-          luggage: { large: 2, small: 2 },
-          transmission: 'automatic' as const,
-          fuelType: 'petrol' as const,
-          fuelPolicy: 'full_to_full' as const,
-          airConditioning: true,
-          mileage: 'unlimited' as const,
-        },
-        rental: {
-          company: { id: 'budget', name: 'Budget', logo: '', rating: 4.2, reviewCount: 750, locations: 40 },
-          pricePerDay: { amount: 52, currency: 'USD', formatted: '$52' },
-          totalPrice: { amount: 52 * rentalDays, currency: 'USD', formatted: `$${52 * rentalDays}` },
-          deposit: 250,
-          currency: 'USD',
-          insurance: [],
-          extras: [],
-          policies: {
-            minAge: 21,
-            licenseRequirements: 'Valid driver license',
-            internationalLicense: false,
-            crossBorder: false,
-            oneWayAllowed: true,
-            cancellation: { freeBefore: 48, penalty: 50 },
-            noShow: 100,
-            lateReturn: { gracePeriod: 30, hourlyFee: 15 },
-          },
-        },
-        available: true,
-        popularChoice: false,
-      },
-    ];
-
-    setResults(mockCars);
-  };
 
   const carStyle = useAnimatedStyle(() => ({
     transform: [

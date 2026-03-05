@@ -1,9 +1,9 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
-import { useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { Building, Tree, Map, Ship, Camera, Cup, ShoppingBag, TicketDiscount } from 'iconsax-react-native';
+import { useHomepageDataSafe } from '@/features/homepage';
+import { Building, Tree, Map, Ship, Camera, Cup, ShoppingBag, TicketDiscount, People, Lovely, Courthouse, Moon, Health, RouteSquare, Heart, Medal } from 'iconsax-react-native';
 
 const categories = [
   { id: 'all', name: 'All', icon: null },
@@ -15,17 +15,26 @@ const categories = [
   { id: 'food', name: 'Food', icon: Cup },
   { id: 'shopping', name: 'Shopping', icon: ShoppingBag },
   { id: 'events', name: 'Events', icon: TicketDiscount },
+  { id: 'family', name: 'Family', icon: People },
+  { id: 'nature', name: 'Nature', icon: Lovely },
+  { id: 'historical', name: 'Historical', icon: Courthouse },
+  { id: 'nightlife', name: 'Nightlife', icon: Moon },
+  { id: 'wellness', name: 'Wellness', icon: Health },
+  { id: 'tours', name: 'Tours', icon: RouteSquare },
+  { id: 'romantic', name: 'Romantic', icon: Heart },
+  { id: 'sports', name: 'Sports', icon: Medal },
 ];
 
 export default function CategoryPills() {
   const { colors } = useTheme();
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const homepageData = useHomepageDataSafe();
+  const selectedCategory = homepageData?.activeCategory ?? 'all';
 
   const handleCategoryPress = (categoryId: string) => {
     if (Platform.OS === 'ios') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    setSelectedCategory(categoryId);
+    homepageData?.setActiveCategory(categoryId);
   };
 
   return (

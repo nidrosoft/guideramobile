@@ -7,7 +7,8 @@
 
 import { View, Text, StyleSheet } from 'react-native';
 import { Location, People, Calendar, DollarCircle, Star1 } from 'iconsax-react-native';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 interface BasicInfoSectionProps {
   name: string;
@@ -15,23 +16,11 @@ interface BasicInfoSectionProps {
   rating: number;
   category: string;
   visitors: string;
+  bestTime?: string;
+  budget?: string;
 }
 
-// Color palette for icon containers
-const iconStyles = {
-  visitors: {
-    iconBg: 'rgba(34, 197, 94, 0.2)', // Soft green background
-    iconColor: '#22C55E', // Strong green icon
-  },
-  time: {
-    iconBg: 'rgba(249, 115, 22, 0.2)', // Soft orange background
-    iconColor: '#F97316', // Strong orange icon
-  },
-  budget: {
-    iconBg: 'rgba(59, 130, 246, 0.2)', // Soft blue background
-    iconColor: '#3B82F6', // Strong blue icon
-  },
-};
+const PRIMARY = '#3FC39E';
 
 export default function BasicInfoSection({
   name,
@@ -39,61 +28,64 @@ export default function BasicInfoSection({
   rating,
   category,
   visitors,
+  bestTime = 'Year-round',
+  budget = 'Varies',
 }: BasicInfoSectionProps) {
+  const { colors } = useTheme();
   return (
     <View style={styles.container}>
       {/* Badge and Reviews Row */}
       <View style={styles.topRow}>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{category.toUpperCase()}</Text>
+        <View style={[styles.badge, { backgroundColor: `${colors.primary}4D` }]}>
+          <Text style={[styles.badgeText, { color: colors.primary }]}>{category.toUpperCase()}</Text>
         </View>
         <View style={styles.reviewsContainer}>
           <Star1 size={16} color="#FFC107" variant="Bold" />
-          <Text style={styles.reviewsText}>({rating} reviews)</Text>
+          <Text style={[styles.reviewsText, { color: colors.textSecondary }]}>({rating} reviews)</Text>
         </View>
       </View>
 
       {/* Title */}
-      <Text style={styles.title}>{name}</Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>{name}</Text>
       
       {/* Location with Map Icon */}
       <View style={styles.locationRow}>
         <Location size={18} color={colors.primary} variant="Bold" />
-        <Text style={styles.location}>{location}</Text>
+        <Text style={[styles.location, { color: colors.textSecondary }]}>{location}</Text>
       </View>
 
-      {/* Horizontal Icon Items - 3 Items (Stacked layout) */}
-      <View style={styles.infoCardsRow}>
+      {/* Horizontal Icon Items - 3 Items */}
+      <View style={[styles.infoCardsRow, { borderColor: colors.borderMedium }]}>
         {/* Visitors */}
         <View style={styles.infoItem}>
-          <View style={[styles.iconContainer, { backgroundColor: iconStyles.visitors.iconBg }]}>
-            <People size={20} color={iconStyles.visitors.iconColor} variant="Bold" />
+          <View style={[styles.iconContainer, { backgroundColor: `${PRIMARY}15` }]}>
+            <People size={20} color={PRIMARY} variant="Bold" />
           </View>
-          <Text style={styles.infoLabel}>Visitors</Text>
-          <Text style={styles.infoValue}>{visitors}</Text>
+          <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Visitors</Text>
+          <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{visitors}</Text>
         </View>
 
         {/* Best Time */}
         <View style={styles.infoItem}>
-          <View style={[styles.iconContainer, { backgroundColor: iconStyles.time.iconBg }]}>
-            <Calendar size={20} color={iconStyles.time.iconColor} variant="Bold" />
+          <View style={[styles.iconContainer, { backgroundColor: `${PRIMARY}15` }]}>
+            <Calendar size={20} color={PRIMARY} variant="Bold" />
           </View>
-          <Text style={styles.infoLabel}>Best Time</Text>
-          <Text style={styles.infoValue}>Apr - Oct</Text>
+          <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Best Time</Text>
+          <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{bestTime}</Text>
         </View>
 
         {/* Budget */}
         <View style={styles.infoItem}>
-          <View style={[styles.iconContainer, { backgroundColor: iconStyles.budget.iconBg }]}>
-            <DollarCircle size={20} color={iconStyles.budget.iconColor} variant="Bold" />
+          <View style={[styles.iconContainer, { backgroundColor: `${PRIMARY}15` }]}>
+            <DollarCircle size={20} color={PRIMARY} variant="Bold" />
           </View>
-          <Text style={styles.infoLabel}>Budget</Text>
-          <Text style={styles.infoValue}>$150-300</Text>
+          <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Budget</Text>
+          <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{budget}</Text>
         </View>
       </View>
 
       {/* Thin Separator Line */}
-      <View style={styles.separator} />
+      <View style={[styles.separator, { backgroundColor: colors.gray200 }]} />
     </View>
   );
 }
@@ -112,13 +104,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   badge: {
-    backgroundColor: `${colors.primary}4D`, // 30% opacity (4D in hex)
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xs,
     borderRadius: 20,
   },
   badgeText: {
-    color: colors.primary, // 100% strong color
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
     letterSpacing: 0.5,
@@ -130,12 +120,10 @@ const styles = StyleSheet.create({
   },
   reviewsText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   title: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   locationRow: {
@@ -146,12 +134,15 @@ const styles = StyleSheet.create({
   },
   location: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
   },
   infoCardsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.sm,
   },
   infoItem: {
     flex: 1,
@@ -169,19 +160,16 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginBottom: 2,
     textAlign: 'center',
   },
   infoValue: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     textAlign: 'center',
   },
   separator: {
     height: 0.5,
-    backgroundColor: colors.gray200,
     marginTop: spacing.lg,
   },
 });

@@ -1,9 +1,12 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { typography, spacing, colors } from '@/styles';
-import { Bookmark, ArrowRight, TrendUp, Star1 } from 'iconsax-react-native';
+import { typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
+import { ArrowRight, TrendUp, Star1 } from 'iconsax-react-native';
+import SaveButton from '@/components/common/SaveButton';
 
 interface TrendingLocationCardProps {
+  id?: string;
   city: string;
   country: string;
   placeName: string;
@@ -15,6 +18,7 @@ interface TrendingLocationCardProps {
 }
 
 export default function TrendingLocationCard({ 
+  id,
   city, 
   country, 
   placeName, 
@@ -24,6 +28,7 @@ export default function TrendingLocationCard({
   category,
   imageUrl 
 }: TrendingLocationCardProps) {
+  const { colors } = useTheme();
   return (
     <View style={styles.container}>
       {/* Background Image */}
@@ -37,10 +42,7 @@ export default function TrendingLocationCard({
           <Text style={styles.trendingText}>+{trendPercentage}%</Text>
         </View>
         
-        {/* Bookmark Button */}
-        <TouchableOpacity style={styles.bookmarkButton}>
-          <Bookmark size={20} color="#1a1a1a" variant="Outline" />
-        </TouchableOpacity>
+        {id ? <SaveButton destinationId={id} /> : null}
       </View>
 
       {/* Bottom Info Container with Blur */}
@@ -85,7 +87,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
     position: 'relative',
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   backgroundImage: {
     width: '100%',

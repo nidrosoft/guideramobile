@@ -7,13 +7,14 @@
  */
 
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
-import { Clock, DollarCircle, Call, Calendar, Location as LocationIcon } from 'iconsax-react-native';
-import { colors, typography, spacing } from '@/styles';
+import { Clock, DollarCircle, Call, Calendar, Location as LocationIcon, Money, Global, InfoCircle } from 'iconsax-react-native';
+import { typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { iconColors } from '@/styles/iconColors';
 import * as Haptics from 'expo-haptics';
 
 interface PracticalInfoItem {
-  icon: 'clock' | 'price' | 'phone' | 'calendar' | 'location';
+  icon: 'clock' | 'price' | 'phone' | 'calendar' | 'location' | 'currency' | 'language' | 'info';
   label: string;
   value: string;
   actionable?: boolean;
@@ -25,20 +26,39 @@ interface PracticalInfoSectionProps {
 }
 
 export default function PracticalInfoSection({ items }: PracticalInfoSectionProps) {
-  const getIconConfig = (iconType: string) => {
+  const { colors } = useTheme();
+  const getIconConfig = (iconType: string, label?: string) => {
+    // Label-aware overrides: handles AI-generated 'info' icons with specific labels
+    const lowerLabel = (label || '').toLowerCase();
+    if (lowerLabel.includes('currency') || lowerLabel.includes('money')) {
+      return { icon: Money, color: '#059669', bgColor: '#D1FAE5' };
+    }
+    if (lowerLabel.includes('language') || lowerLabel.includes('speak')) {
+      return { icon: Global, color: '#0EA5E9', bgColor: '#E0F2FE' };
+    }
+    if (lowerLabel.includes('emergency') || lowerLabel.includes('urgent')) {
+      return { icon: Call, color: '#EF4444', bgColor: '#FEE2E2' };
+    }
+
     switch (iconType) {
       case 'clock':
-        return { icon: Clock, color: '#3B82F6', bgColor: '#EFF6FF' };
+        return { icon: Clock, color: '#3B82F6', bgColor: '#DBEAFE' };
       case 'price':
         return { icon: DollarCircle, color: '#10B981', bgColor: '#ECFDF5' };
       case 'phone':
-        return { icon: Call, color: '#8B5CF6', bgColor: '#F5F3FF' };
+        return { icon: Call, color: '#8B5CF6', bgColor: '#EDE9FE' };
       case 'calendar':
         return { icon: Calendar, color: '#F59E0B', bgColor: '#FEF3C7' };
       case 'location':
         return { icon: LocationIcon, color: '#EF4444', bgColor: '#FEE2E2' };
+      case 'currency':
+        return { icon: Money, color: '#059669', bgColor: '#D1FAE5' };
+      case 'language':
+        return { icon: Global, color: '#0EA5E9', bgColor: '#E0F2FE' };
+      case 'info':
+        return { icon: InfoCircle, color: '#6366F1', bgColor: '#EEF2FF' };
       default:
-        return { icon: Clock, color: '#3B82F6', bgColor: '#EFF6FF' };
+        return { icon: Clock, color: '#3B82F6', bgColor: '#DBEAFE' };
     }
   };
 
@@ -50,13 +70,13 @@ export default function PracticalInfoSection({ items }: PracticalInfoSectionProp
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Practical Information</Text>
-        <Text style={styles.subtitle}>Essential details for planning your visit</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Practical Information</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Essential details for planning your visit</Text>
       </View>
       
-      <View style={styles.itemsContainer}>
+      <View style={[styles.itemsContainer, { backgroundColor: colors.bgElevated, borderColor: colors.borderMedium }]}>
         {items.map((item, index) => (
           <TouchableOpacity
             key={index}
@@ -65,18 +85,19 @@ export default function PracticalInfoSection({ items }: PracticalInfoSectionProp
             disabled={!item.actionable}
             activeOpacity={item.actionable ? 0.7 : 1}
           >
-            <View style={[styles.iconCircle, { backgroundColor: getIconConfig(item.icon).bgColor }]}>
+            <View style={[styles.iconCircle, { backgroundColor: getIconConfig(item.icon, item.label).bgColor }]}>
               {(() => {
-                const IconComponent = getIconConfig(item.icon).icon;
-                return <IconComponent size={22} color={getIconConfig(item.icon).color} variant="Bold" />;
+                const cfg = getIconConfig(item.icon, item.label);
+                return <cfg.icon size={22} color={cfg.color} variant="Bold" />;
               })()}
             </View>
             
             <View style={styles.textContainer}>
-              <Text style={styles.label}>{item.label}</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>{item.label}</Text>
               <Text style={[
                 styles.value,
-                item.actionable && styles.actionableValue
+                { color: colors.textPrimary },
+                item.actionable && { color: colors.primary }
               ]}>
                 {item.value}
               </Text>
@@ -90,7 +111,6 @@ export default function PracticalInfoSection({ items }: PracticalInfoSectionProp
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.background,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xl,
   },
@@ -100,30 +120,27 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   subtitle: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
   },
   itemsContainer: {
-    backgroundColor: colors.bgElevated,
     borderRadius: 24,
     padding: spacing.md,
+    borderWidth: 1,
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.md,
     borderBottomWidth: 0.5,
-    borderBottomColor: colors.gray100,
+    borderBottomColor: 'rgba(128,128,128,0.15)',
   },
   iconCircle: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.gray100,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
@@ -133,15 +150,10 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     marginBottom: 4,
   },
   value: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  actionableValue: {
-    color: colors.primary,
   },
 });

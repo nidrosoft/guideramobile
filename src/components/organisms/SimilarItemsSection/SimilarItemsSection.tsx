@@ -8,7 +8,8 @@
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Location, Star1 } from 'iconsax-react-native';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import * as Haptics from 'expo-haptics';
 
 interface SimilarItem {
@@ -32,42 +33,43 @@ export default function SimilarItemsSection({
   type 
 }: SimilarItemsSectionProps) {
   const router = useRouter();
+  const { colors } = useTheme();
 
   const handleItemPress = (itemId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push(`/detail/${itemId}` as any);
+    router.push({ pathname: '/destinations/[id]' as any, params: { id: itemId } });
   };
 
   const renderItem = ({ item }: { item: SimilarItem }) => (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, { backgroundColor: colors.bgElevated, borderColor: colors.borderMedium }]}
       onPress={() => handleItemPress(item.id)}
       activeOpacity={0.8}
     >
-      <Image source={{ uri: item.image }} style={styles.image} />
+      <Image source={{ uri: item.image }} style={[styles.image, { backgroundColor: colors.gray200 }]} />
       
       <View style={styles.content}>
-        <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+        <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
         
         <View style={styles.locationRow}>
           <Location size={14} color={colors.textSecondary} variant="Bold" />
-          <Text style={styles.location} numberOfLines={1}>{item.location}</Text>
+          <Text style={[styles.location, { color: colors.textSecondary }]} numberOfLines={1}>{item.location}</Text>
         </View>
         
         <View style={styles.footer}>
           <View style={styles.ratingRow}>
             <Star1 size={14} color="#F59E0B" variant="Bold" />
-            <Text style={styles.rating}>{item.rating}</Text>
+            <Text style={[styles.rating, { color: colors.textPrimary }]}>{item.rating}</Text>
           </View>
-          <Text style={styles.category}>{item.category}</Text>
+          <Text style={[styles.category, { color: colors.textSecondary, backgroundColor: colors.gray100 }]}>{item.category}</Text>
         </View>
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
       
       <FlatList
         data={items}
@@ -85,13 +87,11 @@ export default function SimilarItemsSection({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.background,
     paddingVertical: spacing.xl,
   },
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.lg,
     paddingHorizontal: spacing.lg,
   },
@@ -101,10 +101,10 @@ const styles = StyleSheet.create({
   },
   card: {
     width: 200,
-    backgroundColor: colors.bgElevated,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: colors.black,
+    borderWidth: 1,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -113,7 +113,6 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: 140,
-    backgroundColor: colors.gray200,
   },
   content: {
     padding: spacing.md,
@@ -121,7 +120,6 @@ const styles = StyleSheet.create({
   name: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   locationRow: {
@@ -132,7 +130,6 @@ const styles = StyleSheet.create({
   },
   location: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     flex: 1,
   },
   footer: {
@@ -148,12 +145,9 @@ const styles = StyleSheet.create({
   rating: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   category: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
-    backgroundColor: colors.gray100,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: 8,

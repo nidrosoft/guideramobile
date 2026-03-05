@@ -1,10 +1,12 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { typography, spacing, colors } from '@/styles';
+import { typography, spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { Bookmark, Star1, Location, People, TickCircle, ArrowRight } from 'iconsax-react-native';
+import { Star1, Location, People, TickCircle, ArrowRight } from 'iconsax-react-native';
+import SaveButton from '@/components/common/SaveButton';
 
 interface FamilyFriendlyCardProps {
+  id?: string;
   name: string;
   location: string;
   rating: number;
@@ -18,6 +20,7 @@ interface FamilyFriendlyCardProps {
 }
 
 export default function FamilyFriendlyCard({ 
+  id,
   name, 
   location, 
   rating, 
@@ -44,10 +47,7 @@ export default function FamilyFriendlyCard({
             <Text style={styles.familyBadgeText}>Family Trusted</Text>
           </View>
           
-          {/* Bookmark Button */}
-          <TouchableOpacity style={styles.bookmarkButton}>
-            <Bookmark size={20} color="#1a1a1a" variant="Outline" />
-          </TouchableOpacity>
+          {id ? <SaveButton destinationId={id} /> : null}
         </View>
 
         {/* Bottom Info Container with Blur */}
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   backgroundImage: {
     width: '100%',

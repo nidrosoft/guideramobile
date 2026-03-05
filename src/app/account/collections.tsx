@@ -37,7 +37,7 @@ const CARD_WIDTH = (SCREEN_WIDTH - spacing.lg * 2 - CARD_GAP) / 2;
 export default function CollectionsScreen() {
   const router = useRouter();
   const { colors: tc } = useTheme();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [collections, setCollections] = useState<SavedCollection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,10 +48,10 @@ export default function CollectionsScreen() {
 
   // Fetch collections
   const fetchCollections = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     try {
-      const { data, error } = await savedService.getCollections(user.id);
+      const { data, error } = await savedService.getCollections(profile.id);
       
       if (error) {
         console.error('Error fetching collections:', error);
@@ -65,7 +65,7 @@ export default function CollectionsScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [user?.id]);
+  }, [profile?.id]);
 
   useEffect(() => {
     fetchCollections();
@@ -82,11 +82,11 @@ export default function CollectionsScreen() {
   };
 
   const handleCreateCollection = async () => {
-    if (!user?.id || !newCollectionName.trim()) return;
+    if (!profile?.id || !newCollectionName.trim()) return;
     
     setIsCreating(true);
     try {
-      const { data, error } = await savedService.createCollection(user.id, {
+      const { data, error } = await savedService.createCollection(profile.id, {
         name: newCollectionName.trim(),
         description: newCollectionDescription.trim() || undefined,
       });

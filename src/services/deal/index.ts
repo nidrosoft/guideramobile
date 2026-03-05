@@ -21,6 +21,8 @@ export type {
   GenerateAffiliateLinkParams,
 } from './deal.types';
 
+export type { PersonalizedDeal } from './deal.service';
+
 // Deal service
 export {
   trackDealClick,
@@ -32,6 +34,7 @@ export {
   isDealSaved,
   getHotDeals,
   getPriceHistory,
+  getPersonalizedDeals,
 } from './deal.service';
 
 // Affiliate service

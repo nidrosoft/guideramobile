@@ -31,14 +31,14 @@ export default function UnifiedSearchFooter({
   canSearch = true,
 }: UnifiedSearchFooterProps) {
   const insets = useSafeAreaInsets();
-  const { colors: themeColors } = useTheme();
+  const { colors: themeColors, isDark } = useTheme();
 
   return (
     <View style={[
       styles.footer, 
       { 
         paddingBottom: insets.bottom + spacing.md,
-        backgroundColor: themeColors.bgElevated,
+        backgroundColor: isDark ? '#1A1A1A' : themeColors.white,
         borderTopColor: themeColors.borderSubtle,
       }
     ]}>

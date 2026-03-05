@@ -6,15 +6,23 @@
  * Now uses real data from database with mock data fallback.
  */
 
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useMemo } from 'react';
+import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import BestDiscoverCard from '@/components/features/home/BestDiscoverCard';
-import { bestDiscoverPlaces } from '@/data/bestDiscover';
-import { useHomepageDataSafe } from '@/features/homepage';
+import { useHomepageDataSafe, filterByCategory, useSectionVisibility } from '@/features/homepage';
 import { spacing } from '@/styles';
+import { SkeletonBestDiscoverCards } from '@/components/common/SkeletonLoader';
 
 export default function BestDiscoverSection() {
+  const router = useRouter();
   const homepageData = useHomepageDataSafe();
+
+  const handleCardPress = (id: string | number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push({ pathname: '/destinations/[id]' as any, params: { id: String(id) } });
+  };
   
   // Map database data to card props format, fallback to mock data
   const displayData = useMemo(() => {
@@ -28,14 +36,24 @@ export default function BestDiscoverSection() {
         location: `${item.location?.city || ''}, ${item.location?.country || ''}`.replace(/^, |, $/g, ''),
         rating: item.rating || 4.6,
         price: item.price?.formatted || `$${item.price?.amount || 75}/day`,
-        duration: '2-4 days',
+        duration: item.tags?.includes('weekend') ? '1-3 days' : '3-5 days',
         bestFor: item.tags?.slice(0, 2).join(', ') || 'Explorers',
-        imageUrl: item.imageUrl || item.thumbnailUrl || 'https://picsum.photos/seed/discover/800/500',
+        imageUrl: item.imageUrl || item.thumbnailUrl,
       }));
     }
     
-    return bestDiscoverPlaces;
+    return [];
   }, [homepageData?.sections]);
+
+  const activeCategory = homepageData?.activeCategory ?? 'all';
+  const filteredData = filterByCategory(displayData, activeCategory);
+  useSectionVisibility('bestDiscover', filteredData.length);
+
+  if (homepageData?.isLoading && displayData.length === 0) {
+    return <SkeletonBestDiscoverCards />;
+  }
+
+  if (filteredData.length === 0) return null;
 
   return (
     <ScrollView 
@@ -43,18 +61,20 @@ export default function BestDiscoverSection() {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.bestDiscoverContainer}
     >
-      {displayData.map((place) => (
-        <BestDiscoverCard
-          key={place.id}
-          name={place.name}
-          category={place.category}
-          location={place.location}
-          rating={place.rating}
-          price={place.price}
-          duration={place.duration}
-          bestFor={place.bestFor}
-          imageUrl={place.imageUrl}
-        />
+      {filteredData.map((place) => (
+        <TouchableOpacity key={place.id} activeOpacity={0.8} onPress={() => handleCardPress(place.id)}>
+          <BestDiscoverCard
+            id={String(place.id)}
+            name={place.name}
+            category={place.category}
+            location={place.location}
+            rating={place.rating}
+            price={place.price}
+            duration={place.duration}
+            bestFor={place.bestFor}
+            imageUrl={place.imageUrl}
+          />
+        </TouchableOpacity>
       ))}
     </ScrollView>
   );

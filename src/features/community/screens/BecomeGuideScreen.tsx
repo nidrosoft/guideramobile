@@ -55,7 +55,7 @@ const TOTAL_STEPS = 5;
 export default function BecomeGuideScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: themeColors } = useTheme();
+  const { colors: themeColors, isDark } = useTheme();
 
   const [step, setStep] = useState(1);
 
@@ -393,7 +393,7 @@ export default function BecomeGuideScreen() {
 
       {/* Bottom Button */}
       {step < TOTAL_STEPS && (
-        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: isDark ? '#1A1A1A' : themeColors.white }]}>
           <TouchableOpacity
             style={[styles.nextButton, !canProceed() && styles.nextButtonDisabled]}
             onPress={handleNext}

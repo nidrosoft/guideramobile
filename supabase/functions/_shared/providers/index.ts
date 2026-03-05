@@ -6,6 +6,12 @@
 
 export * as amadeus from './amadeus.ts'
 export * as kiwi from './kiwi.ts'
+export * as cars from './cars.ts'
+export * as experiences from './experiences.ts'
+export * as serpApiFlights from './serpapi-flights.ts'
+export * as serpApiHotels from './serpapi-hotels.ts'
+export * as serpApiExplore from './serpapi-explore.ts'
+export * as viator from './viator.ts'
 
 // Provider interface for type safety
 export interface ProviderAdapter {

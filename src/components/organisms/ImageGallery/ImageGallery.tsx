@@ -9,7 +9,7 @@ import { View, StyleSheet, Dimensions, FlatList, Image, TouchableOpacity } from 
 import { useState, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const HERO_HEIGHT = width * 1.2; // 1.2 aspect ratio
@@ -20,6 +20,7 @@ interface ImageGalleryProps {
 }
 
 export default function ImageGallery({ images, onImagePress }: ImageGalleryProps) {
+  const { colors } = useTheme();
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
@@ -130,7 +131,7 @@ const styles = StyleSheet.create({
   },
   activeDot: {
     width: 24,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.6,

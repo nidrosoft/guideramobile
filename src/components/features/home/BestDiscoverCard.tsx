@@ -1,9 +1,11 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { typography, spacing, colors } from '@/styles';
+import { View, Text, StyleSheet, Image } from 'react-native';
+import { typography, spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { Heart, Star1, Clock, Ticket } from 'iconsax-react-native';
+import { Star1, Clock, Ticket } from 'iconsax-react-native';
+import SaveButton from '@/components/common/SaveButton';
 
 interface BestDiscoverCardProps {
+  id?: string;
   name: string;
   category: string;
   rating: number;
@@ -15,6 +17,7 @@ interface BestDiscoverCardProps {
 }
 
 export default function BestDiscoverCard({ 
+  id,
   name, 
   category, 
   rating, 
@@ -36,10 +39,7 @@ export default function BestDiscoverCard({
           <Text style={styles.bestForText}>{bestFor}</Text>
         </View>
         
-        {/* Heart/Save Button */}
-        <TouchableOpacity style={styles.heartButton}>
-          <Heart size={18} color={colors.error} variant="Outline" />
-        </TouchableOpacity>
+        {id ? <SaveButton destinationId={id} /> : null}
       </View>
 
       {/* Info Section */}
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     marginRight: spacing.md,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   imageContainer: {
     width: '100%',

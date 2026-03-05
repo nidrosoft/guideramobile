@@ -1,8 +1,10 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { typography, spacing, borderRadius, colors } from '@/styles';
-import { Bookmark, Location, Star1, ArrowRight, Award } from 'iconsax-react-native';
+import { typography, spacing } from '@/styles';
+import { Location, Star1, ArrowRight, Award } from 'iconsax-react-native';
+import SaveButton from '@/components/common/SaveButton';
 
 interface EditorChoiceCardProps {
+  id?: string;
   name: string;
   location: string;
   reason: string;
@@ -10,7 +12,7 @@ interface EditorChoiceCardProps {
   imageUrl: string;
 }
 
-export default function EditorChoiceCard({ name, location, reason, rating, imageUrl }: EditorChoiceCardProps) {
+export default function EditorChoiceCard({ id, name, location, reason, rating, imageUrl }: EditorChoiceCardProps) {
   return (
     <View style={styles.container}>
       {/* Background Image */}
@@ -27,10 +29,7 @@ export default function EditorChoiceCard({ name, location, reason, rating, image
           <Text style={styles.badgeText}>Editor's Pick</Text>
         </View>
         
-        {/* Bookmark Button */}
-        <TouchableOpacity style={styles.bookmarkButton}>
-          <Bookmark size={20} color="#1a1a1a" variant="Outline" />
-        </TouchableOpacity>
+        {id ? <SaveButton destinationId={id} /> : null}
       </View>
 
       {/* Bottom Section */}
@@ -74,7 +73,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
     position: 'relative',
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   backgroundImage: {
     width: '100%',

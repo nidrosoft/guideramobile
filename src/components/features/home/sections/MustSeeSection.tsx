@@ -6,20 +6,28 @@
  * Now uses real data from database with mock data fallback.
  */
 
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useMemo } from 'react';
+import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import MustSeeCard from '@/components/features/home/MustSeeCard';
-import { mustSeePlaces } from '@/data/mustSee';
-import { useHomepageDataSafe } from '@/features/homepage';
+import { useHomepageDataSafe, filterByCategory, useSectionVisibility } from '@/features/homepage';
 import { spacing } from '@/styles';
+import { SkeletonMustSeeCards } from '@/components/common/SkeletonLoader';
 
 export default function MustSeeSection() {
+  const router = useRouter();
   const homepageData = useHomepageDataSafe();
+
+  const handleCardPress = (id: string | number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push({ pathname: '/destinations/[id]' as any, params: { id: String(id) } });
+  };
   
   // Map database data to card props format, fallback to mock data
   const displayData = useMemo(() => {
-    // Use editors-choice or popular destinations for must-see
-    const section = homepageData?.sections?.find(s => s.slug === 'editors-choice' || s.slug === 'popular-destinations');
+    const section = homepageData?.sections?.find(s => s.slug === 'must-see') 
+      || homepageData?.sections?.find(s => s.slug === 'editors-choice');
     
     if (section?.items?.length) {
       return section.items.slice(0, 6).map((item, index) => ({
@@ -28,14 +36,24 @@ export default function MustSeeSection() {
         location: `${item.location?.city || ''}, ${item.location?.country || ''}`.replace(/^, |, $/g, ''),
         category: item.tags?.[0] || 'Landmark',
         rating: item.rating || 4.8,
-        visitors: `${Math.floor((item.matchScore || 50) * 3)}K`,
-        imageUrl: item.imageUrl || item.thumbnailUrl || 'https://picsum.photos/seed/mustsee/800/500',
+        visitors: item.matchScore ? `${Math.round(item.matchScore / 10)}K` : '',
+        imageUrl: item.imageUrl || item.thumbnailUrl,
         badge: item.badges?.[0]?.text || (item.rating && item.rating >= 4.5 ? 'Top Rated' : undefined),
       }));
     }
     
-    return mustSeePlaces;
+    return [];
   }, [homepageData?.sections]);
+
+  const activeCategory = homepageData?.activeCategory ?? 'all';
+  const filteredData = filterByCategory(displayData, activeCategory);
+  useSectionVisibility('mustSee', filteredData.length);
+
+  if (homepageData?.isLoading && displayData.length === 0) {
+    return <SkeletonMustSeeCards />;
+  }
+
+  if (filteredData.length === 0) return null;
 
   return (
     <ScrollView 
@@ -43,17 +61,19 @@ export default function MustSeeSection() {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.mustSeeContainer}
     >
-      {displayData.map((place) => (
-        <MustSeeCard
-          key={place.id}
-          name={place.name}
-          location={place.location}
-          category={place.category}
-          rating={place.rating}
-          visitors={place.visitors}
-          imageUrl={place.imageUrl}
-          badge={place.badge}
-        />
+      {filteredData.map((place) => (
+        <TouchableOpacity key={place.id} activeOpacity={0.8} onPress={() => handleCardPress(place.id)}>
+          <MustSeeCard
+            id={String(place.id)}
+            name={place.name}
+            location={place.location}
+            category={place.category}
+            rating={place.rating}
+            visitors={place.visitors}
+            imageUrl={place.imageUrl}
+            badge={place.badge}
+          />
+        </TouchableOpacity>
       ))}
     </ScrollView>
   );

@@ -7,7 +7,8 @@
 
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Dimensions } from 'react-native';
 import { useState } from 'react';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
@@ -25,6 +26,7 @@ export default function DescriptionSection({
   images,
   maxLines = 4 
 }: DescriptionSectionProps) {
+  const { colors } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleToggle = () => {
@@ -35,13 +37,13 @@ export default function DescriptionSection({
   return (
     <View style={styles.container}>
       {/* Section Header - Outside container */}
-      <Text style={styles.sectionTitle}>Insight</Text>
+      <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Insight</Text>
       
       {/* White Container Card */}
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.bgElevated, borderColor: colors.borderMedium }]}>
         {/* Description Text - Now First */}
         <Text 
-          style={styles.description}
+          style={[styles.description, { color: colors.textSecondary }]}
           numberOfLines={isExpanded ? undefined : maxLines}
         >
           {description}
@@ -93,14 +95,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.md,
   },
   card: {
-    backgroundColor: colors.bgElevated,
     borderRadius: 24,
     padding: spacing.md,
-    shadowColor: colors.black,
+    borderWidth: 1,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
@@ -136,12 +137,11 @@ const styles = StyleSheet.create({
   moreText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
   description: {
     fontSize: typography.fontSize.base,
     lineHeight: 24,
-    color: colors.textSecondary,
     marginBottom: spacing.md,
   },
   readMoreButton: {
@@ -150,6 +150,6 @@ const styles = StyleSheet.create({
   readMoreText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary,
+    color: '#3FC39E',
   },
 });

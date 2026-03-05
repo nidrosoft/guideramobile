@@ -42,12 +42,30 @@ serve(async (req: Request): Promise<Response> => {
   const startTime = Date.now()
 
   try {
-    // Parse request
+    // Parse request — read from body (POST) with URL param fallback (GET)
     const url = new URL(req.url)
-    const userId = url.searchParams.get('user_id')
-    const lat = url.searchParams.get('lat')
-    const lng = url.searchParams.get('lng')
-    const refresh = url.searchParams.get('refresh') === 'true'
+    let userId: string | null = null
+    let lat: string | null = null
+    let lng: string | null = null
+    let refresh = false
+
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json()
+        userId = body.user_id || null
+        lat = body.lat || null
+        lng = body.lng || null
+        refresh = body.refresh === true || body.refresh === 'true'
+      } catch {
+        // Fall through to URL params
+      }
+    }
+
+    // Fallback to URL search params
+    if (!userId) userId = url.searchParams.get('user_id')
+    if (!lat) lat = url.searchParams.get('lat')
+    if (!lng) lng = url.searchParams.get('lng')
+    if (!refresh) refresh = url.searchParams.get('refresh') === 'true'
 
     if (!userId) {
       return new Response(
@@ -315,6 +333,28 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
     }
   }
 
+  // 4b. Places (horizontal scroll — sorted by editor rating, different from popular destinations)
+  const placeItems = scoredDestinations
+    .sort((a: any, b: any) => (b.editor_rating || 0) - (a.editor_rating || 0))
+    .slice(0, 10)
+    .map((d: any) => formatContentItem(d, context))
+
+  if (placeItems.length >= 3) {
+    sections.push({
+      id: 'places',
+      slug: 'places',
+      title: 'Popular Places',
+      subtitle: 'Most visited attractions worldwide',
+      layoutType: 'horizontal_scroll',
+      cardSize: 'medium',
+      items: placeItems,
+      itemCount: placeItems.length,
+      hasMore: true,
+      isPersonalized: false,
+      priority: 4.5,
+    })
+  }
+
   // 5. Trending
   const trendingItems = scoredDestinations
     .filter((d: any) => d.is_trending)
@@ -357,6 +397,29 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
       hasMore: true,
       isPersonalized: false,
       priority: 6,
+    })
+  }
+
+  // 6b. Must See (highest-rated featured destinations)
+  const mustSeeItems = scoredDestinations
+    .filter((d: any) => d.is_featured && (d.editor_rating || 0) >= 4.5)
+    .sort((a: any, b: any) => (b.editor_rating || 0) - (a.editor_rating || 0))
+    .slice(0, 8)
+    .map((d: any) => formatContentItem(d, context))
+
+  if (mustSeeItems.length >= 3) {
+    sections.push({
+      id: 'must-see',
+      slug: 'must-see',
+      title: 'Must See',
+      subtitle: 'Iconic landmarks worldwide',
+      layoutType: 'horizontal_scroll',
+      cardSize: 'medium',
+      items: mustSeeItems,
+      itemCount: mustSeeItems.length,
+      hasMore: true,
+      isPersonalized: false,
+      priority: 6.5,
     })
   }
 

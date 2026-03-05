@@ -60,7 +60,7 @@ const CATEGORY_CONFIG: Record<ListingCategory, { label: string; color: string; I
 export default function ListingDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: themeColors } = useTheme();
+  const { colors: themeColors, isDark } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [isSaved, setIsSaved] = useState(false);
@@ -278,7 +278,7 @@ export default function ListingDetailScreen() {
       </ScrollView>
 
       {/* Bottom CTA */}
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: isDark ? '#1A1A1A' : themeColors.white }]}>
         <View style={styles.bottomPriceCol}>
           {listing.priceRange && (
             <Text style={styles.bottomPrice}>{listing.priceRange}</Text>

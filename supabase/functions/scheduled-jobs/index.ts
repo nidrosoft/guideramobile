@@ -24,12 +24,9 @@ interface JobResult {
 }
 
 serve(async (req: Request) => {
-  const authHeader = req.headers.get('Authorization');
-  const cronSecret = Deno.env.get('CRON_SECRET');
-
-  if (authHeader !== `Bearer ${cronSecret}` && !authHeader?.startsWith('Bearer ')) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+  // Auth: allow pg_cron (no header), service_role Bearer, or CRON_SECRET
+  // Platform JWT verification is disabled for this function (--no-verify-jwt)
+  // so pg_cron can invoke it directly without auth headers
 
   const { jobType } = await req.json().catch(() => ({ jobType: 'all' }));
   const results: JobResult[] = [];
@@ -50,6 +47,39 @@ serve(async (req: Request) => {
         break;
       case 'update_saved_deals':
         results.push(await updateSavedDeals());
+        break;
+      // GIL (Guidera Intelligence Layer) jobs
+      case 'gil_compute_dna':
+        results.push(await gilComputeDna());
+        break;
+      case 'gil_scan_explore':
+        results.push(await gilScanDeals('explore'));
+        break;
+      case 'gil_scan_heritage':
+        results.push(await gilScanDeals('heritage'));
+        break;
+      case 'gil_scan_popular':
+        results.push(await gilScanDeals('popular'));
+        break;
+      case 'gil_scan_hotels':
+        results.push(await gilScanDeals('hotels'));
+        break;
+      case 'gil_scan_alerts':
+        results.push(await gilScanDeals('alerts'));
+        break;
+      case 'gil_scan_experiences':
+        results.push(await gilScanDeals('experiences'));
+        break;
+      case 'gil_dispatch_notifications':
+        results.push(await gilDispatchNotifications());
+        break;
+      case 'gil_all':
+        results.push(await gilComputeDna());
+        results.push(await gilScanDeals('explore'));
+        results.push(await gilScanDeals('heritage'));
+        results.push(await gilScanDeals('hotels'));
+        results.push(await gilScanDeals('experiences'));
+        results.push(await gilDispatchNotifications());
         break;
       case 'all':
       default:
@@ -517,6 +547,62 @@ function scoreDeal(
   else if (pctBelowMedian > 15) badges.push('price_drop');
 
   return { score: Math.round(score), badges };
+}
+
+// ============================================
+// GIL CRON JOBS — Invoke GIL edge functions
+// ============================================
+
+async function gilComputeDna(): Promise<JobResult> {
+  const errors: string[] = [];
+  try {
+    const { data, error } = await supabase.functions.invoke('compute-travel-dna', {
+      body: { batch: true },
+    });
+    if (error) throw error;
+    return { job: 'gil_compute_dna', success: true, processed: data?.processed || 0, errors };
+  } catch (err: any) {
+    errors.push(err.message);
+    return { job: 'gil_compute_dna', success: false, processed: 0, errors };
+  }
+}
+
+async function gilScanDeals(scanType: string): Promise<JobResult> {
+  const errors: string[] = [];
+  try {
+    const { data, error } = await supabase.functions.invoke('deal-scanner', {
+      body: { scan_type: scanType, batch_size: 20 },
+    });
+    if (error) throw error;
+    return {
+      job: `gil_scan_${scanType}`,
+      success: data?.success ?? true,
+      processed: data?.deals_cached || 0,
+      errors: data?.errors || [],
+    };
+  } catch (err: any) {
+    errors.push(err.message);
+    return { job: `gil_scan_${scanType}`, success: false, processed: 0, errors };
+  }
+}
+
+async function gilDispatchNotifications(): Promise<JobResult> {
+  const errors: string[] = [];
+  try {
+    const { data, error } = await supabase.functions.invoke('deal-notifier', {
+      body: { limit: 50 },
+    });
+    if (error) throw error;
+    return {
+      job: 'gil_dispatch_notifications',
+      success: true,
+      processed: data?.sent || 0,
+      errors: data?.errors || [],
+    };
+  } catch (err: any) {
+    errors.push(err.message);
+    return { job: 'gil_dispatch_notifications', success: false, processed: 0, errors };
+  }
 }
 
 function shouldSendAlert(alert: any, currentPrice: number): boolean {

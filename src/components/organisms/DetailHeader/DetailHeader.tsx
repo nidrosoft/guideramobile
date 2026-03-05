@@ -11,7 +11,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Heart } from 'iconsax-react-native';
 import CircleButton from '@/components/atoms/CircleButton/CircleButton';
 import ShareIcon from '@/components/atoms/ShareIcon/ShareIcon';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 interface DetailHeaderProps {
   title: string;
@@ -28,6 +29,7 @@ export default function DetailHeader({
 }: DetailHeaderProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
 
   const handleBack = () => {
     router.back();

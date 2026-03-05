@@ -64,7 +64,7 @@ const TYPE_COLORS: Record<DealType, string> = {
 
 export default function DealDetailScreen() {
   const router = useRouter();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const { user } = useAuth();
   const { id } = useLocalSearchParams();
   const { redirect } = useDealRedirect();
@@ -322,7 +322,7 @@ export default function DealDetailScreen() {
       </ScrollView>
 
       {/* Bottom CTA */}
-      <View style={[styles.bottomBar, { backgroundColor: tc.background, borderTopColor: tc.borderSubtle }]}>
+      <View style={[styles.bottomBar, { backgroundColor: isDark ? '#1A1A1A' : tc.white, borderTopColor: tc.borderSubtle }]}>
         <BookOnProviderButton
           provider={deal.provider}
           price={formatPrice(currentPrice, deal.price_currency)}

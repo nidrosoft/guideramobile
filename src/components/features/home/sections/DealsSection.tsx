@@ -1,27 +1,87 @@
 /**
  * DEALS SECTION
  *
- * Shows hot deals from the deal_cache table.
- * Falls back to promotional cards if no cached deals exist.
+ * Shows personalized deals from the GIL engine (user_deal_matches).
+ * Falls back to deal_cache hot deals, then promotional cards if empty.
+ * Powered by the Guidera Intelligence Layer.
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Linking } from 'react-native';
-import { spacing, typography, borderRadius } from '@/styles';
+import { useRouter } from 'expo-router';
+import { spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { useHotDeals } from '@/hooks/useDeals';
-import { DealBadge } from '@/features/booking/components/shared';
-import { getProviderDisplayName, getProviderColor } from '@/services/deal';
-import type { CachedDeal, DealBadge as DealBadgeType } from '@/services/deal';
+import { useGilDeals } from '@/hooks/useDeals';
+import type { PersonalizedDeal } from '@/services/deal';
+import { useHomepageDataSafe, matchesCategory, useSectionVisibility } from '@/features/homepage';
 import CategoryPills from '@/components/features/home/CategoryPills';
+import { SkeletonDealCards } from '@/components/common/SkeletonLoader';
+
+// Unique rich colors that alternate per card index — visually appealing variety
+const CARD_COLORS = [
+  '#2563EB',  // Royal Blue
+  '#9333EA',  // Vivid Purple
+  '#DC2626',  // Bold Red
+  '#0891B2',  // Teal Cyan
+  '#C026D3',  // Magenta
+  '#059669',  // Emerald
+  '#D97706',  // Warm Amber
+  '#4F46E5',  // Indigo
+  '#E11D48',  // Rose
+  '#0D9488',  // Deep Teal
+];
+
+const DEAL_TYPE_ICONS: Record<string, string> = {
+  flight: 'airplane',
+  hotel: 'bed',
+  experience: 'compass',
+  car: 'car-sport',
+};
+
+const DEAL_TYPE_LABELS: Record<string, string> = {
+  flight: 'FLIGHT',
+  hotel: 'HOTEL',
+  experience: 'EXPERIENCE',
+  car: 'CAR',
+};
+
+const BADGE_DISPLAY: Record<string, string> = {
+  record_low: 'LOWEST EVER',
+  near_record_low: 'NEAR RECORD LOW',
+  great_deal: 'GREAT DEAL',
+  good_deal: 'GOOD DEAL',
+  price_drop: 'PRICE DROP',
+  new: 'NEW',
+};
 
 export default function DealsSection() {
-  const { colors: tc } = useTheme();
-  const { deals, isLoading } = useHotDeals(undefined, 8);
+  const { colors } = useTheme();
+  const { deals, isLoading } = useGilDeals(undefined, 8);
+  const homepageData = useHomepageDataSafe();
+  const activeCategory = homepageData?.activeCategory ?? 'all';
 
-  if (deals.length === 0 && !isLoading) {
+  const filteredDeals = useMemo(() => {
+    if (activeCategory === 'all') return deals;
+    return deals.filter(deal =>
+      matchesCategory(
+        { title: deal.deal_title, type: deal.deal_type, deal_type: deal.deal_type, tags: [] },
+        activeCategory
+      )
+    );
+  }, [deals, activeCategory]);
+  useSectionVisibility('deals', filteredDeals.length);
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <SkeletonDealCards />
+        <CategoryPills />
+      </View>
+    );
+  }
+
+  if (filteredDeals.length === 0) {
     return <CategoryPills />;
   }
 
@@ -32,8 +92,12 @@ export default function DealsSection() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.container}
       >
-        {deals.map((deal) => (
-          <HotDealCard key={deal.id} deal={deal} colors={tc} />
+        {filteredDeals.map((deal, index) => (
+          <GilDealCard
+            key={deal.id}
+            deal={deal}
+            cardColor={CARD_COLORS[index % CARD_COLORS.length]}
+          />
         ))}
       </ScrollView>
       <CategoryPills />
@@ -41,51 +105,77 @@ export default function DealsSection() {
   );
 }
 
-function HotDealCard({ deal, colors: tc }: { deal: CachedDeal; colors: any }) {
-  const snapshot = deal.deal_data as any;
-  const providerColor = getProviderColor(deal.provider);
-  const badges = (deal.deal_badges || []) as DealBadgeType[];
+function GilDealCard({ deal, cardColor }: { deal: PersonalizedDeal; cardColor: string }) {
+  const router = useRouter();
+  const typeIcon = DEAL_TYPE_ICONS[deal.deal_type] || 'airplane';
+  const typeLabel = DEAL_TYPE_LABELS[deal.deal_type] || 'DEAL';
+  const badgeText = deal.deal_badges?.[0] ? BADGE_DISPLAY[deal.deal_badges[0]] : null;
 
-  const handlePress = async () => {
-    const deepLink = snapshot?.bookingUrl || snapshot?.deep_link;
-    if (deepLink) {
-      await Linking.openURL(deepLink);
-    }
+  const handlePress = () => {
+    router.push({
+      pathname: '/deals/[id]' as any,
+      params: {
+        id: deal.deal_cache_id || deal.id,
+        title: deal.deal_title,
+        type: deal.deal_type,
+      },
+    });
   };
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: providerColor }]}
+      style={[styles.card, { backgroundColor: cardColor }]}
       onPress={handlePress}
       activeOpacity={0.85}
     >
-      <View style={styles.cardDecoCircle} />
+      {/* Decorative circles */}
+      <View style={styles.decoCircle1} />
+      <View style={styles.decoCircle2} />
+      <View style={styles.decoCircle3} />
 
-      {/* Badges */}
-      {badges.length > 0 && (
-        <View style={styles.badgeRow}>
-          {badges.slice(0, 2).map((b, i) => (
-            <DealBadge key={i} badge={b} size="sm" />
-          ))}
+      {/* Top row: Type pill + Badge */}
+      <View style={styles.topRow}>
+        <View style={styles.typePill}>
+          <Ionicons name={typeIcon as any} size={13} color="#FFFFFF" />
+          <Text style={styles.typePillText}>{typeLabel}</Text>
         </View>
-      )}
+        {badgeText && (
+          <View style={styles.badgePill}>
+            <Text style={styles.badgePillText}>{badgeText}</Text>
+          </View>
+        )}
+      </View>
 
       {/* Title */}
       <Text style={styles.cardTitle} numberOfLines={2}>
-        {snapshot?.title || deal.route_key}
+        {deal.deal_title}
       </Text>
 
-      {/* Price */}
-      <Text style={styles.cardPrice}>
-        ${Math.round(deal.price_amount)}
-      </Text>
-
-      {/* Provider */}
-      <View style={styles.cardFooter}>
-        <Text style={styles.cardProvider}>
-          {getProviderDisplayName(deal.provider)}
+      {/* Price row: original (strikethrough) → current → Save $X */}
+      <View style={styles.priceRow}>
+        {deal.original_price && deal.original_price > deal.price_amount && (
+          <Text style={styles.originalPrice}>
+            ${Math.round(deal.original_price)}
+          </Text>
+        )}
+        <Text style={styles.cardPrice}>
+          ${Math.round(deal.price_amount)}
         </Text>
-        <Ionicons name="open-outline" size={14} color="rgba(255,255,255,0.7)" />
+      </View>
+      {deal.original_price && deal.original_price > deal.price_amount && (
+        <Text style={styles.savingsText}>
+          Save ${Math.round(deal.original_price - deal.price_amount)}
+        </Text>
+      )}
+
+      {/* Footer */}
+      <View style={styles.cardFooter}>
+        <Text style={styles.footerText} numberOfLines={1}>
+          {deal.match_reasons?.[0] || 'View Details'}
+        </Text>
+        <View style={styles.arrowCircle}>
+          <Ionicons name="arrow-forward" size={14} color={cardColor} />
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -94,48 +184,132 @@ function HotDealCard({ deal, colors: tc }: { deal: CachedDeal; colors: any }) {
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: spacing.lg,
-    gap: spacing.md,
+    gap: 14,
+  },
+  loadingContainer: {
+    minHeight: 180,
+  },
+  skeletonCard: {
+    width: 240,
+    height: 170,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   card: {
-    width: 220,
-    height: 160,
+    width: 240,
+    height: 170,
     borderRadius: 20,
     padding: 16,
     justifyContent: 'space-between',
     overflow: 'hidden',
   },
-  cardDecoCircle: {
+  decoCircle1: {
     position: 'absolute',
-    top: -15,
-    right: 30,
+    top: -18,
+    right: 28,
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.14)',
   },
-  badgeRow: {
+  decoCircle2: {
+    position: 'absolute',
+    bottom: 25,
+    right: -10,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+  },
+  decoCircle3: {
+    position: 'absolute',
+    top: 45,
+    right: 60,
+    width: 24,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  topRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  typePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  typePillText: {
+    fontFamily: 'Rubik-Bold',
+    fontSize: 10,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  badgePill: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  badgePillText: {
+    fontFamily: 'Rubik-Bold',
+    fontSize: 9,
+    color: '#FFFFFF',
+    letterSpacing: 0.8,
   },
   cardTitle: {
     fontFamily: 'Rubik-SemiBold',
-    fontSize: 15,
+    fontSize: 14,
     color: '#FFFFFF',
-    lineHeight: 20,
+    lineHeight: 19,
+    maxWidth: '85%',
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
   },
   cardPrice: {
     fontFamily: 'HostGrotesk-Bold',
     fontSize: 28,
     color: '#FFFFFF',
   },
+  originalPrice: {
+    fontFamily: 'Rubik-Regular',
+    fontSize: 13,
+    color: 'rgba(255,200,200,0.9)',
+    textDecorationLine: 'line-through',
+  },
+  savingsText: {
+    fontFamily: 'Rubik-Bold',
+    fontSize: 11,
+    color: '#86EFAC',
+    marginTop: -2,
+  },
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  cardProvider: {
-    fontFamily: 'Rubik-Regular',
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
+  footerText: {
+    fontFamily: 'Rubik-Medium',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.85)',
+    flex: 1,
+    marginRight: 10,
+  },
+  arrowCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

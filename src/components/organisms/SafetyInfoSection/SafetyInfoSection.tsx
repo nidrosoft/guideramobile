@@ -8,7 +8,8 @@
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import React from 'react';
 import { Warning2, Clock, Location as LocationIcon, InfoCircle } from 'iconsax-react-native';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -63,6 +64,7 @@ const getIcon = (iconType: string = 'warning', color: string, size: number = 24)
 };
 
 export default function SafetyInfoSection({ safetyInfo }: SafetyInfoSectionProps) {
+  const { colors } = useTheme();
   const scrollX = useSharedValue(0);
 
   const scrollHandler = useAnimatedScrollHandler({
@@ -75,12 +77,12 @@ export default function SafetyInfoSection({ safetyInfo }: SafetyInfoSectionProps
     <View style={styles.container}>
       {/* Section Header - Outside container */}
       <View style={styles.header}>
-        <Text style={styles.sectionTitle}>Safety Information</Text>
-        <Text style={styles.sectionSubtitle}>Stay informed about safety tips and precautions</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Safety Information</Text>
+        <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Stay informed about safety tips and precautions</Text>
       </View>
       
       {/* White Container Card */}
-      <View style={styles.whiteContainer}>
+      <View style={[styles.whiteContainer, { backgroundColor: colors.bgElevated, borderColor: colors.borderMedium }]}>
         {/* Stacked Scrollable Cards */}
         <Animated.ScrollView 
           horizontal
@@ -104,11 +106,11 @@ export default function SafetyInfoSection({ safetyInfo }: SafetyInfoSectionProps
                       <View style={styles.iconContainer}>
                         {getIcon(info.iconType, colorScheme.iconColor, 28)}
                       </View>
-                      <Text style={styles.cardTitle}>{info.title}</Text>
+                      <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{info.title}</Text>
                     </View>
 
                     {/* Detail Text */}
-                    <Text style={styles.detailText}>{info.detail}</Text>
+                    <Text style={[styles.detailText, { color: colors.textSecondary }]}>{info.detail}</Text>
                   </View>
                 </View>
               </View>
@@ -160,18 +162,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   sectionSubtitle: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
   },
   whiteContainer: {
-    backgroundColor: colors.bgElevated,
     borderRadius: 24,
     padding: spacing.md,
-    shadowColor: colors.black,
+    borderWidth: 1,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
@@ -207,13 +207,11 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     flex: 1,
   },
   detailText: {
     fontSize: typography.fontSize.sm,
     lineHeight: 20,
-    color: colors.textSecondary,
   },
   pagination: {
     flexDirection: 'row',
@@ -226,6 +224,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.primary,
+    backgroundColor: '#3FC39E',
   },
 });

@@ -188,6 +188,35 @@ function buildExperienceParams(request: SearchRequest, destination: { name: stri
   };
 }
 
+function buildCarParams(request: SearchRequest, destination: { name: string }) {
+  return {
+    pickupLocation: request.origin?.code || destination.name || '',
+    dropoffLocation: destination.name || request.origin?.code || '',
+    pickupDate: request.dates?.startDate || '',
+    dropoffDate: request.dates?.endDate || request.dates?.startDate || '',
+    pickupTime: '10:00',
+    dropoffTime: '10:00',
+    driverAge: 30,
+    currency: 'USD',
+  };
+}
+
+function buildPackageParams(request: SearchRequest, destination: { name: string }) {
+  return {
+    destination: {
+      type: 'city',
+      value: destination.name,
+    },
+    origin: request.origin?.code || '',
+    dates: {
+      startDate: request.dates?.startDate || '',
+      endDate: request.dates?.endDate || '',
+    },
+    travelers: request.travelers || { adults: 1, children: 0, infants: 0 },
+    rooms: request.rooms || 1,
+  };
+}
+
 // Deduplicate results
 function deduplicateResults(results: unknown[], category: string): unknown[] {
   const seen = new Map<string, unknown>();
@@ -261,6 +290,12 @@ async function handleSearch(
     case 'experience':
       categories = ['experiences'];
       break;
+    case 'car':
+      categories = ['cars'];
+      break;
+    case 'package':
+      categories = hasOrigin ? ['flights', 'hotels', 'cars', 'experiences'] : ['hotels', 'cars', 'experiences'];
+      break;
     default:
       categories = ['flights', 'hotels'];
   }
@@ -278,6 +313,9 @@ async function handleSearch(
         break;
       case 'experiences':
         params = buildExperienceParams(request, destination);
+        break;
+      case 'cars':
+        params = buildCarParams(request, destination);
         break;
       default:
         params = {};

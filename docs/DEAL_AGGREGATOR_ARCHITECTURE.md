@@ -862,3 +862,372 @@ This pivot dramatically simplifies the tech stack while keeping the core value (
 - `@stripe/stripe-react-native` removed from package.json
 - `StripeProvider` removed from _layout.tsx
 - `npm install` confirmed: "removed 1 package"
+
+---
+
+## Part 11: API Strategy & Migration Plan (March 2026)
+
+### 11.1 The Problem
+
+- **Amadeus** is shutting down its self-service API tier in **July 2026**. We need a replacement.
+- **RapidAPI Booking.com** APIs for hotels, cars, and experiences return 403 ("not subscribed") — subscription issues.
+- We need **self-service, developer-friendly APIs** that don't require a company application or partnership agreement.
+- We need a **default API per category** that works reliably for both user-initiated search and background deal scanning.
+
+### 11.2 Recommended Default APIs (All Self-Service)
+
+#### ✈️ FLIGHTS — Primary: SerpAPI Google Flights + Kiwi.com Tequila
+
+| API | Role | Signup | Pricing | Why |
+|-----|------|--------|---------|-----|
+| **SerpAPI Google Flights** | **Primary search + deal scanning** | Self-service at serpapi.com/users/sign_up | Free: 100 searches/mo. Developer: $75/mo (5,000). Production: $150/mo (15,000) | Scrapes Google Flights — same data AirClub uses. Returns structured JSON with prices, airlines, stops, booking links. Also has Google Travel Explore API for "cheapest flights from X" discovery. |
+| **Kiwi.com Tequila** | **Secondary search + booking redirect** | Self-service at tequila.kiwi.com | Free tier available. Pay-per-booking affiliate model. | Already integrated. Returns `deep_link` for direct booking. Great for multi-city/creative itineraries. We earn commission. |
+| **Amadeus** | **Deprecated — remove by July 2026** | Already set up | Free tier expires July 2026 | Stop relying on this. Migrate all Amadeus-dependent logic to SerpAPI + Kiwi. |
+
+**Flight search flow after migration:**
+```
+User searches → provider-manager calls:
+  1. SerpAPI Google Flights (primary — most comprehensive)
+  2. Kiwi.com Tequila (secondary — affiliate links + creative routes)
+  → Merge, deduplicate, rank results
+  → Each result has a booking URL (Google Flights URL or Kiwi deep_link)
+```
+
+**Deal scanner flow (AirClub-like):**
+```
+Cron job → SerpAPI Google Flights + Google Travel Explore
+  → Scan popular routes from user home airports
+  → Compare with price_history table
+  → Store deals in deal_cache
+  → Send push notifications for significant drops
+```
+
+#### 🏨 HOTELS — Primary: SerpAPI Google Hotels
+
+| API | Role | Signup | Pricing | Why |
+|-----|------|--------|---------|-----|
+| **SerpAPI Google Hotels** | **Primary search** | Same SerpAPI account | Included in SerpAPI plan (same credit pool) | Scrapes Google Hotels — aggregates Booking.com, Expedia, Hotels.com, Agoda, etc. Returns prices from multiple OTAs per hotel. Each result includes booking URLs to the OTA. |
+| **Booking.com (via RapidAPI)** | **Fallback** | Subscribe on RapidAPI | Free tier: 500 req/mo. Basic: $10/mo | If RapidAPI subscription is fixed, use as secondary source. |
+| **MakCorps** | **Price comparison enrichment** | Self-service at makcorps.com | Free trial: 30 calls. Paid: $350/mo | Compares hotel prices across 200+ OTAs. Good for "best price guarantee" feature but expensive for a startup. Only use if funded. |
+
+**Recommendation:** SerpAPI Google Hotels is the best self-service option. One account covers flights + hotels. Booking URLs point to Booking.com, Expedia, etc. — we still earn affiliate revenue.
+
+#### 🚗 CARS — Primary: SerpAPI + Kayak/Google redirect
+
+| API | Role | Signup | Pricing | Why |
+|-----|------|--------|---------|-----|
+| **Kiwi.com Tequila** | **Car rental search** | Same Tequila account | Included in affiliate | Kiwi.com's Tequila API also supports car rental search via their content. |
+| **Booking.com Cars (via RapidAPI)** | **Primary if subscription fixed** | RapidAPI | Free tier available | Already integrated in `cars.ts`. Just needs active subscription. |
+| **Construct redirect URLs** | **Fallback** | No API needed | Free | Build search URLs for Kayak, Rentalcars.com, DiscoverCars. User clicks → opens in browser with pre-filled search. |
+
+**Car rental is the hardest category for self-service APIs.** CarTrawler (industry standard) requires a B2B partnership. For now:
+1. Fix the RapidAPI Booking.com Cars subscription (cheapest path)
+2. Construct redirect URLs to Kayak/DiscoverCars as fallback
+3. Apply for CarTrawler partnership when the app has traction
+
+#### 🎯 EXPERIENCES — Primary: Viator Affiliate API
+
+| API | Role | Signup | Pricing | Why |
+|-----|------|--------|---------|-----|
+| **Viator (TripAdvisor) Affiliate API** | **Primary** | Self-service at viator.com/partners → "Affiliate" | Free (affiliate model — earn 8% CPA) | Massive inventory (300K+ experiences globally). Self-service affiliate signup. Full content API (photos, descriptions, reviews, pricing). Booking via redirect to Viator. |
+| **Booking.com Attractions (via RapidAPI)** | **Secondary** | RapidAPI | Free tier | Already integrated. Got 429 rate limit (subscription exists). Fix rate limiting or upgrade tier. |
+| **GetYourGuide** | **Tertiary** | Apply at partner.getyourguide.com | Free (affiliate 8% CPA) | Requires approval but worth applying. Large inventory. |
+
+**Recommendation:** Viator is the easiest — self-service affiliate signup, no company required, massive inventory, 8% commission.
+
+### 11.3 SerpAPI — The Universal Solution
+
+SerpAPI is the **single best self-service API** for our use case because:
+
+1. **One account** covers Google Flights, Google Hotels, Google Travel Explore (for deal discovery)
+2. **Self-service** — sign up at serpapi.com, get API key instantly
+3. **Free tier** — 100 searches/month for testing
+4. **Structured data** — Returns clean JSON, not raw HTML
+5. **Booking URLs included** — Each result links to the original booking site
+6. **Google Travel Explore** — Perfect for AirClub-like "cheapest flights from your city" discovery
+
+**Pricing tiers:**
+
+| Plan | Searches/mo | Price | Good for |
+|------|-------------|-------|----------|
+| Free | 100 | $0 | Development/testing |
+| Developer | 5,000 | $75/mo | Early launch (supports ~1,000 users) |
+| Production | 15,000 | $150/mo | Growth phase |
+| Big Data | 30,000 | $300/mo | Scale |
+
+**Credit usage:** Each search = 1 credit regardless of results returned. A user search costs 1 credit. A deal scan of 50 routes costs 50 credits.
+
+### 11.4 AirClub-Like Deal Scanner — Implementation
+
+AirClub finds flight deals by:
+1. Monitoring prices on Google Flights for popular routes
+2. Comparing current prices against historical averages
+3. Sending daily notifications for significant price drops
+4. Users book via Google Flights (redirect)
+
+**We build the same thing using SerpAPI + Supabase cron.**
+
+#### Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  DEAL SCANNER SYSTEM                                              │
+│                                                                    │
+│  ┌──────────────────────────────────┐                             │
+│  │  Data Sources                    │                             │
+│  │                                  │                             │
+│  │  • User profiles → home_airport  │                             │
+│  │  • travel_preferences → interests│                             │
+│  │  • search_sessions → past routes │                             │
+│  │  • price_alerts → watched routes │                             │
+│  │  • Trending destinations (curated│                             │
+│  │    list of 30 popular cities)    │                             │
+│  └──────────────┬───────────────────┘                             │
+│                  │                                                  │
+│                  ▼                                                  │
+│  ┌──────────────────────────────────┐                             │
+│  │  Route Builder                   │                             │
+│  │                                  │                             │
+│  │  Generates route pairs:          │                             │
+│  │  • home_airport → trending dest  │                             │
+│  │  • home_airport → user interests │                             │
+│  │  • watched routes from alerts    │                             │
+│  │                                  │                             │
+│  │  Date ranges:                    │                             │
+│  │  • Next 30/60/90 days            │                             │
+│  │  • Flexible (+/- 3 days)         │                             │
+│  │  • Weekend getaways (Fri-Sun)    │                             │
+│  └──────────────┬───────────────────┘                             │
+│                  │                                                  │
+│                  ▼                                                  │
+│  ┌──────────────────────────────────┐                             │
+│  │  API Poller (Edge Function)      │                             │
+│  │                                  │                             │
+│  │  For flights:                    │                             │
+│  │  • SerpAPI Google Flights search │                             │
+│  │  • SerpAPI Google Travel Explore │                             │
+│  │    (discovers cheapest dests)    │                             │
+│  │                                  │                             │
+│  │  For hotels:                     │                             │
+│  │  • SerpAPI Google Hotels         │                             │
+│  │                                  │                             │
+│  │  Rate limiting:                  │                             │
+│  │  • Max 50 searches per scan run  │                             │
+│  │  • Spread across 6h window       │                             │
+│  └──────────────┬───────────────────┘                             │
+│                  │                                                  │
+│                  ▼                                                  │
+│  ┌──────────────────────────────────┐                             │
+│  │  Deal Scorer                     │                             │
+│  │                                  │                             │
+│  │  For each result:                │                             │
+│  │  1. Lookup price_history for     │                             │
+│  │     same route + date range      │                             │
+│  │  2. Calculate:                   │                             │
+│  │     - median_price (30-day avg)  │                             │
+│  │     - pct_below_median           │                             │
+│  │     - vs_historical_low          │                             │
+│  │  3. Assign deal_score (0-100):   │                             │
+│  │     - 80-100: "Incredible Deal"  │                             │
+│  │     - 60-79: "Great Deal"        │                             │
+│  │     - 40-59: "Good Deal"         │                             │
+│  │     - 0-39: Normal price         │                             │
+│  │  4. Assign badges:               │                             │
+│  │     - price_drop (>15% below avg)│                             │
+│  │     - near_record_low            │                             │
+│  │     - trending (many searches)   │                             │
+│  │     - weekend_getaway            │                             │
+│  └──────────────┬───────────────────┘                             │
+│                  │                                                  │
+│                  ▼                                                  │
+│  ┌──────────────────────────────────┐                             │
+│  │  Storage                         │                             │
+│  │                                  │                             │
+│  │  • deal_cache: Current deals     │                             │
+│  │    (TTL: 12 hours)               │                             │
+│  │  • price_history: Every price    │                             │
+│  │    point (90-day retention)      │                             │
+│  └──────────────┬───────────────────┘                             │
+│                  │                                                  │
+│                  ▼                                                  │
+│  ┌──────────────────────────────────┐                             │
+│  │  Notification Dispatcher         │                             │
+│  │                                  │                             │
+│  │  Match deals to users:           │                             │
+│  │  • User's home airport matches   │                             │
+│  │    deal origin                   │                             │
+│  │  • User's interests match dest   │                             │
+│  │  • User has price_alert for      │                             │
+│  │    this route                    │                             │
+│  │                                  │                             │
+│  │  Send via:                       │                             │
+│  │  • Push notification             │                             │
+│  │  • In-app deal feed              │                             │
+│  │  • Daily digest (batch)          │                             │
+│  │                                  │                             │
+│  │  Frequency caps:                 │                             │
+│  │  • Max 3 push/day per user       │                             │
+│  │  • Max 1 daily digest            │                             │
+│  │  • Respect notification prefs    │                             │
+│  └──────────────────────────────────┘                             │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+#### Cron Schedule
+
+| Job | Frequency | Credits Used | What It Does |
+|-----|-----------|--------------|--------------|
+| **Popular route scan** | Every 6 hours | ~30-50 | Scans top routes (user home airports → trending destinations) |
+| **Price alert check** | Every 12 hours | ~10-30 | Checks prices for active user price alerts |
+| **Discovery scan** | Daily at 6 AM | ~20 | Uses Google Travel Explore to find cheapest destinations from top home airports |
+| **Hotel deal scan** | Daily at 8 AM | ~20 | Scans hotel prices for popular cities |
+| **Notification digest** | Daily at 9 AM | 0 | Compiles and sends daily deal digest to users |
+
+**Estimated monthly credit usage (Developer plan, 5,000 credits):**
+- Popular routes: 50 × 4/day × 30 = 6,000 → Need to batch/limit to ~40/run
+- Price alerts: 30 × 2/day × 30 = 1,800
+- Discovery: 20 × 30 = 600
+- Hotels: 20 × 30 = 600
+- User searches: ~1,000 (real-time)
+- **Total: ~4,000-5,000/mo on Developer plan**
+
+Scale to Production ($150/mo) when user base grows.
+
+#### SerpAPI Google Travel Explore — The AirClub Secret Weapon
+
+This is the API that makes AirClub-like discovery possible:
+
+```
+GET https://serpapi.com/search?engine=google_travel_explore
+  &departure_id=JFK
+  &travel_class=1       (economy)
+  &currency=USD
+  &hl=en
+
+Returns:
+{
+  "flights": [
+    {
+      "destination": "Athens, Greece",
+      "airport": "ATH",
+      "image": "https://...",
+      "price": "$389",        ← Current cheapest price
+      "trip_type": "Round trip",
+      "departure_date": "Apr 15",
+      "return_date": "Apr 22"
+    },
+    {
+      "destination": "Paris, France",
+      "airport": "CDG",
+      "price": "$312",
+      ...
+    }
+  ]
+}
+```
+
+This is exactly what AirClub does: "Here are the cheapest flights from your city right now." We scan this daily, compare with historical prices, and notify users of significant drops.
+
+#### SerpAPI Google Flights — Specific Route Search
+
+```
+GET https://serpapi.com/search?engine=google_flights
+  &departure_id=JFK
+  &arrival_id=ATH
+  &outbound_date=2026-04-15
+  &return_date=2026-04-22
+  &currency=USD
+  &hl=en
+  &type=1               (round trip)
+
+Returns:
+{
+  "best_flights": [
+    {
+      "flights": [{
+        "departure_airport": { "name": "JFK", "time": "2026-04-15 18:30" },
+        "arrival_airport": { "name": "ATH", "time": "2026-04-16 11:45" },
+        "airline": "Delta",
+        "airline_logo": "https://...",
+        "flight_number": "DL 410",
+        "travel_class": "Economy",
+        ...
+      }],
+      "total_duration": 600,
+      "price": 389,
+      "carbon_emissions": { ... },
+      "booking_token": "...",        ← Used to get booking options
+    }
+  ],
+  "other_flights": [ ... ],
+  "price_insights": {
+    "lowest_price": 312,
+    "price_level": "low",            ← Google's own price assessment
+    "typical_price_range": [380, 520],
+    "price_history": [ ... ]         ← Historical price graph data!
+  }
+}
+```
+
+Key features:
+- **`price_insights`** — Google already tells us if the price is low/typical/high
+- **`price_history`** — Built-in price history data (no need to build our own initially)
+- **`booking_token`** — Can be used with SerpAPI's Booking Options endpoint to get links to airlines/OTAs
+
+### 11.5 Migration Timeline
+
+| When | Action |
+|------|--------|
+| **Week 1 (Now)** | Sign up for SerpAPI (free tier). Build `serpapi.ts` adapter in `_shared/providers/`. Test Google Flights + Google Hotels searches. |
+| **Week 2** | Sign up for Viator Affiliate. Build `viator.ts` adapter for experiences. |
+| **Week 2** | Build `deal-scanner` edge function using SerpAPI Google Travel Explore. |
+| **Week 3** | Update `provider-manager` to use SerpAPI as primary for flights + hotels. Keep Kiwi as secondary for flights. |
+| **Week 3** | Build notification dispatcher for deal alerts (integrate with existing `NotificationContext`). |
+| **Week 4** | Fix RapidAPI Booking.com Cars subscription OR build Kayak/DiscoverCars redirect URLs for cars. |
+| **By June 2026** | Remove Amadeus adapter completely. Remove `AMADEUS_CLIENT_ID` and `AMADEUS_CLIENT_SECRET` from Supabase secrets. |
+| **July 2026** | Amadeus self-service shuts down. Zero impact because we've migrated. |
+
+### 11.6 Environment Variables Needed
+
+```bash
+# New — SerpAPI (covers flights + hotels + travel explore)
+npx supabase secrets set SERPAPI_KEY=your_key_here --project-ref pkydmdygctojtfzbqcud
+
+# New — Viator (experiences)
+npx supabase secrets set VIATOR_API_KEY=your_key_here --project-ref pkydmdygctojtfzbqcud
+
+# Keep — Kiwi.com (flights secondary + car rentals + affiliate links)
+# Already set via RAPIDAPI_KEY
+
+# Remove by June 2026
+# AMADEUS_CLIENT_ID
+# AMADEUS_CLIENT_SECRET
+```
+
+### 11.7 New Adapter Files to Create
+
+```
+supabase/functions/_shared/providers/
+├── serpapi-flights.ts     # SerpAPI Google Flights adapter
+├── serpapi-hotels.ts      # SerpAPI Google Hotels adapter
+├── serpapi-explore.ts     # SerpAPI Google Travel Explore (deal discovery)
+├── viator.ts              # Viator experiences adapter
+├── kiwi.ts                # KEEP — already works
+├── cars.ts                # KEEP — fix RapidAPI subscription
+├── expedia.ts             # KEEP as fallback for hotels
+├── experiences.ts         # KEEP as fallback
+├── amadeus.ts             # DELETE by June 2026
+└── index.ts               # Update exports
+```
+
+### 11.8 Cost Summary
+
+| Service | Plan | Monthly Cost | What You Get |
+|---------|------|-------------|--------------|
+| **SerpAPI** | Developer | $75 | 5,000 searches — flights + hotels + deal discovery |
+| **Kiwi.com Tequila** | Affiliate | $0 | Free API access, earn commission per booking |
+| **Viator** | Affiliate | $0 | Free API access, earn 8% per booking |
+| **RapidAPI Booking.com** | Free/Basic | $0-10 | Hotels + cars fallback (500 free req/mo) |
+| **Total** | | **$75-85/mo** | Full coverage for all 4 categories + deal scanning |
+
+This is significantly cheaper than Amadeus Enterprise ($500+/mo) and gives us better data (Google's aggregated prices from all OTAs).

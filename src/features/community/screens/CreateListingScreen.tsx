@@ -58,7 +58,7 @@ const TOTAL_STEPS = 4;
 export default function CreateListingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: themeColors } = useTheme();
+  const { colors: themeColors, isDark } = useTheme();
 
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState<ListingCategory | null>(null);
@@ -373,7 +373,7 @@ export default function CreateListingScreen() {
 
       {/* Bottom Button */}
       {step < TOTAL_STEPS && (
-        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: isDark ? '#1A1A1A' : themeColors.white }]}>
           <TouchableOpacity
             style={[styles.nextButton, !canProceed() && styles.nextButtonDisabled]}
             onPress={handleNext}

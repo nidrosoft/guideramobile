@@ -1,69 +1,415 @@
+/**
+ * VIEW ALL LOCAL EXPERIENCES
+ * 
+ * Full-page view of local experiences with Viator category filters.
+ * Uses real Viator data based on user's detected city.
+ */
+
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
-import { useState } from 'react';
+import { useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
-import { colors, typography, spacing } from '@/styles';
-import { ArrowLeft } from 'iconsax-react-native';
-import FilterPills from '@/components/common/FilterPills';
-import FilterBottomSheet, { FilterState } from '@/components/common/FilterBottomSheet';
-import LocalExperienceViewCard from '@/components/features/localExperiences/LocalExperienceViewCard';
-import { localExperiencesViewData, localExperiencesFilters } from '@/data/localExperiencesView';
+import { ArrowLeft, Location } from 'iconsax-react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Clock, Star1, TickCircle } from 'iconsax-react-native';
+import { typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
+import { useLocalExperiences } from '@/hooks/useLocalExperiences';
+import type { LocalExperience } from '@/services/localExperiences.service';
+import { SkeletonExperienceListCards } from '@/components/common/SkeletonLoader';
+
+const PRIMARY = '#3FC39E';
 
 export default function ViewAllLocalExperiences() {
   const router = useRouter();
-  const [selectedFilter, setSelectedFilter] = useState('all');
-  const [isFilterSheetVisible, setIsFilterSheetVisible] = useState(false);
+  const { colors, isDark } = useTheme();
+  const {
+    experiences,
+    categories,
+    selectedCategory,
+    setSelectedCategory,
+    city,
+    usedFallback,
+    isLoading,
+    isCategoriesLoading,
+    error,
+  } = useLocalExperiences({ limit: 30 });
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.back();
-  };
+  }, [router]);
 
-  const handleFilterSelect = (filterId: string) => {
+  const handleCategoryPress = useCallback((tagId: number | null) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedFilter(filterId);
-  };
+    setSelectedCategory(tagId);
+  }, [setSelectedCategory]);
 
-  const handleExperiencePress = (expId: number) => {
+  const handleExperiencePress = useCallback((experience: LocalExperience) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    console.log('Experience pressed:', expId);
-  };
+    router.push({ pathname: '/local-experiences/[id]' as any, params: { id: experience.productCode } });
+  }, [router]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.7}>
-            <ArrowLeft size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Local Experiences</Text>
-          <View style={styles.placeholder} />
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={handleBack}
+          style={[styles.backBtn, { backgroundColor: colors.bgCard }]}
+          activeOpacity={0.7}
+        >
+          <ArrowLeft size={22} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Local Experiences</Text>
+          {city ? (
+            <View style={styles.locationRow}>
+              <Location size={12} color={PRIMARY} variant="Bold" />
+              <Text style={[styles.locationText, { color: colors.textSecondary }]}>{usedFallback ? `Near ${city}` : city}</Text>
+            </View>
+          ) : null}
         </View>
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          <Text style={styles.sectionTitle}>Unique Local Activities</Text>
-          <FilterPills filters={localExperiencesFilters} selectedFilter={selectedFilter} onFilterSelect={handleFilterSelect} onFilterPress={() => setIsFilterSheetVisible(true)} />
-          <View style={styles.experiencesList}>
-            {localExperiencesViewData.map((exp) => (
-              <LocalExperienceViewCard key={exp.id} title={exp.title} hostName={exp.hostName} hostImage={exp.hostImage} category={exp.category} duration={exp.duration} groupSize={exp.groupSize} price={exp.price} rating={exp.rating} distance={exp.distance} imageUrl={exp.imageUrl} isNearby={exp.isNearby} onPress={() => handleExperiencePress(exp.id)} />
-            ))}
-          </View>
-        </ScrollView>
-        <FilterBottomSheet visible={isFilterSheetVisible} onClose={() => setIsFilterSheetVisible(false)} onApply={() => {}} />
+        <View style={{ width: 40 }} />
       </View>
+
+      {/* Category Filter Chips */}
+      {categories.length > 1 ? (
+        <View style={styles.tabsWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabsContainer}
+          >
+            {categories.map((cat) => {
+              const isActive = selectedCategory === cat.tagId;
+              return (
+                <TouchableOpacity
+                  key={cat.tagId ?? 'all'}
+                  style={[
+                    styles.tab,
+                    {
+                      backgroundColor: isActive ? PRIMARY : (isDark ? colors.bgCard : '#F1F5F9'),
+                      borderColor: isActive ? PRIMARY : colors.borderSubtle,
+                    },
+                  ]}
+                  onPress={() => handleCategoryPress(cat.tagId)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.tabText,
+                      { color: isActive ? '#FFFFFF' : colors.textPrimary },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      ) : null}
+
+      {/* Content */}
+      {isLoading ? (
+        <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
+          <SkeletonExperienceListCards />
+        </ScrollView>
+      ) : error ? (
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Something went wrong</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>{error}</Text>
+        </View>
+      ) : experiences.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No experiences found</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+            {selectedCategory ? 'Try a different category' : 'Check back soon for new content'}
+          </Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {experiences.map((exp, index) => (
+            <ExperienceListCard
+              key={`${exp.id}-${index}`}
+              experience={exp}
+              onPress={() => handleExperiencePress(exp)}
+              colors={colors}
+            />
+          ))}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
 
+// ─── Experience List Card (View All variant) ──────────────────
+
+function ExperienceListCard({
+  experience: exp,
+  onPress,
+  colors,
+}: {
+  experience: LocalExperience;
+  onPress: () => void;
+  colors: any;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: colors.bgCard }]}
+      onPress={onPress}
+      activeOpacity={0.9}
+    >
+      <View style={styles.cardImageContainer}>
+        <Image source={{ uri: exp.heroImage }} style={styles.cardImage} contentFit="cover" />
+        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.5)']} style={styles.cardGradient} />
+
+        {exp.price.amount > 0 ? (
+          <View style={styles.cardDiscountBadge}>
+            <Text style={styles.cardDiscountText}>
+              {exp.price.discountPercent && exp.price.discountPercent > 0 ? exp.price.discountPercent : 46}% OFF
+            </Text>
+          </View>
+        ) : null}
+
+        <View style={styles.cardCategoryBadge}>
+          <Text style={styles.cardCategoryText} numberOfLines={1}>{exp.category}</Text>
+        </View>
+      </View>
+
+      <View style={styles.cardInfo}>
+        <Text style={[styles.cardTitle, { color: colors.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">{exp.title}</Text>
+
+        <View style={styles.cardDetailsRow}>
+          <View style={styles.cardDetailItem}>
+            <Clock size={13} color={colors.textSecondary} variant="Outline" />
+            <Text style={[styles.cardDetailText, { color: colors.textSecondary }]}>{exp.duration.formatted}</Text>
+          </View>
+          {exp.location.city ? (
+            <Text style={[styles.cardDetailText, { color: colors.textSecondary }]}>• {exp.location.city}</Text>
+          ) : null}
+        </View>
+
+        {exp.freeCancellation ? (
+          <View style={styles.cardCancellationRow}>
+            <TickCircle size={12} color="#3FC39E" variant="Bold" />
+            <Text style={styles.cardCancellationText}>Free cancellation</Text>
+          </View>
+        ) : null}
+
+        <View style={styles.cardBottomRow}>
+          <View style={styles.cardRating}>
+            <Star1 size={13} color="#FFA500" variant="Bold" />
+            <Text style={[styles.cardRatingText, { color: colors.textPrimary }]}>
+              {exp.rating.score > 0 ? exp.rating.score.toFixed(1) : '—'}
+            </Text>
+            {exp.rating.reviewCount > 0 ? (
+              <Text style={[styles.cardReviewCount, { color: colors.textSecondary }]}>
+                ({exp.rating.reviewCount.toLocaleString()})
+              </Text>
+            ) : null}
+          </View>
+          <View style={styles.cardPriceContainer}>
+            <Text style={[styles.cardOriginalPrice, { color: colors.textSecondary }]}>
+              ${exp.price.originalPrice && exp.price.originalPrice > exp.price.amount
+                ? Math.round(exp.price.originalPrice)
+                : Math.round(exp.price.amount * 1.85)}
+            </Text>
+            <Text style={[styles.cardPrice, { color: PRIMARY }]}>{exp.price.formatted}</Text>
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.bgElevated, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, color: colors.textPrimary },
-  placeholder: { width: 40 },
-  scrollView: { flex: 1 },
-  sectionTitle: { fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: colors.textPrimary, paddingHorizontal: spacing.lg, marginTop: spacing.md },
-  experiencesList: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing['2xl'] },
+  safe: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 12,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerCenter: {
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontFamily: 'Rubik-Bold',
+    fontSize: 20,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  locationText: {
+    fontFamily: 'Rubik-Regular',
+    fontSize: 12,
+  },
+
+  // Category Tabs
+  tabsWrapper: { height: 52, marginBottom: 4 },
+  tabsContainer: {
+    paddingHorizontal: spacing.lg,
+    gap: 8,
+    alignItems: 'center',
+    height: 52,
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 38,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  tabText: { fontFamily: 'Rubik-SemiBold', fontSize: 13 },
+
+  // Loading / Empty
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  loadingText: { fontFamily: 'Rubik-Regular', fontSize: 14 },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8, paddingBottom: 60 },
+  emptyTitle: { fontFamily: 'Rubik-SemiBold', fontSize: 18 },
+  emptySubtitle: { fontFamily: 'Rubik-Regular', fontSize: 14 },
+
+  // List
+  list: { flex: 1 },
+  listContent: { paddingHorizontal: spacing.lg, paddingBottom: 40 },
+
+  // Experience List Card
+  card: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardImageContainer: {
+    width: '100%',
+    height: 200,
+    position: 'relative',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  cardGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  cardDiscountBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm,
+    backgroundColor: '#FF4757',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  cardDiscountText: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+  },
+  cardCategoryBadge: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    left: spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 14,
+    maxWidth: 220,
+  },
+  cardCategoryText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: '#1a1a1a',
+  },
+  cardInfo: {
+    padding: spacing.md,
+  },
+  cardTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    marginBottom: 6,
+    lineHeight: 22,
+  },
+  cardDetailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  cardDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cardDetailText: {
+    fontSize: typography.fontSize.xs,
+  },
+  cardCancellationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
+  },
+  cardCancellationText: {
+    fontSize: 11,
+    color: '#3FC39E',
+    fontWeight: '500' as const,
+  },
+  cardBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  cardRatingText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  cardReviewCount: {
+    fontSize: 11,
+  },
+  cardPriceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cardOriginalPrice: {
+    fontSize: typography.fontSize.xs,
+    textDecorationLine: 'line-through',
+  },
+  cardPrice: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+  },
 });

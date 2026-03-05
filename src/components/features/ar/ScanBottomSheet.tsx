@@ -18,7 +18,8 @@ import {
   Building,
   CloseCircle,
   Airplane,
-  Danger
+  Danger,
+  MessageQuestion,
 } from 'iconsax-react-native';
 
 // Action types for the scan feature - maps to AR plugin IDs
@@ -29,7 +30,8 @@ export type ScanActionType =
   | 'danger-alerts'
   | 'city-navigator'
   | 'receipt'
-  | 'scan-document';
+  | 'scan-document'
+  | 'ask-ai';
 
 interface ScanAction {
   id: ScanActionType;
@@ -97,6 +99,14 @@ const SCAN_ACTIONS: ScanAction[] = [
     icon: <Scan size={24} color="#3B82F6" variant="Bold" />,
     color: '#3B82F6', // Blue
     bgColor: '#3B82F615', // Soft blue
+  },
+  {
+    id: 'ask-ai',
+    title: 'Ask Guidera AI',
+    description: 'Get instant travel answers',
+    icon: <MessageQuestion size={24} color="#3FC39E" variant="Bold" />,
+    color: '#3FC39E', // Teal
+    bgColor: '#3FC39E15', // Soft teal
   },
 ];
 

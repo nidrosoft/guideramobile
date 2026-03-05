@@ -1,69 +1,113 @@
 /**
  * LOCAL EXPERIENCES SECTION
  * 
- * Displays local experiences with horizontal scrolling cards.
- * Extracted from homepage for better modularity.
- * Now uses real data from database with mock data fallback.
+ * Displays real local experiences from Viator based on user's detected city.
+ * Uses useLocalExperiences hook for location-aware data fetching.
  */
 
-import { ScrollView, StyleSheet } from 'react-native';
-import { useMemo } from 'react';
+import { View, ScrollView, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useCallback, useEffect, useRef, useMemo } from 'react';
+import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import LocalExperienceCard from '@/components/features/home/LocalExperienceCard';
-import { localExperiences } from '@/data/localExperiences';
-import { useHomepageDataSafe } from '@/features/homepage';
-import { spacing } from '@/styles';
+import { useLocalExperiences } from '@/hooks/useLocalExperiences';
+import { useHomepageDataSafe, matchesCategory, useSectionVisibility } from '@/features/homepage';
+import { useTheme } from '@/context/ThemeContext';
+import { spacing, typography } from '@/styles';
+import { SkeletonLocalExperienceCards } from '@/components/common/SkeletonLoader';
 
 export default function LocalExperiencesSection() {
-  const homepageData = useHomepageDataSafe();
-  
-  // Map database data to card props format, fallback to mock data
-  const displayData = useMemo(() => {
-    // Use adventure or nearby section for local experiences
-    const section = homepageData?.sections?.find(s => s.slug === 'adventure' || s.slug === 'near-you');
-    
-    if (section?.items?.length) {
-      return section.items.map((item, index) => ({
-        id: item.id || index,
-        title: item.title,
-        hostName: 'Local Guide',
-        hostImage: 'https://picsum.photos/seed/host/100/100',
-        category: item.tags?.[0] || 'Experience',
-        duration: '2-4 hours',
-        groupSize: 'Up to 10',
-        price: item.price?.formatted || `$${item.price?.amount || 45}`,
-        rating: item.rating || 4.7,
-        distance: item.distanceText || '15 min away',
-        imageUrl: item.imageUrl || item.thumbnailUrl || 'https://picsum.photos/seed/local/800/500',
-        isNearby: true,
-      }));
+  const router = useRouter();
+  const { colors } = useTheme();
+  const homepageCtx = useHomepageDataSafe();
+  const { experiences, city, usedFallback, isLoading, error, refresh } = useLocalExperiences({ limit: 8 });
+
+  // Re-fetch when homepage pull-to-refresh triggers
+  const lastRefreshKey = useRef(homepageCtx?.refreshKey ?? 0);
+  useEffect(() => {
+    const currentKey = homepageCtx?.refreshKey ?? 0;
+    if (currentKey > lastRefreshKey.current) {
+      lastRefreshKey.current = currentKey;
+      refresh();
     }
-    
-    return localExperiences;
-  }, [homepageData?.sections]);
+  }, [homepageCtx?.refreshKey, refresh]);
+
+  const handleCardPress = useCallback((productCode: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push({ pathname: '/local-experiences/[id]' as any, params: { id: productCode } });
+  }, [router]);
+
+  const activeCategory = homepageCtx?.activeCategory ?? 'all';
+  const filteredExperiences = useMemo(() => {
+    if (activeCategory === 'all') return experiences;
+    return experiences.filter(exp =>
+      matchesCategory({ title: exp.title, category: exp.category, tags: [exp.category] }, activeCategory)
+    );
+  }, [experiences, activeCategory]);
+  useSectionVisibility('localExperiences', filteredExperiences.length);
+
+  // Loading state
+  if (isLoading) {
+    return <SkeletonLocalExperienceCards />;
+  }
+
+  // Error or no raw data at all
+  if (error || experiences.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+          {error || (city ? `No experiences found in ${city}` : 'Enable location to see nearby experiences')}
+        </Text>
+      </View>
+    );
+  }
+
+  // Category filter produced no matches — hide entire section
+  if (filteredExperiences.length === 0) return null;
 
   return (
-    <ScrollView 
-      horizontal 
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.localContainer}
-    >
-      {displayData.map((experience) => (
-        <LocalExperienceCard
-          key={experience.id}
-          title={experience.title}
-          hostName={experience.hostName}
-          hostImage={experience.hostImage}
-          category={experience.category}
-          duration={experience.duration}
-          groupSize={experience.groupSize}
-          price={experience.price}
-          rating={experience.rating}
-          distance={experience.distance}
-          imageUrl={experience.imageUrl}
-          isNearby={experience.isNearby}
-        />
-      ))}
-    </ScrollView>
+    <View>
+      {usedFallback && city ? (
+        <Text style={[styles.nearbyLabel, { color: colors.textSecondary }]}>
+          Near {city}
+        </Text>
+      ) : null}
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.localContainer}
+      >
+        {filteredExperiences.map((exp, index) => (
+          <TouchableOpacity key={`${exp.id}-${index}`} activeOpacity={0.8} onPress={() => handleCardPress(exp.productCode)}>
+            <LocalExperienceCard
+              id={exp.id}
+              title={exp.title}
+              imageUrl={exp.heroImage}
+              category={exp.category}
+              duration={exp.duration.formatted}
+              rating={exp.rating.score}
+              reviewCount={exp.rating.reviewCount}
+              price={exp.price.formatted}
+              originalPrice={
+                exp.price.originalPrice && exp.price.originalPrice > exp.price.amount
+                  ? `$${Math.round(exp.price.originalPrice)}`
+                  : exp.price.amount > 0
+                    ? `$${Math.round(exp.price.amount * 1.85)}`
+                    : undefined
+              }
+              discountPercent={
+                exp.price.discountPercent && exp.price.discountPercent > 0
+                  ? exp.price.discountPercent
+                  : exp.price.amount > 0 ? 46 : undefined
+              }
+              freeCancellation={exp.freeCancellation}
+              instantConfirmation={exp.instantConfirmation}
+              city={exp.location.city}
+            />
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -71,5 +115,37 @@ const styles = StyleSheet.create({
   localContainer: {
     paddingHorizontal: spacing.lg,
     gap: spacing.md,
+  },
+  nearbyLabel: {
+    fontSize: typography.fontSize.xs,
+    paddingHorizontal: spacing.lg,
+    marginBottom: 6,
+  },
+  emptyContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xl,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: typography.fontSize.sm,
+    textAlign: 'center',
+  },
+  // Skeleton loading
+  skeleton: {
+    width: 280,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  skeletonImage: {
+    width: '100%',
+    height: 170,
+  },
+  skeletonInfo: {
+    padding: spacing.md,
+    gap: 8,
+  },
+  skeletonLine: {
+    height: 12,
+    borderRadius: 6,
   },
 });

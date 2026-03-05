@@ -1,20 +1,23 @@
 import { Tabs, useRouter } from 'expo-router';
-import { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { useState, useMemo, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import { colors as staticColors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { Home2, Airplane, Category, People, User } from 'iconsax-react-native';
 import ScanBottomSheet, { ScanActionType } from '@/components/features/ar/ScanBottomSheet';
+import AIChatSheet from '@/components/features/ai/AIChatSheet';
 
 // Custom Tab Bar with launcher button and bottom sheet
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [showScanSheet, setShowScanSheet] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
 
@@ -32,6 +35,38 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
   // Define the order of visible tabs (excluding hidden ones like saved, inbox)
   const visibleTabNames = ['index', 'trips', 'ar', 'community', 'account'];
+
+  // Animated indicator
+  const indicatorLeft = useSharedValue(0);
+  const indicatorWidth = useSharedValue(0);
+  const [tabLayouts, setTabLayouts] = useState<Record<number, { x: number; width: number }>>({});
+
+  const handleTabLayout = (index: number, event: LayoutChangeEvent) => {
+    const { x, width } = event.nativeEvent.layout;
+    setTabLayouts(prev => ({ ...prev, [index]: { x, width } }));
+  };
+
+  // Compute the focused visible index
+  const focusedVisibleIndex = useMemo(() => {
+    const focusedRoute = state.routes[state.index];
+    return visibleTabNames.indexOf(focusedRoute?.name);
+  }, [state.index, state.routes]);
+
+  // Update indicator position when focused tab or layouts change
+  useEffect(() => {
+    const layout = tabLayouts[focusedVisibleIndex];
+    if (layout) {
+      // Indicator bar: 40px wide, centered within the tab
+      const barWidth = 40;
+      indicatorLeft.value = withTiming(layout.x + (layout.width - barWidth) / 2, { duration: 300 });
+      indicatorWidth.value = withTiming(barWidth, { duration: 300 });
+    }
+  }, [focusedVisibleIndex, tabLayouts]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorLeft.value }],
+    width: indicatorWidth.value,
+  }));
   
   // Filter and sort routes to match our desired order
   const visibleRoutes = visibleTabNames
@@ -40,6 +75,10 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
   const handleScanAction = (action: ScanActionType) => {
     setShowScanSheet(false);
+    if (action === 'ask-ai') {
+      setTimeout(() => setShowAIChat(true), 300);
+      return;
+    }
     router.push({ pathname: '/(tabs)/ar', params: { action } });
   };
 
@@ -62,7 +101,16 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
   return (
     <>
-      <View style={[styles.tabBar, dynamicStyles.tabBar, { paddingBottom: insets.bottom || 8 }]}>
+      <View style={[styles.tabBar, dynamicStyles.tabBar, { paddingBottom: insets.bottom || 4 }]}>
+        {/* Animated indicator bar */}
+        <Animated.View
+          style={[
+            styles.indicator,
+            { backgroundColor: colors.primary },
+            indicatorStyle,
+          ]}
+        />
+
         {visibleRoutes.map((route, index) => {
           const isFocused = state.index === state.routes.findIndex(r => r.key === route.key);
           const isLauncher = route.name === 'ar';
@@ -89,33 +137,43 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
           if (isLauncher) {
             return (
-              <TouchableOpacity
+              <View
                 key={route.key}
                 style={styles.tabItem}
-                onPress={onPress}
-                activeOpacity={0.8}
+                onLayout={(e) => handleTabLayout(index, e)}
               >
-                <View style={styles.launcherContainer}>
-                  <View style={[styles.launcherButton, dynamicStyles.launcherButton]}>
-                    <Category size={24} color={staticColors.white} variant="Bold" />
+                <TouchableOpacity
+                  style={styles.tabItemInner}
+                  onPress={onPress}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.launcherContainer}>
+                    <View style={[styles.launcherButton, dynamicStyles.launcherButton]}>
+                      <Category size={24} color={staticColors.white} variant="Bold" />
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
+                </TouchableOpacity>
+              </View>
             );
           }
 
           const color = isFocused ? colors.primary : colors.gray400;
 
           return (
-            <TouchableOpacity
+            <View
               key={route.key}
               style={styles.tabItem}
-              onPress={onPress}
-              activeOpacity={0.7}
+              onLayout={(e) => handleTabLayout(index, e)}
             >
-              {icons[route.name]?.(color, isFocused)}
-              <Text style={[styles.tabLabel, { color }]}>{labels[route.name]}</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.tabItemInner}
+                onPress={onPress}
+                activeOpacity={0.7}
+              >
+                {icons[route.name]?.(color, isFocused)}
+                <Text style={[styles.tabLabel, { color }]}>{labels[route.name]}</Text>
+              </TouchableOpacity>
+            </View>
           );
         })}
       </View>
@@ -125,6 +183,13 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         visible={showScanSheet}
         onClose={() => setShowScanSheet(false)}
         onSelectAction={handleScanAction}
+      />
+
+      {/* Global AI Chat Sheet */}
+      <AIChatSheet
+        visible={showAIChat}
+        onClose={() => setShowAIChat(false)}
+        contextType="global"
       />
     </>
   );
@@ -154,13 +219,27 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     borderTopWidth: 1,
-    paddingTop: 8,
+    paddingTop: 2,
+    position: 'relative',
+  },
+  indicator: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    height: 3,
+    borderBottomLeftRadius: 2,
+    borderBottomRightRadius: 2,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+  },
+  tabItemInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 6,
+    paddingBottom: 2,
   },
   tabLabel: {
     fontSize: 10,

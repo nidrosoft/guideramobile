@@ -1,107 +1,104 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { typography, spacing, colors } from '@/styles';
+import { typography, spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { Location, Clock, People, Star1, Heart } from 'iconsax-react-native';
+import { Clock, Star1, TickCircle } from 'iconsax-react-native';
 
-interface LocalExperienceCardProps {
+export interface LocalExperienceCardProps {
+  id: string;
   title: string;
-  hostName: string;
-  hostImage: string;
+  imageUrl: string;
   category: string;
   duration: string;
-  groupSize: string;
-  price: string;
   rating: number;
-  distance: string;
-  imageUrl: string;
-  isNearby: boolean;
+  reviewCount: number;
+  price: string;
+  originalPrice?: string;
+  discountPercent?: number;
+  freeCancellation: boolean;
+  instantConfirmation?: boolean;
+  city?: string;
 }
 
 export default function LocalExperienceCard({ 
   title,
-  hostName,
-  hostImage,
+  imageUrl,
   category,
   duration,
-  groupSize,
-  price,
   rating,
-  distance,
-  imageUrl,
-  isNearby
+  reviewCount,
+  price,
+  originalPrice,
+  discountPercent,
+  freeCancellation,
+  city,
 }: LocalExperienceCardProps) {
   const { colors } = useTheme();
+
   return (
     <View style={[styles.container, { backgroundColor: colors.bgCard }]}>
       {/* Image Section */}
       <View style={styles.imageContainer}>
-        <Image source={{ uri: imageUrl }} style={styles.image} />
+        <Image source={{ uri: imageUrl }} style={styles.image} contentFit="cover" />
         
-        {/* Gradient Overlay */}
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.6)']}
+          colors={['transparent', 'rgba(0,0,0,0.5)']}
           style={styles.gradient}
         />
 
-        {/* Nearby Badge */}
-        {isNearby && (
-          <View style={styles.nearbyBadge}>
-            <Location size={12} color="#FFFFFF" variant="Bold" />
-            <Text style={styles.nearbyText}>Nearby</Text>
+        {/* Discount Badge */}
+        {discountPercent && discountPercent > 0 ? (
+          <View style={styles.discountBadge}>
+            <Text style={styles.discountText}>{discountPercent}% OFF</Text>
           </View>
-        )}
-
-        {/* Heart Button */}
-        <TouchableOpacity style={styles.heartButton}>
-          <Heart size={18} color={colors.error} variant="Outline" />
-        </TouchableOpacity>
+        ) : null}
 
         {/* Category Badge */}
         <View style={styles.categoryBadge}>
-          <Text style={styles.categoryText}>{category}</Text>
+          <Text style={styles.categoryText} numberOfLines={1}>{category}</Text>
         </View>
       </View>
 
       {/* Info Section */}
       <View style={styles.infoContainer}>
-        {/* Title */}
-        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>{title}</Text>
-
-        {/* Host Info */}
-        <View style={styles.hostContainer}>
-          <Image source={{ uri: hostImage }} style={styles.hostAvatar} />
-          <Text style={[styles.hostText, { color: colors.textSecondary }]}>Hosted by {hostName}</Text>
-        </View>
+        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">{title}</Text>
 
         {/* Details Row */}
         <View style={styles.detailsRow}>
-          {/* Duration */}
           <View style={styles.detailItem}>
-            <Clock size={14} color={colors.textSecondary} variant="Outline" />
+            <Clock size={13} color={colors.textSecondary} variant="Outline" />
             <Text style={[styles.detailText, { color: colors.textSecondary }]}>{duration}</Text>
           </View>
 
-          {/* Group Size */}
-          <View style={styles.detailItem}>
-            <People size={14} color={colors.textSecondary} variant="Outline" />
-            <Text style={[styles.detailText, { color: colors.textSecondary }]}>{groupSize}</Text>
-          </View>
-
-          {/* Distance */}
-          <View style={styles.detailItem}>
-            <Location size={14} color={colors.textSecondary} variant="Bold" />
-            <Text style={[styles.detailText, { color: colors.textSecondary }]}>{distance}</Text>
-          </View>
+          {city ? (
+            <Text style={[styles.detailText, { color: colors.textSecondary }]}>• {city}</Text>
+          ) : null}
         </View>
+
+        {/* Free Cancellation */}
+        {freeCancellation ? (
+          <View style={styles.cancellationRow}>
+            <TickCircle size={12} color="#3FC39E" variant="Bold" />
+            <Text style={styles.cancellationText}>Free cancellation</Text>
+          </View>
+        ) : null}
 
         {/* Bottom Row - Rating & Price */}
         <View style={[styles.bottomRow, { borderTopColor: colors.borderSubtle }]}>
           <View style={styles.ratingContainer}>
-            <Star1 size={14} color="#FFA500" variant="Bold" />
-            <Text style={[styles.ratingText, { color: colors.textPrimary }]}>{rating}</Text>
+            <Star1 size={13} color="#FFA500" variant="Bold" />
+            <Text style={[styles.ratingText, { color: colors.textPrimary }]}>{rating > 0 ? rating.toFixed(1) : '—'}</Text>
+            {reviewCount > 0 ? (
+              <Text style={[styles.reviewCount, { color: colors.textSecondary }]}>({reviewCount.toLocaleString()})</Text>
+            ) : null}
           </View>
-          <Text style={[styles.price, { color: colors.primary }]}>{price}</Text>
+          <View style={styles.priceContainer}>
+            {originalPrice ? (
+              <Text style={[styles.originalPrice, { color: colors.textSecondary }]}>{originalPrice}</Text>
+            ) : null}
+            <Text style={[styles.price, { color: colors.primary }]}>{price}</Text>
+          </View>
         </View>
       </View>
     </View>
@@ -113,21 +110,17 @@ const styles = StyleSheet.create({
     width: 280,
     borderRadius: 20,
     overflow: 'hidden',
-    marginRight: spacing.md,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
   imageContainer: {
     width: '100%',
-    height: 180,
+    height: 170,
     position: 'relative',
   },
   image: {
@@ -137,33 +130,20 @@ const styles = StyleSheet.create({
   gradient: {
     ...StyleSheet.absoluteFillObject,
   },
-  nearbyBadge: {
+  discountBadge: {
     position: 'absolute',
     top: spacing.sm,
     left: spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#3FC39E',
+    backgroundColor: '#FF4757',
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: 3,
+    borderRadius: 10,
   },
-  nearbyText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.bold,
+  discountText: {
+    fontSize: 10,
+    fontWeight: '700' as const,
     color: '#FFFFFF',
-  },
-  heartButton: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    letterSpacing: 0.3,
   },
   categoryBadge: {
     position: 'absolute',
@@ -173,6 +153,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: 12,
+    maxWidth: 180,
   },
   categoryText: {
     fontSize: typography.fontSize.xs,
@@ -185,30 +166,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    marginBottom: spacing.sm,
+    marginBottom: 6,
     lineHeight: 20,
-  },
-  hostContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.sm,
-  },
-  hostAvatar: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(128,128,128,0.3)',
-  },
-  hostText: {
-    fontSize: typography.fontSize.xs,
   },
   detailsRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
   },
   detailItem: {
     flexDirection: 'row',
@@ -217,6 +182,17 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: typography.fontSize.xs,
+  },
+  cancellationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
+  },
+  cancellationText: {
+    fontSize: 11,
+    color: '#3FC39E',
+    fontWeight: '500' as const,
   },
   bottomRow: {
     flexDirection: 'row',
@@ -228,11 +204,25 @@ const styles = StyleSheet.create({
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   ratingText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
+  },
+  reviewCount: {
+    fontSize: 11,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  originalPrice: {
+    fontSize: typography.fontSize.xs,
+    textDecorationLine: 'line-through',
+    color: '#999',
+    opacity: 0.7,
   },
   price: {
     fontSize: typography.fontSize.lg,

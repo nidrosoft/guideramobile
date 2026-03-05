@@ -44,7 +44,7 @@ export default function FlightDealScreen({
   onBack,
   onClose,
 }: FlightDealScreenProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { user } = useAuth();
   const { redirect } = useDealRedirect();
   const flightStore = useFlightStore();
@@ -344,7 +344,7 @@ export default function FlightDealScreen({
       </ScrollView>
 
       {/* Bottom CTA */}
-      <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.borderSubtle }]}>
+      <View style={[styles.bottomBar, { backgroundColor: isDark ? '#1A1A1A' : colors.white, borderTopColor: colors.borderSubtle }]}>
         <BookOnProviderButton
           provider={provider}
           price={flight.price.formatted || `$${flight.price.amount}`}

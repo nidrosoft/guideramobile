@@ -8,25 +8,14 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
-import {
-  View,
-  StyleSheet,
-  Modal,
-  StatusBar,
-} from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  runOnJS,
-} from 'react-native-reanimated';
+import { View, StyleSheet, Modal, StatusBar } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/styles';
 import { useFlightStore } from '../../stores/useFlightStore';
 import { Flight } from '../../types/flight.types';
 
-// Import new screens
+// Import screens
 import FlightSearchScreen from './screens/FlightSearchScreen';
 import FlightSearchLoadingScreen from './screens/FlightSearchLoadingScreen';
 import FlightResultsScreen from './screens/FlightResultsScreen';
@@ -48,44 +37,30 @@ export default function FlightBookingFlow({
   
   const [currentScreen, setCurrentScreen] = useState<FlightScreen>('search');
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
-  
-  // Animation values
-  const fadeAnim = useSharedValue(0);
-  const scaleAnim = useSharedValue(0.95);
-  
-  // Animate modal entrance
+
+  // Reset screen when modal opens
   useEffect(() => {
     if (visible) {
-      fadeAnim.value = withTiming(1, { duration: 250 });
-      scaleAnim.value = withTiming(1, { duration: 250 });
-    } else {
-      fadeAnim.value = withTiming(0, { duration: 200 });
-      scaleAnim.value = withTiming(0.95, { duration: 200 });
+      setCurrentScreen('search');
+      setSelectedFlight(null);
     }
   }, [visible]);
   
   const handleClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Close immediately - let Modal handle the animation
-    onClose();
-    resetFlow();
-  }, [onClose]);
-  
-  const resetFlow = () => {
+    flightStore.reset();
     setCurrentScreen('search');
     setSelectedFlight(null);
-    flightStore.reset();
-  };
+    onClose();
+  }, [onClose, flightStore]);
   
   // Navigation handlers
   const handleSearch = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Show loading screen
     setCurrentScreen('loading');
   }, []);
   
   const handleLoadingComplete = useCallback(() => {
-    // Transition to results after loading animation
     setCurrentScreen('results');
   }, []);
   
@@ -106,45 +81,67 @@ export default function FlightBookingFlow({
     setCurrentScreen('results');
   }, []);
   
-  // Animated styles
-  const containerStyle = useAnimatedStyle(() => ({
-    opacity: fadeAnim.value,
-    transform: [{ scale: scaleAnim.value }],
-  }));
-  
   // Render current screen
   const renderScreen = () => {
     switch (currentScreen) {
       case 'search':
         return (
-          <FlightSearchScreen
-            onSearch={handleSearch}
-            onBack={handleClose}
-          />
+          <Animated.View
+            key="search"
+            entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(200)}
+            style={styles.screen}
+          >
+            <FlightSearchScreen
+              onSearch={handleSearch}
+              onBack={handleClose}
+            />
+          </Animated.View>
         );
       case 'loading':
         return (
-          <FlightSearchLoadingScreen
-            origin={flightStore.searchParams.origin?.code}
-            destination={flightStore.searchParams.destination?.code}
-            onComplete={handleLoadingComplete}
-          />
+          <Animated.View
+            key="loading"
+            entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(200)}
+            style={styles.screen}
+          >
+            <FlightSearchLoadingScreen
+              origin={flightStore.searchParams.origin?.code}
+              destination={flightStore.searchParams.destination?.code}
+              onComplete={handleLoadingComplete}
+            />
+          </Animated.View>
         );
       case 'results':
         return (
-          <FlightResultsScreen
-            onSelectFlight={handleSelectFlight}
-            onBack={handleBackFromResults}
-            onClose={handleClose}
-          />
+          <Animated.View
+            key="results"
+            entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(200)}
+            style={styles.screen}
+          >
+            <FlightResultsScreen
+              onSelectFlight={handleSelectFlight}
+              onBack={handleBackFromResults}
+              onClose={handleClose}
+            />
+          </Animated.View>
         );
       case 'deal':
         return selectedFlight ? (
-          <FlightDealScreen
-            flight={selectedFlight}
-            onBack={handleBackFromDeal}
-            onClose={handleClose}
-          />
+          <Animated.View
+            key="deal"
+            entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(200)}
+            style={styles.screen}
+          >
+            <FlightDealScreen
+              flight={selectedFlight}
+              onBack={handleBackFromDeal}
+              onClose={handleClose}
+            />
+          </Animated.View>
         ) : null;
       default:
         return null;
@@ -154,15 +151,14 @@ export default function FlightBookingFlow({
   return (
     <Modal
       visible={visible}
-      animationType="fade"
+      animationType="slide"
       presentationStyle="fullScreen"
-      statusBarTranslucent
       onRequestClose={handleClose}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <Animated.View style={[styles.container, containerStyle]}>
+      <StatusBar barStyle="light-content" />
+      <View style={styles.container}>
         {renderScreen()}
-      </Animated.View>
+      </View>
     </Modal>
   );
 }
@@ -171,5 +167,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  screen: {
+    flex: 1,
   },
 });

@@ -24,7 +24,7 @@ export default function BudgetFriendlyCard({
 }: BudgetFriendlyCardProps) {
   const { colors } = useTheme();
   return (
-    <TouchableOpacity style={[styles.container, { backgroundColor: colors.bgCard }]}>
+    <View style={[styles.container, { backgroundColor: colors.bgCard }]}>
       {/* Image Section */}
       <View style={styles.imageContainer}>
         <Image source={{ uri: imageUrl }} style={styles.image} />
@@ -69,7 +69,7 @@ export default function BudgetFriendlyCard({
         {/* Price */}
         <Text style={[styles.price, { color: colors.primary }]}>{price}</Text>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginRight: spacing.md,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,

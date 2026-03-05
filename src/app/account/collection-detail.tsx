@@ -53,17 +53,17 @@ export default function CollectionDetailScreen() {
   const router = useRouter();
   const { colors: tc } = useTheme();
   const { id, name } = useLocalSearchParams<{ id: string; name: string }>();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [items, setItems] = useState<SavedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   // Fetch items in collection
   const fetchItems = useCallback(async () => {
-    if (!user?.id || !id) return;
+    if (!profile?.id || !id) return;
     
     try {
-      const { data, error } = await savedService.getSavedItemsByCollection(user.id, id);
+      const { data, error } = await savedService.getSavedItemsByCollection(profile.id, id);
       
       if (error) {
         console.error('Error fetching collection items:', error);
@@ -77,7 +77,7 @@ export default function CollectionDetailScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [user?.id, id]);
+  }, [profile?.id, id]);
 
   useEffect(() => {
     fetchItems();

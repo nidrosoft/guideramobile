@@ -7,7 +7,7 @@
 
 import { View, StyleSheet, Dimensions, ImageBackground } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const HERO_HEIGHT = width * 1.2; // 1.2 aspect ratio
@@ -17,6 +17,7 @@ interface HeroImageSectionProps {
 }
 
 export default function HeroImageSection({ imageUrl }: HeroImageSectionProps) {
+  const { colors } = useTheme();
   return (
     <View style={styles.container}>
       <ImageBackground

@@ -188,10 +188,8 @@ async function getDestinationId(locationName: string, locale: string = 'en-us'):
 export async function searchHotels(params: HotelSearchParams): Promise<NormalizedHotel[]> {
   const apiKey = Deno.env.get('RAPIDAPI_KEY')
   
-  // If no credentials, return mock data for development
   if (!apiKey) {
-    console.log('RAPIDAPI_KEY not configured, returning mock hotel data')
-    return generateMockHotels(params)
+    throw new Error('RAPIDAPI_KEY not configured — cannot search hotels')
   }
   
   try {
@@ -200,8 +198,7 @@ export async function searchHotels(params: HotelSearchParams): Promise<Normalize
     const destInfo = await getDestinationId(destinationName)
     
     if (!destInfo) {
-      console.log(`Could not find destination ID for ${destinationName}, using mock data`)
-      return generateMockHotels(params)
+      throw new Error(`Could not resolve destination "${destinationName}" — Booking.com location lookup returned no results`)
     }
     
     // Step 2: Search hotels
@@ -238,7 +235,7 @@ export async function searchHotels(params: HotelSearchParams): Promise<Normalize
     if (!response.ok) {
       const errorText = await response.text()
       console.error(`Booking.com search failed: ${response.status}`, errorText)
-      return generateMockHotels(params)
+      throw new Error(`Booking.com hotel search failed: HTTP ${response.status} — ${errorText.substring(0, 200)}`)
     }
     
     const data = await response.json()
@@ -247,7 +244,7 @@ export async function searchHotels(params: HotelSearchParams): Promise<Normalize
     return normalizeBookingResults(data, params)
   } catch (error) {
     console.error('Booking.com API error:', error)
-    return generateMockHotels(params)
+    throw error
   }
 }
 
@@ -394,143 +391,6 @@ function formatPrice(amount: number, currency: string): string {
     style: 'currency',
     currency,
   }).format(amount)
-}
-
-// Generate mock hotels for development/testing
-function generateMockHotels(params: HotelSearchParams): NormalizedHotel[] {
-  const destination = params.destination.value || 'Paris'
-  const checkIn = new Date(params.checkInDate)
-  const checkOut = new Date(params.checkOutDate)
-  const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24))
-  
-  const hotelNames = [
-    'Grand Hotel Plaza',
-    'The Ritz Carlton',
-    'Marriott City Center',
-    'Hilton Downtown',
-    'Four Seasons Resort',
-    'Hyatt Regency',
-    'InterContinental',
-    'Waldorf Astoria',
-    'St. Regis',
-    'Mandarin Oriental',
-    'Peninsula Hotel',
-    'Shangri-La',
-    'Park Hyatt',
-    'W Hotel',
-    'Sofitel Luxury',
-  ]
-  
-  const amenitiesList = [
-    'Free WiFi',
-    'Pool',
-    'Spa',
-    'Fitness Center',
-    'Restaurant',
-    'Room Service',
-    'Concierge',
-    'Business Center',
-    'Parking',
-    'Air Conditioning',
-    'Pet Friendly',
-    'Bar/Lounge',
-  ]
-  
-  const propertyTypes = ['hotel', 'resort', 'boutique_hotel', 'apartment']
-  
-  return hotelNames.slice(0, params.limit || 15).map((name, index) => {
-    const basePrice = 100 + Math.random() * 400
-    const starRating = 3 + Math.floor(Math.random() * 3)
-    const rating = 7 + Math.random() * 3
-    const reviewCount = 50 + Math.floor(Math.random() * 500)
-    const selectedAmenities = amenitiesList.slice(0, 4 + Math.floor(Math.random() * 5))
-    
-    const room: RoomOffer = {
-      id: `mock-room-${index}-1`,
-      providerOfferId: `mock-offer-${index}-1`,
-      name: starRating >= 4 ? 'Deluxe Room' : 'Standard Room',
-      description: 'Comfortable room with modern amenities',
-      roomType: 'standard',
-      bedConfiguration: [{ type: 'king', count: 1 }],
-      maxOccupancy: { adults: 2, children: 2, total: 4 },
-      amenities: ['TV', 'Mini Bar', 'Safe', 'Hair Dryer'],
-      price: {
-        amount: basePrice * nights,
-        currency: 'USD',
-        formatted: formatPrice(basePrice * nights, 'USD'),
-      },
-      pricePerNight: {
-        amount: basePrice,
-        currency: 'USD',
-        formatted: formatPrice(basePrice, 'USD'),
-      },
-      inclusions: ['Breakfast', 'WiFi'],
-      boardType: 'breakfast_included',
-      cancellationPolicy: {
-        freeCancellation: Math.random() > 0.3,
-        freeCancellationDeadline: new Date(checkIn.getTime() - 24 * 60 * 60 * 1000).toISOString(),
-        summary: 'Free cancellation until 24 hours before check-in',
-        refundable: true,
-      },
-      isRefundable: true,
-      roomsRemaining: 1 + Math.floor(Math.random() * 5),
-    }
-    
-    return {
-      id: `booking-mock-${index}`,
-      type: 'hotel',
-      providerPropertyId: `mock-property-${index}`,
-      provider: { code: 'booking', name: 'Booking.com' },
-      name: `${name} ${destination}`,
-      description: `Experience luxury and comfort at ${name} in the heart of ${destination}. Our hotel offers world-class amenities and exceptional service.`,
-      shortDescription: `Luxury hotel in ${destination} with excellent amenities.`,
-      propertyType: propertyTypes[index % propertyTypes.length],
-      starRating,
-      brand: name.split(' ')[0],
-      location: {
-        address: {
-          line1: `${100 + index} Main Street`,
-          city: destination,
-          country: 'France',
-          countryCode: 'FR',
-          formatted: `${100 + index} Main Street, ${destination}, France`,
-        },
-        coordinates: {
-          lat: 48.8566 + (Math.random() - 0.5) * 0.1,
-          lng: 2.3522 + (Math.random() - 0.5) * 0.1,
-        },
-        neighborhood: 'Downtown',
-      },
-      images: [
-        { url: `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800`, caption: 'Hotel Exterior' },
-        { url: `https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800`, caption: 'Room' },
-        { url: `https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800`, caption: 'Pool' },
-      ],
-      heroImage: `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800`,
-      guestRating: {
-        score: rating,
-        maxScore: 10,
-        reviewCount,
-        sentiment: getSentiment(rating),
-      },
-      amenities: selectedAmenities,
-      keyAmenities: selectedAmenities.slice(0, 4),
-      rooms: [room],
-      lowestPrice: {
-        amount: basePrice,
-        currency: 'USD',
-        formatted: formatPrice(basePrice, 'USD'),
-      },
-      checkInTime: '15:00',
-      checkOutTime: '11:00',
-      policies: {
-        checkIn: { time: '15:00' },
-        checkOut: { time: '11:00' },
-        pets: { allowed: selectedAmenities.includes('Pet Friendly') },
-      },
-      retrievedAt: new Date().toISOString(),
-    }
-  })
 }
 
 export async function healthCheck(): Promise<boolean> {

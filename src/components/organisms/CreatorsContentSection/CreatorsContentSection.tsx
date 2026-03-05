@@ -1,79 +1,126 @@
 /**
  * CREATORS CONTENT SECTION ORGANISM
  * 
- * Displays creator content from TikTok, Instagram, YouTube Shorts
- * Video-style cards with filters and platform badges
+ * Displays TikTok creator content for a destination.
+ * Powered by TikAPI via Supabase Edge Function.
+ * - Live hashtag-based video fetching per category
+ * - Expanded filter categories (15+)
+ * - View All → full feed screen
+ * - Fullscreen TikTok-style video player
+ * - Blocked region fallback
+ * - No video/image hosting — streams from TikTok CDN
  */
 
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ImageBackground, Modal } from 'react-native';
-import { useState } from 'react';
-import { Video, ResizeMode } from 'expo-av';
-import { Location, Heart, CloseCircle } from 'iconsax-react-native';
-import { colors, typography, spacing } from '@/styles';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ImageBackground, Modal, ActivityIndicator } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { Heart, Play, ArrowRight2 } from 'iconsax-react-native';
+import { typography, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import * as Haptics from 'expo-haptics';
-
-interface CreatorContent {
-  id: string;
-  platform: 'tiktok' | 'instagram' | 'youtube';
-  thumbnail: string;
-  videoUrl?: string;
-  title: string;
-  location: string;
-  distance: string;
-  likes: string;
-  category: string;
-}
+import { getHashtagVideos } from '@/services/tiktok.service';
+import type { TikTokVideo, TikTokCategory } from '@/services/tiktok.service';
+import VideoPlayer from '@/components/features/creators/VideoPlayer';
 
 interface CreatorsContentSectionProps {
-  content: CreatorContent[];
+  content?: any[]; // Legacy prop — ignored when TikAPI is active
+  destinationName?: string;
 }
 
-const categories = ['On Trending', 'Night Life', 'Restaurant', 'Activities'];
+const CATEGORIES: TikTokCategory[] = [
+  { id: 'trending', label: 'On Trending', icon: '🔥' },
+  { id: 'nightlife', label: 'Night Life', icon: '🌙' },
+  { id: 'restaurant', label: 'Restaurant', icon: '🍽️' },
+  { id: 'activities', label: 'Activities', icon: '🎯' },
+  { id: 'hidden gems', label: 'Hidden Gems', icon: '💎' },
+  { id: 'street food', label: 'Street Food', icon: '🍜' },
+  { id: 'cafes', label: 'Cafes', icon: '☕' },
+  { id: 'shopping', label: 'Shopping', icon: '🛍️' },
+  { id: 'culture', label: 'Culture', icon: '🏛️' },
+  { id: 'beach', label: 'Beach', icon: '🏖️' },
+  { id: 'adventure', label: 'Adventure', icon: '🧗' },
+  { id: 'nature', label: 'Nature', icon: '🌿' },
+  { id: 'budget', label: 'Budget', icon: '💰' },
+  { id: 'luxury', label: 'Luxury', icon: '✨' },
+  { id: 'photography', label: 'Photography', icon: '📸' },
+];
 
-const platformColors = {
-  tiktok: '#000000',
-  instagram: '#E4405F',
-  youtube: '#FF0000',
-};
+export default function CreatorsContentSection({ content, destinationName }: CreatorsContentSectionProps) {
+  const { colors, isDark } = useTheme();
+  const [selectedCategory, setSelectedCategory] = useState<TikTokCategory>(CATEGORIES[0]);
+  const [videos, setVideos] = useState<TikTokVideo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [playerVisible, setPlayerVisible] = useState(false);
+  const [playerIndex, setPlayerIndex] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [cursor, setCursor] = useState<string | undefined>();
 
-const platformIcons = {
-  tiktok: '🎵',
-  instagram: '📷',
-  youtube: '▶️',
-};
+  const destination = destinationName || '';
 
-export default function CreatorsContentSection({ content }: CreatorsContentSectionProps) {
-  const [selectedCategory, setSelectedCategory] = useState('On Trending');
-  const [selectedVideo, setSelectedVideo] = useState<CreatorContent | null>(null);
-  const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
+  const fetchVideos = useCallback(async (cat: TikTokCategory, append = false) => {
+    if (!destination) return;
+    setLoading(true);
+    setError(false);
 
-  const handleCategoryPress = (category: string) => {
+    try {
+      const res = await getHashtagVideos(destination, cat.id, {
+        count: 20,
+        cursor: append ? cursor : undefined,
+      });
+
+      if (res.fallback || !res.success) {
+        if (!append) setVideos([]);
+        setError(true);
+      } else {
+        setVideos(prev => append ? [...prev, ...res.videos] : res.videos);
+        setHasMore(res.hasMore);
+        setCursor(res.cursor);
+      }
+    } catch {
+      if (!append) setVideos([]);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [destination, cursor]);
+
+  useEffect(() => {
+    if (destination) {
+      setCursor(undefined);
+      fetchVideos(selectedCategory);
+    }
+  }, [destination, selectedCategory.id]);
+
+  const handleCategoryPress = (cat: TikTokCategory) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedCategory(category);
+    setSelectedCategory(cat);
   };
 
-  const handleVideoPress = (item: CreatorContent) => {
+  const handleVideoPress = (index: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setSelectedVideo(item);
-    setIsVideoModalVisible(true);
+    setPlayerIndex(index);
+    setPlayerVisible(true);
   };
 
-  const handleCloseVideo = () => {
-    setIsVideoModalVisible(false);
-    setSelectedVideo(null);
+  const handleClosePlayer = () => {
+    setPlayerVisible(false);
   };
 
-  // Filter content based on selected category
-  const filteredContent = selectedCategory === 'On Trending' 
-    ? content 
-    : content.filter(item => item.category === selectedCategory);
+  // Don't render section if no destination
+  if (!destination) return null;
 
   return (
     <View style={styles.container}>
       {/* Section Header */}
       <View style={styles.header}>
-        <Text style={styles.sectionTitle}>Creators Content</Text>
-        <Text style={styles.sectionSubtitle}>See what creators are saying about this location</Text>
+        <View style={styles.headerRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Creators Content</Text>
+            <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+              See what creators are saying about {destination}
+            </Text>
+          </View>
+        </View>
       </View>
       
       {/* Category Filter Pills */}
@@ -83,112 +130,146 @@ export default function CreatorsContentSection({ content }: CreatorsContentSecti
         style={styles.filterScroll}
         contentContainerStyle={styles.filterContent}
       >
-        {categories.map((category) => (
+        {CATEGORIES.map((cat) => (
           <TouchableOpacity
-            key={category}
+            key={cat.id}
             style={[
               styles.filterPill,
-              selectedCategory === category && styles.filterPillActive
+              { backgroundColor: isDark ? '#2A2A2A' : colors.gray100, borderColor: isDark ? 'rgba(255,255,255,0.08)' : colors.gray200 },
+              selectedCategory.id === cat.id && { backgroundColor: colors.primary, borderColor: colors.primary }
             ]}
-            onPress={() => handleCategoryPress(category)}
+            onPress={() => handleCategoryPress(cat)}
             activeOpacity={0.7}
           >
             <Text style={[
               styles.filterText,
-              selectedCategory === category && styles.filterTextActive
+              { color: colors.textSecondary },
+              selectedCategory.id === cat.id && { color: '#FFFFFF', fontWeight: '600' }
             ]}>
-              {category}
+              {cat.icon} {cat.label}
             </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      {/* Horizontal Scrollable Video Cards */}
-      <ScrollView 
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.cardsContent}
-        style={styles.cardsScroll}
-      >
-        {filteredContent.map((item) => (
-          <TouchableOpacity 
-            key={item.id} 
-            style={styles.card} 
-            activeOpacity={0.9}
-            onPress={() => handleVideoPress(item)}
-          >
-            <ImageBackground 
-              source={{ uri: item.thumbnail }}
-              style={styles.cardImage}
-              imageStyle={styles.cardImageStyle}
-            >
-              {/* Platform Badge */}
-              <View style={[styles.platformBadge, { backgroundColor: platformColors[item.platform] }]}>
-                <Text style={styles.platformIcon}>{platformIcons[item.platform]}</Text>
-                <Text style={styles.platformText}>
-                  {item.platform.charAt(0).toUpperCase() + item.platform.slice(1)}
-                </Text>
-              </View>
+      {/* Loading State */}
+      {loading && videos.length === 0 && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textTertiary }]}>
+            Loading {selectedCategory.label.toLowerCase()} videos...
+          </Text>
+        </View>
+      )}
 
-              {/* Bottom Overlay with Info */}
-              <View style={styles.cardOverlay}>
-                {/* Location and Likes */}
-                <View style={styles.cardMeta}>
-                  <View style={styles.locationContainer}>
-                    <Location size={16} color={colors.white} variant="Bold" />
-                    <Text style={styles.locationText}>{item.location} ({item.distance})</Text>
-                  </View>
-                  <View style={styles.likesContainer}>
-                    <Heart size={16} color="#FF6B6B" variant="Bold" />
-                    <Text style={styles.likesText}>{item.likes}</Text>
-                  </View>
+      {/* Error / Empty State */}
+      {!loading && error && videos.length === 0 && (
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
+            No videos available yet
+          </Text>
+          <Text style={[styles.emptySubtext, { color: colors.textTertiary }]}>
+            Creator content for {destination} will appear here soon
+          </Text>
+        </View>
+      )}
+
+      {/* Horizontal Scrollable Video Cards */}
+      {videos.length > 0 && (
+        <ScrollView 
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.cardsContent}
+          style={styles.cardsScroll}
+        >
+          {videos.map((video, index) => (
+            <TouchableOpacity 
+              key={`${video.id}-${index}`} 
+              style={[styles.card, { borderColor: isDark ? 'rgba(255,255,255,0.06)' : colors.gray200 }]} 
+              activeOpacity={0.9}
+              onPress={() => handleVideoPress(index)}
+            >
+              <ImageBackground 
+                source={{ uri: video.coverUrl || video.dynamicCover }}
+                style={styles.cardImage}
+                imageStyle={styles.cardImageStyle}
+              >
+                {/* TikTok Badge */}
+                <View style={styles.platformBadge}>
+                  <Text style={styles.platformIcon}>🎵</Text>
+                  <Text style={styles.platformText}>TikTok</Text>
                 </View>
 
-                {/* Title */}
-                <Text style={styles.cardTitle} numberOfLines={2}>
-                  {item.title}
-                </Text>
-              </View>
-            </ImageBackground>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+                {/* Play indicator */}
+                <View style={styles.playIndicator}>
+                  <Play size={24} color="#FFF" variant="Bold" />
+                </View>
 
-      {/* Fullscreen Video Modal */}
-      <Modal
-        visible={isVideoModalVisible}
-        animationType="fade"
-        onRequestClose={handleCloseVideo}
-      >
-        <View style={styles.videoModal}>
-          {/* Close Button */}
-          <TouchableOpacity 
-            style={styles.closeButton}
-            onPress={handleCloseVideo}
-            activeOpacity={0.8}
-          >
-            <CloseCircle size={40} color={colors.white} variant="Bold" />
-          </TouchableOpacity>
+                {/* Duration badge */}
+                {video.duration > 0 && (
+                  <View style={styles.durationBadge}>
+                    <Text style={styles.durationText}>
+                      {video.duration >= 60 ? `${Math.floor(video.duration / 60)}:${String(video.duration % 60).padStart(2, '0')}` : `0:${String(video.duration).padStart(2, '0')}`}
+                    </Text>
+                  </View>
+                )}
 
-          {/* Video Player */}
-          {selectedVideo?.videoUrl ? (
-            <Video
-              source={{ uri: selectedVideo.videoUrl }}
-              style={styles.video}
-              useNativeControls
-              resizeMode={ResizeMode.CONTAIN}
-              isLooping
-              shouldPlay
-            />
-          ) : (
-            <View style={styles.videoPlaceholder}>
-              <Text style={styles.videoPlaceholderText}>Video player ready</Text>
-              <Text style={styles.videoPlaceholderSubtext}>
-                {selectedVideo?.title}
+                {/* Bottom Overlay with Info */}
+                <View style={styles.cardOverlay}>
+                  <View style={styles.cardMeta}>
+                    <View style={styles.creatorMini}>
+                      {video.creator.avatar ? (
+                        <Image source={{ uri: video.creator.avatar }} style={styles.miniAvatar} />
+                      ) : null}
+                      <Text style={styles.creatorUsername} numberOfLines={1}>
+                        @{video.creator.username}
+                      </Text>
+                    </View>
+                    <View style={styles.likesContainer}>
+                      <Heart size={14} color="#FF6B6B" variant="Bold" />
+                      <Text style={styles.likesText}>{video.likesFormatted}</Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.cardTitle} numberOfLines={2}>
+                    {video.caption}
+                  </Text>
+                </View>
+              </ImageBackground>
+            </TouchableOpacity>
+          ))}
+
+          {/* View All Card */}
+          {videos.length >= 5 && (
+            <TouchableOpacity
+              style={[styles.viewAllCard, { backgroundColor: isDark ? '#2A2A2A' : colors.gray100, borderColor: isDark ? 'rgba(255,255,255,0.06)' : colors.gray200 }]}
+              onPress={() => handleVideoPress(0)}
+              activeOpacity={0.8}
+            >
+              <ArrowRight2 size={32} color={colors.primary} />
+              <Text style={[styles.viewAllText, { color: colors.primary }]}>View All</Text>
+              <Text style={[styles.viewAllSubtext, { color: colors.textTertiary }]}>
+                {selectedCategory.label}
               </Text>
-            </View>
+            </TouchableOpacity>
           )}
-        </View>
+        </ScrollView>
+      )}
+
+      {/* Fullscreen Video Player Modal */}
+      <Modal
+        visible={playerVisible}
+        animationType="slide"
+        onRequestClose={handleClosePlayer}
+        statusBarTranslucent
+      >
+        <VideoPlayer
+          videos={videos}
+          initialIndex={playerIndex}
+          onClose={handleClosePlayer}
+          hasMore={hasMore}
+          onLoadMore={() => fetchVideos(selectedCategory, true)}
+        />
       </Modal>
     </View>
   );
@@ -203,15 +284,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   sectionTitle: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   sectionSubtitle: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
   },
   filterScroll: {
     marginBottom: spacing.md,
@@ -221,39 +305,53 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   filterPill: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 24,
-    backgroundColor: colors.gray100,
     borderWidth: 1,
-    borderColor: colors.gray200,
-  },
-  filterPillActive: {
-    backgroundColor: colors.black,
-    borderColor: colors.black,
   },
   filterText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textSecondary,
   },
-  filterTextActive: {
-    color: colors.white,
-    fontWeight: typography.fontWeight.semibold,
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 40,
   },
-  cardsScroll: {
-    // No negative margin - let it scroll naturally
+  loadingText: {
+    fontSize: 14,
   },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: spacing.lg,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  cardsScroll: {},
   cardsContent: {
     paddingLeft: spacing.lg,
     paddingRight: spacing.lg,
     gap: spacing.md,
   },
   card: {
-    width: 200,
-    height: 320,
+    width: 180,
+    height: 280,
     borderRadius: 20,
     overflow: 'hidden',
+    borderWidth: 1,
   },
   cardImage: {
     width: '100%',
@@ -267,23 +365,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 20,
-    margin: spacing.sm,
-    gap: spacing.xs,
+    margin: 8,
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.7)',
   },
   platformIcon: {
-    fontSize: 14,
+    fontSize: 12,
   },
   platformText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  playIndicator: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -20,
+    marginLeft: -20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  durationBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  durationText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '600',
   },
   cardOverlay: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    padding: spacing.sm,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    padding: 10,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
@@ -291,65 +417,55 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: 4,
   },
-  locationContainer: {
+  creatorMini: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     flex: 1,
   },
-  locationText: {
-    fontSize: typography.fontSize.xs,
-    color: colors.white,
+  miniAvatar: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+  },
+  creatorUsername: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 11,
     flex: 1,
   },
   likesContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   likesText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   cardTitle: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.white,
-    lineHeight: 18,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    lineHeight: 16,
   },
-  videoModal: {
-    flex: 1,
-    backgroundColor: colors.black,
+  viewAllCard: {
+    width: 120,
+    height: 280,
+    borderRadius: 20,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 8,
   },
-  closeButton: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    zIndex: 1000,
+  viewAllText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
-  video: {
-    width: '100%',
-    height: '100%',
-  },
-  videoPlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-  videoPlaceholderText: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.white,
-    marginBottom: spacing.sm,
-  },
-  videoPlaceholderSubtext: {
-    fontSize: typography.fontSize.base,
-    color: colors.gray400,
+  viewAllSubtext: {
+    fontSize: 11,
     textAlign: 'center',
   },
 });

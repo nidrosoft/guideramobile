@@ -90,12 +90,12 @@ export default function AccountScreen() {
   // Fetch saved items count
   useEffect(() => {
     const fetchSavedCount = async () => {
-      if (!authUser?.id) return;
-      const { total } = await savedService.getSavedItemsCount(authUser.id);
+      if (!profile?.id) return;
+      const { total } = await savedService.getSavedItemsCount(profile.id);
       setSavedItemsCount(total);
     };
     fetchSavedCount();
-  }, [authUser?.id]);
+  }, [profile?.id]);
   
   // Transform Supabase profile to UserProfile type
   const user: UserProfile = useMemo(() => {

@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { typography, spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useHomepageDataSafe } from '@/features/homepage';
 import { SectionConfig } from '@/config/sections.config';
 
 // Import all section components
@@ -33,6 +34,8 @@ interface SectionRendererProps {
 export default function SectionRenderer({ section }: SectionRendererProps) {
   const router = useRouter();
   const { colors } = useTheme();
+  const homepageData = useHomepageDataSafe();
+  const activeCategory = homepageData?.activeCategory ?? 'all';
 
   const handleViewAll = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -70,6 +73,15 @@ export default function SectionRenderer({ section }: SectionRendererProps) {
         return null;
     }
   };
+
+  // Hide entire section (header + content) when category filter empties it
+  // Deals section always shows because it contains the CategoryPills
+  const isDealsSection = section.componentType === 'deals';
+  const isHidden = !isDealsSection 
+    && activeCategory !== 'all' 
+    && homepageData?.hiddenSections?.has(section.componentType);
+
+  if (isHidden) return null;
 
   return (
     <View style={styles.section}>

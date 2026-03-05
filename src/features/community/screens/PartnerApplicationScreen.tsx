@@ -915,7 +915,7 @@ export default function PartnerApplicationScreen() {
 
       {/* Bottom Button */}
       {step < TOTAL_STEPS && (
-        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: tc.bgElevated, borderTopColor: tc.borderSubtle }]}>
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderTopColor: tc.borderSubtle }]}>
           <TouchableOpacity
             style={[
               styles.nextButton,

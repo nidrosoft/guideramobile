@@ -1,9 +1,11 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { typography, spacing, borderRadius, colors } from '@/styles';
+import { View, Text, StyleSheet, Image } from 'react-native';
+import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { Bookmark, Location, Star1, Eye } from 'iconsax-react-native';
+import { Location, Star1, Eye } from 'iconsax-react-native';
+import SaveButton from '@/components/common/SaveButton';
 
 interface MustSeeCardProps {
+  id?: string;
   name: string;
   location: string;
   rating: number;
@@ -14,6 +16,7 @@ interface MustSeeCardProps {
 }
 
 export default function MustSeeCard({ 
+  id,
   name, 
   location, 
   rating,
@@ -34,10 +37,7 @@ export default function MustSeeCard({
           <Text style={styles.badgeText}>{badge}</Text>
         </View>
         
-        {/* Bookmark Button */}
-        <TouchableOpacity style={styles.bookmarkButton}>
-          <Bookmark size={20} color="#1a1a1a" variant="Outline" />
-        </TouchableOpacity>
+        {id ? <SaveButton destinationId={id} /> : null}
       </View>
 
       {/* Info Section */}
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     marginRight: spacing.md,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   imageContainer: {
     width: '100%',

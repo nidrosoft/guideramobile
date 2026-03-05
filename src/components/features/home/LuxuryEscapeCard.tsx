@@ -1,9 +1,12 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { typography, spacing, colors } from '@/styles';
+import { typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Crown, Star1, Location, Calendar } from 'iconsax-react-native';
+import SaveButton from '@/components/common/SaveButton';
 
 interface LuxuryEscapeCardProps {
+  id?: string;
   name: string;
   location: string;
   rating: number;
@@ -14,6 +17,7 @@ interface LuxuryEscapeCardProps {
 }
 
 export default function LuxuryEscapeCard({ 
+  id,
   name, 
   location, 
   rating, 
@@ -22,6 +26,7 @@ export default function LuxuryEscapeCard({
   category, 
   imageUrl 
 }: LuxuryEscapeCardProps) {
+  const { colors } = useTheme();
   return (
     <View style={styles.container}>
       {/* Card with shadow */}
@@ -40,6 +45,9 @@ export default function LuxuryEscapeCard({
           <Crown size={16} color="#FFD700" variant="Bold" />
           <Text style={styles.premiumText}>LUXURY</Text>
         </View>
+
+        {/* Save Button */}
+        {id ? <SaveButton destinationId={id} style={styles.saveButton} /> : null}
 
         {/* Content */}
         <View style={styles.content}>
@@ -94,7 +102,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
     // Premium shadow
     shadowColor: '#000',
     shadowOffset: {
@@ -131,7 +139,13 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
     color: '#FFD700',
-    letterSpacing: 1.2,
+    letterSpacing: 1,
+  },
+  saveButton: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    zIndex: 10,
   },
   content: {
     position: 'absolute',

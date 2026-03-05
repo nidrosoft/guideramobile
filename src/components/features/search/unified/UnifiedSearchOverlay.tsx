@@ -31,10 +31,18 @@ import FlightWhereSection, { TripType, Airport } from './FlightWhereSection';
 import MultiCitySection from './MultiCitySection';
 import HotelWhereSection, { HotelDestination } from './HotelWhereSection';
 import HotelGuestSection, { HotelGuestCount } from './HotelGuestSection';
+import CarWhereSection from './CarWhereSection';
+import CarWhenSection from './CarWhenSection';
+import CarWhoSection from './CarWhoSection';
+import PackageWhereSection from './PackageWhereSection';
+import ExperienceWhereSection from './ExperienceWhereSection';
 import { FlightLeg } from './FlightLegCard';
 import { SearchSectionCard, WhenSection, WhoSection } from '../overlay';
+import { Location as LocationType } from '@/features/booking/types/booking.types';
+import { PackageTemplate } from '@/features/booking/types/package.types';
+import { ExperienceCategory } from '@/features/booking/types/experience.types';
 
-type ServiceType = 'flight' | 'hotel' | 'car' | 'experience';
+type ServiceType = 'flight' | 'hotel' | 'car' | 'experience' | 'package';
 type ActiveSection = 'where' | 'when' | 'who' | null;
 
 interface GuestCounts {
@@ -63,8 +71,38 @@ export interface HotelSearchData {
   guests: HotelGuestCount;
 }
 
+// Car-specific search data
+export interface CarSearchData {
+  pickupLocation: LocationType | null;
+  returnLocation: LocationType | null;
+  sameReturnLocation: boolean;
+  pickupDate: Date | null;
+  pickupTime: string;
+  returnDate: Date | null;
+  returnTime: string;
+  driverAge: number;
+}
+
+// Package-specific search data
+export interface PackageSearchData {
+  packageType: PackageTemplate;
+  origin: LocationType | null;
+  destination: LocationType | null;
+  departureDate: Date | null;
+  returnDate: Date | null;
+  travelers: GuestCounts;
+}
+
+// Experience-specific search data
+export interface ExperienceSearchData {
+  destination: LocationType | null;
+  date: Date | null;
+  participants: GuestCounts;
+  category: ExperienceCategory | undefined;
+}
+
 // Union type for all search data
-export type SearchData = FlightSearchData | HotelSearchData;
+export type SearchData = FlightSearchData | HotelSearchData | CarSearchData | PackageSearchData | ExperienceSearchData;
 
 interface UnifiedSearchOverlayProps {
   serviceType: ServiceType;
@@ -75,6 +113,9 @@ interface UnifiedSearchOverlayProps {
   onSearch: (data: SearchData) => void;
   initialFlightData?: Partial<FlightSearchData>;
   initialHotelData?: Partial<HotelSearchData>;
+  initialCarData?: Partial<CarSearchData>;
+  initialPackageData?: Partial<PackageSearchData>;
+  initialExperienceData?: Partial<ExperienceSearchData>;
 }
 
 export default function UnifiedSearchOverlay({
@@ -86,6 +127,9 @@ export default function UnifiedSearchOverlay({
   onSearch,
   initialFlightData,
   initialHotelData,
+  initialCarData,
+  initialPackageData,
+  initialExperienceData,
 }: UnifiedSearchOverlayProps) {
   const { colors: themeColors } = useTheme();
   
@@ -122,28 +166,81 @@ export default function UnifiedSearchOverlay({
     initialHotelData?.guests || { rooms: 1, adults: 2, children: 0 }
   );
 
+  // ============================================
+  // CAR-SPECIFIC STATE
+  // ============================================
+  const [carPickupLocation, setCarPickupLocation] = useState<LocationType | null>(
+    initialCarData?.pickupLocation || null
+  );
+  const [carReturnLocation, setCarReturnLocation] = useState<LocationType | null>(
+    initialCarData?.returnLocation || null
+  );
+  const [carSameReturn, setCarSameReturn] = useState(initialCarData?.sameReturnLocation ?? true);
+  const [carPickupDate, setCarPickupDate] = useState<Date | null>(initialCarData?.pickupDate || null);
+  const [carPickupTime, setCarPickupTime] = useState(initialCarData?.pickupTime || '10:00');
+  const [carReturnDate, setCarReturnDate] = useState<Date | null>(initialCarData?.returnDate || null);
+  const [carReturnTime, setCarReturnTime] = useState(initialCarData?.returnTime || '10:00');
+  const [driverAge, setDriverAge] = useState(initialCarData?.driverAge || 30);
+
+  // ============================================
+  // PACKAGE-SPECIFIC STATE
+  // ============================================
+  const [pkgType, setPkgType] = useState<PackageTemplate>(
+    initialPackageData?.packageType || 'flight_hotel'
+  );
+  const [pkgOrigin, setPkgOrigin] = useState<LocationType | null>(initialPackageData?.origin || null);
+  const [pkgDestination, setPkgDestination] = useState<LocationType | null>(initialPackageData?.destination || null);
+  const [pkgDepartureDate, setPkgDepartureDate] = useState<Date | null>(initialPackageData?.departureDate || null);
+  const [pkgReturnDate, setPkgReturnDate] = useState<Date | null>(initialPackageData?.returnDate || null);
+  const [pkgTravelers, setPkgTravelers] = useState<GuestCounts>(
+    initialPackageData?.travelers || { adults: 1, children: 0, infants: 0, pets: 0 }
+  );
+
+  // ============================================
+  // EXPERIENCE-SPECIFIC STATE
+  // ============================================
+  const [expDestination, setExpDestination] = useState<LocationType | null>(
+    initialExperienceData?.destination || null
+  );
+  const [expDate, setExpDate] = useState<Date | null>(initialExperienceData?.date || null);
+  const [expParticipants, setExpParticipants] = useState<GuestCounts>(
+    initialExperienceData?.participants || { adults: 2, children: 0, infants: 0, pets: 0 }
+  );
+  const [expCategory, setExpCategory] = useState<ExperienceCategory | undefined>(
+    initialExperienceData?.category
+  );
+
   // Check if multi-city mode (flight only)
   const isMultiCity = serviceType === 'flight' && tripType === 'multi-city';
 
   // Computed display values
   const dateDisplayText = useMemo(() => {
+    const fmt = (d: Date | null) => d?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) || '';
     if (serviceType === 'hotel') {
-      if (checkInDate && checkOutDate) {
-        const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-        return `${checkInDate.toLocaleDateString('en-US', options)} - ${checkOutDate.toLocaleDateString('en-US', options)}`;
-      }
+      if (checkInDate && checkOutDate) return `${fmt(checkInDate)} - ${fmt(checkOutDate)}`;
       return 'Add dates';
+    }
+    if (serviceType === 'car') {
+      if (carPickupDate && carReturnDate) return `${fmt(carPickupDate)} - ${fmt(carReturnDate)}`;
+      if (carPickupDate) return fmt(carPickupDate);
+      return 'Add dates & times';
+    }
+    if (serviceType === 'package') {
+      if (pkgDepartureDate && pkgReturnDate) return `${fmt(pkgDepartureDate)} - ${fmt(pkgReturnDate)}`;
+      if (pkgDepartureDate) return fmt(pkgDepartureDate);
+      return 'Add dates';
+    }
+    if (serviceType === 'experience') {
+      if (expDate) return fmt(expDate);
+      return 'Select date';
     }
     // Flight dates
     if (departureDate && returnDate && tripType === 'round-trip') {
-      const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-      return `${departureDate.toLocaleDateString('en-US', options)} - ${returnDate.toLocaleDateString('en-US', options)}`;
+      return `${fmt(departureDate)} - ${fmt(returnDate)}`;
     }
-    if (departureDate) {
-      return departureDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }
+    if (departureDate) return fmt(departureDate);
     return 'Add dates';
-  }, [serviceType, departureDate, returnDate, tripType, checkInDate, checkOutDate]);
+  }, [serviceType, departureDate, returnDate, tripType, checkInDate, checkOutDate, carPickupDate, carReturnDate, pkgDepartureDate, pkgReturnDate, expDate]);
 
   const guestDisplayText = useMemo(() => {
     if (serviceType === 'hotel') {
@@ -152,17 +249,47 @@ export default function UnifiedSearchOverlay({
       if (children > 0) text += `, ${children} child${children > 1 ? 'ren' : ''}`;
       return text;
     }
+    if (serviceType === 'car') {
+      return `Driver age: ${driverAge}`;
+    }
+    if (serviceType === 'package') {
+      const total = pkgTravelers.adults + pkgTravelers.children;
+      if (total === 0) return 'Add travelers';
+      let text = `${total} traveler${total > 1 ? 's' : ''}`;
+      if (pkgTravelers.infants > 0) text += `, ${pkgTravelers.infants} infant${pkgTravelers.infants > 1 ? 's' : ''}`;
+      return text;
+    }
+    if (serviceType === 'experience') {
+      const total = expParticipants.adults + expParticipants.children;
+      if (total === 0) return 'Add guests';
+      let text = `${total} guest${total > 1 ? 's' : ''}`;
+      if (expParticipants.infants > 0) text += `, ${expParticipants.infants} infant${expParticipants.infants > 1 ? 's' : ''}`;
+      return text;
+    }
     // Flight passengers
     const total = passengers.adults + passengers.children;
     if (total === 0) return 'Add travelers';
     let text = `${total} traveler${total > 1 ? 's' : ''}`;
     if (passengers.infants > 0) text += `, ${passengers.infants} infant${passengers.infants > 1 ? 's' : ''}`;
     return text;
-  }, [serviceType, passengers, hotelGuests]);
+  }, [serviceType, passengers, hotelGuests, driverAge, pkgTravelers, expParticipants]);
 
   const whereDisplayText = useMemo(() => {
     if (serviceType === 'hotel') {
       return hotelDestination?.name || 'Select destination';
+    }
+    if (serviceType === 'car') {
+      if (carPickupLocation) return carPickupLocation.name;
+      return 'Select pickup location';
+    }
+    if (serviceType === 'package') {
+      if (pkgOrigin && pkgDestination) return `${pkgOrigin.code} → ${pkgDestination.code}`;
+      if (pkgOrigin) return `From ${pkgOrigin.name}`;
+      if (pkgDestination) return `To ${pkgDestination.name}`;
+      return 'Select cities';
+    }
+    if (serviceType === 'experience') {
+      return expDestination?.name || 'Select destination';
     }
     // Flight where
     if (isMultiCity) {
@@ -176,7 +303,7 @@ export default function UnifiedSearchOverlay({
     if (origin) return `From ${origin.code}`;
     if (flightDestination) return `To ${flightDestination.code}`;
     return 'Select cities';
-  }, [serviceType, origin, flightDestination, isMultiCity, multiCityLegs, hotelDestination]);
+  }, [serviceType, origin, flightDestination, isMultiCity, multiCityLegs, hotelDestination, carPickupLocation, pkgOrigin, pkgDestination, expDestination]);
 
   // Validation
   const canSearch = useMemo((): boolean => {
@@ -190,8 +317,17 @@ export default function UnifiedSearchOverlay({
     if (serviceType === 'hotel') {
       return !!(hotelDestination && checkInDate && checkOutDate && hotelGuests.adults > 0);
     }
+    if (serviceType === 'car') {
+      return !!(carPickupLocation && carPickupDate && carReturnDate);
+    }
+    if (serviceType === 'package') {
+      return !!(pkgOrigin && pkgDestination && pkgDepartureDate && pkgReturnDate && pkgTravelers.adults > 0);
+    }
+    if (serviceType === 'experience') {
+      return !!(expDestination && expDate && expParticipants.adults > 0);
+    }
     return true;
-  }, [serviceType, origin, flightDestination, departureDate, passengers, isMultiCity, multiCityLegs, hotelDestination, checkInDate, checkOutDate, hotelGuests]);
+  }, [serviceType, origin, flightDestination, departureDate, passengers, isMultiCity, multiCityLegs, hotelDestination, checkInDate, checkOutDate, hotelGuests, carPickupLocation, carPickupDate, carReturnDate, pkgOrigin, pkgDestination, pkgDepartureDate, pkgReturnDate, pkgTravelers, expDestination, expDate, expParticipants]);
 
   // Handlers
   const handleSectionPress = useCallback((section: ActiveSection) => {
@@ -209,6 +345,11 @@ export default function UnifiedSearchOverlay({
     if (serviceType === 'hotel') {
       setCheckInDate(start);
       setCheckOutDate(end);
+    } else if (serviceType === 'package') {
+      setPkgDepartureDate(start);
+      setPkgReturnDate(end);
+    } else if (serviceType === 'experience') {
+      setExpDate(start);
     } else {
       setDepartureDate(start);
       setReturnDate(end);
@@ -230,6 +371,27 @@ export default function UnifiedSearchOverlay({
       setCheckInDate(null);
       setCheckOutDate(null);
       setHotelGuests({ rooms: 1, adults: 2, children: 0 });
+    } else if (serviceType === 'car') {
+      setCarPickupLocation(null);
+      setCarReturnLocation(null);
+      setCarSameReturn(true);
+      setCarPickupDate(null);
+      setCarPickupTime('10:00');
+      setCarReturnDate(null);
+      setCarReturnTime('10:00');
+      setDriverAge(30);
+    } else if (serviceType === 'package') {
+      setPkgType('flight_hotel');
+      setPkgOrigin(null);
+      setPkgDestination(null);
+      setPkgDepartureDate(null);
+      setPkgReturnDate(null);
+      setPkgTravelers({ adults: 1, children: 0, infants: 0, pets: 0 });
+    } else if (serviceType === 'experience') {
+      setExpDestination(null);
+      setExpDate(null);
+      setExpParticipants({ adults: 2, children: 0, infants: 0, pets: 0 });
+      setExpCategory(undefined);
     } else {
       setTripType('round-trip');
       setOrigin(null);
@@ -259,6 +421,33 @@ export default function UnifiedSearchOverlay({
         checkOutDate,
         guests: hotelGuests,
       } as HotelSearchData);
+    } else if (serviceType === 'car') {
+      onSearch({
+        pickupLocation: carPickupLocation,
+        returnLocation: carSameReturn ? carPickupLocation : carReturnLocation,
+        sameReturnLocation: carSameReturn,
+        pickupDate: carPickupDate,
+        pickupTime: carPickupTime,
+        returnDate: carReturnDate,
+        returnTime: carReturnTime,
+        driverAge,
+      } as CarSearchData);
+    } else if (serviceType === 'package') {
+      onSearch({
+        packageType: pkgType,
+        origin: pkgOrigin,
+        destination: pkgDestination,
+        departureDate: pkgDepartureDate,
+        returnDate: pkgReturnDate,
+        travelers: pkgTravelers,
+      } as PackageSearchData);
+    } else if (serviceType === 'experience') {
+      onSearch({
+        destination: expDestination,
+        date: expDate,
+        participants: expParticipants,
+        category: expCategory,
+      } as ExperienceSearchData);
     } else {
       onSearch({
         tripType,
@@ -270,7 +459,7 @@ export default function UnifiedSearchOverlay({
         legs: isMultiCity ? multiCityLegs : undefined,
       } as FlightSearchData);
     }
-  }, [canSearch, serviceType, tripType, origin, flightDestination, departureDate, returnDate, passengers, onSearch, isMultiCity, multiCityLegs, hotelDestination, checkInDate, checkOutDate, hotelGuests]);
+  }, [canSearch, serviceType, tripType, origin, flightDestination, departureDate, returnDate, passengers, onSearch, isMultiCity, multiCityLegs, hotelDestination, checkInDate, checkOutDate, hotelGuests, carPickupLocation, carReturnLocation, carSameReturn, carPickupDate, carPickupTime, carReturnDate, carReturnTime, driverAge, pkgType, pkgOrigin, pkgDestination, pkgDepartureDate, pkgReturnDate, pkgTravelers, expDestination, expDate, expParticipants, expCategory]);
 
   const handleClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -329,6 +518,34 @@ export default function UnifiedSearchOverlay({
                 onDestinationSelect={setHotelDestination}
               />
             )}
+            {serviceType === 'car' && (
+              <CarWhereSection
+                pickupLocation={carPickupLocation}
+                returnLocation={carReturnLocation}
+                sameReturnLocation={carSameReturn}
+                onPickupSelect={setCarPickupLocation}
+                onReturnSelect={setCarReturnLocation}
+                onSameReturnToggle={setCarSameReturn}
+              />
+            )}
+            {serviceType === 'package' && (
+              <PackageWhereSection
+                packageType={pkgType}
+                origin={pkgOrigin}
+                destination={pkgDestination}
+                onPackageTypeChange={setPkgType}
+                onOriginSelect={setPkgOrigin}
+                onDestinationSelect={setPkgDestination}
+              />
+            )}
+            {serviceType === 'experience' && (
+              <ExperienceWhereSection
+                destination={expDestination}
+                category={expCategory}
+                onDestinationSelect={setExpDestination}
+                onCategoryChange={setExpCategory}
+              />
+            )}
           </SearchSectionCard>
 
           {/* WHEN Section - Hidden for multi-city (dates are per leg) */}
@@ -339,18 +556,35 @@ export default function UnifiedSearchOverlay({
               isExpanded={activeSection === 'when'}
               onPress={() => handleSectionPress('when')}
             >
-              <WhenSection
-                startDate={serviceType === 'hotel' ? checkInDate : departureDate}
-                endDate={serviceType === 'hotel' ? checkOutDate : (tripType === 'round-trip' ? returnDate : null)}
-                onSelectDates={handleDatesSelect}
-                singleDateOnly={serviceType === 'flight' && tripType === 'one-way'}
-              />
+              {serviceType === 'car' ? (
+                <CarWhenSection
+                  pickupDate={carPickupDate}
+                  pickupTime={carPickupTime}
+                  returnDate={carReturnDate}
+                  returnTime={carReturnTime}
+                  onPickupDateTimeSelect={(date, time) => {
+                    setCarPickupDate(date);
+                    setCarPickupTime(time);
+                  }}
+                  onReturnDateTimeSelect={(date, time) => {
+                    setCarReturnDate(date);
+                    setCarReturnTime(time);
+                  }}
+                />
+              ) : (
+                <WhenSection
+                  startDate={serviceType === 'hotel' ? checkInDate : (serviceType === 'package' ? pkgDepartureDate : (serviceType === 'experience' ? expDate : departureDate))}
+                  endDate={serviceType === 'hotel' ? checkOutDate : (serviceType === 'package' ? pkgReturnDate : (serviceType === 'experience' ? null : (tripType === 'round-trip' ? returnDate : null)))}
+                  onSelectDates={handleDatesSelect}
+                  singleDateOnly={serviceType === 'experience' || (serviceType === 'flight' && tripType === 'one-way')}
+                />
+              )}
             </SearchSectionCard>
           )}
 
           {/* WHO Section */}
           <SearchSectionCard
-            title={serviceType === 'hotel' ? 'Guests' : 'Who'}
+            title={serviceType === 'hotel' ? 'Guests' : (serviceType === 'car' ? 'Driver' : (serviceType === 'experience' ? 'Guests' : 'Who'))}
             collapsedValue={guestDisplayText}
             isExpanded={activeSection === 'who'}
             onPress={() => handleSectionPress('who')}
@@ -360,10 +594,15 @@ export default function UnifiedSearchOverlay({
                 guests={hotelGuests}
                 onGuestsChange={handleHotelGuestsUpdate}
               />
+            ) : serviceType === 'car' ? (
+              <CarWhoSection
+                driverAge={driverAge}
+                onAgeChange={setDriverAge}
+              />
             ) : (
               <WhoSection
-                guests={passengers}
-                onUpdateGuests={handlePassengersUpdate}
+                guests={serviceType === 'package' ? pkgTravelers : (serviceType === 'experience' ? expParticipants : passengers)}
+                onUpdateGuests={serviceType === 'package' ? setPkgTravelers : (serviceType === 'experience' ? setExpParticipants : handlePassengersUpdate)}
               />
             )}
           </SearchSectionCard>

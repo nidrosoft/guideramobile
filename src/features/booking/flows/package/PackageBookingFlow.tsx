@@ -12,13 +12,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, Modal, StatusBar } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  runOnJS,
-} from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/context/ThemeContext';
 import { usePackageStore } from '../../stores/usePackageStore';
@@ -45,21 +39,6 @@ export default function PackageBookingFlow({
   const [currentScreen, setCurrentScreen] = useState<PackageScreen>('search');
   const [screenHistory, setScreenHistory] = useState<PackageScreen[]>(['search']);
 
-  // Animation values
-  const fadeAnim = useSharedValue(0);
-  const scaleAnim = useSharedValue(0.95);
-
-  // Animate modal entrance
-  useEffect(() => {
-    if (visible) {
-      fadeAnim.value = withTiming(1, { duration: 300 });
-      scaleAnim.value = withSpring(1, { damping: 20, stiffness: 300 });
-    } else {
-      fadeAnim.value = withTiming(0, { duration: 200 });
-      scaleAnim.value = withTiming(0.95, { duration: 200 });
-    }
-  }, [visible]);
-
   // Reset on mount
   useEffect(() => {
     if (visible) {
@@ -71,18 +50,11 @@ export default function PackageBookingFlow({
 
   const handleClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    fadeAnim.value = withTiming(0, { duration: 200 });
-    scaleAnim.value = withTiming(0.95, { duration: 200 }, () => {
-      runOnJS(onClose)();
-      runOnJS(resetFlow)();
-    });
-  }, [onClose]);
-
-  const resetFlow = () => {
+    packageStore.reset();
     setCurrentScreen('search');
     setScreenHistory(['search']);
-    packageStore.reset();
-  };
+    onClose();
+  }, [onClose, packageStore]);
 
   // Navigation helpers
   const navigateTo = useCallback((screen: PackageScreen) => {
@@ -108,29 +80,37 @@ export default function PackageBookingFlow({
     navigateTo('build');
   }, [navigateTo]);
 
-  // Animated styles
-  const containerStyle = useAnimatedStyle(() => ({
-    opacity: fadeAnim.value,
-    transform: [{ scale: scaleAnim.value }],
-  }));
-
   // Render current screen
   const renderScreen = () => {
     switch (currentScreen) {
       case 'search':
         return (
-          <PackageSearchScreen
-            onContinue={handleSearchComplete}
-            onClose={handleClose}
-          />
+          <Animated.View
+            key="search"
+            entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(200)}
+            style={styles.screen}
+          >
+            <PackageSearchScreen
+              onContinue={handleSearchComplete}
+              onClose={handleClose}
+            />
+          </Animated.View>
         );
       case 'build':
         return (
-          <PackageBuildScreen
-            onContinue={handleClose}
-            onBack={goBack}
-            onClose={handleClose}
-          />
+          <Animated.View
+            key="build"
+            entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(200)}
+            style={styles.screen}
+          >
+            <PackageBuildScreen
+              onContinue={handleClose}
+              onBack={goBack}
+              onClose={handleClose}
+            />
+          </Animated.View>
         );
       default:
         return null;
@@ -140,21 +120,23 @@ export default function PackageBookingFlow({
   return (
     <Modal
       visible={visible}
-      animationType="none"
+      animationType="slide"
       presentationStyle="fullScreen"
-      statusBarTranslucent
       onRequestClose={handleClose}
     >
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      <Animated.View style={[styles.container, { backgroundColor: tc.background }, containerStyle]}>
+      <StatusBar barStyle="light-content" />
+      <View style={[styles.container, { backgroundColor: tc.background }]}>
         {renderScreen()}
-      </Animated.View>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  screen: {
     flex: 1,
   },
 });

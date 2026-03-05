@@ -7,7 +7,8 @@
 
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Star1 } from 'iconsax-react-native';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 interface ReviewCardProps {
   userName: string;
@@ -30,29 +31,30 @@ export default function ReviewCard({
   helpful = 0,
   compact = false,
 }: ReviewCardProps) {
+  const { colors } = useTheme();
   return (
-    <View style={[styles.container, compact && styles.compactContainer]}>
+    <View style={[styles.container, { backgroundColor: colors.bgElevated, borderColor: colors.borderMedium }, compact && styles.compactContainer]}>
       {/* User Info */}
       <View style={styles.header}>
         <Image source={{ uri: userAvatar }} style={styles.avatar} />
         <View style={styles.userInfo}>
-          <Text style={styles.userName}>{userName}</Text>
+          <Text style={[styles.userName, { color: colors.textPrimary }]}>{userName}</Text>
           <View style={styles.ratingRow}>
             {[...Array(5)].map((_, index) => (
               <Star1
                 key={index}
                 size={14}
-                color={index < rating ? '#F59E0B' : colors.gray300}
+                color={index < rating ? '#F59E0B' : colors.gray200}
                 variant={index < rating ? 'Bold' : 'Linear'}
               />
             ))}
-            <Text style={styles.date}> • {date}</Text>
+            <Text style={[styles.date, { color: colors.textSecondary }]}> • {date}</Text>
           </View>
         </View>
       </View>
 
       {/* Review Text */}
-      <Text style={styles.reviewText}>{reviewText}</Text>
+      <Text style={[styles.reviewText, { color: colors.textSecondary }]}>{reviewText}</Text>
 
       {/* Photos - Hidden in compact mode */}
       {!compact && photos.length > 0 && (
@@ -74,7 +76,7 @@ export default function ReviewCard({
 
       {/* Helpful - Hidden in compact mode */}
       {!compact && helpful > 0 && (
-        <Text style={styles.helpful}>{helpful} people found this helpful</Text>
+        <Text style={[styles.helpful, { color: colors.textSecondary }]}>{helpful} people found this helpful</Text>
       )}
     </View>
   );
@@ -82,11 +84,11 @@ export default function ReviewCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.bgElevated,
     borderRadius: 16,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    shadowColor: colors.black,
+    borderWidth: 1,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -116,7 +118,6 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
     marginBottom: 4,
   },
   ratingRow: {
@@ -126,13 +127,11 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginLeft: 4,
   },
   reviewText: {
     fontSize: typography.fontSize.base,
     lineHeight: 22,
-    color: colors.textSecondary,
     marginBottom: spacing.md,
   },
   photosContainer: {
@@ -149,17 +148,16 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 12,
-    backgroundColor: colors.gray900,
+    backgroundColor: '#374151',
     justifyContent: 'center',
     alignItems: 'center',
   },
   morePhotosText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
   helpful: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
 });
