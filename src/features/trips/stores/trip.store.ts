@@ -6,7 +6,6 @@
 import { create } from 'zustand';
 import { Trip, TripState, CreateTripData, UpdateTripData } from '../types/trip.types';
 import { canTransitionTo } from '../config/trip-states.config';
-import { mockTrip, colombiaTrip } from './mockTripData';
 import { supabase } from '@/lib/supabase/client';
 
 /**
@@ -140,11 +139,10 @@ export const useTripStore = create<TripStore>((set, get) => ({
   isLoading: false,
   error: null,
   
-  // Fetch all trips — queries Supabase, falls back to mock data
+  // Fetch all trips from Supabase
   fetchTrips: async (userId?: string) => {
     set({ isLoading: true, error: null });
     try {
-      // Query real trips from Supabase
       let query = supabase
         .from('trips')
         .select('*')
@@ -158,23 +156,16 @@ export const useTripStore = create<TripStore>((set, get) => ({
       const { data: dbTrips, error: dbError } = await query;
 
       if (dbError) {
-        console.warn('Failed to fetch trips from DB, using mock data:', dbError.message);
-        set({ trips: [colombiaTrip, mockTrip], isLoading: false });
+        console.error('Failed to fetch trips:', dbError.message);
+        set({ trips: [], isLoading: false, error: dbError.message });
         return;
       }
 
-      // Convert DB trips to Trip objects
       const realTrips = (dbTrips || []).map(dbTripToTrip);
-
-      // Merge: real trips first, then mock data for demo
-      const allTrips = realTrips.length > 0
-        ? [...realTrips, colombiaTrip, mockTrip]
-        : [colombiaTrip, mockTrip];
-
-      set({ trips: allTrips, isLoading: false });
+      set({ trips: realTrips, isLoading: false });
     } catch (error) {
-      console.warn('fetchTrips error, using mock data:', error);
-      set({ trips: [colombiaTrip, mockTrip], isLoading: false });
+      console.error('fetchTrips error:', error);
+      set({ trips: [], error: (error as Error).message, isLoading: false });
     }
   },
   

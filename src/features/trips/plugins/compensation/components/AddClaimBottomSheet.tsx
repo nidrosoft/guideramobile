@@ -83,28 +83,25 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await onSubmit({
+        incident,
+        claimId,
+        provider,
+        estimatedClaim,
+        date,
+        accuracy,
+        photos,
+        documents,
+        additionalDocument,
+      });
       setIsSubmitting(false);
       setShowSuccess(true);
-      
-      // Auto close after success
-      setTimeout(() => {
-        onSubmit({
-          incident,
-          claimId,
-          provider,
-          estimatedClaim,
-          date,
-          accuracy,
-          photos,
-          documents,
-          additionalDocument,
-        });
-        handleClose();
-      }, 2000);
-    }, 2000);
+      setTimeout(() => handleClose(), 1500);
+    } catch (err) {
+      setIsSubmitting(false);
+      console.error('Failed to submit claim:', err);
+    }
   };
 
   const handleClose = () => {
