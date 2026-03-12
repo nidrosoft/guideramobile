@@ -36,6 +36,7 @@ import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import { 
   notificationService, 
   NotificationPreferences,
@@ -55,68 +56,72 @@ interface NotificationItem {
   description: string;
 }
 
-const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
-  {
-    id: 'trips',
-    title: 'Trip Updates',
-    description: 'Stay informed about your trips',
-    icon: <Airplane size={20} color={colors.primary} variant="Bold" />,
-    items: [
-      {
-        key: 'bookingConfirmations',
-        title: 'Booking Confirmations',
-        description: 'Get notified when your bookings are confirmed',
-      },
-      {
-        key: 'tripReminders',
-        title: 'Trip Reminders',
-        description: 'Receive reminders before your trips',
-      },
-    ],
-  },
-  {
-    id: 'safety',
-    title: 'Safety & Alerts',
-    description: 'Important safety information',
-    icon: <ShieldTick size={20} color={colors.success} variant="Bold" />,
-    items: [
-      {
-        key: 'safetyAlerts',
-        title: 'Safety Alerts',
-        description: 'Travel advisories and safety updates for your destinations',
-      },
-    ],
-  },
-  {
-    id: 'deals',
-    title: 'Deals & Offers',
-    description: 'Never miss a great deal',
-    icon: <PercentageCircle size={20} color={colors.warning} variant="Bold" />,
-    items: [
-      {
-        key: 'priceDrops',
-        title: 'Price Drop Alerts',
-        description: 'Get notified when prices drop for saved searches',
-      },
-      {
-        key: 'promotional',
-        title: 'Promotions & Offers',
-        description: 'Exclusive deals, offers, and travel inspiration',
-      },
-    ],
-  },
-];
-
 export default function NotificationsSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
+  const { profile } = useAuth();
+
+  const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
+    {
+      id: 'trips',
+      title: 'Trip Updates',
+      description: 'Stay informed about your trips',
+      icon: <Airplane size={20} color={tc.primary} variant="Bold" />,
+      items: [
+        {
+          key: 'bookingConfirmations',
+          title: 'Booking Confirmations',
+          description: 'Get notified when your bookings are confirmed',
+        },
+        {
+          key: 'tripReminders',
+          title: 'Trip Reminders',
+          description: 'Receive reminders before your trips',
+        },
+      ],
+    },
+    {
+      id: 'safety',
+      title: 'Safety & Alerts',
+      description: 'Important safety information',
+      icon: <ShieldTick size={20} color={tc.success} variant="Bold" />,
+      items: [
+        {
+          key: 'safetyAlerts',
+          title: 'Safety Alerts',
+          description: 'Travel advisories and safety updates for your destinations',
+        },
+      ],
+    },
+    {
+      id: 'deals',
+      title: 'Deals & Offers',
+      description: 'Never miss a great deal',
+      icon: <PercentageCircle size={20} color={tc.warning} variant="Bold" />,
+      items: [
+        {
+          key: 'priceDrops',
+          title: 'Price Drop Alerts',
+          description: 'Get notified when prices drop for saved searches',
+        },
+        {
+          key: 'promotional',
+          title: 'Promotions & Offers',
+          description: 'Exclusive deals, offers, and travel inspiration',
+        },
+      ],
+    },
+  ];
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [permissionGranted, setPermissionGranted] = useState(false);
 
   const fetchPreferences = useCallback(async () => {
     try {
+      if (profile?.id) {
+        await notificationService.loadPreferencesFromDB(profile.id);
+      }
       const prefs = notificationService.getPreferences();
       setPreferences(prefs);
       
@@ -127,7 +132,7 @@ export default function NotificationsSettingsScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [profile?.id]);
 
   useEffect(() => {
     fetchPreferences();
@@ -145,7 +150,7 @@ export default function NotificationsSettingsScreen() {
     
     const newPrefs = { ...preferences, [key]: value };
     setPreferences(newPrefs);
-    await notificationService.setPreferences({ [key]: value });
+    await notificationService.setPreferences({ [key]: value }, profile?.id);
   };
 
   const handleMasterToggle = async (value: boolean) => {
@@ -155,7 +160,7 @@ export default function NotificationsSettingsScreen() {
     
     const newPrefs = { ...preferences, enabled: value };
     setPreferences(newPrefs);
-    await notificationService.setPreferences({ enabled: value });
+    await notificationService.setPreferences({ enabled: value }, profile?.id);
   };
 
   const handleRequestPermission = async () => {
@@ -188,23 +193,23 @@ export default function NotificationsSettingsScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: tc.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <ActivityIndicator size="large" color={tc.primary} />
       </View>
     );
   }
   
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Notifications</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -215,9 +220,9 @@ export default function NotificationsSettingsScreen() {
       >
         {/* Permission Banner */}
         {!permissionGranted && (
-          <TouchableOpacity style={styles.permissionBanner} onPress={handleRequestPermission}>
+          <TouchableOpacity style={[styles.permissionBanner, { backgroundColor: tc.primary }]} onPress={handleRequestPermission}>
             <View style={styles.permissionIconContainer}>
-              <Notification size={24} color={colors.white} variant="Bold" />
+              <Notification size={24} color="#FFFFFF" variant="Bold" />
             </View>
             <View style={styles.permissionContent}>
               <Text style={styles.permissionTitle}>Enable Notifications</Text>
@@ -232,14 +237,14 @@ export default function NotificationsSettingsScreen() {
         )}
 
         {/* Master Toggle */}
-        <View style={styles.masterToggleCard}>
+        <View style={[styles.masterToggleCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
           <View style={styles.masterToggleContent}>
-            <View style={styles.masterIconContainer}>
-              <Setting2 size={24} color={colors.primary} variant="Bold" />
+            <View style={[styles.masterIconContainer, { backgroundColor: tc.primary + '15' }]}>
+              <Setting2 size={24} color={tc.primary} variant="Bold" />
             </View>
             <View style={styles.masterTextContainer}>
-              <Text style={styles.masterTitle}>All Notifications</Text>
-              <Text style={styles.masterDescription}>
+              <Text style={[styles.masterTitle, { color: tc.textPrimary }]}>All Notifications</Text>
+              <Text style={[styles.masterDescription, { color: tc.textSecondary }]}>
                 {preferences?.enabled ? 'Notifications are enabled' : 'Notifications are disabled'}
               </Text>
             </View>
@@ -248,39 +253,41 @@ export default function NotificationsSettingsScreen() {
             value={preferences?.enabled ?? false}
             onValueChange={handleMasterToggle}
             disabled={!permissionGranted}
-            trackColor={{ false: colors.gray200, true: colors.primary + '50' }}
-            thumbColor={preferences?.enabled ? colors.primary : colors.gray400}
+            trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '50' }}
+            thumbColor={preferences?.enabled ? tc.primary : isDark ? '#666' : colors.gray400}
           />
         </View>
 
         {/* Notification Categories */}
         {NOTIFICATION_CATEGORIES.map((category) => (
-          <View key={category.id} style={styles.categoryCard}>
-            <View style={styles.categoryHeader}>
-              <View style={styles.categoryIconContainer}>
+          <View key={category.id} style={[styles.categoryCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+            <View style={[styles.categoryHeader, { borderBottomColor: tc.borderSubtle }]}>
+              <View style={[styles.categoryIconContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.gray50 }]}>
                 {category.icon}
               </View>
               <View style={styles.categoryHeaderText}>
-                <Text style={styles.categoryTitle}>{category.title}</Text>
-                <Text style={styles.categoryDescription}>{category.description}</Text>
+                <Text style={[styles.categoryTitle, { color: tc.textPrimary }]}>{category.title}</Text>
+                <Text style={[styles.categoryDescription, { color: tc.textSecondary }]}>{category.description}</Text>
               </View>
             </View>
             
             <View style={styles.categoryItems}>
               {category.items.map((item, index) => (
                 <View key={item.key}>
-                  {index > 0 && <View style={styles.itemDivider} />}
+                  {index > 0 && <View style={[styles.itemDivider, { backgroundColor: tc.borderSubtle }]} />}
                   <View style={styles.notificationItem}>
                     <View style={styles.itemTextContainer}>
                       <Text style={[
                         styles.itemTitle,
-                        (!permissionGranted || !preferences?.enabled) && styles.itemTitleDisabled,
+                        { color: tc.textPrimary },
+                        (!permissionGranted || !preferences?.enabled) && { color: tc.textTertiary },
                       ]}>
                         {item.title}
                       </Text>
                       <Text style={[
                         styles.itemDescription,
-                        (!permissionGranted || !preferences?.enabled) && styles.itemDescriptionDisabled,
+                        { color: tc.textSecondary },
+                        (!permissionGranted || !preferences?.enabled) && { color: tc.textTertiary },
                       ]}>
                         {item.description}
                       </Text>
@@ -289,8 +296,8 @@ export default function NotificationsSettingsScreen() {
                       value={preferences?.[item.key] ?? false}
                       onValueChange={(value) => handleToggle(item.key, value)}
                       disabled={!permissionGranted || !preferences?.enabled}
-                      trackColor={{ false: colors.gray200, true: colors.primary + '50' }}
-                      thumbColor={preferences?.[item.key] ? colors.primary : colors.gray400}
+                      trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '50' }}
+                      thumbColor={preferences?.[item.key] ? tc.primary : isDark ? '#666' : colors.gray400}
                     />
                   </View>
                 </View>
@@ -300,9 +307,9 @@ export default function NotificationsSettingsScreen() {
         ))}
 
         {/* Info Card */}
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>About Notifications</Text>
-          <Text style={styles.infoText}>
+        <View style={[styles.infoCard, { backgroundColor: tc.info + '10', borderColor: tc.info + '20' }]}>
+          <Text style={[styles.infoTitle, { color: tc.info }]}>About Notifications</Text>
+          <Text style={[styles.infoText, { color: tc.textSecondary }]}>
             We'll only send you notifications that matter. Safety alerts are always recommended to keep you informed about your travel destinations.
           </Text>
         </View>

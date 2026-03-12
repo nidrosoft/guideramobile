@@ -29,6 +29,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 // Hotel display data interface
 export interface HotelCardData {
@@ -75,7 +76,13 @@ interface HotelCardProps {
   onFavorite?: () => void;
 }
 
-// Amenity icon mapping
+const resolveString = (val: any): string => {
+  if (!val) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object') return val.formatted || val.name || val.city || '';
+  return String(val);
+};
+
 const AMENITY_CONFIG: Record<string, { icon: any; color: string }> = {
   'WiFi': { icon: Wifi, color: '#6366F1' },
   'Free WiFi': { icon: Wifi, color: '#6366F1' },
@@ -117,6 +124,7 @@ export default function HotelCard({
   const mainImage = hotel.images?.[0] || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400';
   const topAmenities = hotel.amenities?.slice(0, compact ? 2 : 4) || ['WiFi', 'Pool', 'Spa'];
   const ratingLabel = getRatingLabel(hotel.userRating);
+  const { colors: tc } = useTheme();
 
   const handleFavorite = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -128,8 +136,9 @@ export default function HotelCard({
       <TouchableOpacity
         style={[
           styles.container,
+          { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
           compact && styles.containerCompact,
-          isSelected && styles.containerSelected,
+          isSelected && { borderColor: tc.primary, borderWidth: 2 },
         ]}
         onPress={onPress}
         activeOpacity={0.9}
@@ -180,15 +189,15 @@ export default function HotelCard({
           
           {/* Rating Badge - Bottom left with glassmorphism */}
           <View style={styles.ratingContainer}>
-            <View style={styles.ratingBadge}>
+            <View style={[styles.ratingBadge, { backgroundColor: tc.bgElevated }]}>
               <Star1 size={14} color="#FFB800" variant="Bold" />
-              <Text style={styles.ratingScore}>{hotel.userRating.toFixed(1)}</Text>
+              <Text style={[styles.ratingScore, { color: tc.textPrimary }]}>{hotel.userRating.toFixed(1)}</Text>
             </View>
             {!compact && (
-              <View style={styles.ratingInfo}>
-                <Text style={styles.ratingLabel}>{ratingLabel}</Text>
+              <View style={[styles.ratingInfo, { backgroundColor: tc.bgElevated }]}>
+                <Text style={[styles.ratingLabel, { color: tc.textPrimary }]}>{ratingLabel}</Text>
                 {hotel.reviewCount && (
-                  <Text style={styles.reviewCount}>{hotel.reviewCount} reviews</Text>
+                  <Text style={[styles.reviewCount, { color: tc.textSecondary }]}>{hotel.reviewCount} reviews</Text>
                 )}
               </View>
             )}
@@ -213,25 +222,25 @@ export default function HotelCard({
               <Star1 
                 key={i} 
                 size={compact ? 10 : 12} 
-                color={i < hotel.starRating ? '#FFB800' : colors.gray200} 
+                color={i < hotel.starRating ? '#FFB800' : tc.borderSubtle} 
                 variant="Bold" 
               />
             ))}
-            <Text style={styles.starLabel}>{hotel.starRating}-Star Hotel</Text>
+            <Text style={[styles.starLabel, { color: tc.textSecondary }]}>{hotel.starRating}-Star Hotel</Text>
           </View>
           
           {/* Hotel Name */}
-          <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={compact ? 1 : 2}>
+          <Text style={[styles.name, { color: tc.textPrimary }, compact && styles.nameCompact]} numberOfLines={compact ? 1 : 2}>
             {hotel.name}
           </Text>
           
           {/* Location with icon */}
           <View style={styles.locationRow}>
-            <View style={styles.locationIcon}>
-              <Location size={12} color={colors.primary} variant="Bold" />
+            <View style={[styles.locationIcon, { backgroundColor: `${tc.primary}10` }]}>
+              <Location size={12} color={tc.primary} variant="Bold" />
             </View>
-            <Text style={[styles.location, compact && styles.locationCompact]} numberOfLines={1}>
-              {hotel.location.neighborhood || hotel.location.city || hotel.location.address}
+            <Text style={[styles.location, { color: tc.textSecondary }, compact && styles.locationCompact]} numberOfLines={1}>
+              {resolveString(hotel.location.neighborhood) || resolveString(hotel.location.city) || resolveString(hotel.location.address)}
             </Text>
           </View>
           
@@ -242,7 +251,7 @@ export default function HotelCard({
                 const config = getAmenityIcon(amenity);
                 const IconComponent = config.icon;
                 return (
-                  <View key={idx} style={styles.amenityChip}>
+                  <View key={idx} style={[styles.amenityChip, { backgroundColor: `${config.color}15` }]}>
                     <IconComponent size={12} color={config.color} variant="Bold" />
                     <Text style={[styles.amenityText, { color: config.color }]}>{amenity}</Text>
                   </View>
@@ -255,44 +264,44 @@ export default function HotelCard({
           {!compact && (
             <View style={styles.policyBadgesRow}>
               {hotel.isFreeCancellable && (
-                <View style={styles.refundableBadge}>
-                  <TickCircle size={12} color="#10B981" variant="Bold" />
-                  <Text style={styles.refundableText}>Free cancellation</Text>
+                <View style={[styles.refundableBadge, { backgroundColor: `${tc.success}15` }]}>
+                  <TickCircle size={12} color={tc.success} variant="Bold" />
+                  <Text style={[styles.refundableText, { color: tc.success }]}>Free cancellation</Text>
                 </View>
               )}
               {hotel.hasBreakfast && (
-                <View style={styles.breakfastBadge}>
-                  <Coffee size={12} color="#D97706" variant="Bold" />
-                  <Text style={styles.breakfastText}>Breakfast included</Text>
+                <View style={[styles.breakfastBadge, { backgroundColor: `${tc.warning}15` }]}>
+                  <Coffee size={12} color={tc.warning} variant="Bold" />
+                  <Text style={[styles.breakfastText, { color: tc.warning }]}>Breakfast included</Text>
                 </View>
               )}
               {hotel.roomsRemaining && hotel.roomsRemaining <= 5 && (
-                <View style={styles.urgencyBadge}>
-                  <Text style={styles.urgencyText}>Only {hotel.roomsRemaining} left!</Text>
+                <View style={[styles.urgencyBadge, { backgroundColor: `${tc.error}15` }]}>
+                  <Text style={[styles.urgencyText, { color: tc.error }]}>Only {hotel.roomsRemaining} left!</Text>
                 </View>
               )}
             </View>
           )}
           
           {/* Divider */}
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
           
           {/* Price Section */}
           <View style={styles.priceRow}>
             <View style={styles.priceMain}>
-              <Text style={styles.priceFrom}>From</Text>
+              <Text style={[styles.priceFrom, { color: tc.textSecondary }]}>From</Text>
               <View style={styles.priceValue}>
-                <Text style={[styles.priceCurrency, isSelected && styles.priceSelected]}>$</Text>
-                <Text style={[styles.price, isSelected && styles.priceSelected]}>
+                <Text style={[styles.priceCurrency, { color: tc.textPrimary }, isSelected && { color: tc.primary }]}>$</Text>
+                <Text style={[styles.price, { color: tc.textPrimary }, isSelected && { color: tc.primary }]}>
                   {Math.round(hotel.pricePerNight)}
                 </Text>
-                <Text style={styles.priceUnit}>/night</Text>
+                <Text style={[styles.priceUnit, { color: tc.textSecondary }]}>/night</Text>
               </View>
             </View>
             
             {nights > 1 && (
               <View style={styles.totalContainer}>
-                <Text style={styles.totalLabel}>{nights} nights total</Text>
+                <Text style={[styles.totalLabel, { color: tc.textSecondary }]}>{nights} nights total</Text>
                 <LinearGradient
                   colors={[colors.success, '#059669']}
                   start={{ x: 0, y: 0 }}
@@ -421,7 +430,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   ratingInfo: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: 8,
@@ -536,7 +544,6 @@ const styles = StyleSheet.create({
   refundableBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ECFDF5',
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: 6,
@@ -545,12 +552,10 @@ const styles = StyleSheet.create({
   refundableText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: '#10B981',
   },
   breakfastBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: 6,
@@ -559,10 +564,8 @@ const styles = StyleSheet.create({
   breakfastText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: '#D97706',
   },
   urgencyBadge: {
-    backgroundColor: '#FEE2E2',
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: 6,
@@ -570,7 +573,6 @@ const styles = StyleSheet.create({
   urgencyText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
-    color: '#DC2626',
   },
 
   // Divider

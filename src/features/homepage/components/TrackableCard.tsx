@@ -37,17 +37,17 @@ export function TrackableCard({
   disabled = false,
 }: TrackableCardProps) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const hasTrackedView = useRef(false);
 
   // Track view when card becomes visible
   useEffect(() => {
-    if (!hasTrackedView.current && user?.id && itemId) {
+    if (!hasTrackedView.current && profile?.id && itemId) {
       hasTrackedView.current = true;
       
       // Track view (fire and forget)
       homepageService.trackInteraction({
-        userId: user.id,
+        userId: profile.id,
         itemId,
         itemType,
         action: 'view',
@@ -55,7 +55,7 @@ export function TrackableCard({
         position,
       }).catch(() => {});
     }
-  }, [user?.id, itemId, itemType, sectionSlug, position]);
+  }, [profile?.id, itemId, itemType, sectionSlug, position]);
 
   const handlePress = useCallback(() => {
     if (disabled) return;
@@ -63,9 +63,9 @@ export function TrackableCard({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
     // Track detail view
-    if (user?.id && itemId) {
+    if (profile?.id && itemId) {
       homepageService.trackInteraction({
-        userId: user.id,
+        userId: profile.id,
         itemId,
         itemType,
         action: 'detail_view',
@@ -80,7 +80,7 @@ export function TrackableCard({
     } else if (navigateTo) {
       router.push(navigateTo as any);
     }
-  }, [disabled, user?.id, itemId, itemType, sectionSlug, position, onPress, navigateTo, router]);
+  }, [disabled, profile?.id, itemId, itemType, sectionSlug, position, onPress, navigateTo, router]);
 
   return (
     <TouchableOpacity
@@ -98,7 +98,7 @@ export function TrackableCard({
  * Hook for tracking interactions manually
  */
 export function useInteractionTracking() {
-  const { user } = useAuth();
+  const { profile } = useAuth();
 
   const trackView = useCallback((
     itemId: string,
@@ -106,17 +106,17 @@ export function useInteractionTracking() {
     sectionSlug?: string,
     position?: number
   ) => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     homepageService.trackInteraction({
-      userId: user.id,
+      userId: profile.id,
       itemId,
       itemType,
       action: 'view',
       sectionSlug,
       position,
     }).catch(() => {});
-  }, [user?.id]);
+  }, [profile?.id]);
 
   const trackDetailView = useCallback((
     itemId: string,
@@ -124,45 +124,45 @@ export function useInteractionTracking() {
     sectionSlug?: string,
     position?: number
   ) => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     homepageService.trackInteraction({
-      userId: user.id,
+      userId: profile.id,
       itemId,
       itemType,
       action: 'detail_view',
       sectionSlug,
       position,
     }).catch(() => {});
-  }, [user?.id]);
+  }, [profile?.id]);
 
   const trackSave = useCallback((
     itemId: string,
     itemType: 'destination' | 'experience' = 'destination'
   ) => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     homepageService.trackInteraction({
-      userId: user.id,
+      userId: profile.id,
       itemId,
       itemType,
       action: 'save',
     }).catch(() => {});
-  }, [user?.id]);
+  }, [profile?.id]);
 
   const trackShare = useCallback((
     itemId: string,
     itemType: 'destination' | 'experience' = 'destination'
   ) => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     homepageService.trackInteraction({
-      userId: user.id,
+      userId: profile.id,
       itemId,
       itemType,
       action: 'share',
     }).catch(() => {});
-  }, [user?.id]);
+  }, [profile?.id]);
 
   return {
     trackView,

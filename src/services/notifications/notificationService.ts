@@ -11,10 +11,28 @@
 
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logger } from '@/services/logging';
 import { analytics, EVENTS } from '@/services/analytics';
+import { supabase } from '@/lib/supabase/client';
+import { router } from 'expo-router';
+
+// Database notification record (from `notifications` table)
+export interface AppNotification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  body: string;
+  data?: Record<string, any>;
+  tripId?: string;
+  bookingId?: string;
+  isRead: boolean;
+  readAt?: string;
+  createdAt: string;
+}
 
 // Notification categories
 export const NOTIFICATION_CATEGORIES = {
@@ -40,10 +58,21 @@ export interface NotificationData {
 // User notification preferences
 export interface NotificationPreferences {
   enabled: boolean;
+  // Trip & Booking
   bookingConfirmations: boolean;
   tripReminders: boolean;
+  packingReminders: boolean;
+  departureAdvisor: boolean;
+  flightTracking: boolean;
+  // Safety
   safetyAlerts: boolean;
+  weatherAlerts: boolean;
+  // Deals & Financial
   priceDrops: boolean;
+  // Community & Social
+  communityMessages: boolean;
+  communityEvents: boolean;
+  // System
   promotional: boolean;
 }
 
@@ -51,8 +80,14 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   enabled: true,
   bookingConfirmations: true,
   tripReminders: true,
+  packingReminders: true,
+  departureAdvisor: true,
+  flightTracking: true,
   safetyAlerts: true,
+  weatherAlerts: true,
   priceDrops: true,
+  communityMessages: true,
+  communityEvents: true,
   promotional: false,
 };
 
@@ -141,8 +176,13 @@ class NotificationService {
    */
   async registerForPushNotifications(): Promise<string | null> {
     try {
+      const projectId =
+        Constants.expoConfig?.extra?.eas?.projectId ??
+        process.env.EXPO_PUBLIC_PROJECT_ID ??
+        undefined;
+
       const token = await Notifications.getExpoPushTokenAsync({
-        projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
+        projectId,
       });
 
       this.pushToken = token.data;
@@ -150,12 +190,13 @@ class NotificationService {
 
       logger.info('Push token registered', { token: token.data.substring(0, 20) + '...' });
 
-      // TODO: Send token to backend
-      // await api.registerPushToken(token.data);
+      // Persist token to Supabase user_devices table
+      await this.upsertDeviceToken(token.data);
 
       return token.data;
     } catch (error) {
-      logger.error('Failed to get push token', error);
+      // Downgrade to warning — push tokens may not work in Expo Go or simulators
+      logger.warn('Push token registration skipped', error);
       return null;
     }
   }
@@ -247,9 +288,12 @@ class NotificationService {
   /**
    * Update notification preferences
    */
-  async setPreferences(preferences: Partial<NotificationPreferences>): Promise<void> {
+  async setPreferences(preferences: Partial<NotificationPreferences>, userId?: string): Promise<void> {
     this.preferences = { ...this.preferences, ...preferences };
     await this.savePreferences();
+    if (userId) {
+      await this.syncPreferencesToDB(userId);
+    }
     logger.info('Notification preferences updated', preferences);
   }
 
@@ -332,6 +376,101 @@ class NotificationService {
     });
   }
 
+  // ==================== Database Notification Methods ====================
+
+  /**
+   * Fetch notifications from the `notifications` table
+   */
+  async getNotifications(
+    userId: string,
+    options?: { limit?: number; offset?: number; unreadOnly?: boolean }
+  ): Promise<AppNotification[]> {
+    const limit = options?.limit ?? 30;
+    const offset = options?.offset ?? 0;
+
+    let query = supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (options?.unreadOnly) {
+      query = query.eq('is_read', false);
+    }
+
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return (data || []).map(this.mapNotification);
+  }
+
+  /**
+   * Get the count of unread notifications
+   */
+  async getUnreadCount(userId: string): Promise<number> {
+    const { count, error } = await supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_read', false);
+
+    if (error) throw new Error(error.message);
+    return count ?? 0;
+  }
+
+  /**
+   * Mark a single notification as read
+   */
+  async markAsRead(notificationId: string): Promise<void> {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true, read_at: new Date().toISOString() })
+      .eq('id', notificationId);
+
+    if (error) throw new Error(error.message);
+  }
+
+  /**
+   * Mark all notifications as read for a user
+   */
+  async markAllAsRead(userId: string): Promise<void> {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true, read_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('is_read', false);
+
+    if (error) throw new Error(error.message);
+  }
+
+  /**
+   * Delete a notification
+   */
+  async deleteNotification(notificationId: string): Promise<void> {
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', notificationId);
+
+    if (error) throw new Error(error.message);
+  }
+
+  private mapNotification(data: any): AppNotification {
+    return {
+      id: data.id,
+      userId: data.user_id,
+      type: data.type,
+      title: data.title,
+      body: data.body,
+      data: data.data,
+      tripId: data.trip_id,
+      bookingId: data.booking_id,
+      isRead: data.is_read ?? false,
+      readAt: data.read_at,
+      createdAt: data.created_at,
+    };
+  }
+
   // ==================== Private Methods ====================
 
   private setupListeners(): void {
@@ -361,10 +500,19 @@ class NotificationService {
           deepLink: data?.deepLink,
         });
 
-        // Handle deep link
+        // Handle deep link navigation
         if (data?.deepLink) {
-          // TODO: Navigate to deep link
-          // router.push(data.deepLink);
+          try {
+            router.push(data.deepLink as any);
+          } catch (navErr) {
+            logger.warn('Deep link navigation failed', { deepLink: data.deepLink, error: navErr });
+          }
+        } else if (data?.actionUrl) {
+          try {
+            router.push(data.actionUrl as any);
+          } catch (navErr) {
+            logger.warn('Action URL navigation failed', { actionUrl: data.actionUrl, error: navErr });
+          }
         }
       }
     );
@@ -401,6 +549,34 @@ class NotificationService {
         return this.preferences.promotional;
       default:
         return true;
+    }
+  }
+
+  private async upsertDeviceToken(token: string): Promise<void> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        logger.warn('Cannot upsert device token: no authenticated user');
+        return;
+      }
+
+      await supabase.from('user_devices').upsert({
+        user_id: user.id,
+        device_token: token,
+        platform: Platform.OS as 'ios' | 'android',
+        device_name: Device.deviceName || undefined,
+        device_model: Device.modelName || undefined,
+        os_version: Device.osVersion || undefined,
+        is_active: true,
+        push_enabled: true,
+        last_used_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id,device_token',
+      });
+
+      logger.info('Device token persisted to Supabase');
+    } catch (error) {
+      logger.warn('Failed to upsert device token to Supabase', error);
     }
   }
 
@@ -442,6 +618,85 @@ class NotificationService {
       );
     } catch (error) {
       logger.error('Failed to save notification preferences', error);
+    }
+  }
+
+  /**
+   * Sync preferences to Supabase user_notification_preferences table
+   */
+  async syncPreferencesToDB(userId: string): Promise<void> {
+    try {
+      const categoryPrefs = {
+        booking_confirmations: this.preferences.bookingConfirmations,
+        trip_reminders: this.preferences.tripReminders,
+        packing_reminders: this.preferences.packingReminders,
+        departure_advisor: this.preferences.departureAdvisor,
+        flight_tracking: this.preferences.flightTracking,
+        safety_alerts: this.preferences.safetyAlerts,
+        weather_alerts: this.preferences.weatherAlerts,
+        price_drops: this.preferences.priceDrops,
+        community_messages: this.preferences.communityMessages,
+        community_events: this.preferences.communityEvents,
+        promotional: this.preferences.promotional,
+      };
+
+      const { error } = await supabase
+        .from('user_notification_preferences')
+        .upsert({
+          user_id: userId,
+          notifications_enabled: this.preferences.enabled,
+          push_enabled: this.preferences.enabled,
+          category_preferences: categoryPrefs,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id',
+        });
+
+      if (error) {
+        logger.warn('Failed to sync notification preferences to DB', error);
+      } else {
+        logger.info('Notification preferences synced to DB');
+      }
+    } catch (error) {
+      logger.warn('Error syncing notification preferences to DB', error);
+    }
+  }
+
+  /**
+   * Load preferences from Supabase, falling back to AsyncStorage
+   */
+  async loadPreferencesFromDB(userId: string): Promise<void> {
+    try {
+      const { data, error } = await supabase
+        .from('user_notification_preferences')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error || !data) {
+        return;
+      }
+
+      const catPrefs = data.category_preferences as Record<string, boolean> | null;
+      if (catPrefs) {
+        this.preferences = {
+          enabled: data.notifications_enabled ?? true,
+          bookingConfirmations: catPrefs.booking_confirmations ?? true,
+          tripReminders: catPrefs.trip_reminders ?? true,
+          packingReminders: catPrefs.packing_reminders ?? true,
+          departureAdvisor: catPrefs.departure_advisor ?? true,
+          flightTracking: catPrefs.flight_tracking ?? true,
+          safetyAlerts: catPrefs.safety_alerts ?? true,
+          weatherAlerts: catPrefs.weather_alerts ?? true,
+          priceDrops: catPrefs.price_drops ?? true,
+          communityMessages: catPrefs.community_messages ?? true,
+          communityEvents: catPrefs.community_events ?? true,
+          promotional: catPrefs.promotional ?? false,
+        };
+        await this.savePreferences();
+      }
+    } catch (error) {
+      logger.warn('Failed to load notification preferences from DB', error);
     }
   }
 

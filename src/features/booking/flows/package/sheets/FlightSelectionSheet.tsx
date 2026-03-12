@@ -1,11 +1,11 @@
 /**
  * FLIGHT SELECTION SHEET
- * 
- * Full-screen sheet for selecting flights in package flow.
- * Mirrors the FlightResultsScreen experience with:
- * - Date scroll with prices
- * - Filter options
- * - Full flight cards
+ *
+ * Full-screen modal for selecting flights in the package flow.
+ * Matches FlightResultsScreen styling for visual consistency:
+ * - Date chips with primary color selected state
+ * - Pill-shaped filter chips with dropdown
+ * - Theme-aware colors throughout
  */
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -26,12 +26,14 @@ import {
   CloseCircle,
   Airplane,
   Sort,
-  Filter,
   Clock,
   DollarCircle,
+  ArrowDown2,
+  TickCircle,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius as br } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { FlightCard, FlightCardData } from '../../../shared/components';
 import { TripSetup } from '../../../stores/usePackageStore';
 
@@ -45,26 +47,21 @@ interface FlightSelectionSheetProps {
   title?: string;
 }
 
-// Filter options
 const FILTER_OPTIONS = [
-  { id: 'sort', label: 'Sort', icon: 'sort', values: ['Price', 'Duration', 'Departure'] },
+  { id: 'sort', label: 'Sort', icon: 'sort', values: ['Price', 'Duration', 'Departure', 'Arrival'] },
   { id: 'stops', label: 'Stops', icon: 'stops', values: ['Direct', '1 Stop', '2+ Stops'] },
-  { id: 'price', label: 'Price', icon: 'price', values: ['Under $200', '$200-$400', '$400+'] },
-  { id: 'time', label: 'Time', icon: 'time', values: ['Morning', 'Afternoon', 'Evening'] },
+  { id: 'price', label: 'Price', icon: 'price', values: ['Under $200', '$200-$400', '$400-$600', '$600+'] },
+  { id: 'time', label: 'Time', icon: 'time', values: ['Morning', 'Afternoon', 'Evening', 'Night'] },
 ];
 
-// Generate date prices for horizontal scroll
-const generateDatePrices = (startDate: Date | null) => {
-  const baseDate = startDate || new Date();
+const generateDateRange = (startDate: Date | null, cheapestPrice?: number) => {
+  const base = startDate || new Date();
+  const safe = base instanceof Date && !isNaN(base.getTime()) ? base : new Date();
   const dates = [];
-  for (let i = -2; i < 7; i++) {
-    const date = new Date(baseDate);
+  for (let i = -2; i <= 4; i++) {
+    const date = new Date(safe);
     date.setDate(date.getDate() + i);
-    dates.push({
-      date,
-      price: Math.floor(Math.random() * 200) + 150,
-      isSelected: i === 0,
-    });
+    dates.push({ date, price: i === 0 ? (cheapestPrice || null) : null });
   }
   return dates;
 };
@@ -79,13 +76,20 @@ export default function FlightSelectionSheet({
   title = 'Select Flight',
 }: FlightSelectionSheetProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const [selectedDateIndex, setSelectedDateIndex] = useState(2);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
 
-  const datePrices = useMemo(() => 
-    generateDatePrices(tripSetup.departureDate), 
-    [tripSetup.departureDate]
+  const cheapestPrice = useMemo(() => {
+    if (flights.length === 0) return null;
+    const prices = flights.map(f => f.price).filter(p => p > 0);
+    return prices.length > 0 ? Math.min(...prices) : null;
+  }, [flights]);
+
+  const datePrices = useMemo(
+    () => generateDateRange(tripSetup.departureDate, cheapestPrice ?? undefined),
+    [tripSetup.departureDate, cheapestPrice],
   );
 
   const handleDateSelect = (index: number) => {
@@ -110,22 +114,20 @@ export default function FlightSelectionSheet({
     onClose();
   }, [onSelect, onClose]);
 
-  const getFilterIcon = (iconType: string, isSelected: boolean) => {
-    const iconColor = isSelected ? colors.textSecondary : colors.textPrimary;
+  const getFilterIcon = (iconType: string, isHighlighted: boolean) => {
+    const c = isHighlighted ? tc.primary : tc.textPrimary;
     switch (iconType) {
-      case 'sort': return <Sort size={16} color={iconColor} />;
-      case 'price': return <DollarCircle size={16} color={iconColor} />;
-      case 'stops': return <Airplane size={16} color={iconColor} />;
-      case 'time': return <Clock size={16} color={iconColor} />;
-      default: return <Filter size={16} color={iconColor} />;
+      case 'sort': return <Sort size={16} color={c} />;
+      case 'price': return <DollarCircle size={16} color={c} />;
+      case 'stops': return <Airplane size={16} color={c} />;
+      case 'time': return <Clock size={16} color={c} />;
+      default: return null;
     }
   };
 
-  const formatRoute = () => {
-    const origin = tripSetup.origin?.code || 'DEP';
-    const dest = tripSetup.destination?.code || 'ARR';
-    return `${origin} → ${dest}`;
-  };
+  const formatRoute = () => `${tripSetup.origin?.code || 'DEP'} → ${tripSetup.destination?.code || 'ARR'}`;
+
+  const activeFilterOptions = FILTER_OPTIONS.find(f => f.id === activeFilter);
 
   const renderDateItem = ({ item, index }: { item: typeof datePrices[0]; index: number }) => {
     const isSelected = index === selectedDateIndex;
@@ -135,42 +137,39 @@ export default function FlightSelectionSheet({
 
     return (
       <TouchableOpacity
-        style={[styles.dateItem, isSelected && styles.dateItemSelected]}
+        style={[
+          styles.dateItem,
+          { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+          isSelected && { backgroundColor: `${tc.primary}10`, borderColor: tc.primary },
+        ]}
         onPress={() => handleDateSelect(index)}
         activeOpacity={0.7}
       >
-        <Text style={[styles.dateDay, isSelected && styles.dateDaySelected]}>
+        <Text style={[styles.dateDay, { color: tc.textPrimary }]}>
           {dayName}, {dayNum} {month}
         </Text>
-        <Text style={[styles.datePrice, isSelected && styles.datePriceSelected]}>
-          ${item.price}
+        <Text style={[styles.datePrice, { color: isSelected ? tc.primary : tc.textTertiary }]}>
+          {item.price != null ? `$${item.price.toLocaleString('en-US')}` : '–'}
         </Text>
       </TouchableOpacity>
     );
   };
 
-  const activeFilterOptions = FILTER_OPTIONS.find(f => f.id === activeFilter);
-
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="fullScreen"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
       <StatusBar barStyle="dark-content" />
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: tc.background }]}>
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onClose}>
-            <ArrowLeft size={24} color={colors.textPrimary} />
+        <View style={[styles.header, { borderBottomColor: tc.borderSubtle }]}>
+          <TouchableOpacity style={[styles.backButton, { backgroundColor: tc.bgCard }]} onPress={onClose}>
+            <ArrowLeft size={24} color={tc.textPrimary} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>{title}</Text>
-            <Text style={styles.headerSubtitle}>{formatRoute()}</Text>
+            <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{title}</Text>
+            <Text style={[styles.headerSubtitle, { color: tc.textSecondary }]}>{formatRoute()}</Text>
           </View>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <CloseCircle size={24} color={colors.textTertiary} variant="Bold" />
+            <CloseCircle size={24} color={tc.textSecondary} variant="Bold" />
           </TouchableOpacity>
         </View>
 
@@ -180,62 +179,65 @@ export default function FlightSelectionSheet({
             horizontal
             data={datePrices}
             renderItem={renderDateItem}
-            keyExtractor={(_, index) => index.toString()}
+            keyExtractor={(_, i) => i.toString()}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.dateScroll}
           />
         </Animated.View>
 
-        {/* Filters */}
+        {/* Filter Bar */}
         <View style={styles.filtersContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filtersRow}
-          >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersRow}>
             {FILTER_OPTIONS.map((filter) => {
               const isActive = activeFilter === filter.id;
-              const isSelected = !!selectedFilters[filter.id];
+              const hasSelection = !!selectedFilters[filter.id];
               return (
                 <TouchableOpacity
                   key={filter.id}
                   style={[
                     styles.filterButton,
-                    isActive && styles.filterButtonActive,
-                    isSelected && styles.filterButtonSelected,
+                    { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                    isActive && { borderColor: tc.primary, backgroundColor: `${tc.primary}08` },
+                    hasSelection && { borderColor: tc.primary, backgroundColor: `${tc.primary}10` },
                   ]}
                   onPress={() => handleFilterPress(filter.id)}
                 >
-                  {getFilterIcon(filter.icon, isActive || isSelected)}
+                  {getFilterIcon(filter.icon, hasSelection)}
                   <Text style={[
                     styles.filterText,
-                    (isActive || isSelected) && styles.filterTextSelected,
+                    { color: tc.textPrimary },
+                    hasSelection && { color: tc.primary },
                   ]}>
                     {selectedFilters[filter.id] || filter.label}
                   </Text>
+                  <ArrowDown2
+                    size={14}
+                    color={hasSelection ? tc.primary : tc.textSecondary}
+                    style={{ transform: [{ rotate: isActive ? '180deg' : '0deg' }] }}
+                  />
                 </TouchableOpacity>
               );
             })}
           </ScrollView>
 
-          {/* Filter Dropdown */}
           {activeFilter && activeFilterOptions && (
-            <Animated.View entering={FadeInDown.duration(200)} style={styles.filterDropdown}>
+            <Animated.View
+              entering={FadeInDown.duration(200)}
+              style={[styles.filterDropdown, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
+            >
               <ScrollView>
                 {activeFilterOptions.values.map((value) => {
-                  const isSelected = selectedFilters[activeFilter] === value;
+                  const isSel = selectedFilters[activeFilter] === value;
                   return (
                     <TouchableOpacity
                       key={value}
-                      style={[styles.filterOption, isSelected && styles.filterOptionSelected]}
+                      style={[styles.filterOption, { borderBottomColor: tc.borderSubtle }, isSel && { backgroundColor: `${tc.primary}08` }]}
                       onPress={() => handleFilterSelect(activeFilter, value)}
                     >
-                      <Text style={[
-                        styles.filterOptionText,
-                        isSelected && styles.filterOptionTextSelected,
-                      ]}>
+                      <Text style={[styles.filterOptionText, { color: tc.textPrimary }, isSel && { color: tc.primary }]}>
                         {value}
                       </Text>
+                      {isSel && <TickCircle size={16} color={tc.primary} variant="Bold" />}
                     </TouchableOpacity>
                   );
                 })}
@@ -246,7 +248,7 @@ export default function FlightSelectionSheet({
 
         {/* Results Count */}
         <View style={styles.resultsHeader}>
-          <Text style={styles.resultsCount}>{flights.length} flights found</Text>
+          <Text style={[styles.resultsCount, { color: tc.textSecondary }]}>{flights.length} flights found</Text>
         </View>
 
         {/* Flight List */}
@@ -263,10 +265,7 @@ export default function FlightSelectionSheet({
               onPress={() => handleFlightSelect(item)}
             />
           )}
-          contentContainerStyle={[
-            styles.flightList,
-            { paddingBottom: insets.bottom + spacing.xl },
-          ]}
+          contentContainerStyle={[styles.flightList, { paddingBottom: insets.bottom + spacing.xl }]}
           showsVerticalScrollIndicator={false}
         />
       </View>
@@ -275,171 +274,81 @@ export default function FlightSelectionSheet({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.bgCard,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 40, height: 40, borderRadius: 20,
+    justifyContent: 'center', alignItems: 'center',
   },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  headerSubtitle: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  closeButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  // Date Scroll
-  dateScroll: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
+  headerCenter: { flex: 1, alignItems: 'center' },
+  headerTitle: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold },
+  headerSubtitle: { fontSize: typography.fontSize.sm, marginTop: 2 },
+  closeButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+
+  dateScroll: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   dateItem: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     marginHorizontal: spacing.xs,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.bgElevated,
+    borderRadius: br.lg,
     alignItems: 'center',
     minWidth: 110,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  dateItemSelected: {
-    backgroundColor: `${colors.textSecondary}10`,
-    borderColor: colors.textSecondary,
-    borderWidth: 2,
-  },
-  dateDay: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
-    marginBottom: 4,
-  },
-  dateDaySelected: {
-    color: colors.textPrimary,
-  },
-  datePrice: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    color: `${colors.textSecondary}60`,
-  },
-  datePriceSelected: {
-    color: colors.textPrimary,
-  },
-  // Filters
-  filtersContainer: {
-    zIndex: 100,
-  },
-  filtersRow: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
+  dateDay: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, marginBottom: 4 },
+  datePrice: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold },
+
+  filtersContainer: { zIndex: 100 },
+  filtersRow: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.bgElevated,
+    borderRadius: br.full,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
     marginRight: spacing.sm,
     minHeight: 40,
     gap: 6,
   },
-  filterButtonActive: {
-    borderColor: colors.textSecondary,
-    backgroundColor: `${colors.textSecondary}08`,
-  },
-  filterButtonSelected: {
-    borderColor: colors.textSecondary,
-    backgroundColor: `${colors.textSecondary}10`,
-  },
-  filterText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textPrimary,
-  },
-  filterTextSelected: {
-    color: colors.textSecondary,
-    fontWeight: typography.fontWeight.medium,
-  },
+  filterText: { fontSize: typography.fontSize.sm, marginRight: spacing.xs },
   filterDropdown: {
     position: 'absolute',
     top: 52,
     left: spacing.md,
     right: spacing.md,
-    backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.lg,
+    borderRadius: br.lg,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
     zIndex: 1000,
-    maxHeight: 200,
+    maxHeight: 250,
   },
   filterOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
   },
-  filterOptionSelected: {
-    backgroundColor: `${colors.textSecondary}08`,
-  },
-  filterOptionText: {
-    fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
-  },
-  filterOptionTextSelected: {
-    color: colors.textSecondary,
-    fontWeight: typography.fontWeight.medium,
-  },
-  // Results
-  resultsHeader: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-  },
-  resultsCount: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-  },
-  flightList: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-  },
+  filterOptionText: { fontSize: typography.fontSize.base },
+
+  resultsHeader: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  resultsCount: { fontSize: typography.fontSize.sm },
+  flightList: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
 });

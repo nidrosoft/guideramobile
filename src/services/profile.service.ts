@@ -57,6 +57,18 @@ export interface ProfileData {
     phone?: string;
     relationship?: string;
   };
+  travel_style?: string;
+  languages?: string[];
+  visibility_settings?: {
+    show_bio?: boolean;
+    show_location?: boolean;
+    show_phone?: boolean;
+    show_dob?: boolean;
+    show_languages?: boolean;
+    show_travel_style?: boolean;
+    show_stats?: boolean;
+    show_member_since?: boolean;
+  };
   membership_type?: string;
   membership_expires_at?: string;
   email_verified?: boolean;
@@ -91,6 +103,9 @@ export interface UpdateProfileInput {
   gender?: string;
   preferences?: ProfileData['preferences'];
   travel_preferences?: ProfileData['travel_preferences'];
+  travel_style?: string;
+  languages?: string[];
+  visibility_settings?: ProfileData['visibility_settings'];
   emergency_contact?: ProfileData['emergency_contact'];
 }
 

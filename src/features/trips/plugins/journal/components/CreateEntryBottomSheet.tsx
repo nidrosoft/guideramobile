@@ -95,15 +95,15 @@ export default function CreateEntryBottomSheet({
           onPress={onClose}
         />
         
-        <View style={styles.bottomSheet}>
+        <View style={[styles.bottomSheet, { backgroundColor: tc.bgPrimary }]}>
           {/* Handle Bar */}
-          <View style={styles.handleBar} />
+          <View style={[styles.handleBar, { backgroundColor: tc.borderSubtle }]} />
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Create New Entry</Text>
+            <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Create New Entry</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <CloseCircle size={28} color={colors.gray400} variant="Linear" />
+              <CloseCircle size={28} color={tc.textTertiary} variant="Linear" />
             </TouchableOpacity>
           </View>
 
@@ -114,11 +114,11 @@ export default function CreateEntryBottomSheet({
           >
             {/* Entry Title */}
             <View style={styles.field}>
-              <Text style={styles.label}>Entry Title</Text>
+              <Text style={[styles.label, { color: tc.textPrimary }]}>Entry Title</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: tc.bgInput, color: tc.textPrimary, borderColor: tc.borderSubtle }]}
                 placeholder="e.g. Day 1 in Tokyo"
-                placeholderTextColor={colors.gray400}
+                placeholderTextColor={tc.textTertiary}
                 value={title}
                 onChangeText={setTitle}
                 autoFocus
@@ -127,14 +127,15 @@ export default function CreateEntryBottomSheet({
 
             {/* Layout Selection */}
             <View style={styles.field}>
-              <Text style={styles.label}>Choose Layout</Text>
+              <Text style={[styles.label, { color: tc.textPrimary }]}>Choose Layout</Text>
               <View style={styles.layoutGrid}>
                 {LAYOUTS.map(layout => (
                   <TouchableOpacity
                     key={layout.type}
                     style={[
                       styles.layoutCard,
-                      selectedLayout === layout.type && styles.layoutCardSelected,
+                      { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle },
+                      selectedLayout === layout.type && { borderColor: tc.primary, backgroundColor: `${tc.primary}05` },
                     ]}
                     onPress={() => setSelectedLayout(layout.type)}
                     activeOpacity={0.7}
@@ -150,6 +151,7 @@ export default function CreateEntryBottomSheet({
                               width: block.width,
                               height: block.height,
                               marginTop: 'marginTop' in block ? block.marginTop : 0,
+                              backgroundColor: tc.borderMedium,
                             },
                           ]}
                         />
@@ -160,18 +162,19 @@ export default function CreateEntryBottomSheet({
                     <View style={styles.layoutInfo}>
                       <Text style={[
                         styles.layoutName,
-                        selectedLayout === layout.type && styles.layoutNameSelected,
+                        { color: tc.textPrimary },
+                        selectedLayout === layout.type && { color: tc.primary },
                       ]}>
                         {layout.name}
                       </Text>
-                      <Text style={styles.layoutDescription}>
+                      <Text style={[styles.layoutDescription, { color: tc.textSecondary }]}>
                         {layout.description}
                       </Text>
                     </View>
 
                     {/* Selected Indicator */}
                     {selectedLayout === layout.type && (
-                      <View style={styles.selectedBadge}>
+                      <View style={[styles.selectedBadge, { backgroundColor: tc.primary }]}>
                         <Text style={styles.selectedBadgeText}>✓</Text>
                       </View>
                     )}
@@ -185,7 +188,8 @@ export default function CreateEntryBottomSheet({
           <TouchableOpacity
             style={[
               styles.createButton,
-              !title.trim() && styles.createButtonDisabled,
+              { backgroundColor: tc.primary },
+              !title.trim() && { backgroundColor: tc.borderMedium, shadowOpacity: 0 },
             ]}
             onPress={handleCreate}
             disabled={!title.trim()}

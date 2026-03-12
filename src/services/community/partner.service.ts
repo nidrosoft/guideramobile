@@ -4,7 +4,7 @@
  * Didit identity verification, and status tracking.
  */
 
-import { supabase, supabaseUrl } from '@/lib/supabase/client';
+import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase/client';
 
 export interface PartnerApplicationData {
   // Step 1: Personal Info
@@ -95,12 +95,12 @@ class PartnerService {
       .from('partner_applications')
       .select('*')
       .eq('user_id', userId)
-      .in('status', ['draft', 'identity_verification', 'submitted', 'under_review'])
+      .in('status', ['draft', 'identity_verification', 'submitted', 'under_review', 'approved', 'rejected'])
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    if (existing && !fetchError) {
+    if (existing) {
       return existing as PartnerApplication;
     }
 
@@ -177,19 +177,14 @@ class PartnerService {
       phone?: string;
     },
   ): Promise<DiditSessionResponse> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      throw new Error('Not authenticated');
-    }
-
     const response = await fetch(
       `${supabaseUrl}/functions/v1/didit-create-session`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-          apikey: session.access_token,
+          Authorization: `Bearer ${supabaseAnonKey}`,
+          apikey: supabaseAnonKey,
         },
         body: JSON.stringify({
           application_id: applicationId,
@@ -212,19 +207,14 @@ class PartnerService {
   async checkVerificationStatus(
     applicationId: string,
   ): Promise<VerificationStatusResponse> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      throw new Error('Not authenticated');
-    }
-
     const response = await fetch(
       `${supabaseUrl}/functions/v1/didit-check-status`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-          apikey: session.access_token,
+          Authorization: `Bearer ${supabaseAnonKey}`,
+          apikey: supabaseAnonKey,
         },
         body: JSON.stringify({ application_id: applicationId }),
       },
@@ -236,6 +226,27 @@ class PartnerService {
     }
 
     return response.json();
+  }
+
+  /**
+   * Get the user's latest partner application summary (for status display)
+   */
+  async getApplicationStatus(userId: string): Promise<{
+    status: string;
+    didit_verification_status: string;
+    submitted_at?: string;
+    updated_at: string;
+  } | null> {
+    const { data, error } = await supabase
+      .from('partner_applications')
+      .select('status, didit_verification_status, submitted_at, updated_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return data;
   }
 
   /**

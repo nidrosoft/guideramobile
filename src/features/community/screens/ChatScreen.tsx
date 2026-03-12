@@ -36,103 +36,22 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import { spacing, borderRadius } from '@/styles';
 import { styles } from './ChatScreen.styles';
 import ChatMessageBubble, { ChatMessageData } from '../components/ChatMessageBubble';
-
-// Mock conversation data
-const MOCK_BUDDY = {
-  id: 'buddy-1',
-  firstName: 'Sarah',
-  lastName: 'Chen',
-  avatar: 'https://i.pravatar.cc/150?img=5',
-  isOnline: true,
-  lastSeen: new Date(),
-};
-
-const MOCK_MESSAGES: ChatMessageData[] = [
-  {
-    id: 'msg-1',
-    senderId: 'buddy-1',
-    senderName: 'Sarah Chen',
-    senderAvatar: 'https://i.pravatar.cc/150?img=5',
-    type: 'text',
-    content: 'Hey! Are you still planning to visit Tokyo next month?',
-    status: 'read',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
-  },
-  {
-    id: 'msg-2',
-    senderId: 'current-user',
-    senderName: 'You',
-    senderAvatar: 'https://i.pravatar.cc/150?img=12',
-    type: 'text',
-    content: 'Yes! I\'m so excited. Landing on the 15th 🎉',
-    status: 'read',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 1.5),
-  },
-  {
-    id: 'msg-3',
-    senderId: 'buddy-1',
-    senderName: 'Sarah Chen',
-    senderAvatar: 'https://i.pravatar.cc/150?img=5',
-    type: 'text',
-    content: 'Perfect! I\'ll be there from the 14th to 28th. We should definitely meet up!',
-    status: 'read',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60),
-  },
-  {
-    id: 'msg-4',
-    senderId: 'current-user',
-    senderName: 'You',
-    senderAvatar: 'https://i.pravatar.cc/150?img=12',
-    type: 'text',
-    content: 'Absolutely! I\'d love to explore Shibuya and try some authentic ramen together',
-    status: 'read',
-    createdAt: new Date(Date.now() - 1000 * 60 * 45),
-  },
-  {
-    id: 'msg-5',
-    senderId: 'buddy-1',
-    senderName: 'Sarah Chen',
-    senderAvatar: 'https://i.pravatar.cc/150?img=5',
-    type: 'image',
-    content: 'Check out this ramen place I found!',
-    media: [{ url: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400' }],
-    status: 'read',
-    createdAt: new Date(Date.now() - 1000 * 60 * 30),
-    reactions: [{ emoji: '🤤', count: 1, userReacted: true }],
-  },
-  {
-    id: 'msg-6',
-    senderId: 'current-user',
-    senderName: 'You',
-    senderAvatar: 'https://i.pravatar.cc/150?img=12',
-    type: 'text',
-    content: 'OMG that looks amazing! 🍜 Adding it to my list right now',
-    status: 'delivered',
-    createdAt: new Date(Date.now() - 1000 * 60 * 15),
-  },
-  {
-    id: 'msg-7',
-    senderId: 'buddy-1',
-    senderName: 'Sarah Chen',
-    senderAvatar: 'https://i.pravatar.cc/150?img=5',
-    type: 'text',
-    content: 'I also know a great spot for matcha desserts in Harajuku. Want me to send you the location?',
-    status: 'read',
-    createdAt: new Date(Date.now() - 1000 * 60 * 5),
-  },
-];
+import { chatService } from '@/services/community/chat.service';
 
 export default function ChatScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors: tc, isDark } = useTheme();
+  const { profile } = useAuth();
   const flatListRef = useRef<FlatList>(null);
   
-  const [messages, setMessages] = useState<ChatMessageData[]>(MOCK_MESSAGES);
+  const [messages, setMessages] = useState<ChatMessageData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
@@ -141,26 +60,82 @@ export default function ChatScreen() {
 
   const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '🔥', '👍'];
   
-  const buddy = MOCK_BUDDY;
-  const currentUserId = 'current-user';
+  const [buddy, setBuddy] = useState({
+    id: '',
+    firstName: '',
+    lastName: '',
+    avatar: '',
+    isOnline: false,
+    lastSeen: new Date(),
+  });
+  const currentUserId = profile?.id || '';
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!profile?.id || !id) return;
+      try {
+        const [rawMessages, conversations] = await Promise.all([
+          chatService.getMessages(id, { limit: 50 }),
+          chatService.getConversations(profile.id),
+        ]);
+        if (cancelled) return;
+
+        const conv = conversations.find(c => c.id === id);
+        if (conv) {
+          const nameParts = conv.otherUser.fullName.split(' ');
+          setBuddy({
+            id: conv.otherUser.id,
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || '',
+            avatar: conv.otherUser.avatarUrl || 'https://i.pravatar.cc/150?img=1',
+            isOnline: false,
+            lastSeen: new Date(),
+          });
+        }
+
+        const mapped: ChatMessageData[] = rawMessages.map(m => ({
+          id: m.id,
+          senderId: m.senderId,
+          senderName: m.senderId === profile.id ? 'You' : (conv?.otherUser.fullName || 'Unknown'),
+          senderAvatar: m.senderId === profile.id
+            ? (profile.avatar_url || 'https://i.pravatar.cc/150?img=12')
+            : (conv?.otherUser.avatarUrl || 'https://i.pravatar.cc/150?img=1'),
+          type: (m.type || 'text') as any,
+          content: m.content,
+          status: 'read' as const,
+          createdAt: new Date(m.createdAt),
+        }));
+        setMessages(mapped);
+      } catch (err) {
+        console.warn('ChatScreen load error:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [id, profile?.id]);
   
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.back();
   };
   
-  const handleSend = useCallback(() => {
-    if (!inputText.trim()) return;
+  const handleSend = useCallback(async () => {
+    if (!inputText.trim() || !profile?.id || !id) return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
+    const tempId = `msg-temp-${Date.now()}`;
+    const content = inputText.trim();
     const newMessage: ChatMessageData = {
-      id: `msg-${Date.now()}`,
+      id: tempId,
       senderId: currentUserId,
       senderName: 'You',
-      senderAvatar: 'https://i.pravatar.cc/150?img=12',
+      senderAvatar: profile.avatar_url || 'https://i.pravatar.cc/150?img=12',
       type: 'text',
-      content: inputText.trim(),
+      content,
       status: 'sending',
       createdAt: new Date(),
     };
@@ -168,20 +143,18 @@ export default function ChatScreen() {
     setMessages(prev => [...prev, newMessage]);
     setInputText('');
     
-    // Simulate message sent
-    setTimeout(() => {
+    try {
+      const saved = await chatService.sendMessage(id, profile.id, content);
       setMessages(prev => 
-        prev.map(m => m.id === newMessage.id ? { ...m, status: 'sent' as const } : m)
+        prev.map(m => m.id === tempId ? { ...m, id: saved.id, status: 'delivered' as const } : m)
       );
-    }, 500);
-    
-    // Simulate delivered
-    setTimeout(() => {
+    } catch (err) {
+      console.warn('Failed to send message:', err);
       setMessages(prev => 
-        prev.map(m => m.id === newMessage.id ? { ...m, status: 'delivered' as const } : m)
+        prev.map(m => m.id === tempId ? { ...m, status: 'sent' as const } : m)
       );
-    }, 1000);
-  }, [inputText]);
+    }
+  }, [inputText, profile, id, currentUserId]);
   
   const handleReaction = useCallback((messageId: string, emoji: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -256,6 +229,14 @@ export default function ChatScreen() {
     );
   }, [messages, handleReaction]);
   
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: tc.background, paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={tc.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: tc.background, paddingTop: insets.top }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />

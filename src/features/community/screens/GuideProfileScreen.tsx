@@ -6,7 +6,7 @@
  * portfolio, community activity, and message button.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   Dimensions,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -49,7 +50,7 @@ import TrustBadge from '../components/TrustBadge';
 import ListingCard from '../components/ListingCard';
 import ReviewCard from '../components/ReviewCard';
 import VouchCard from '../components/VouchCard';
-import { MOCK_GUIDES, MOCK_LISTINGS, MOCK_REVIEWS, MOCK_VOUCHES } from '../data/guideMockData';
+import { supabase } from '@/lib/supabase/client';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -70,12 +71,80 @@ export default function GuideProfileScreen() {
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('about');
   const [isSaved, setIsSaved] = useState(false);
+  const [guide, setGuide] = useState<GuideProfile | null>(null);
+  const [listings, setListings] = useState<GuideListing[]>([]);
+  const [reviews, setReviews] = useState<GuideReview[]>([]);
+  const [vouches, setVouches] = useState<GuideVouch[]>([]);
+  const [isFetching, setIsFetching] = useState(true);
 
-  // Mock data lookup
-  const guide = useMemo(() => MOCK_GUIDES.find(g => g.id === id) || MOCK_GUIDES[0], [id]);
-  const listings = useMemo(() => MOCK_LISTINGS.filter(l => l.guideId === guide.id), [guide.id]);
-  const reviews = useMemo(() => MOCK_REVIEWS.filter(r => r.guideId === guide.id), [guide.id]);
-  const vouches = useMemo(() => MOCK_VOUCHES.filter(v => v.voucheeId === guide.id), [guide.id]);
+  const fetchGuide = useCallback(async () => {
+    if (!id) return;
+    try {
+      setIsFetching(true);
+
+      const { data: guideData, error } = await supabase
+        .from('guide_profiles')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !guideData) throw new Error('Guide not found');
+      setGuide(guideData as any);
+
+      const [listingsRes, reviewsRes, vouchesRes] = await Promise.all([
+        supabase.from('guide_listings').select('*').eq('guide_id', guideData.id).eq('status', 'active'),
+        supabase.from('guide_reviews').select('*').eq('guide_id', guideData.id).order('created_at', { ascending: false }),
+        supabase.from('guide_vouches').select('*').eq('vouchee_id', guideData.id),
+      ]);
+
+      if (listingsRes.data) {
+        setListings(listingsRes.data.map((l: any) => ({
+          id: l.id,
+          guideId: l.guide_id,
+          guideName: l.guide_name || '',
+          guideAvatar: l.guide_avatar || '',
+          guideTrustTier: l.guide_trust_tier || 'verified_local',
+          guideRating: l.guide_rating || 0,
+          category: l.category || 'service',
+          title: l.title || '',
+          description: l.description || '',
+          photos: l.photos || [],
+          neighborhood: l.neighborhood,
+          city: l.city || '',
+          country: l.country || '',
+          priceRange: l.price_range,
+          currency: l.currency,
+          duration: l.duration,
+          whatsIncluded: l.whats_included,
+          availability: l.availability,
+          inquiryCount: l.inquiry_count || 0,
+          rating: l.rating,
+          reviewCount: l.review_count,
+          status: l.status,
+          createdAt: l.created_at,
+          updatedAt: l.updated_at,
+        })));
+      }
+      if (reviewsRes.data) setReviews(reviewsRes.data as any);
+      if (vouchesRes.data) setVouches(vouchesRes.data as any);
+    } catch (err) {
+      console.error('Failed to fetch guide profile:', err);
+    } finally {
+      setIsFetching(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchGuide();
+  }, [fetchGuide]);
+
+  if (isFetching || !guide) {
+    return (
+      <View style={[styles.screen, { backgroundColor: themeColors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   const availInfo = AVAILABILITY_LABELS[guide.availability] || AVAILABILITY_LABELS.away;
   const tierInfo = TRUST_TIERS[guide.trustTier];

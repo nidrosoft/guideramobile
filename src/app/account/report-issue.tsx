@@ -56,17 +56,19 @@ const ISSUE_CATEGORIES: IssueCategory[] = [
   { id: 'other', label: 'Other', icon: Warning2, description: 'Something else not listed above' },
 ];
 
-const PRIORITY_LEVELS = [
-  { id: 'low', label: 'Low', color: colors.success, description: 'Minor inconvenience' },
-  { id: 'medium', label: 'Medium', color: colors.warning, description: 'Affects my experience' },
-  { id: 'high', label: 'High', color: colors.error, description: 'Urgent - blocking issue' },
-];
 
 export default function ReportIssueScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const { user, profile } = useAuth();
+
+  const PRIORITY_LEVELS = [
+    { id: 'low', label: 'Low', color: tc.success, description: 'Minor inconvenience' },
+    { id: 'medium', label: 'Medium', color: tc.warning, description: 'Affects my experience' },
+    { id: 'high', label: 'High', color: tc.error, description: 'Urgent - blocking issue' },
+  ];
+
   const [step, setStep] = useState<'category' | 'details' | 'success'>('category');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [priority, setPriority] = useState<string>('medium');
@@ -152,7 +154,7 @@ export default function ReportIssueScreen() {
     try {
       // Create issue report in database
       const { error } = await supabase.from('issue_reports').insert({
-        user_id: user?.id,
+        user_id: profile?.id,
         category: selectedCategory,
         priority: priority,
         title: title.trim(),
@@ -186,8 +188,8 @@ export default function ReportIssueScreen() {
   const renderCategorySelection = () => (
     <>
       <View style={styles.introSection}>
-        <Text style={styles.introTitle}>What's the issue about?</Text>
-        <Text style={styles.introText}>
+        <Text style={[styles.introTitle, { color: tc.textPrimary }]}>What's the issue about?</Text>
+        <Text style={[styles.introText, { color: tc.textSecondary }]}>
           Select a category to help us route your report to the right team.
         </Text>
       </View>
@@ -198,18 +200,18 @@ export default function ReportIssueScreen() {
           return (
             <TouchableOpacity
               key={category.id}
-              style={styles.categoryCard}
+              style={[styles.categoryCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
               onPress={() => handleCategorySelect(category.id)}
               activeOpacity={0.7}
             >
-              <View style={styles.categoryIcon}>
-                <Icon size={24} color={colors.primary} variant="Bold" />
+              <View style={[styles.categoryIcon, { backgroundColor: tc.primary + '10' }]}>
+                <Icon size={24} color={tc.primary} variant="Bold" />
               </View>
               <View style={styles.categoryContent}>
-                <Text style={styles.categoryLabel}>{category.label}</Text>
-                <Text style={styles.categoryDescription}>{category.description}</Text>
+                <Text style={[styles.categoryLabel, { color: tc.textPrimary }]}>{category.label}</Text>
+                <Text style={[styles.categoryDescription, { color: tc.textSecondary }]}>{category.description}</Text>
               </View>
-              <ArrowLeft size={18} color={colors.gray400} style={{ transform: [{ rotate: '180deg' }] }} />
+              <ArrowLeft size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
           );
         })}
@@ -225,21 +227,22 @@ export default function ReportIssueScreen() {
         onPress={() => setStep('category')}
         activeOpacity={0.7}
       >
-        <ArrowLeft size={16} color={colors.primary} />
-        <Text style={styles.selectedCategoryText}>
+        <ArrowLeft size={16} color={tc.primary} />
+        <Text style={[styles.selectedCategoryText, { color: tc.primary }]}>
           {ISSUE_CATEGORIES.find(c => c.id === selectedCategory)?.label}
         </Text>
       </TouchableOpacity>
 
       {/* Priority Selection */}
       <View style={styles.formSection}>
-        <Text style={styles.formLabel}>Priority Level</Text>
+        <Text style={[styles.formLabel, { color: tc.textPrimary }]}>Priority Level</Text>
         <View style={styles.priorityRow}>
           {PRIORITY_LEVELS.map((level) => (
             <TouchableOpacity
               key={level.id}
               style={[
                 styles.priorityButton,
+                { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
                 priority === level.id && { borderColor: level.color, backgroundColor: level.color + '10' },
               ]}
               onPress={() => {
@@ -251,6 +254,7 @@ export default function ReportIssueScreen() {
               <View style={[styles.priorityDot, { backgroundColor: level.color }]} />
               <Text style={[
                 styles.priorityLabel,
+                { color: tc.textSecondary },
                 priority === level.id && { color: level.color, fontWeight: typography.fontWeight.semibold },
               ]}>
                 {level.label}
@@ -262,62 +266,62 @@ export default function ReportIssueScreen() {
 
       {/* Title Input */}
       <View style={styles.formSection}>
-        <Text style={styles.formLabel}>Issue Title</Text>
+        <Text style={[styles.formLabel, { color: tc.textPrimary }]}>Issue Title</Text>
         <TextInput
-          style={styles.titleInput}
+          style={[styles.titleInput, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
           placeholder="Brief summary of the issue"
-          placeholderTextColor={colors.gray400}
+          placeholderTextColor={tc.textTertiary}
           value={title}
           onChangeText={setTitle}
           maxLength={100}
         />
-        <Text style={styles.charCount}>{title.length}/100</Text>
+        <Text style={[styles.charCount, { color: tc.textSecondary }]}>{title.length}/100</Text>
       </View>
 
       {/* Description Input */}
       <View style={styles.formSection}>
-        <Text style={styles.formLabel}>Description</Text>
+        <Text style={[styles.formLabel, { color: tc.textPrimary }]}>Description</Text>
         <TextInput
-          style={styles.descriptionInput}
+          style={[styles.descriptionInput, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
           placeholder="Please describe the issue in detail. Include steps to reproduce if applicable."
-          placeholderTextColor={colors.gray400}
+          placeholderTextColor={tc.textTertiary}
           value={description}
           onChangeText={setDescription}
           multiline
           textAlignVertical="top"
           maxLength={1000}
         />
-        <Text style={styles.charCount}>{description.length}/1000</Text>
+        <Text style={[styles.charCount, { color: tc.textSecondary }]}>{description.length}/1000</Text>
       </View>
 
       {/* Attachments */}
       <View style={styles.formSection}>
-        <Text style={styles.formLabel}>Attachments (Optional)</Text>
-        <Text style={styles.formHint}>Add screenshots to help us understand the issue</Text>
+        <Text style={[styles.formLabel, { color: tc.textPrimary }]}>Attachments (Optional)</Text>
+        <Text style={[styles.formHint, { color: tc.textSecondary }]}>Add screenshots to help us understand the issue</Text>
         
         <View style={styles.attachmentsRow}>
           {attachments.map((uri, index) => (
             <View key={index} style={styles.attachmentPreview}>
-              <View style={styles.attachmentPlaceholder}>
-                <Gallery size={24} color={colors.gray400} variant="Bold" />
+              <View style={[styles.attachmentPlaceholder, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.gray100 }]}>
+                <Gallery size={24} color={tc.textTertiary} variant="Bold" />
               </View>
               <TouchableOpacity
-                style={styles.removeAttachment}
+                style={[styles.removeAttachment, { backgroundColor: tc.bgElevated }]}
                 onPress={() => handleRemoveAttachment(index)}
               >
-                <CloseCircle size={20} color={colors.error} variant="Bold" />
+                <CloseCircle size={20} color={tc.error} variant="Bold" />
               </TouchableOpacity>
             </View>
           ))}
           
           {attachments.length < 3 && (
             <TouchableOpacity
-              style={styles.addAttachmentButton}
+              style={[styles.addAttachmentButton, { borderColor: tc.primary }]}
               onPress={handleAddAttachment}
               activeOpacity={0.7}
             >
-              <Camera size={24} color={colors.primary} variant="Bold" />
-              <Text style={styles.addAttachmentText}>Add</Text>
+              <Camera size={24} color={tc.primary} variant="Bold" />
+              <Text style={[styles.addAttachmentText, { color: tc.primary }]}>Add</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -325,13 +329,13 @@ export default function ReportIssueScreen() {
 
       {/* Submit Button */}
       <TouchableOpacity
-        style={[styles.submitButton, (!title.trim() || !description.trim()) && styles.submitButtonDisabled]}
+        style={[styles.submitButton, { backgroundColor: tc.primary }, (!title.trim() || !description.trim()) && { backgroundColor: isDark ? '#444' : colors.gray300 }]}
         onPress={handleSubmit}
         disabled={!title.trim() || !description.trim() || isSubmitting}
         activeOpacity={0.8}
       >
         {isSubmitting ? (
-          <ActivityIndicator color={colors.white} />
+          <ActivityIndicator color="#FFFFFF" />
         ) : (
           <Text style={styles.submitButtonText}>Submit Report</Text>
         )}
@@ -342,23 +346,23 @@ export default function ReportIssueScreen() {
   const renderSuccess = () => (
     <View style={styles.successSection}>
       <View style={styles.successIcon}>
-        <TickCircle size={64} color={colors.success} variant="Bold" />
+        <TickCircle size={64} color={tc.success} variant="Bold" />
       </View>
-      <Text style={styles.successTitle}>Report Submitted!</Text>
-      <Text style={styles.successText}>
+      <Text style={[styles.successTitle, { color: tc.textPrimary }]}>Report Submitted!</Text>
+      <Text style={[styles.successText, { color: tc.textSecondary }]}>
         Thank you for reporting this issue. Our team will review it and get back to you 
         within 24-48 hours if we need more information.
       </Text>
       
-      <View style={styles.successInfo}>
-        <Text style={styles.successInfoLabel}>What happens next?</Text>
-        <Text style={styles.successInfoItem}>• Our team will investigate the issue</Text>
-        <Text style={styles.successInfoItem}>• You'll receive updates via email</Text>
-        <Text style={styles.successInfoItem}>• We may reach out for more details</Text>
+      <View style={[styles.successInfo, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.gray50 }]}>
+        <Text style={[styles.successInfoLabel, { color: tc.textPrimary }]}>What happens next?</Text>
+        <Text style={[styles.successInfoItem, { color: tc.textSecondary }]}>• Our team will investigate the issue</Text>
+        <Text style={[styles.successInfoItem, { color: tc.textSecondary }]}>• You'll receive updates via email</Text>
+        <Text style={[styles.successInfoItem, { color: tc.textSecondary }]}>• We may reach out for more details</Text>
       </View>
 
       <TouchableOpacity
-        style={styles.doneButton}
+        style={[styles.doneButton, { backgroundColor: tc.primary }]}
         onPress={handleDone}
         activeOpacity={0.8}
       >
@@ -369,14 +373,14 @@ export default function ReportIssueScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Report an Issue</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Report an Issue</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -458,7 +462,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius['2xl'],
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.borderSubtle,

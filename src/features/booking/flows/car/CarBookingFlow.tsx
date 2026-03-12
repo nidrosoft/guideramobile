@@ -13,7 +13,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, Modal, StatusBar } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useCarStore } from '../../stores/useCarStore';
 import { Car } from '../../types/car.types';
 
@@ -29,6 +29,7 @@ interface CarBookingFlowProps {
 }
 
 export default function CarBookingFlow({ visible, onClose }: CarBookingFlowProps) {
+  const { colors: tc } = useTheme();
   const [currentScreen, setCurrentScreen] = useState<CarScreen>('search');
   const [screenHistory, setScreenHistory] = useState<CarScreen[]>(['search']);
   const [selectedCar, setSelectedCar] = useState<Car | null>(null);
@@ -154,7 +155,7 @@ export default function CarBookingFlow({ visible, onClose }: CarBookingFlowProps
       onRequestClose={handleClose}
     >
       <StatusBar barStyle="light-content" />
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: tc.background }]}>
         {renderScreen()}
       </View>
     </Modal>
@@ -164,7 +165,6 @@ export default function CarBookingFlow({ visible, onClose }: CarBookingFlowProps
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   screen: {
     flex: 1,

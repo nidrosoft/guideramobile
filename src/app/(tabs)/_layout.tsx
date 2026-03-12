@@ -11,6 +11,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { Home2, Airplane, Category, People, User } from 'iconsax-react-native';
 import ScanBottomSheet, { ScanActionType } from '@/components/features/ar/ScanBottomSheet';
 import AIChatSheet from '@/components/features/ai/AIChatSheet';
+import { useNotifications } from '@/hooks/useNotifications';
 
 // Custom Tab Bar with launcher button and bottom sheet
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
@@ -20,6 +21,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const [showAIChat, setShowAIChat] = useState(false);
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
+  const { unreadCount: communityUnread } = useNotifications({ category: 'social', autoRefresh: true });
 
   // Dynamic styles based on theme
   const dynamicStyles = useMemo(() => ({
@@ -77,6 +79,11 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     setShowScanSheet(false);
     if (action === 'ask-ai') {
       setTimeout(() => setShowAIChat(true), 300);
+      return;
+    }
+    if (action === 'receipt') {
+      // Open dedicated receipt scanner (works with or without an active trip)
+      router.push({ pathname: '/expenses/scan-receipt' });
       return;
     }
     router.push({ pathname: '/(tabs)/ar', params: { action } });
@@ -170,7 +177,14 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 onPress={onPress}
                 activeOpacity={0.7}
               >
-                {icons[route.name]?.(color, isFocused)}
+                <View style={styles.iconContainer}>
+                  {icons[route.name]?.(color, isFocused)}
+                  {route.name === 'community' && communityUnread > 0 && (
+                    <View style={[styles.badge, { backgroundColor: colors.error }]}>
+                      <Text style={styles.badgeText}>{communityUnread > 9 ? '9+' : communityUnread}</Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={[styles.tabLabel, { color }]}>{labels[route.name]}</Text>
               </TouchableOpacity>
             </View>
@@ -245,6 +259,25 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '500',
     marginTop: 2,
+  },
+  iconContainer: {
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -8,
+    right: -10,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   launcherContainer: {
     position: 'relative',

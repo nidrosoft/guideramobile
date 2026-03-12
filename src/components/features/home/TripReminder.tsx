@@ -1,11 +1,20 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useEffect, useState } from 'react';
+import { Airplane } from 'iconsax-react-native';
 import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { departureAdvisorService } from '@/services/departure/departure.service';
+import DepartureAdvisorSheet from '@/features/trips/components/DepartureAdvisor/DepartureAdvisorSheet';
+import { useToast } from '@/contexts/ToastContext';
 
 interface TripReminderProps {
   destination: string;
   tripDate: Date;
+  flightNumber?: string;
+  departureAirport?: string;
+  isInternational?: boolean;
+  tripId?: string;
+  bookingId?: string;
 }
 
 interface TimeRemaining {
@@ -15,14 +24,27 @@ interface TimeRemaining {
   seconds: number;
 }
 
-export default function TripReminder({ destination, tripDate }: TripReminderProps) {
+export default function TripReminder({
+  destination,
+  tripDate,
+  flightNumber,
+  departureAirport,
+  isInternational = false,
+  tripId,
+  bookingId,
+}: TripReminderProps) {
   const { colors } = useTheme();
+  const { showSuccess } = useToast();
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining>({
     days: 0,
     hours: 0,
     minutes: 0,
     seconds: 0,
   });
+  const [showAdvisor, setShowAdvisor] = useState(false);
+
+  const isDepartureDay = departureAdvisorService.isDepartureDay(tripDate);
+  const hasFlightData = !!flightNumber && !!departureAirport;
 
   useEffect(() => {
     const calculateTimeRemaining = () => {
@@ -46,38 +68,76 @@ export default function TripReminder({ destination, tripDate }: TripReminderProp
     return () => clearInterval(interval);
   }, [tripDate]);
 
+  const handlePress = () => {
+    setShowAdvisor(true);
+  };
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
-      <View style={styles.textContainer}>
-        <View style={[styles.line, { backgroundColor: colors.borderSubtle }]} />
-        <Text style={[styles.text, { color: colors.textPrimary }]}>
-          Your trip to <Text style={[styles.destination, { color: colors.primary }]}>{destination}</Text> is in
-        </Text>
-        <View style={[styles.line, { backgroundColor: colors.borderSubtle }]} />
-      </View>
-
-      <View style={styles.timerContainer}>
-        <View style={[styles.timeBox, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
-          <Text style={[styles.timeNumber, { color: colors.primary }]}>{String(timeRemaining.days).padStart(2, '0')}</Text>
-          <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>DAYS</Text>
+    <>
+      <TouchableOpacity
+        style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}
+        activeOpacity={0.8}
+        onPress={handlePress}
+      >
+        <View style={styles.textContainer}>
+          <View style={[styles.line, { backgroundColor: colors.borderSubtle }]} />
+          <Text style={[styles.text, { color: colors.textPrimary }]}>
+            Your trip to <Text style={[styles.destination, { color: colors.primary }]}>{destination}</Text> is in
+          </Text>
+          <View style={[styles.line, { backgroundColor: colors.borderSubtle }]} />
         </View>
 
-        <View style={[styles.timeBox, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
-          <Text style={[styles.timeNumber, { color: colors.primary }]}>{String(timeRemaining.hours).padStart(2, '0')}</Text>
-          <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>HOURS</Text>
+        <View style={styles.timerContainer}>
+          <View style={[styles.timeBox, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
+            <Text style={[styles.timeNumber, { color: colors.primary }]}>{String(timeRemaining.days).padStart(2, '0')}</Text>
+            <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>DAYS</Text>
+          </View>
+
+          <View style={[styles.timeBox, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
+            <Text style={[styles.timeNumber, { color: colors.primary }]}>{String(timeRemaining.hours).padStart(2, '0')}</Text>
+            <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>HOURS</Text>
+          </View>
+
+          <View style={[styles.timeBox, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
+            <Text style={[styles.timeNumber, { color: colors.primary }]}>{String(timeRemaining.minutes).padStart(2, '0')}</Text>
+            <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>MINUTES</Text>
+          </View>
+
+          <View style={[styles.timeBox, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
+            <Text style={[styles.timeNumber, { color: colors.primary }]}>{String(timeRemaining.seconds).padStart(2, '0')}</Text>
+            <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>SECONDS</Text>
+          </View>
         </View>
 
-        <View style={[styles.timeBox, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
-          <Text style={[styles.timeNumber, { color: colors.primary }]}>{String(timeRemaining.minutes).padStart(2, '0')}</Text>
-          <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>MINUTES</Text>
-        </View>
+        {/* Departure Day CTA */}
+        {isDepartureDay && hasFlightData && (
+          <View style={[styles.departureCtaRow, { backgroundColor: `${colors.primary}10`, borderColor: `${colors.primary}25` }]}>
+            <Airplane size={18} color={colors.primary} variant="Bold" />
+            <Text style={[styles.departureCtaText, { color: colors.primary }]}>View Departure Plan</Text>
+          </View>
+        )}
 
-        <View style={[styles.timeBox, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
-          <Text style={[styles.timeNumber, { color: colors.primary }]}>{String(timeRemaining.seconds).padStart(2, '0')}</Text>
-          <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>SECONDS</Text>
-        </View>
-      </View>
-    </View>
+        {/* Not departure day hint */}
+        {!isDepartureDay && (
+          <Text style={[styles.hintText, { color: colors.textTertiary }]}>
+            Tap for departure advisor on travel day
+          </Text>
+        )}
+      </TouchableOpacity>
+
+      {/* Departure Advisor Sheet */}
+      <DepartureAdvisorSheet
+        visible={showAdvisor}
+        onClose={() => setShowAdvisor(false)}
+        flightNumber={flightNumber || 'AV123'}
+        departureAirport={departureAirport || 'LAX'}
+        departureTime={tripDate.toISOString()}
+        destination={destination}
+        isInternational={isInternational}
+        tripId={tripId}
+        bookingId={bookingId}
+      />
+    </>
   );
 }
 
@@ -130,5 +190,25 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: typography.fontWeight.medium,
     letterSpacing: 0.3,
+  },
+  departureCtaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+  },
+  departureCtaText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: '700',
+  },
+  hintText: {
+    fontSize: typography.fontSize.xs,
+    textAlign: 'center',
+    marginTop: spacing.md,
   },
 });

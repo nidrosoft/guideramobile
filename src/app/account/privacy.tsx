@@ -64,8 +64,8 @@ const VISIBILITY_OPTIONS = [
 export default function PrivacySettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
-  const { user } = useAuth();
+  const { colors: tc, isDark } = useTheme();
+  const { profile } = useAuth();
   const [settings, setSettings] = useState<PrivacySettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -74,13 +74,13 @@ export default function PrivacySettingsScreen() {
 
   // Load settings from Supabase
   const loadSettings = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('privacy_settings')
-        .eq('id', user.id)
+        .eq('id', profile.id)
         .single();
 
       if (error) throw error;
@@ -93,7 +93,7 @@ export default function PrivacySettingsScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [profile?.id]);
 
   useEffect(() => {
     loadSettings();
@@ -101,14 +101,14 @@ export default function PrivacySettingsScreen() {
 
   // Save settings to Supabase
   const saveSettings = async (newSettings: PrivacySettings) => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     setIsSaving(true);
     try {
       const { error } = await supabase
         .from('profiles')
         .update({ privacy_settings: newSettings })
-        .eq('id', user.id);
+        .eq('id', profile.id);
 
       if (error) throw error;
       
@@ -168,25 +168,25 @@ export default function PrivacySettingsScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: tc.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <ActivityIndicator size="large" color={tc.primary} />
       </View>
     );
   }
 
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Privacy Settings</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Privacy Settings</Text>
         <View style={styles.headerSpacer}>
-          {isSaving && <ActivityIndicator size="small" color={colors.primary} />}
+          {isSaving && <ActivityIndicator size="small" color={tc.primary} />}
         </View>
       </View>
 
@@ -197,91 +197,91 @@ export default function PrivacySettingsScreen() {
       >
         {/* Profile Visibility Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile Visibility</Text>
-          <Text style={styles.sectionSubtitle}>Control who can see your profile and activity</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Profile Visibility</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Control who can see your profile and activity</Text>
           
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             {/* Profile Visibility */}
             <TouchableOpacity 
               style={styles.settingItem}
               onPress={() => setShowProfileVisibility(!showProfileVisibility)}
             >
-              <View style={styles.settingIcon}>
-                <Eye size={20} color={colors.primary} variant="Bold" />
+              <View style={[styles.settingIcon, { backgroundColor: tc.primary + '10' }]}>
+                <Eye size={20} color={tc.primary} variant="Bold" />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Profile Visibility</Text>
-                <Text style={styles.settingValue}>
+                <Text style={[styles.settingTitle, { color: tc.textPrimary }]}>Profile Visibility</Text>
+                <Text style={[styles.settingValue, { color: tc.primary }]}>
                   {VISIBILITY_OPTIONS.find(o => o.value === settings.profile_visibility)?.label}
                 </Text>
               </View>
               <ArrowLeft 
                 size={18} 
-                color={colors.gray400} 
+                color={tc.textTertiary} 
                 style={{ transform: [{ rotate: showProfileVisibility ? '90deg' : '-90deg' }] }} 
               />
             </TouchableOpacity>
             
             {showProfileVisibility && (
-              <View style={styles.optionsContainer}>
+              <View style={[styles.optionsContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.gray50 }]}>
                 {VISIBILITY_OPTIONS.map((option) => (
                   <TouchableOpacity
                     key={option.value}
                     style={[
                       styles.optionItem,
-                      settings.profile_visibility === option.value && styles.optionItemSelected,
+                      settings.profile_visibility === option.value && [styles.optionItemSelected, { backgroundColor: tc.primary + '10' }],
                     ]}
                     onPress={() => handleVisibilityChange('profile_visibility', option.value)}
                   >
-                    <View style={styles.optionRadio}>
+                    <View style={[styles.optionRadio, { borderColor: settings.profile_visibility === option.value ? tc.primary : tc.textTertiary }]}>
                       {settings.profile_visibility === option.value && (
-                        <View style={styles.optionRadioInner} />
+                        <View style={[styles.optionRadioInner, { backgroundColor: tc.primary }]} />
                       )}
                     </View>
                     <View style={styles.optionContent}>
-                      <Text style={styles.optionLabel}>{option.label}</Text>
-                      <Text style={styles.optionDescription}>{option.description}</Text>
+                      <Text style={[styles.optionLabel, { color: tc.textPrimary }]}>{option.label}</Text>
+                      <Text style={[styles.optionDescription, { color: tc.textSecondary }]}>{option.description}</Text>
                     </View>
                   </TouchableOpacity>
                 ))}
               </View>
             )}
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
 
             {/* Activity Status */}
             <View style={styles.settingItem}>
-              <View style={styles.settingIcon}>
+              <View style={[styles.settingIcon, { backgroundColor: tc.primary + '10' }]}>
                 <View style={[styles.statusDot, settings.activity_status && styles.statusDotActive]} />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Activity Status</Text>
-                <Text style={styles.settingDescription}>Show when you're online</Text>
+                <Text style={[styles.settingTitle, { color: tc.textPrimary }]}>Activity Status</Text>
+                <Text style={[styles.settingDescription, { color: tc.textSecondary }]}>Show when you're online</Text>
               </View>
               <Switch
                 value={settings.activity_status}
                 onValueChange={() => handleToggle('activity_status')}
-                trackColor={{ false: colors.gray200, true: colors.primary + '40' }}
-                thumbColor={settings.activity_status ? colors.primary : colors.gray400}
+                trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
+                thumbColor={settings.activity_status ? tc.primary : isDark ? '#666' : colors.gray400}
               />
             </View>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
 
             {/* Search Visibility */}
             <View style={styles.settingItem}>
-              <View style={styles.settingIcon}>
-                <SearchNormal size={20} color={colors.primary} variant="Bold" />
+              <View style={[styles.settingIcon, { backgroundColor: tc.primary + '10' }]}>
+                <SearchNormal size={20} color={tc.primary} variant="Bold" />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Search Visibility</Text>
-                <Text style={styles.settingDescription}>Appear in search results</Text>
+                <Text style={[styles.settingTitle, { color: tc.textPrimary }]}>Search Visibility</Text>
+                <Text style={[styles.settingDescription, { color: tc.textSecondary }]}>Appear in search results</Text>
               </View>
               <Switch
                 value={settings.search_visibility}
                 onValueChange={() => handleToggle('search_visibility')}
-                trackColor={{ false: colors.gray200, true: colors.primary + '40' }}
-                thumbColor={settings.search_visibility ? colors.primary : colors.gray400}
+                trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
+                thumbColor={settings.search_visibility ? tc.primary : isDark ? '#666' : colors.gray400}
               />
             </View>
           </View>
@@ -289,72 +289,72 @@ export default function PrivacySettingsScreen() {
 
         {/* Sharing Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sharing</Text>
-          <Text style={styles.sectionSubtitle}>Manage how your content is shared</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Sharing</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Manage how your content is shared</Text>
           
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             {/* Trip Sharing */}
             <TouchableOpacity 
               style={styles.settingItem}
               onPress={() => setShowTripSharing(!showTripSharing)}
             >
-              <View style={styles.settingIcon}>
-                <People size={20} color={colors.primary} variant="Bold" />
+              <View style={[styles.settingIcon, { backgroundColor: tc.primary + '10' }]}>
+                <People size={20} color={tc.primary} variant="Bold" />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Default Trip Sharing</Text>
-                <Text style={styles.settingValue}>
+                <Text style={[styles.settingTitle, { color: tc.textPrimary }]}>Default Trip Sharing</Text>
+                <Text style={[styles.settingValue, { color: tc.primary }]}>
                   {VISIBILITY_OPTIONS.find(o => o.value === settings.trip_sharing)?.label}
                 </Text>
               </View>
               <ArrowLeft 
                 size={18} 
-                color={colors.gray400} 
+                color={tc.textTertiary} 
                 style={{ transform: [{ rotate: showTripSharing ? '90deg' : '-90deg' }] }} 
               />
             </TouchableOpacity>
             
             {showTripSharing && (
-              <View style={styles.optionsContainer}>
+              <View style={[styles.optionsContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.gray50 }]}>
                 {VISIBILITY_OPTIONS.map((option) => (
                   <TouchableOpacity
                     key={option.value}
                     style={[
                       styles.optionItem,
-                      settings.trip_sharing === option.value && styles.optionItemSelected,
+                      settings.trip_sharing === option.value && [styles.optionItemSelected, { backgroundColor: tc.primary + '10' }],
                     ]}
                     onPress={() => handleVisibilityChange('trip_sharing', option.value)}
                   >
-                    <View style={styles.optionRadio}>
+                    <View style={[styles.optionRadio, { borderColor: settings.trip_sharing === option.value ? tc.primary : tc.textTertiary }]}>
                       {settings.trip_sharing === option.value && (
-                        <View style={styles.optionRadioInner} />
+                        <View style={[styles.optionRadioInner, { backgroundColor: tc.primary }]} />
                       )}
                     </View>
                     <View style={styles.optionContent}>
-                      <Text style={styles.optionLabel}>{option.label}</Text>
-                      <Text style={styles.optionDescription}>{option.description}</Text>
+                      <Text style={[styles.optionLabel, { color: tc.textPrimary }]}>{option.label}</Text>
+                      <Text style={[styles.optionDescription, { color: tc.textSecondary }]}>{option.description}</Text>
                     </View>
                   </TouchableOpacity>
                 ))}
               </View>
             )}
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
 
             {/* Location Sharing */}
             <View style={styles.settingItem}>
-              <View style={styles.settingIcon}>
-                <Location size={20} color={colors.primary} variant="Bold" />
+              <View style={[styles.settingIcon, { backgroundColor: tc.primary + '10' }]}>
+                <Location size={20} color={tc.primary} variant="Bold" />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Location Sharing</Text>
-                <Text style={styles.settingDescription}>Share location with travel buddies</Text>
+                <Text style={[styles.settingTitle, { color: tc.textPrimary }]}>Location Sharing</Text>
+                <Text style={[styles.settingDescription, { color: tc.textSecondary }]}>Share location with travel buddies</Text>
               </View>
               <Switch
                 value={settings.location_sharing}
                 onValueChange={() => handleToggle('location_sharing')}
-                trackColor={{ false: colors.gray200, true: colors.primary + '40' }}
-                thumbColor={settings.location_sharing ? colors.primary : colors.gray400}
+                trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
+                thumbColor={settings.location_sharing ? tc.primary : isDark ? '#666' : colors.gray400}
               />
             </View>
           </View>
@@ -362,61 +362,61 @@ export default function PrivacySettingsScreen() {
 
         {/* Data & Personalization Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Data & Personalization</Text>
-          <Text style={styles.sectionSubtitle}>Control how your data is used</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Data & Personalization</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Control how your data is used</Text>
           
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             {/* Personalization */}
             <View style={styles.settingItem}>
-              <View style={styles.settingIcon}>
-                <Setting2 size={20} color={colors.primary} variant="Bold" />
+              <View style={[styles.settingIcon, { backgroundColor: tc.primary + '10' }]}>
+                <Setting2 size={20} color={tc.primary} variant="Bold" />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Personalized Recommendations</Text>
-                <Text style={styles.settingDescription}>Get tailored travel suggestions</Text>
+                <Text style={[styles.settingTitle, { color: tc.textPrimary }]}>Personalized Recommendations</Text>
+                <Text style={[styles.settingDescription, { color: tc.textSecondary }]}>Get tailored travel suggestions</Text>
               </View>
               <Switch
                 value={settings.personalization}
                 onValueChange={() => handleToggle('personalization')}
-                trackColor={{ false: colors.gray200, true: colors.primary + '40' }}
-                thumbColor={settings.personalization ? colors.primary : colors.gray400}
+                trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
+                thumbColor={settings.personalization ? tc.primary : isDark ? '#666' : colors.gray400}
               />
             </View>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
 
             {/* Download Data */}
             <TouchableOpacity style={styles.settingItem} onPress={handleDownloadData}>
-              <View style={styles.settingIcon}>
-                <DocumentDownload size={20} color={colors.primary} variant="Bold" />
+              <View style={[styles.settingIcon, { backgroundColor: tc.primary + '10' }]}>
+                <DocumentDownload size={20} color={tc.primary} variant="Bold" />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Download My Data</Text>
-                <Text style={styles.settingDescription}>Get a copy of your data</Text>
+                <Text style={[styles.settingTitle, { color: tc.textPrimary }]}>Download My Data</Text>
+                <Text style={[styles.settingDescription, { color: tc.textSecondary }]}>Get a copy of your data</Text>
               </View>
-              <ArrowLeft size={18} color={colors.gray400} style={{ transform: [{ rotate: '180deg' }] }} />
+              <ArrowLeft size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
 
             {/* Connected Apps */}
             <TouchableOpacity style={styles.settingItem} onPress={handleConnectedApps}>
-              <View style={styles.settingIcon}>
-                <Link21 size={20} color={colors.primary} variant="Bold" />
+              <View style={[styles.settingIcon, { backgroundColor: tc.primary + '10' }]}>
+                <Link21 size={20} color={tc.primary} variant="Bold" />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Connected Apps</Text>
-                <Text style={styles.settingDescription}>Manage third-party access</Text>
+                <Text style={[styles.settingTitle, { color: tc.textPrimary }]}>Connected Apps</Text>
+                <Text style={[styles.settingDescription, { color: tc.textSecondary }]}>Manage third-party access</Text>
               </View>
-              <ArrowLeft size={18} color={colors.gray400} style={{ transform: [{ rotate: '180deg' }] }} />
+              <ArrowLeft size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Info Card */}
-        <View style={styles.infoCard}>
-          <InfoCircle size={20} color={colors.info} variant="Bold" />
-          <Text style={styles.infoText}>
+        <View style={[styles.infoCard, { backgroundColor: tc.info + '10', borderColor: tc.info + '20' }]}>
+          <InfoCircle size={20} color={tc.info} variant="Bold" />
+          <Text style={[styles.infoText, { color: tc.textSecondary }]}>
             Your privacy is important to us. We never sell your personal data to third parties. 
             Learn more in our Privacy Policy.
           </Text>

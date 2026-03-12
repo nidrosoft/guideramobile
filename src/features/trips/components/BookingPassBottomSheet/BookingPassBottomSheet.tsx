@@ -3,14 +3,14 @@ import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, Dimensions
 import { Airplane, Wallet3, CloseCircle, DocumentDownload } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { FlightDetails } from '@/features/trips/types/trip.types';
+import { FlightDetails, BookingType } from '@/features/trips/types/trip.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface BookingPassBottomSheetProps {
   visible: boolean;
   onClose: () => void;
-  bookingType: 'flight' | 'hotel' | 'car' | 'activity';
+  bookingType: BookingType;
   details: FlightDetails; // Will expand this for other types
   bookingNumber: string;
   status: string;
@@ -24,7 +24,7 @@ export const BookingPassBottomSheet: React.FC<BookingPassBottomSheetProps> = ({
   bookingNumber,
   status,
 }) => {
-  if (bookingType !== 'flight') {
+  if (bookingType !== BookingType.FLIGHT) {
     // For now, only handle flights
     return null;
   }

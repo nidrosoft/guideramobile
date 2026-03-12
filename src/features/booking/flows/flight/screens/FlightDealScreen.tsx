@@ -13,11 +13,13 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
+  ImageBackground,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/ThemeContext';
+import { borderRadius as br, spacing } from '@/styles';
 import { useAuth } from '@/context/AuthContext';
 import { useDealRedirect, useIsDealSaved, usePriceHistory } from '@/hooks/useDeals';
 import { useHasAlert } from '@/hooks/usePriceAlerts';
@@ -45,7 +47,8 @@ export default function FlightDealScreen({
   onClose,
 }: FlightDealScreenProps) {
   const { colors, isDark } = useTheme();
-  const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { profile } = useAuth();
   const { redirect } = useDealRedirect();
   const flightStore = useFlightStore();
 
@@ -135,9 +138,9 @@ export default function FlightDealScreen({
   }, [redirect, provider, bookingUrl, dealSnapshot, flight]);
 
   const handleSave = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await saveDeal(user.id, {
+    await saveDeal(profile.id, {
       deal_type: 'flight',
       provider,
       deal_snapshot: dealSnapshot,
@@ -147,18 +150,18 @@ export default function FlightDealScreen({
       route_key: routeKey,
     });
     setIsSaved(true);
-  }, [user?.id, provider, dealSnapshot, bookingUrl, flight.price, routeKey]);
+  }, [profile?.id, provider, dealSnapshot, bookingUrl, flight.price, routeKey]);
 
   const handleToggleAlert = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await createPriceAlert(user.id, {
+    await createPriceAlert(profile.id, {
       deal_type: 'flight',
       route_key: routeKey,
       alert_type: 'price_drop',
       current_price: flight.price.amount,
     });
-  }, [user?.id, routeKey, flight.price.amount]);
+  }, [profile?.id, routeKey, flight.price.amount]);
 
   // Format helpers
   const formatTime = (date: Date | string) => {
@@ -177,23 +180,49 @@ export default function FlightDealScreen({
     return `${h}h ${m}m`;
   };
 
+  const formatPrice = (amount: number, currency: string = 'USD') => {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: 2,
+      }).format(amount);
+    } catch {
+      return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+    }
+  };
+
   const firstSeg = flight.segments[0];
   const lastSeg = flight.segments[flight.segments.length - 1];
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.headerBtn}>
-          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          Flight Deal
-        </Text>
-        <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
-          <Ionicons name="close" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Hero Header with Flight Image */}
+      <ImageBackground
+        source={require('../../../../../../assets/images/flightbg.png')}
+        style={[styles.heroHeader, { paddingTop: insets.top + spacing.xs }]}
+        resizeMode="cover"
+      >
+        <View style={styles.heroOverlay} />
+        <View style={styles.heroContent}>
+          <TouchableOpacity onPress={onBack} style={styles.heroBtn}>
+            <Ionicons name="arrow-back" size={22} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.heroTitleBlock}>
+            <Text style={styles.heroTitle}>
+              {firstSeg?.origin?.code || '–'} → {lastSeg?.destination?.code || '–'}
+            </Text>
+            <Text style={styles.heroSubtitle}>
+              {firstSeg?.departureTime
+                ? new Date(firstSeg.departureTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+                : 'Flight Deal'}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={onClose} style={styles.heroBtn}>
+            <Ionicons name="close" size={22} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </ImageBackground>
 
       <ScrollView
         style={styles.scroll}
@@ -201,7 +230,7 @@ export default function FlightDealScreen({
         showsVerticalScrollIndicator={false}
       >
         {/* Flight Summary Card */}
-        <View style={[styles.card, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
+        <View style={[styles.card, { backgroundColor: colors.bgElevated, borderColor: colors.primaryBorderSubtle }]}>
           {/* Route */}
           <View style={styles.routeRow}>
             <View style={styles.routePoint}>
@@ -209,20 +238,22 @@ export default function FlightDealScreen({
                 {firstSeg?.origin?.code}
               </Text>
               <Text style={[styles.airportCity, { color: colors.textSecondary }]}>
-                {firstSeg?.origin?.city}
+                {firstSeg?.origin?.city || firstSeg?.origin?.code}
               </Text>
             </View>
             <View style={styles.routeLine}>
-              <View style={[styles.line, { backgroundColor: colors.borderSubtle }]} />
-              <Ionicons name="airplane" size={16} color="#3FC39E" />
-              <View style={[styles.line, { backgroundColor: colors.borderSubtle }]} />
+              <View style={[styles.line, { backgroundColor: colors.primary }]} />
+              <View style={styles.planeIcon}>
+                <Ionicons name="airplane" size={16} color={colors.primary} />
+              </View>
+              <View style={[styles.line, { backgroundColor: colors.primary }]} />
             </View>
             <View style={[styles.routePoint, { alignItems: 'flex-end' }]}>
               <Text style={[styles.airportCode, { color: colors.textPrimary }]}>
                 {lastSeg?.destination?.code}
               </Text>
               <Text style={[styles.airportCity, { color: colors.textSecondary }]}>
-                {lastSeg?.destination?.city}
+                {lastSeg?.destination?.city || lastSeg?.destination?.code}
               </Text>
             </View>
           </View>
@@ -276,8 +307,8 @@ export default function FlightDealScreen({
               <Text style={[styles.priceLabel, { color: colors.textSecondary }]}>
                 Total Price
               </Text>
-              <Text style={[styles.priceValue, { color: colors.textPrimary }]}>
-                {flight.price.formatted || `$${flight.price.amount}`}
+              <Text style={[styles.priceValue, { color: colors.primary }]}>
+                {formatPrice(flight.price.amount, flight.price.currency)}
               </Text>
               <Text style={[styles.priceSub, { color: colors.textTertiary }]}>
                 per person · all taxes included
@@ -309,7 +340,7 @@ export default function FlightDealScreen({
         {/* Flight Info */}
         <View style={[styles.card, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-            What's Included
+            What&apos;s Included
           </Text>
           <View style={styles.infoList}>
             <InfoItem
@@ -347,45 +378,73 @@ export default function FlightDealScreen({
       <View style={[styles.bottomBar, { backgroundColor: isDark ? '#1A1A1A' : colors.white, borderTopColor: colors.borderSubtle }]}>
         <BookOnProviderButton
           provider={provider}
-          price={flight.price.formatted || `$${flight.price.amount}`}
+          price={formatPrice(flight.price.amount, flight.price.currency)}
           onPress={handleBookOnProvider}
         />
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 function InfoItem({ icon, label, colors }: { icon: string; label: string; colors: any }) {
   return (
     <View style={infoStyles.row}>
-      <Ionicons name={icon as any} size={18} color={colors.textSecondary} />
+      <View style={[infoStyles.iconWrap, { backgroundColor: colors.primarySubtle || 'rgba(63, 195, 158, 0.08)' }]}>
+        <Ionicons name={icon as any} size={16} color={colors.primary} />
+      </View>
       <Text style={[infoStyles.label, { color: colors.textPrimary }]}>{label}</Text>
     </View>
   );
 }
 
 const infoStyles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
+  iconWrap: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   label: { fontFamily: 'Rubik-Regular', fontSize: 14 },
 });
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
+  heroHeader: {
+    paddingBottom: 20,
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  heroContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
-  headerBtn: { padding: 4 },
-  headerTitle: { fontFamily: 'Rubik-SemiBold', fontSize: 17 },
+  heroBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroTitleBlock: { flex: 1, alignItems: 'center' },
+  heroTitle: {
+    fontFamily: 'HostGrotesk-Bold',
+    fontSize: 19,
+    color: '#fff',
+  },
+  heroSubtitle: {
+    fontFamily: 'Rubik-Regular',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 12 },
   card: {
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
+    borderRadius: br['2xl'],
+    padding: 20,
+    borderWidth: 1.5,
   },
   routeRow: {
     flexDirection: 'row',
@@ -400,10 +459,18 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 12,
-    gap: 6,
+    marginHorizontal: 16,
+    gap: 8,
   },
-  line: { flex: 1, height: 1 },
+  line: { flex: 1, height: 1.5, opacity: 0.5 },
+  planeIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(63, 195, 158, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   detailsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -433,10 +500,10 @@ const styles = StyleSheet.create({
   priceValue: { fontFamily: 'HostGrotesk-Bold', fontSize: 32, marginTop: 2 },
   priceSub: { fontFamily: 'Rubik-Regular', fontSize: 12, marginTop: 2 },
   saveBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    borderWidth: 1,
+    width: 48,
+    height: 48,
+    borderRadius: br.lg,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },

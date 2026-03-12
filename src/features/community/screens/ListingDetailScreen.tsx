@@ -6,7 +6,7 @@
  * reviews, and inquiry button.
  */
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   Dimensions,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -41,12 +42,14 @@ import { colors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import {
   GuideListing,
+  GuideProfile,
+  GuideReview,
   ListingCategory,
   TRUST_TIERS,
 } from '../types/guide.types';
 import TrustBadge from '../components/TrustBadge';
 import ReviewCard from '../components/ReviewCard';
-import { MOCK_LISTINGS, MOCK_REVIEWS, MOCK_GUIDES } from '../data/guideMockData';
+import { supabase } from '@/lib/supabase/client';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -65,10 +68,92 @@ export default function ListingDetailScreen() {
 
   const [isSaved, setIsSaved] = useState(false);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [listing, setListing] = useState<GuideListing | null>(null);
+  const [guide, setGuide] = useState<GuideProfile | null>(null);
+  const [reviews, setReviews] = useState<GuideReview[]>([]);
+  const [isFetching, setIsFetching] = useState(true);
 
-  const listing = useMemo(() => MOCK_LISTINGS.find(l => l.id === id) || MOCK_LISTINGS[0], [id]);
-  const guide = useMemo(() => MOCK_GUIDES.find(g => g.id === listing.guideId), [listing.guideId]);
-  const reviews = useMemo(() => MOCK_REVIEWS.filter(r => r.guideId === listing.guideId).slice(0, 3), [listing.guideId]);
+  const fetchListing = useCallback(async () => {
+    if (!id) return;
+    try {
+      setIsFetching(true);
+
+      const { data: listingData, error } = await supabase
+        .from('guide_listings')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !listingData) throw new Error('Listing not found');
+
+      const mappedListing: GuideListing = {
+        id: listingData.id,
+        guideId: listingData.guide_id,
+        guideName: listingData.guide_name || '',
+        guideAvatar: listingData.guide_avatar || '',
+        guideTrustTier: listingData.guide_trust_tier || 'verified_local',
+        guideRating: listingData.guide_rating || 0,
+        category: listingData.category || 'service',
+        title: listingData.title || '',
+        description: listingData.description || '',
+        photos: listingData.photos || [],
+        neighborhood: listingData.neighborhood,
+        city: listingData.city || '',
+        country: listingData.country || '',
+        priceRange: listingData.price_range,
+        currency: listingData.currency,
+        duration: listingData.duration,
+        whatsIncluded: listingData.whats_included,
+        availability: listingData.availability,
+        inquiryCount: listingData.inquiry_count || 0,
+        rating: listingData.rating,
+        reviewCount: listingData.review_count,
+        status: listingData.status || 'active',
+        createdAt: listingData.created_at,
+        updatedAt: listingData.updated_at,
+      };
+      setListing(mappedListing);
+
+      if (listingData.guide_id) {
+        const { data: guideData } = await supabase
+          .from('guide_profiles')
+          .select('*')
+          .eq('id', listingData.guide_id)
+          .single();
+
+        if (guideData) {
+          setGuide(guideData as any);
+        }
+
+        const { data: reviewData } = await supabase
+          .from('guide_reviews')
+          .select('*')
+          .eq('guide_id', listingData.guide_id)
+          .order('created_at', { ascending: false })
+          .limit(3);
+
+        if (reviewData) {
+          setReviews(reviewData as any);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch listing:', err);
+    } finally {
+      setIsFetching(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchListing();
+  }, [fetchListing]);
+
+  if (isFetching || !listing) {
+    return (
+      <View style={[styles.screen, { backgroundColor: themeColors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   const catConfig = CATEGORY_CONFIG[listing.category];
 

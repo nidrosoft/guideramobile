@@ -8,6 +8,7 @@ import { TripRepository } from './trip-repository';
 import { Trip, TripStatus } from './trip.types';
 import { TripNotFoundError, TripTransitionError } from './trip.errors';
 import { daysUntilStart, daysUntilEnd } from './trip.utils';
+import { scheduleAllTripNotifications, cancelTripNotifications } from '@/services/notifications/trip-notification-scheduler';
 
 // ============================================
 // STATE MACHINE
@@ -67,8 +68,22 @@ const ON_ENTER_EFFECTS: Partial<Record<TripStatus, (trip: Trip) => Promise<void>
     // Schedule module generation
     await scheduleModuleGeneration(trip.id);
 
-    // Schedule notifications
+    // Schedule notifications (legacy)
     await scheduleConfirmationNotifications(trip);
+
+    // Schedule all trip notifications via new scheduler
+    try {
+      await scheduleAllTripNotifications({
+        id: trip.id,
+        ownerId: trip.owner_id || trip.user_id,
+        title: trip.title || trip.name || 'Trip',
+        destination: trip.destination?.city || trip.destination?.name || 'your destination',
+        startDate: new Date(trip.start_date),
+        endDate: new Date(trip.end_date),
+      });
+    } catch (err) {
+      console.warn('Failed to schedule trip notifications:', err);
+    }
   },
 
   upcoming: async (trip: Trip) => {
@@ -110,6 +125,13 @@ const ON_ENTER_EFFECTS: Partial<Record<TripStatus, (trip: Trip) => Promise<void>
 
     // Notify travelers
     await notifyTravelersTripCancelled(trip);
+
+    // Cancel all scheduled notifications for this trip
+    try {
+      await cancelTripNotifications(trip.id);
+    } catch (err) {
+      console.warn('Failed to cancel trip notifications:', err);
+    }
   },
 };
 

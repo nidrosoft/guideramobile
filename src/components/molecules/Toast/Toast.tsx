@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { TickCircle, InfoCircle, Warning2, CloseCircle } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -20,6 +21,7 @@ export default function Toast({
   onHide,
   duration = 3000,
 }: ToastProps) {
+  const { colors: tc, isDark } = useTheme();
   const translateY = React.useRef(new Animated.Value(-100)).current;
 
   useEffect(() => {
@@ -93,11 +95,11 @@ export default function Toast({
         },
       ]}
     >
-      <View style={styles.toast}>
+      <View style={[styles.toast, { backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF', borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
         <View style={[styles.iconContainer, { backgroundColor }]}>
           {icon}
         </View>
-        <Text style={styles.message}>{message}</Text>
+        <Text style={[styles.message, { color: tc.textPrimary }]}>{message}</Text>
       </View>
     </Animated.View>
   );

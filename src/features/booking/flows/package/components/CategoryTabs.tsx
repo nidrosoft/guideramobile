@@ -28,6 +28,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { usePackageStore, PackageCategory } from '../../../stores/usePackageStore';
 
 interface CategoryTabsProps {
@@ -47,6 +48,7 @@ export default function CategoryTabs({
   onCategoryChange 
 }: CategoryTabsProps) {
   const { isCategoryComplete, isCategoryRequired, tripSetup } = usePackageStore();
+  const { colors: tc } = useTheme();
   
   const handlePress = (category: PackageCategory) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -54,7 +56,7 @@ export default function CategoryTabs({
   };
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -75,8 +77,9 @@ export default function CategoryTabs({
               key={category.id}
               style={[
                 styles.tab,
-                isActive && styles.tabActive,
-                isComplete && styles.tabComplete,
+                { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle },
+                isActive && { backgroundColor: tc.primary, borderColor: tc.primary },
+                isComplete && { backgroundColor: `${tc.success}10`, borderColor: `${tc.success}30` },
               ]}
               onPress={() => handlePress(category.id)}
               activeOpacity={0.7}
@@ -84,20 +87,22 @@ export default function CategoryTabs({
               <View style={styles.tabContent}>
                 <View style={[
                   styles.iconContainer,
-                  isActive && styles.iconContainerActive,
-                  isComplete && styles.iconContainerComplete,
+                  { backgroundColor: tc.bgCard },
+                  isActive && { backgroundColor: colors.primaryDark },
+                  isComplete && { backgroundColor: `${tc.success}20` },
                 ]}>
                   <Icon 
                     size={20} 
-                    color={isActive ? '#FFFFFF' : isComplete ? colors.success : colors.textSecondary}
+                    color={isActive ? '#FFFFFF' : isComplete ? tc.success : tc.textSecondary}
                     variant={isComplete ? 'Bold' : 'Linear'}
                   />
                 </View>
                 
                 <Text style={[
                   styles.tabLabel,
-                  isActive && styles.tabLabelActive,
-                  isComplete && styles.tabLabelComplete,
+                  { color: tc.textSecondary },
+                  isActive && { color: '#FFFFFF', fontWeight: typography.fontWeight.semibold },
+                  isComplete && { color: tc.success },
                 ]}>
                   {category.label}
                 </Text>
@@ -105,12 +110,12 @@ export default function CategoryTabs({
                 {/* Status indicator */}
                 {showComplete && (
                   <View style={styles.completeBadge}>
-                    <TickCircle size={14} color={colors.success} variant="Bold" />
+                    <TickCircle size={14} color={tc.success} variant="Bold" />
                   </View>
                 )}
                 
                 {showRequired && (
-                  <View style={styles.requiredDot} />
+                  <View style={[styles.requiredDot, { backgroundColor: tc.error }]} />
                 )}
               </View>
             </TouchableOpacity>

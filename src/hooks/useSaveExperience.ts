@@ -12,19 +12,19 @@ import { useAuth } from '@/context/AuthContext';
 import * as Haptics from 'expo-haptics';
 
 export function useSaveExperience(productCode: string | null) {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Check initial saved state
   useEffect(() => {
-    if (!user?.id || !productCode) return;
+    if (!profile?.id || !productCode) return;
 
     const checkSaved = async () => {
       const { data } = await supabase
         .from('user_saved_items')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', profile.id)
         .eq('item_type', 'local_experience')
         .eq('external_id', productCode)
         .maybeSingle();
@@ -33,10 +33,10 @@ export function useSaveExperience(productCode: string | null) {
     };
 
     checkSaved();
-  }, [user?.id, productCode]);
+  }, [profile?.id, productCode]);
 
   const toggleSave = useCallback(async () => {
-    if (!user?.id || !productCode || isLoading) return;
+    if (!profile?.id || !productCode || isLoading) return;
 
     setIsLoading(true);
     const wasSaved = isSaved;
@@ -52,24 +52,23 @@ export function useSaveExperience(productCode: string | null) {
         await supabase
           .from('user_saved_items')
           .delete()
-          .eq('user_id', user.id)
+          .eq('user_id', profile.id)
           .eq('item_type', 'local_experience')
           .eq('external_id', productCode);
       } else {
         await supabase.from('user_saved_items').insert({
-          user_id: user.id,
+          user_id: profile.id,
           item_type: 'local_experience',
           external_id: productCode,
         });
       }
     } catch (error) {
-      // Revert on error
       console.error('Experience save toggle error:', error);
       setIsSaved(wasSaved);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, productCode, isSaved, isLoading]);
+  }, [profile?.id, productCode, isSaved, isLoading]);
 
   return { isSaved, isLoading, toggleSave };
 }

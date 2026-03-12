@@ -35,7 +35,7 @@ import {
 export default function TransportationPreferencesScreen() {
   const router = useRouter();
   const { colors: tc } = useTheme();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const insets = useSafeAreaInsets();
   const [preferences, setPreferences] = useState<TravelPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,10 +49,10 @@ export default function TransportationPreferencesScreen() {
   const [localTransport, setLocalTransport] = useState<LocalTransport>('mix');
 
   const fetchPreferences = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     try {
-      const { data } = await preferencesService.getPreferences(user.id);
+      const { data } = await preferencesService.getPreferences(profile.id);
       if (data) {
         setPreferences(data);
         setTravelMode(data.preferredTravelMode);
@@ -66,7 +66,7 @@ export default function TransportationPreferencesScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [profile?.id]);
 
   useEffect(() => {
     fetchPreferences();
@@ -78,14 +78,14 @@ export default function TransportationPreferencesScreen() {
   };
 
   const handleSave = async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     setIsSaving(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     try {
       await preferencesService.updateTransportationPreferences(
-        user.id,
+        profile.id,
         travelMode,
         flightClass,
         flightStops,
@@ -113,29 +113,29 @@ export default function TransportationPreferencesScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <StatusBar style="dark" />
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: tc.bgPrimary }]}>
+        <StatusBar style="auto" />
+        <ActivityIndicator size="large" color={tc.primary} />
       </View>
     );
   }
   
   return (
-    <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.bgPrimary }]}>
+      <StatusBar style="auto" />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Transportation</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Transportation</Text>
         <TouchableOpacity 
           onPress={handleSave} 
-          style={[styles.saveButton, !hasChanges() && styles.saveButtonDisabled]}
+          style={[styles.saveButton, { backgroundColor: hasChanges() ? tc.primary : tc.borderSubtle }]}
           disabled={!hasChanges() || isSaving}
         >
-          <Text style={[styles.saveButtonText, !hasChanges() && styles.saveButtonTextDisabled]}>
+          <Text style={[styles.saveButtonText, { color: hasChanges() ? '#FFFFFF' : tc.textTertiary }]}>
             {isSaving ? 'Saving...' : 'Save'}
           </Text>
         </TouchableOpacity>
@@ -148,15 +148,16 @@ export default function TransportationPreferencesScreen() {
       >
         {/* Travel Mode */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>How do you prefer to travel?</Text>
-          <Text style={styles.sectionSubtitle}>Select your main mode of transportation</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>How do you prefer to travel?</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Select your main mode of transportation</Text>
           <View style={styles.modeGrid}>
             {PREFERENCE_OPTIONS.travelModes.map(mode => (
               <TouchableOpacity
                 key={mode.id}
                 style={[
                   styles.modeCard,
-                  travelMode === mode.id && styles.modeCardSelected,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  travelMode === mode.id && { backgroundColor: `${tc.primary}15`, borderColor: tc.primary },
                 ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -166,7 +167,8 @@ export default function TransportationPreferencesScreen() {
                 <Text style={styles.modeEmoji}>{mode.emoji}</Text>
                 <Text style={[
                   styles.modeLabel,
-                  travelMode === mode.id && styles.modeLabelSelected,
+                  { color: tc.textPrimary },
+                  travelMode === mode.id && { color: tc.primary },
                 ]}>
                   {mode.label}
                 </Text>
@@ -180,15 +182,16 @@ export default function TransportationPreferencesScreen() {
           <>
             {/* Flight Class */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Preferred cabin class</Text>
-              <Text style={styles.sectionSubtitle}>Your comfort level on flights</Text>
+              <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Preferred cabin class</Text>
+              <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Your comfort level on flights</Text>
               <View style={styles.chipsContainer}>
                 {PREFERENCE_OPTIONS.flightClasses.map(option => (
                   <TouchableOpacity
                     key={option.id}
                     style={[
                       styles.chip,
-                      flightClass === option.id && styles.chipSelected,
+                      { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                      flightClass === option.id && { backgroundColor: `${tc.primary}15`, borderColor: tc.primary },
                     ]}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -197,7 +200,8 @@ export default function TransportationPreferencesScreen() {
                   >
                     <Text style={[
                       styles.chipLabel,
-                      flightClass === option.id && styles.chipLabelSelected,
+                      { color: tc.textPrimary },
+                      flightClass === option.id && { color: tc.primary },
                     ]}>
                       {option.label}
                     </Text>
@@ -208,15 +212,16 @@ export default function TransportationPreferencesScreen() {
 
             {/* Flight Stops */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Stops preference</Text>
-              <Text style={styles.sectionSubtitle}>Direct flights or layovers?</Text>
+              <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Stops preference</Text>
+              <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Direct flights or layovers?</Text>
               <View style={styles.chipsContainer}>
                 {PREFERENCE_OPTIONS.flightStops.map(option => (
                   <TouchableOpacity
                     key={option.id}
                     style={[
                       styles.chip,
-                      flightStops === option.id && styles.chipSelected,
+                      { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                      flightStops === option.id && { backgroundColor: `${tc.primary}15`, borderColor: tc.primary },
                     ]}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -225,7 +230,8 @@ export default function TransportationPreferencesScreen() {
                   >
                     <Text style={[
                       styles.chipLabel,
-                      flightStops === option.id && styles.chipLabelSelected,
+                      { color: tc.textPrimary },
+                      flightStops === option.id && { color: tc.primary },
                     ]}>
                       {option.label}
                     </Text>
@@ -236,15 +242,16 @@ export default function TransportationPreferencesScreen() {
 
             {/* Flight Time */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Preferred departure time</Text>
-              <Text style={styles.sectionSubtitle}>When do you like to fly?</Text>
+              <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Preferred departure time</Text>
+              <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>When do you like to fly?</Text>
               <View style={styles.timeGrid}>
                 {PREFERENCE_OPTIONS.flightTimePreferences.map(option => (
                   <TouchableOpacity
                     key={option.id}
                     style={[
                       styles.timeCard,
-                      flightTime === option.id && styles.timeCardSelected,
+                      { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                      flightTime === option.id && { backgroundColor: `${tc.primary}15`, borderColor: tc.primary },
                     ]}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -254,7 +261,8 @@ export default function TransportationPreferencesScreen() {
                     <Text style={styles.timeEmoji}>{option.emoji}</Text>
                     <Text style={[
                       styles.timeLabel,
-                      flightTime === option.id && styles.timeLabelSelected,
+                      { color: tc.textPrimary },
+                      flightTime === option.id && { color: tc.primary },
                     ]}>
                       {option.label}
                     </Text>
@@ -267,15 +275,16 @@ export default function TransportationPreferencesScreen() {
 
         {/* Local Transport */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Getting around at destination</Text>
-          <Text style={styles.sectionSubtitle}>How do you prefer to explore locally?</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Getting around at destination</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>How do you prefer to explore locally?</Text>
           <View style={styles.optionsContainer}>
             {PREFERENCE_OPTIONS.localTransports.map(option => (
               <TouchableOpacity
                 key={option.id}
                 style={[
                   styles.optionCard,
-                  localTransport === option.id && styles.optionCardSelected,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  localTransport === option.id && { backgroundColor: `${tc.primary}10`, borderColor: tc.primary },
                 ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -286,13 +295,14 @@ export default function TransportationPreferencesScreen() {
                 <View style={styles.optionContent}>
                   <Text style={[
                     styles.optionLabel,
-                    localTransport === option.id && styles.optionLabelSelected,
+                    { color: tc.textPrimary },
+                    localTransport === option.id && { color: tc.primary },
                   ]}>
                     {option.label}
                   </Text>
                 </View>
                 {localTransport === option.id && (
-                  <TickCircle size={20} color={colors.primary} variant="Bold" />
+                  <TickCircle size={20} color={tc.primary} variant="Bold" />
                 )}
               </TouchableOpacity>
             ))}

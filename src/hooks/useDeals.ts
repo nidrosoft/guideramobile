@@ -38,17 +38,17 @@ import type {
 // ============================================
 
 export function useSavedDeals(dealType?: DealType) {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [deals, setDeals] = useState<SavedDeal[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     setIsLoading(true);
     setError(null);
     try {
-      const result = await getSavedDeals(user.id, dealType);
+      const result = await getSavedDeals(profile.id, dealType);
       if (result.error) throw result.error;
       setDeals(result.data);
     } catch (err: any) {
@@ -56,16 +56,16 @@ export function useSavedDeals(dealType?: DealType) {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, dealType]);
+  }, [profile?.id, dealType]);
 
   const save = useCallback(
     async (input: CreateSavedDealInput) => {
-      if (!user?.id) return;
-      const result = await saveDeal(user.id, input);
+      if (!profile?.id) return;
+      const result = await saveDeal(profile.id, input);
       if (!result.error) await load();
       return result;
     },
-    [user?.id, load]
+    [profile?.id, load]
   );
 
   const remove = useCallback(
@@ -89,20 +89,20 @@ export function useSavedDeals(dealType?: DealType) {
 // ============================================
 
 export function useRecentClicks(limit = 20) {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [clicks, setClicks] = useState<DealClick[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const load = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     setIsLoading(true);
     try {
-      const result = await getRecentClicks(user.id, limit);
+      const result = await getRecentClicks(profile.id, limit);
       setClicks(result.data);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, limit]);
+  }, [profile?.id, limit]);
 
   useEffect(() => {
     load();
@@ -141,12 +141,11 @@ export function useHotDeals(dealType?: DealType, limit = 10) {
 // ============================================
 
 export function useDealRedirect() {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [lastClickId, setLastClickId] = useState<string | null>(null);
 
   const redirect = useCallback(
     async (input: CreateDealClickInput & GenerateAffiliateLinkParams) => {
-      // Generate affiliate link
       const config = await getProviderConfig(input.provider);
       const affiliateUrl = generateAffiliateLink(
         {
@@ -162,9 +161,8 @@ export function useDealRedirect() {
         config
       );
 
-      // Track the click
-      if (user?.id) {
-        const result = await trackDealClick(user.id, {
+      if (profile?.id) {
+        const result = await trackDealClick(profile.id, {
           ...input,
           affiliate_url: affiliateUrl,
         });
@@ -173,15 +171,17 @@ export function useDealRedirect() {
         }
       }
 
-      // Open in browser
-      const canOpen = await Linking.canOpenURL(affiliateUrl);
-      if (canOpen) {
+      try {
         await Linking.openURL(affiliateUrl);
+      } catch {
+        // If openURL fails, try a Google search fallback
+        const fallback = `https://www.google.com/search?q=${encodeURIComponent(input.destination || input.query || '')}`;
+        try { await Linking.openURL(fallback); } catch {}
       }
 
       return { affiliateUrl, clickId: lastClickId };
     },
-    [user?.id, lastClickId]
+    [profile?.id, lastClickId]
   );
 
   const confirmLastBooking = useCallback(async () => {
@@ -229,13 +229,13 @@ export function usePriceHistory(
 // ============================================
 
 export function useIsDealSaved(routeKey: string | null) {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (!user?.id || !routeKey) return;
-    isDealSaved(user.id, routeKey).then(setSaved);
-  }, [user?.id, routeKey]);
+    if (!profile?.id || !routeKey) return;
+    isDealSaved(profile.id, routeKey).then(setSaved);
+  }, [profile?.id, routeKey]);
 
   return saved;
 }
@@ -245,7 +245,7 @@ export function useIsDealSaved(routeKey: string | null) {
 // ============================================
 
 export function useGilDeals(dealType?: DealType, limit = 8) {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [deals, setDeals] = useState<PersonalizedDeal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -254,7 +254,7 @@ export function useGilDeals(dealType?: DealType, limit = 8) {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await getPersonalizedDeals(user?.id || null, dealType, limit);
+      const result = await getPersonalizedDeals(profile?.id || null, dealType, limit);
       if (result.error) throw result.error;
       setDeals(result.data);
     } catch (err: any) {
@@ -262,7 +262,7 @@ export function useGilDeals(dealType?: DealType, limit = 8) {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, dealType, limit]);
+  }, [profile?.id, dealType, limit]);
 
   useEffect(() => {
     load();

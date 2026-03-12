@@ -1,13 +1,15 @@
 /**
  * LOCATION FIELD COMPONENT
- * 
+ *
  * Displays pickup/return location for car rental.
+ * Theme-aware for dark/light mode.
  */
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Location, ArrowRight2 } from 'iconsax-react-native';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 interface LocationFieldProps {
   label: string;
@@ -24,64 +26,43 @@ export default function LocationField({
   onPress,
   variant = 'pickup',
 }: LocationFieldProps) {
-  const iconColor = variant === 'pickup' ? colors.primary : colors.success;
-  const iconBg = variant === 'pickup' ? `${colors.primary}15` : `${colors.success}15`;
+  const { colors: tc } = useTheme();
+  const iconColor = variant === 'pickup' ? tc.primary : tc.success;
+  const iconBg = variant === 'pickup' ? `${tc.primary}15` : `${tc.success}15`;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
-      <TouchableOpacity style={styles.field} onPress={onPress} activeOpacity={0.7}>
+      <Text style={[styles.label, { color: tc.textSecondary }]}>{label}</Text>
+      <TouchableOpacity
+        style={[styles.field, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
         <View style={[styles.iconContainer, { backgroundColor: iconBg }]}>
           <Location size={20} color={iconColor} variant="Bold" />
         </View>
         <View style={styles.content}>
-          <Text style={[styles.value, !value && styles.placeholder]}>
+          <Text style={[styles.value, { color: tc.textPrimary }, !value && { color: tc.textTertiary, fontWeight: typography.fontWeight.regular }]}>
             {value || placeholder}
           </Text>
         </View>
-        <ArrowRight2 size={20} color={colors.gray400} />
+        <ArrowRight2 size={20} color={tc.textTertiary} />
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: spacing.md,
-  },
-  label: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
+  container: { marginBottom: spacing.md },
+  label: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, marginBottom: spacing.xs },
   field: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: borderRadius.lg, padding: spacing.md, borderWidth: 1,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
+    width: 40, height: 40, borderRadius: 20,
+    justifyContent: 'center', alignItems: 'center', marginRight: spacing.md,
   },
-  content: {
-    flex: 1,
-  },
-  value: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
-  },
-  placeholder: {
-    color: colors.gray400,
-    fontWeight: typography.fontWeight.regular,
-  },
+  content: { flex: 1 },
+  value: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.medium },
 });

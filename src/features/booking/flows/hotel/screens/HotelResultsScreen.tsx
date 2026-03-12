@@ -1,11 +1,11 @@
 /**
  * HOTEL RESULTS SCREEN
- * 
+ *
  * Display hotel search results with filtering and sorting.
- * Follows the same pattern as FlightResultsScreen.
+ * Matches FlightResultsScreen styling for visual consistency.
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,14 +15,10 @@ import {
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, {
-  FadeIn,
-  FadeInDown,
-} from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import {
   ArrowLeft,
   Sort,
-  Filter,
   CloseCircle,
   ArrowDown2,
   DollarCircle,
@@ -35,9 +31,6 @@ import { useTheme } from '@/context/ThemeContext';
 import { useHotelStore } from '../../../stores/useHotelStore';
 import { Hotel } from '../../../types/hotel.types';
 import { styles } from './HotelResultsScreen.styles';
-
-
-// Import shared premium card
 import { HotelCard, HotelCardData } from '../../../shared/components';
 
 interface HotelResultsScreenProps {
@@ -46,41 +39,25 @@ interface HotelResultsScreenProps {
   onClose: () => void;
 }
 
-// Filter options with values
 const FILTER_OPTIONS = [
   { id: 'sort', label: 'Sort', icon: 'sort', values: ['Recommended', 'Price: Low to High', 'Price: High to Low', 'Rating: Highest'] },
-  { id: 'filters', label: 'Filters', icon: 'filter', values: ['Free Cancellation', 'Breakfast Included', 'Free WiFi', 'Pool', 'Spa'] },
   { id: 'price', label: 'Price', icon: 'price', values: ['Under $100', '$100-$200', '$200-$300', '$300+'] },
   { id: 'stars', label: 'Stars', icon: 'star', values: ['5 Stars', '4+ Stars', '3+ Stars', 'Any'] },
 ];
 
-// Generate date prices for horizontal scroll
-const generateDatePrices = (baseDate: Date | string | null) => {
-  // Handle both Date objects and string dates (from persistence)
-  const base = baseDate 
-    ? (baseDate instanceof Date ? baseDate : new Date(baseDate))
+const generateDateRange = (baseDate: Date | string | null, cheapestPrice?: number) => {
+  const base = baseDate
+    ? baseDate instanceof Date ? baseDate : new Date(baseDate)
     : new Date();
-  if (isNaN(base.getTime())) {
-    // Fallback to today if invalid date
-    const today = new Date();
-    const dates = [];
-    for (let i = -2; i <= 4; i++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() + i);
-      dates.push({
-        date,
-        price: Math.floor(Math.random() * 100) + 100,
-      });
-    }
-    return dates;
-  }
+  const safe = isNaN(base.getTime()) ? new Date() : base;
+
   const dates = [];
   for (let i = -2; i <= 4; i++) {
-    const date = new Date(base);
+    const date = new Date(safe);
     date.setDate(date.getDate() + i);
     dates.push({
       date,
-      price: Math.floor(Math.random() * 100) + 100,
+      price: i === 0 ? (cheapestPrice || null) : null,
     });
   }
   return dates;
@@ -101,21 +78,27 @@ export default function HotelResultsScreen({
     getNights,
     setCheckInDate,
     setCheckOutDate,
+    setFilters,
+    setSortBy,
   } = useHotelStore();
-  
+
   const [selectedDateIndex, setSelectedDateIndex] = useState(2);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
-  
-  const nights = getNights();
-  const datePrices = useMemo(() => 
-    generateDatePrices(searchParams.checkIn || new Date()), 
-    [searchParams.checkIn]
-  );
 
-  // Hotels are loaded by HotelSearchLoadingScreen via provider-manager
-  // This screen just displays the results from the store
-  // No need to regenerate mock data here
+  const nights = getNights();
+  const hotelList = filteredResults.length > 0 ? filteredResults : searchResults;
+
+  const cheapestPrice = useMemo(() => {
+    if (hotelList.length === 0) return null;
+    const prices = hotelList.map(h => h.pricePerNight?.amount || 0).filter(p => p > 0);
+    return prices.length > 0 ? Math.min(...prices) : null;
+  }, [hotelList]);
+
+  const datePrices = useMemo(
+    () => generateDateRange(searchParams.checkIn || new Date(), cheapestPrice ?? undefined),
+    [searchParams.checkIn, cheapestPrice],
+  );
 
   const handleSelectHotel = useCallback((hotel: Hotel) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -142,81 +125,84 @@ export default function HotelResultsScreen({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedFilters(prev => ({ ...prev, [filterId]: value }));
     setActiveFilter(null);
+
+    if (filterId === 'sort') {
+      const sortMap: Record<string, string> = {
+        'Recommended': 'recommended',
+        'Price: Low to High': 'price_low',
+        'Price: High to Low': 'price_high',
+        'Rating: Highest': 'recommended',
+      };
+      setSortBy((sortMap[value] || 'recommended') as any);
+    } else if (filterId === 'price') {
+      const priceMap: Record<string, { min: number; max: number } | null> = {
+        'Under $100': { min: 0, max: 100 },
+        '$100-$200': { min: 100, max: 200 },
+        '$200-$300': { min: 200, max: 300 },
+        '$300+': { min: 300, max: 10000 },
+      };
+      setFilters({ priceRange: priceMap[value] || null });
+    } else if (filterId === 'stars') {
+      const starsMap: Record<string, number[]> = {
+        '5 Stars': [5],
+        '4+ Stars': [4, 5],
+        '3+ Stars': [3, 4, 5],
+        'Any': [],
+      };
+      setFilters({ starRating: starsMap[value] || [] });
+    }
   };
 
-  const getActiveFilterOptions = () => {
-    return FILTER_OPTIONS.find(f => f.id === activeFilter);
-  };
+  const getActiveFilterOptions = () => FILTER_OPTIONS.find(f => f.id === activeFilter);
 
   const getFilterIcon = (iconType: string, isSelected: boolean) => {
-    const iconColor = isSelected ? colors.primary : colors.textPrimary;
+    const iconColor = isSelected ? tc.primary : tc.textPrimary;
     switch (iconType) {
-      case 'sort':
-        return <Sort size={16} color={iconColor} />;
-      case 'filter':
-        return <Filter size={16} color={iconColor} />;
-      case 'price':
-        return <DollarCircle size={16} color={iconColor} />;
-      case 'star':
-        return <Star1 size={16} color={iconColor} />;
-      default:
-        return null;
+      case 'sort': return <Sort size={16} color={iconColor} />;
+      case 'price': return <DollarCircle size={16} color={iconColor} />;
+      case 'star': return <Star1 size={16} color={iconColor} />;
+      default: return null;
     }
   };
 
   const formatDateHeader = () => {
     if (!searchParams.checkIn || !searchParams.checkOut) return '';
-    // Handle both Date objects and string dates (from persistence)
-    const checkInDate = searchParams.checkIn instanceof Date 
-      ? searchParams.checkIn 
-      : new Date(searchParams.checkIn);
-    const checkOutDate = searchParams.checkOut instanceof Date 
-      ? searchParams.checkOut 
-      : new Date(searchParams.checkOut);
+    const checkInDate = searchParams.checkIn instanceof Date ? searchParams.checkIn : new Date(searchParams.checkIn);
+    const checkOutDate = searchParams.checkOut instanceof Date ? searchParams.checkOut : new Date(searchParams.checkOut);
     if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) return '';
-    const checkIn = checkInDate.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
-    });
-    const checkOut = checkOutDate.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
-    });
-    return `${checkIn} - ${checkOut} · ${nights} night${nights > 1 ? 's' : ''}`;
+    const ci = checkInDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const co = checkOutDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${ci} - ${co} · ${nights} night${nights > 1 ? 's' : ''}`;
   };
 
   const renderHotelCard = useCallback(({ item, index }: { item: Hotel; index: number }) => {
-    // Convert Hotel to HotelCardData format for the premium shared card
-    // Extract room data for policy info
     const firstRoom = item.rooms?.[0];
     const cancellationPolicy = firstRoom?.cancellationPolicy;
-    
+
     const cardData: HotelCardData = {
       id: item.id,
       name: item.name,
-      images: item.images?.map(img => img.url) || [], // Extract URLs from HotelImage[]
+      images: item.images?.map(img => img.url) || [],
       starRating: item.starRating,
-      userRating: item.userRating, // 0-10 scale
+      userRating: item.userRating,
       reviewCount: item.reviewCount,
       location: {
-        city: item.location?.city,
-        neighborhood: item.location?.neighborhood,
-        address: item.location?.address,
+        city: typeof item.location?.city === 'string' ? item.location.city : (item.location?.city as any)?.formatted || '',
+        neighborhood: typeof item.location?.neighborhood === 'string' ? item.location.neighborhood : '',
+        address: typeof item.location?.address === 'string' ? item.location.address : (item.location?.address as any)?.formatted || '',
         coordinates: item.location?.coordinates,
       },
-      amenities: (item.amenities || []).slice(0, 4).map(a => typeof a === 'string' ? a : a.name), // Extract amenity names
+      amenities: (item.amenities || []).slice(0, 4).map(a => typeof a === 'string' ? a : a.name),
       pricePerNight: item.pricePerNight?.amount || 0,
       totalPrice: (item.pricePerNight?.amount || 0) * nights,
       currency: item.pricePerNight?.currency || 'USD',
       isPopular: index === 0,
       isBestValue: index === 1,
-      // Booking.com specific fields from room data
-      // Handle both string and object cancellationPolicy formats
-      isFreeCancellable: typeof cancellationPolicy === 'object' 
-        ? (cancellationPolicy as any)?.freeCancellation 
+      isFreeCancellable: typeof cancellationPolicy === 'object'
+        ? (cancellationPolicy as any)?.freeCancellation
         : firstRoom?.refundable || false,
-      freeCancellationDeadline: typeof cancellationPolicy === 'object' 
-        ? (cancellationPolicy as any)?.freeCancellationDeadline 
+      freeCancellationDeadline: typeof cancellationPolicy === 'object'
+        ? (cancellationPolicy as any)?.freeCancellationDeadline
         : undefined,
       hasBreakfast: (firstRoom as any)?.boardType === 'breakfast_included' || firstRoom?.breakfast === 'included',
       roomsRemaining: (firstRoom as any)?.roomsRemaining,
@@ -238,16 +224,23 @@ export default function HotelResultsScreen({
     const isSelected = index === selectedDateIndex;
     const dayName = item.date.toLocaleDateString('en-US', { weekday: 'short' });
     const dayNum = item.date.getDate();
-    
+    const month = item.date.toLocaleDateString('en-US', { month: 'short' });
+
     return (
       <TouchableOpacity
-        style={[styles.dateItem, isSelected && styles.dateItemSelected]}
+        style={[
+          styles.dateItem,
+          { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+          isSelected && { backgroundColor: `${tc.primary}10`, borderColor: tc.primary },
+        ]}
         onPress={() => handleDateSelect(index)}
+        activeOpacity={0.7}
       >
-        <Text style={[styles.dateDay, isSelected && styles.dateDaySelected]}>{dayName}</Text>
-        <Text style={[styles.dateNum, isSelected && styles.dateNumSelected]}>{dayNum}</Text>
-        <Text style={[styles.datePrice, isSelected && styles.datePriceSelected]}>
-          ${item.price}
+        <Text style={[styles.dateDay, { color: tc.textPrimary }]}>
+          {dayName}, {dayNum} {month}
+        </Text>
+        <Text style={[styles.datePrice, { color: isSelected ? tc.primary : tc.textTertiary }]}>
+          {item.price != null ? `$${item.price.toLocaleString('en-US')}` : '–'}
         </Text>
       </TouchableOpacity>
     );
@@ -266,13 +259,11 @@ export default function HotelResultsScreen({
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
             <ArrowLeft size={24} color={colors.white} />
           </TouchableOpacity>
-          
           <TouchableOpacity style={styles.routeInfo}>
             <Text style={styles.routeText}>{searchParams.destination?.name}</Text>
             <Text style={styles.dateText}>{formatDateHeader()}</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.calendarButton}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -285,19 +276,21 @@ export default function HotelResultsScreen({
       </ImageBackground>
 
       {/* Date Scroll */}
-      <View style={styles.dateScrollContainer}>
-        <FlatList
-          data={datePrices}
-          renderItem={renderDateItem}
-          keyExtractor={(item) => item.date.toISOString()}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.dateScrollContent}
-        />
-      </View>
+      <Animated.View entering={FadeIn.duration(300)}>
+        <View style={[styles.dateScrollContainer, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
+          <FlatList
+            data={datePrices}
+            renderItem={renderDateItem}
+            keyExtractor={(item) => item.date.toISOString()}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.dateScrollContent}
+          />
+        </View>
+      </Animated.View>
 
       {/* Filter Bar */}
-      <View style={styles.filtersContainer}>
+      <View style={[styles.filtersContainer, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -311,21 +304,23 @@ export default function HotelResultsScreen({
                 key={filter.id}
                 style={[
                   styles.filterChip,
-                  isActive && styles.filterChipActive,
-                  hasSelection && styles.filterChipSelected,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  isActive && { borderColor: tc.primary, backgroundColor: `${tc.primary}08` },
+                  hasSelection && { borderColor: tc.primary, backgroundColor: `${tc.primary}10` },
                 ]}
                 onPress={() => handleFilterPress(filter.id)}
               >
                 {getFilterIcon(filter.icon, hasSelection)}
                 <Text style={[
                   styles.filterChipText,
-                  hasSelection && styles.filterChipTextSelected,
+                  { color: tc.textPrimary },
+                  hasSelection && { color: tc.primary },
                 ]}>
                   {selectedFilters[filter.id] || filter.label}
                 </Text>
                 <ArrowDown2
                   size={14}
-                  color={hasSelection ? colors.primary : colors.gray400}
+                  color={hasSelection ? tc.primary : tc.textSecondary}
                   style={{ transform: [{ rotate: isActive ? '180deg' : '0deg' }] }}
                 />
               </TouchableOpacity>
@@ -333,26 +328,27 @@ export default function HotelResultsScreen({
           })}
         </ScrollView>
 
-        {/* Filter Dropdown */}
         {activeFilter && (
-          <View style={styles.filterDropdown}>
+          <View style={[styles.filterDropdown, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             {getActiveFilterOptions()?.values.map((value) => (
               <TouchableOpacity
                 key={value}
                 style={[
                   styles.filterOption,
-                  selectedFilters[activeFilter] === value && styles.filterOptionSelected,
+                  { borderBottomColor: tc.borderSubtle },
+                  selectedFilters[activeFilter] === value && { backgroundColor: `${tc.primary}08` },
                 ]}
                 onPress={() => handleFilterSelect(activeFilter, value)}
               >
                 <Text style={[
                   styles.filterOptionText,
-                  selectedFilters[activeFilter] === value && styles.filterOptionTextSelected,
+                  { color: tc.textPrimary },
+                  selectedFilters[activeFilter] === value && { color: tc.primary },
                 ]}>
                   {value}
                 </Text>
                 {selectedFilters[activeFilter] === value && (
-                  <TickCircle size={16} color={colors.primary} variant="Bold" />
+                  <TickCircle size={16} color={tc.primary} variant="Bold" />
                 )}
               </TouchableOpacity>
             ))}
@@ -362,14 +358,14 @@ export default function HotelResultsScreen({
 
       {/* Results Count */}
       <View style={styles.resultsHeader}>
-        <Text style={styles.resultsCount}>
-          {filteredResults.length || searchResults.length} hotels found
+        <Text style={[styles.resultsCount, { color: tc.textSecondary }]}>
+          {hotelList.length} hotels found
         </Text>
       </View>
 
       {/* Hotel List */}
       <FlatList
-        data={filteredResults.length > 0 ? filteredResults : searchResults}
+        data={hotelList}
         renderItem={renderHotelCard}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[
@@ -378,7 +374,6 @@ export default function HotelResultsScreen({
         ]}
         showsVerticalScrollIndicator={false}
       />
-
     </View>
   );
 }

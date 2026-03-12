@@ -34,6 +34,8 @@ import {
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { supabase } from '@/lib/supabase/client';
+import { groupService, eventService } from '@/services/community';
 
 type SearchTab = 'all' | 'groups' | 'buddies' | 'events';
 type SortOption = 'relevance' | 'popular' | 'recent' | 'nearby';
@@ -44,26 +46,6 @@ interface FilterState {
   destination: string;
   tags: string[];
 }
-
-// Mock search results
-const MOCK_GROUPS = [
-  { id: 'g1', type: 'group', name: 'Tokyo Travelers 2025', avatar: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200', memberCount: 156, isVerified: true, privacy: 'public', destination: 'Tokyo, Japan' },
-  { id: 'g2', type: 'group', name: 'Bali Digital Nomads', avatar: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=200', memberCount: 890, isVerified: true, privacy: 'public', destination: 'Bali, Indonesia' },
-  { id: 'g3', type: 'group', name: 'Solo Female Travelers', avatar: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=200', memberCount: 2340, isVerified: true, privacy: 'public', destination: null },
-  { id: 'g4', type: 'group', name: 'Europe Backpackers', avatar: 'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=200', memberCount: 1200, isVerified: false, privacy: 'public', destination: null },
-  { id: 'g5', type: 'group', name: 'NYC Foodies', avatar: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=200', memberCount: 450, isVerified: false, privacy: 'private', destination: 'New York, USA' },
-];
-
-const MOCK_BUDDIES = [
-  { id: 'b1', type: 'buddy', name: 'Sarah Chen', avatar: 'https://i.pravatar.cc/150?img=5', location: 'San Francisco', rating: 4.9, trips: 24, isOnline: true },
-  { id: 'b2', type: 'buddy', name: 'Mike Johnson', avatar: 'https://i.pravatar.cc/150?img=8', location: 'London', rating: 4.7, trips: 18, isOnline: false },
-  { id: 'b3', type: 'buddy', name: 'Emma Wilson', avatar: 'https://i.pravatar.cc/150?img=9', location: 'Sydney', rating: 4.8, trips: 32, isOnline: true },
-];
-
-const MOCK_EVENTS = [
-  { id: 'e1', type: 'event', title: 'Tokyo Meetup', date: 'Jan 20, 2025', location: 'Shibuya', attendees: 24, image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200' },
-  { id: 'e2', type: 'event', title: 'Bali Sunset Yoga', date: 'Feb 5, 2025', location: 'Canggu', attendees: 15, image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=200' },
-];
 
 const POPULAR_TAGS = ['adventure', 'foodie', 'photography', 'budget', 'luxury', 'solo', 'backpacking', 'beach', 'mountains', 'city'];
 
@@ -85,6 +67,9 @@ export default function SearchScreen() {
     destination: '',
     tags: [],
   });
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const filterHeight = useRef(new Animated.Value(0)).current;
   
@@ -134,47 +119,102 @@ export default function SearchScreen() {
     });
   };
   
-  const getResults = () => {
-    const query = searchQuery.toLowerCase();
-    let results: any[] = [];
-    
-    if (activeTab === 'all' || activeTab === 'groups') {
-      const groups = MOCK_GROUPS.filter(g => 
-        g.name.toLowerCase().includes(query) ||
-        g.destination?.toLowerCase().includes(query)
-      );
-      results = [...results, ...groups];
+  const performSearch = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
     }
-    
-    if (activeTab === 'all' || activeTab === 'buddies') {
-      const buddies = MOCK_BUDDIES.filter(b =>
-        b.name.toLowerCase().includes(query) ||
-        b.location.toLowerCase().includes(query)
-      );
-      results = [...results, ...buddies];
+
+    setIsSearching(true);
+    try {
+      let results: any[] = [];
+
+      if (activeTab === 'all' || activeTab === 'groups') {
+        try {
+          const groups = await groupService.discoverGroups({
+            search: query,
+            limit: 10,
+          });
+          results.push(...groups.map(g => ({
+            id: g.id,
+            type: 'group',
+            name: g.name,
+            avatar: g.groupPhotoUrl || g.coverPhotoUrl || '',
+            memberCount: g.memberCount || 0,
+            isVerified: g.isVerified || false,
+            privacy: g.privacy || 'public',
+            destination: g.destinationName || null,
+          })));
+        } catch {}
+      }
+
+      if (activeTab === 'all' || activeTab === 'buddies') {
+        try {
+          const { data: users } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, avatar_url, city, nationality')
+            .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,city.ilike.%${query}%`)
+            .limit(10);
+
+          if (users) {
+            results.push(...users.map(u => ({
+              id: u.id,
+              type: 'buddy',
+              name: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+              avatar: u.avatar_url || `https://i.pravatar.cc/150?u=${u.id}`,
+              location: u.city || u.nationality || '',
+              rating: 0,
+              trips: 0,
+              isOnline: false,
+            })));
+          }
+        } catch {}
+      }
+
+      if (activeTab === 'all' || activeTab === 'events') {
+        try {
+          const { data: events } = await supabase
+            .from('community_events')
+            .select('id, title, start_date, location_name, attendee_count, cover_image_url')
+            .or(`title.ilike.%${query}%,location_name.ilike.%${query}%`)
+            .eq('status', 'upcoming')
+            .limit(10);
+
+          if (events) {
+            results.push(...events.map(e => ({
+              id: e.id,
+              type: 'event',
+              title: e.title,
+              date: e.start_date ? new Date(e.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+              location: e.location_name || '',
+              attendees: e.attendee_count || 0,
+              image: e.cover_image_url || '',
+            })));
+          }
+        } catch {}
+      }
+
+      if (filters.privacy !== 'all') {
+        results = results.filter(r => r.type !== 'group' || r.privacy === filters.privacy);
+      }
+
+      setSearchResults(results);
+    } catch (err) {
+      console.error('Search failed:', err);
+    } finally {
+      setIsSearching(false);
     }
-    
-    if (activeTab === 'all' || activeTab === 'events') {
-      const events = MOCK_EVENTS.filter(e =>
-        e.title.toLowerCase().includes(query) ||
-        e.location.toLowerCase().includes(query)
-      );
-      results = [...results, ...events];
-    }
-    
-    // Apply filters
-    if (filters.privacy !== 'all') {
-      results = results.filter(r => r.type !== 'group' || r.privacy === filters.privacy);
-    }
-    
-    if (filters.tags.length > 0) {
-      // In real app, filter by tags
-    }
-    
-    return results;
-  };
-  
-  const results = searchQuery.length > 0 ? getResults() : [];
+  }, [activeTab, filters.privacy]);
+
+  const handleSearchChange = useCallback((text: string) => {
+    setSearchQuery(text);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      performSearch(text);
+    }, 400);
+  }, [performSearch]);
+
+  const results = searchResults;
   const activeFiltersCount = [
     filters.privacy !== 'all',
     filters.memberCount !== 'all',
@@ -301,7 +341,7 @@ export default function SearchScreen() {
             placeholder="Search groups, buddies, events..."
             placeholderTextColor={tc.textTertiary}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearchChange}
             autoFocus
             returnKeyType="search"
           />

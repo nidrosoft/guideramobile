@@ -2,7 +2,7 @@
  * EMAIL SUCCESS STEP
  * 
  * Step 8 (final) in email import flow - Success confirmation.
- * Shows success message and button to view imported trip.
+ * Shows real import results and navigates to the imported trip.
  */
 
 import React from 'react';
@@ -10,16 +10,21 @@ import { StepComponentProps } from '../../types/import-flow.types';
 import SuccessStep from '../../components/shared/SuccessStep';
 
 export default function EmailSuccessStep({ data, onNext }: StepComponentProps) {
-  const bookingCount = data.selectedBookings?.length || 0;
+  const importResult = data.importResult;
+  const totalBookings = importResult?.totalBookingsImported || data.selectedBookings?.length || 0;
+  const tripCount = importResult?.trips?.length || 1;
+
+  const message = importResult?.imported
+    ? `We've imported ${totalBookings} booking${totalBookings !== 1 ? 's' : ''} across ${tripCount} trip${tripCount !== 1 ? 's' : ''} from your email. Your trip${tripCount !== 1 ? 's are' : ' is'} ready to view!`
+    : `Import completed. Check your trips tab to see the results.`;
 
   return (
     <SuccessStep
       title="Successfully Imported!"
-      message={`We've imported ${bookingCount} booking${bookingCount !== 1 ? 's' : ''} from your email. Your trip is ready to view!`}
-      buttonText="Check My Trip"
+      message={message}
+      buttonText="Check My Trips"
       onButtonPress={() => {
-        // AI TODO: Navigate to trip detail or create trip
-        onNext();
+        onNext(data);
       }}
     />
   );

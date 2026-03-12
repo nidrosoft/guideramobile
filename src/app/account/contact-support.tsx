@@ -71,7 +71,7 @@ const AUTO_RESPONSES: Record<string, string> = {
 export default function ContactSupportScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const { user, profile } = useAuth();
   const scrollViewRef = useRef<ScrollView>(null);
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
@@ -105,7 +105,7 @@ export default function ContactSupportScreen() {
             if (feedback?.trim()) {
               try {
                 await supabase.from('support_messages').insert({
-                  user_id: user?.id,
+                  user_id: profile?.id,
                   type: 'feedback',
                   message: feedback,
                   status: 'pending',
@@ -178,7 +178,7 @@ Device: ${Platform.OS} ${Platform.Version}
     // Save message to database
     try {
       await supabase.from('support_messages').insert({
-        user_id: user?.id,
+        user_id: profile?.id,
         type: 'chat',
         message: userMessage.text,
         status: 'pending',
@@ -213,18 +213,18 @@ Device: ${Platform.OS} ${Platform.Version}
 
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Contact Support</Text>
+          <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Contact Support</Text>
           <View style={styles.onlineIndicator}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>Online</Text>
+            <View style={[styles.onlineDot, { backgroundColor: tc.success }]} />
+            <Text style={[styles.onlineText, { color: tc.success }]}>Online</Text>
           </View>
         </View>
         <View style={styles.headerSpacer} />
@@ -244,19 +244,19 @@ Device: ${Platform.OS} ${Platform.Version}
         >
           {/* Quick Actions */}
           <View style={styles.quickActionsSection}>
-            <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+            <Text style={[styles.quickActionsTitle, { color: tc.textSecondary }]}>Quick Actions</Text>
             <View style={styles.quickActionsRow}>
               {QUICK_ACTIONS.map((action) => {
                 const Icon = action.icon;
                 return (
                   <TouchableOpacity
                     key={action.id}
-                    style={styles.quickActionCard}
+                    style={[styles.quickActionCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
                     onPress={() => handleQuickAction(action)}
                     activeOpacity={0.7}
                   >
-                    <Icon size={20} color={colors.primary} variant="Bold" />
-                    <Text style={styles.quickActionLabel}>{action.label}</Text>
+                    <Icon size={20} color={tc.primary} variant="Bold" />
+                    <Text style={[styles.quickActionLabel, { color: tc.textPrimary }]}>{action.label}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -266,49 +266,49 @@ Device: ${Platform.OS} ${Platform.Version}
           {/* Contact Options */}
           <View style={styles.contactOptionsSection}>
             <TouchableOpacity
-              style={styles.contactOption}
+              style={[styles.contactOption, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
               onPress={handleEmailSupport}
               activeOpacity={0.7}
             >
-              <View style={styles.contactOptionIcon}>
-                <Sms size={20} color={colors.primary} variant="Bold" />
+              <View style={[styles.contactOptionIcon, { backgroundColor: tc.primary + '10' }]}>
+                <Sms size={20} color={tc.primary} variant="Bold" />
               </View>
               <View style={styles.contactOptionContent}>
-                <Text style={styles.contactOptionTitle}>Email Support</Text>
-                <Text style={styles.contactOptionSubtitle}>support@guidera.app</Text>
+                <Text style={[styles.contactOptionTitle, { color: tc.textPrimary }]}>Email Support</Text>
+                <Text style={[styles.contactOptionSubtitle, { color: tc.textSecondary }]}>support@guidera.app</Text>
               </View>
-              <ArrowLeft size={16} color={colors.gray400} style={{ transform: [{ rotate: '180deg' }] }} />
+              <ArrowLeft size={16} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
           </View>
 
           {/* Response Time Notice */}
-          <View style={styles.responseTimeCard}>
-            <Clock size={16} color={colors.info} variant="Bold" />
-            <Text style={styles.responseTimeText}>
+          <View style={[styles.responseTimeCard, { backgroundColor: tc.info + '10' }]}>
+            <Clock size={16} color={tc.info} variant="Bold" />
+            <Text style={[styles.responseTimeText, { color: tc.textSecondary }]}>
               Average response time: 2-4 hours during business hours
             </Text>
           </View>
 
           {/* Chat Messages */}
           <View style={styles.messagesSection}>
-            <Text style={styles.chatSectionTitle}>Live Chat</Text>
+            <Text style={[styles.chatSectionTitle, { color: tc.textSecondary }]}>Live Chat</Text>
             {messages.map((message) => (
               <View
                 key={message.id}
                 style={[
                   styles.messageBubble,
-                  message.isUser ? styles.userMessage : styles.botMessage,
+                  message.isUser ? [styles.userMessage, { backgroundColor: tc.primary }] : [styles.botMessage, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }],
                 ]}
               >
                 <Text style={[
                   styles.messageText,
-                  message.isUser ? styles.userMessageText : styles.botMessageText,
+                  message.isUser ? styles.userMessageText : [styles.botMessageText, { color: tc.textPrimary }],
                 ]}>
                   {message.text}
                 </Text>
                 <Text style={[
                   styles.messageTime,
-                  message.isUser ? styles.userMessageTime : styles.botMessageTime,
+                  message.isUser ? styles.userMessageTime : [styles.botMessageTime, { color: tc.textSecondary }],
                 ]}>
                   {formatTime(message.timestamp)}
                 </Text>
@@ -329,26 +329,26 @@ Device: ${Platform.OS} ${Platform.Version}
         </ScrollView>
 
         {/* Input Area */}
-        <View style={[styles.inputContainer, { paddingBottom: insets.bottom + spacing.sm }]}>
+        <View style={[styles.inputContainer, { paddingBottom: insets.bottom + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderTopColor: tc.borderSubtle }]}>
           <TextInput
-            style={styles.textInput}
+            style={[styles.textInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.gray50, color: tc.textPrimary }]}
             placeholder="Type your message..."
-            placeholderTextColor={colors.gray400}
+            placeholderTextColor={tc.textTertiary}
             value={inputText}
             onChangeText={setInputText}
             multiline
             maxLength={500}
           />
           <TouchableOpacity
-            style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+            style={[styles.sendButton, { backgroundColor: tc.primary }, !inputText.trim() && { backgroundColor: isDark ? '#444' : colors.gray300 }]}
             onPress={handleSendMessage}
             disabled={!inputText.trim() || isSending}
             activeOpacity={0.8}
           >
             {isSending ? (
-              <ActivityIndicator size="small" color={colors.white} />
+              <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Send2 size={20} color={colors.white} variant="Bold" />
+              <Send2 size={20} color="#FFFFFF" variant="Bold" />
             )}
           </TouchableOpacity>
         </View>

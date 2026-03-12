@@ -5,7 +5,7 @@
  * Accessible from Groups tab "See All" on My Groups section.
  */
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   FlatList,
   TouchableOpacity,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,8 +24,10 @@ import {
   Verify,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { spacing, borderRadius } from '@/styles';
+import { spacing, borderRadius, colors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { groupService } from '@/services/community';
+import { useAuth } from '@/context/AuthContext';
 
 interface MyGroup {
   id: string;
@@ -36,67 +39,38 @@ interface MyGroup {
   tags: string[];
 }
 
-const MOCK_MY_GROUPS: MyGroup[] = [
-  {
-    id: 'my-grp-1',
-    name: 'Backpackers Europe 2025',
-    groupPhotoUrl: 'https://images.unsplash.com/photo-1473625247510-8ceb1760943f?w=400',
-    memberCount: 3450,
-    isVerified: true,
-    role: 'member',
-    tags: ['Europe', 'Backpacking'],
-  },
-  {
-    id: 'my-grp-2',
-    name: 'Paris Foodies & Cafe Lovers',
-    groupPhotoUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400',
-    memberCount: 1280,
-    isVerified: false,
-    role: 'member',
-    tags: ['Paris', 'Food'],
-  },
-  {
-    id: 'my-grp-3',
-    name: 'Budget Travel Tips',
-    groupPhotoUrl: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
-    memberCount: 18700,
-    isVerified: true,
-    role: 'member',
-    tags: ['Budget', 'Tips'],
-  },
-  {
-    id: 'my-grp-4',
-    name: 'Adventure Photographers',
-    groupPhotoUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400',
-    memberCount: 6340,
-    isVerified: true,
-    role: 'admin',
-    tags: ['Photography', 'Adventure'],
-  },
-  {
-    id: 'my-grp-5',
-    name: 'Southeast Asia Explorers',
-    groupPhotoUrl: 'https://images.unsplash.com/photo-1528181304800-259b08848526?w=400',
-    memberCount: 9120,
-    isVerified: true,
-    role: 'member',
-    tags: ['SEA', 'Thailand'],
-  },
-  {
-    id: 'my-grp-6',
-    name: 'Solo Female Travelers',
-    groupPhotoUrl: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
-    memberCount: 45600,
-    isVerified: true,
-    role: 'member',
-    tags: ['Solo', 'Women'],
-  },
-];
-
 export default function MyGroupsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { profile } = useAuth();
+  const [groups, setGroups] = useState<MyGroup[]>([]);
+  const [isFetching, setIsFetching] = useState(true);
+
+  const fetchGroups = useCallback(async () => {
+    if (!profile?.id) return;
+    try {
+      setIsFetching(true);
+      const data = await groupService.getUserGroups(profile.id);
+      setGroups(data.map(item => ({
+        id: item.group.id,
+        name: item.group.name,
+        groupPhotoUrl: item.group.groupPhotoUrl || item.group.coverPhotoUrl || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
+        memberCount: item.group.memberCount || 0,
+        isVerified: item.group.isVerified || false,
+        role: item.role,
+        tags: item.group.tags || [],
+      })));
+    } catch (err) {
+      console.error('Failed to fetch user groups:', err);
+    } finally {
+      setIsFetching(false);
+    }
+  }, [profile?.id]);
+
+  useEffect(() => {
+    fetchGroups();
+  }, [fetchGroups]);
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -155,13 +129,17 @@ export default function MyGroupsScreen() {
       {/* Count */}
       <View style={styles.countRow}>
         <Text style={[styles.countText, { color: tc.textSecondary }]}>
-          {MOCK_MY_GROUPS.length} groups joined
+          {groups.length} groups joined
         </Text>
       </View>
 
-      {/* Groups Grid */}
+      {isFetching ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : (
       <FlatList
-        data={MOCK_MY_GROUPS}
+        data={groups}
         keyExtractor={item => item.id}
         numColumns={2}
         columnWrapperStyle={styles.gridRow}
@@ -169,6 +147,7 @@ export default function MyGroupsScreen() {
         showsVerticalScrollIndicator={false}
         renderItem={renderGroupCard}
       />
+      )}
     </View>
   );
 }

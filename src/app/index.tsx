@@ -56,10 +56,11 @@ export default function SplashScreen() {
     <View style={styles.container}>
       <StatusBar style="light" />
       <LinearGradient
-        colors={[colors.gradientStart, colors.gradientEnd]}
+        colors={['#10B981', '#059669', '#047857', '#065F46']}
+        locations={[0, 0.35, 0.7, 1]}
         style={styles.gradient}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
           {/* Logo/Brand Name */}
@@ -74,7 +75,7 @@ export default function SplashScreen() {
             {/* Description */}
             {showDescription && (
               <Animated.Text style={[styles.description, { opacity: descFadeAnim }]}>
-                Your AI-Powered Travel Companion
+                Explore the world with confidence
               </Animated.Text>
             )}
           </View>

@@ -8,7 +8,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react-native';
 import { ArrowDown2, ArrowUp2 } from 'iconsax-react-native';
-import { colors, spacing, typography } from '@/styles';
+import { spacing, typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { AccountSection as SectionType } from '../types/account.types';
 import AccountMenuItem from './AccountMenuItem';
 
@@ -17,6 +18,7 @@ interface AccountSectionProps {
 }
 
 export default function AccountSection({ section }: AccountSectionProps) {
+  const { colors } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(section.defaultCollapsed || false);
   
   const toggleCollapse = () => {
@@ -34,7 +36,7 @@ export default function AccountSection({ section }: AccountSectionProps) {
           activeOpacity={section.collapsible ? 0.7 : 1}
           disabled={!section.collapsible}
         >
-          <Text style={styles.title}>{section.title}</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{section.title}</Text>
           {section.collapsible && (
             isCollapsed 
               ? <ArrowDown2 size={18} color={colors.gray500} variant="Linear" />
@@ -45,7 +47,7 @@ export default function AccountSection({ section }: AccountSectionProps) {
       
       {/* Section items */}
       {!isCollapsed && (
-        <View style={styles.itemsContainer}>
+        <View style={[styles.itemsContainer, { borderColor: colors.borderSubtle }]}>
           {section.items.map((item, index) => (
             <AccountMenuItem
               key={item.id}
@@ -74,16 +76,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontWeight: typography.fontWeight.bold,
+    letterSpacing: 0.3,
   },
   itemsContainer: {
     borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,

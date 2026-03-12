@@ -15,6 +15,7 @@ export default function SearchLayout() {
       }}
     >
       <Stack.Screen name="results" />
+      <Stack.Screen name="snapshot" />
     </Stack>
   );
 }

@@ -267,27 +267,31 @@ function buildLeg(segments: any[]): FlightLeg {
     },
     duration: segments.reduce((sum: number, s: any) => sum + (s.duration || 0), 0),
     stops: segments.length - 1,
-    segments: segments.map((seg: any) => ({
-      carrier: {
-        code: seg.airline || '',
-        name: seg.airline || '',
-        logo: seg.airline_logo,
-      },
-      flightNumber: seg.flight_number || '',
-      aircraft: seg.airplane,
-      departure: {
-        airport: seg.departure_airport?.id || seg.departure_airport?.name || '',
-        terminal: seg.departure_airport?.terminal,
-        time: seg.departure_airport?.time || '',
-      },
-      arrival: {
-        airport: seg.arrival_airport?.id || seg.arrival_airport?.name || '',
-        terminal: seg.arrival_airport?.terminal,
-        time: seg.arrival_airport?.time || '',
-      },
-      duration: seg.duration || 0,
-      cabinClass: seg.travel_class || 'Economy',
-    })),
+    segments: segments.map((seg: any) => {
+      const flightNum = seg.flight_number || ''
+      const iataCode = flightNum.replace(/\s*\d+$/, '').trim() || ''
+      return {
+        carrier: {
+          code: iataCode,
+          name: seg.airline || '',
+          logo: seg.airline_logo,
+        },
+        flightNumber: flightNum,
+        aircraft: seg.airplane,
+        departure: {
+          airport: seg.departure_airport?.id || seg.departure_airport?.name || '',
+          terminal: seg.departure_airport?.terminal,
+          time: seg.departure_airport?.time || '',
+        },
+        arrival: {
+          airport: seg.arrival_airport?.id || seg.arrival_airport?.name || '',
+          terminal: seg.arrival_airport?.terminal,
+          time: seg.arrival_airport?.time || '',
+        },
+        duration: seg.duration || 0,
+        cabinClass: seg.travel_class || 'Economy',
+      }
+    }),
   }
 }
 

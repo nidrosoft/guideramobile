@@ -35,6 +35,8 @@ import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
+import { eventService } from '@/services/community';
 
 type EventType = 'in_person' | 'virtual' | 'hybrid';
 
@@ -65,6 +67,7 @@ export default function CreateEventScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { profile } = useAuth();
   const { communityId } = useLocalSearchParams<{ communityId: string }>();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -130,15 +133,37 @@ export default function CreateEventScreen() {
       Alert.alert('Required', 'Please enter a virtual meeting link');
       return;
     }
+
+    if (!profile?.id) return;
     
     setIsSubmitting(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const locationTypeMap: Record<EventType, string> = {
+        in_person: 'physical',
+        virtual: 'virtual',
+        hybrid: 'hybrid',
+      };
+
+      await eventService.createEvent(profile.id, {
+        title: formData.title.trim(),
+        description: formData.description.trim() || undefined,
+        type: formData.type === 'in_person' ? 'meetup' : formData.type === 'virtual' ? 'virtual' : 'meetup',
+        groupId: communityId || undefined,
+        coverImageUrl: formData.coverImage || undefined,
+        locationType: locationTypeMap[formData.type] as any,
+        locationName: formData.location.trim() || undefined,
+        locationAddress: formData.address.trim() || undefined,
+        meetingLink: formData.virtualLink.trim() || undefined,
+        startDate: formData.date,
+        endDate: formData.endTime,
+        maxAttendees: formData.maxAttendees ? parseInt(formData.maxAttendees, 10) : undefined,
+      } as any);
+
       setIsSubmitting(false);
       Alert.alert(
-        'Event Created! 🎉',
+        'Event Created!',
         'Your event has been created successfully.',
         [
           {
@@ -147,7 +172,11 @@ export default function CreateEventScreen() {
           },
         ]
       );
-    }, 1500);
+    } catch (err) {
+      console.warn('Create event error:', err);
+      setIsSubmitting(false);
+      Alert.alert('Error', 'Failed to create event. Please try again.');
+    }
   };
   
   const formatDate = (date: Date) => {

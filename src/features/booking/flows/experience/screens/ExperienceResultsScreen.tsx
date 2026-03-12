@@ -1,30 +1,26 @@
 /**
  * EXPERIENCE RESULTS SCREEN
- * 
- * Browse and filter available experiences.
+ *
+ * Browse and filter available experiences with working filter chips & sort dropdown.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Image,
+  ScrollView,
   ImageBackground,
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
   ArrowLeft,
   CloseCircle,
-  Star1,
-  Clock,
-  Filter,
-  Sort,
-  Heart,
+  Setting4,
+  ArrowDown2,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
@@ -36,7 +32,6 @@ import { Experience } from '../../../types/experience.types';
 import ExperienceDetailSheet from '../sheets/ExperienceDetailSheet';
 
 // Import shared
-import { CancelBookingModal } from '../../shared';
 import { ExperienceCard, ExperienceCardData } from '../../../shared/components';
 
 interface ExperienceResultsScreenProps {
@@ -45,111 +40,51 @@ interface ExperienceResultsScreenProps {
   onClose: () => void;
 }
 
-// Mock experiences
-const generateMockExperiences = (destination: string): Experience[] => [
-  {
-    id: '1',
-    title: `Skip-the-Line ${destination} Museum Tour`,
-    description: 'Explore the world-famous museum with an expert guide.',
-    shortDescription: 'Expert-guided museum tour with priority access',
-    images: ['https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=800'],
-    category: 'tours',
-    duration: 180,
-    location: {
-      city: destination,
-      country: 'France',
-      meetingPoint: { name: 'Museum Entrance', address: '1 Museum Plaza', instructions: 'Look for guide', coordinates: { lat: 48.8606, lng: 2.3376 } },
-      coordinates: { lat: 48.8606, lng: 2.3376 },
-    },
-    host: { id: 'h1', name: 'Marie L.', avatar: '', bio: 'Art historian', rating: 4.9, reviewCount: 847, responseRate: 98, responseTime: '1 hour', languages: ['English', 'French'], verified: true, superHost: true, memberSince: new Date(), totalExperiences: 12 },
-    price: { amount: 65, currency: 'USD', formatted: '$65' },
-    rating: 4.9,
-    reviewCount: 2847,
-    maxParticipants: 8,
-    minParticipants: 1,
-    includes: ['Skip-the-line entry', 'Professional guide'],
-    notIncluded: ['Hotel pickup'],
-    requirements: ['Valid ID'],
-    whatToBring: ['Comfortable shoes'],
-    accessibility: { wheelchairAccessible: true, mobilityAid: true, visualAid: false, hearingAid: true, serviceAnimals: true, infantFriendly: false, childFriendly: true, seniorFriendly: true, fitnessLevel: 'easy' },
-    languages: ['English', 'French'],
-    availability: [],
-    cancellationPolicy: 'free_24h',
-    instantConfirmation: true,
-    mobileTicket: true,
-    featured: true,
-    bestSeller: true,
-    tags: ['skip-the-line'],
-  },
-  {
-    id: '2',
-    title: `${destination} Food Walking Tour`,
-    description: 'Taste your way through the city with a local foodie guide.',
-    shortDescription: 'Culinary adventure with local tastings',
-    images: ['https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800'],
-    category: 'food_drink',
-    duration: 240,
-    location: {
-      city: destination,
-      country: 'France',
-      meetingPoint: { name: 'Central Market', address: 'Market Square', instructions: 'Meet at fountain', coordinates: { lat: 48.8566, lng: 2.3522 } },
-      coordinates: { lat: 48.8566, lng: 2.3522 },
-    },
-    host: { id: 'h2', name: 'Pierre D.', avatar: '', bio: 'Chef', rating: 4.8, reviewCount: 523, responseRate: 95, responseTime: '2 hours', languages: ['English', 'French'], verified: true, superHost: false, memberSince: new Date(), totalExperiences: 5 },
-    price: { amount: 89, currency: 'USD', formatted: '$89' },
-    rating: 4.8,
-    reviewCount: 1203,
-    maxParticipants: 12,
-    minParticipants: 2,
-    includes: ['All food tastings', 'Local guide'],
-    notIncluded: ['Additional drinks'],
-    requirements: [],
-    whatToBring: ['Empty stomach'],
-    accessibility: { wheelchairAccessible: false, mobilityAid: false, visualAid: false, hearingAid: false, serviceAnimals: true, infantFriendly: false, childFriendly: true, seniorFriendly: true, fitnessLevel: 'moderate' },
-    languages: ['English', 'French'],
-    availability: [],
-    cancellationPolicy: 'free_48h',
-    instantConfirmation: true,
-    mobileTicket: true,
-    featured: false,
-    bestSeller: true,
-    tags: ['food-tour'],
-  },
-  {
-    id: '3',
-    title: `${destination} Bike Tour`,
-    description: 'Discover the city on two wheels through charming neighborhoods.',
-    shortDescription: 'Scenic cycling adventure',
-    images: ['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800'],
-    category: 'adventure',
-    duration: 180,
-    location: {
-      city: destination,
-      country: 'France',
-      meetingPoint: { name: 'Bike Shop', address: '15 River Street', instructions: 'Blue awning', coordinates: { lat: 48.8584, lng: 2.2945 } },
-      coordinates: { lat: 48.8584, lng: 2.2945 },
-    },
-    host: { id: 'h3', name: 'Lucas M.', avatar: '', bio: 'Cycling enthusiast', rating: 4.7, reviewCount: 312, responseRate: 92, responseTime: '3 hours', languages: ['English', 'French', 'German'], verified: true, superHost: false, memberSince: new Date(), totalExperiences: 3 },
-    price: { amount: 45, currency: 'USD', formatted: '$45' },
-    rating: 4.7,
-    reviewCount: 892,
-    maxParticipants: 10,
-    minParticipants: 2,
-    includes: ['Bike rental', 'Helmet', 'Guide'],
-    notIncluded: ['Lunch'],
-    requirements: ['Know how to ride a bike'],
-    whatToBring: ['Sunscreen'],
-    accessibility: { wheelchairAccessible: false, mobilityAid: false, visualAid: false, hearingAid: false, serviceAnimals: false, infantFriendly: false, childFriendly: true, seniorFriendly: false, fitnessLevel: 'moderate' },
-    languages: ['English', 'French', 'German'],
-    availability: [],
-    cancellationPolicy: 'free_24h',
-    instantConfirmation: true,
-    mobileTicket: true,
-    featured: false,
-    bestSeller: false,
-    tags: ['bike-tour'],
-  },
+const SORT_OPTIONS = [
+  { id: 'recommended', label: 'Recommended' },
+  { id: 'price_low', label: 'Price: Low to High' },
+  { id: 'price_high', label: 'Price: High to Low' },
+  { id: 'rating', label: 'Highest Rated' },
+  { id: 'reviews', label: 'Most Reviewed' },
 ];
+
+const FILTER_CHIPS = [
+  { id: 'tours', label: 'Tours' },
+  { id: 'attractions', label: 'Attractions' },
+  { id: 'food_drink', label: 'Food & Drink' },
+  { id: 'adventure', label: 'Adventure' },
+  { id: 'culture_history', label: 'Culture' },
+  { id: 'free_cancel', label: 'Free Cancellation' },
+  { id: 'instant', label: 'Instant Confirm' },
+  { id: 'best_seller', label: 'Best Seller' },
+];
+
+// Safe helpers for data that may be numbers or objects
+function safeRating(exp: any): number {
+  if (typeof exp.rating === 'number') return exp.rating;
+  if (exp.rating?.score) return exp.rating.score;
+  return 0;
+}
+function safeReviewCount(exp: any): number {
+  if (typeof exp.reviewCount === 'number') return exp.reviewCount;
+  if (exp.rating?.reviewCount) return exp.rating.reviewCount;
+  return 0;
+}
+function safePrice(exp: any): number {
+  if (typeof exp.price === 'number') return exp.price;
+  if (exp.price?.amount) return exp.price.amount;
+  return 0;
+}
+function safeDuration(exp: any): number {
+  if (typeof exp.duration === 'number') return exp.duration;
+  if (exp.duration?.value) {
+    return exp.duration.unit === 'hours' ? exp.duration.value * 60 : exp.duration.value;
+  }
+  return 0;
+}
+function safeCancellation(exp: any): string {
+  return exp.cancellationPolicy || 'non_refundable';
+}
 
 export default function ExperienceResultsScreen({
   onSelectExperience,
@@ -158,26 +93,77 @@ export default function ExperienceResultsScreen({
 }: ExperienceResultsScreenProps) {
   const insets = useSafeAreaInsets();
   const { colors: tc } = useTheme();
-  const { searchParams, setResults, results } = useExperienceStore();
+  const { searchParams, results } = useExperienceStore();
   const [selectedExperience, setSelectedExperience] = useState<Experience | null>(null);
-  const [showCancelModal, setShowCancelModal] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<string>('recommended');
+  const [showSortMenu, setShowSortMenu] = useState(false);
 
-  // Load mock results
-  useEffect(() => {
-    const destination = searchParams.destination?.name || 'Paris';
-    const mockResults = generateMockExperiences(destination);
-    setResults(mockResults);
-  }, []);
+  // ─── Filter + Sort logic ───
+  const filteredResults = useMemo(() => {
+    let filtered = [...results] as any[];
 
-  const formatDuration = (minutes: number): string => {
-    if (minutes < 60) return `${minutes} min`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h`;
+    // Category filters
+    const categoryFilters = activeFilters.filter(f =>
+      ['tours', 'attractions', 'food_drink', 'adventure', 'culture_history'].includes(f)
+    );
+    if (categoryFilters.length > 0) {
+      filtered = filtered.filter(exp => categoryFilters.includes(exp.category));
+    }
+
+    // Feature filters
+    if (activeFilters.includes('free_cancel')) {
+      filtered = filtered.filter(exp => {
+        const policy = safeCancellation(exp);
+        return policy === 'free_24h' || policy === 'free_48h' || policy === 'free_7d';
+      });
+    }
+    if (activeFilters.includes('instant')) {
+      filtered = filtered.filter(exp => exp.instantConfirmation);
+    }
+    if (activeFilters.includes('best_seller')) {
+      filtered = filtered.filter(exp => exp.bestSeller);
+    }
+
+    // Sort
+    switch (sortBy) {
+      case 'price_low':
+        filtered.sort((a, b) => safePrice(a) - safePrice(b));
+        break;
+      case 'price_high':
+        filtered.sort((a, b) => safePrice(b) - safePrice(a));
+        break;
+      case 'rating':
+        filtered.sort((a, b) => safeRating(b) - safeRating(a));
+        break;
+      case 'reviews':
+        filtered.sort((a, b) => safeReviewCount(b) - safeReviewCount(a));
+        break;
+      default: // recommended — best sellers first, then by rating
+        filtered.sort((a, b) => {
+          if (a.bestSeller && !b.bestSeller) return -1;
+          if (!a.bestSeller && b.bestSeller) return 1;
+          return safeRating(b) - safeRating(a);
+        });
+    }
+
+    return filtered;
+  }, [results, activeFilters, sortBy]);
+
+  const toggleFilter = (filterId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActiveFilters(prev =>
+      prev.includes(filterId)
+        ? prev.filter(f => f !== filterId)
+        : [...prev, filterId]
+    );
   };
 
-  const handleClose = () => {
-    setShowCancelModal(true);
+  const handleSort = (sortId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSortBy(sortId);
+    setShowSortMenu(false);
   };
 
   const toggleFavorite = (id: string) => {
@@ -203,22 +189,25 @@ export default function ExperienceResultsScreen({
     onSelectExperience(experience);
   };
 
-  // Use the shared ExperienceCard component for consistent premium UI
-  const renderExperienceCard = ({ item, index }: { item: Experience; index: number }) => {
-    // Convert Experience to ExperienceCardData format
+  const currentSortLabel = SORT_OPTIONS.find(s => s.id === sortBy)?.label || 'Recommended';
+
+  // Use the shared ExperienceCard component
+  const renderExperienceCard = ({ item, index }: { item: any; index: number }) => {
     const cardData: ExperienceCardData = {
       id: item.id,
       title: item.title,
-      shortDescription: item.shortDescription,
-      images: item.images,
-      category: item.category.charAt(0).toUpperCase() + item.category.slice(1), // Capitalize
-      duration: item.duration,
-      price: item.price.amount,
-      rating: item.rating,
-      reviewCount: item.reviewCount,
-      bestSeller: item.bestSeller,
-      featured: item.featured,
-      instantConfirmation: item.instantConfirmation,
+      shortDescription: item.shortDescription || item.description || '',
+      images: Array.isArray(item.images) ? item.images : [],
+      category: typeof item.category === 'string'
+        ? item.category.charAt(0).toUpperCase() + item.category.slice(1).replace(/_/g, ' ')
+        : 'Experience',
+      duration: safeDuration(item),
+      price: safePrice(item),
+      rating: safeRating(item),
+      reviewCount: safeReviewCount(item),
+      bestSeller: item.bestSeller || false,
+      featured: item.featured || false,
+      instantConfirmation: item.instantConfirmation || false,
     };
 
     return (
@@ -235,7 +224,7 @@ export default function ExperienceResultsScreen({
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
       <StatusBar barStyle="light-content" />
-      
+
       {/* Header with Background Image */}
       <ImageBackground
         source={require('../../../../../../assets/images/experiencebg.png')}
@@ -245,37 +234,106 @@ export default function ExperienceResultsScreen({
         <View style={styles.headerOverlay} />
         <View style={styles.headerContent}>
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <ArrowLeft size={24} color={colors.white} />
+            <ArrowLeft size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>{searchParams.destination?.name || 'Experiences'}</Text>
-            <Text style={styles.headerSubtitle}>{results.length} experiences found</Text>
+            <Text style={styles.headerSubtitle}>{filteredResults.length} experiences found</Text>
           </View>
-          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-            <CloseCircle size={24} color={colors.white} variant="Bold" />
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <CloseCircle size={24} color="#FFFFFF" variant="Bold" />
           </TouchableOpacity>
         </View>
       </ImageBackground>
 
-      {/* Filter Bar - Outside Header */}
-      <View style={styles.filterBar}>
-        <TouchableOpacity style={styles.filterButton}>
-          <Filter size={18} color={colors.textPrimary} />
-          <Text style={styles.filterText}>Filter</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.filterButton}>
-          <Sort size={18} color={colors.textPrimary} />
-          <Text style={styles.filterText}>Sort</Text>
-        </TouchableOpacity>
+      {/* Filter Chips — horizontal scroll */}
+      <View style={[styles.filterSection, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScroll}
+        >
+          {/* Sort button */}
+          <TouchableOpacity
+            style={[styles.sortButton, { backgroundColor: `${tc.primary}10` }]}
+            onPress={() => setShowSortMenu(!showSortMenu)}
+          >
+            <Setting4 size={16} color={tc.primary} />
+            <Text style={[styles.sortButtonText, { color: tc.primary }]}>{currentSortLabel}</Text>
+            <ArrowDown2 size={14} color={tc.primary} />
+          </TouchableOpacity>
+
+          {FILTER_CHIPS.map((filter) => {
+            const isActive = activeFilters.includes(filter.id);
+            return (
+              <TouchableOpacity
+                key={filter.id}
+                style={[
+                  styles.filterChip,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  isActive && { backgroundColor: tc.primary, borderColor: tc.primary },
+                ]}
+                onPress={() => toggleFilter(filter.id)}
+              >
+                <Text style={[
+                  styles.filterChipText,
+                  { color: tc.textSecondary },
+                  isActive && { color: '#FFFFFF' },
+                ]}>
+                  {filter.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Sort dropdown */}
+        {showSortMenu && (
+          <View style={[styles.sortMenu, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+            {SORT_OPTIONS.map((option) => (
+              <TouchableOpacity
+                key={option.id}
+                style={[
+                  styles.sortMenuItem,
+                  { borderBottomColor: tc.borderSubtle },
+                  sortBy === option.id && { backgroundColor: `${tc.primary}10` },
+                ]}
+                onPress={() => handleSort(option.id)}
+              >
+                <Text style={[
+                  styles.sortMenuItemText,
+                  { color: tc.textPrimary },
+                  sortBy === option.id && { color: tc.primary, fontWeight: typography.fontWeight.semibold },
+                ]}>
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* Results List */}
       <FlatList
-        data={results}
+        data={filteredResults}
         keyExtractor={(item) => item.id}
         renderItem={renderExperienceCard}
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.lg }]}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No experiences match</Text>
+            <Text style={[styles.emptySubtitle, { color: tc.textSecondary }]}>
+              Try adjusting your filters to see more results.
+            </Text>
+            <TouchableOpacity
+              style={[styles.clearButton, { backgroundColor: `${tc.primary}10` }]}
+              onPress={() => { setActiveFilters([]); setSortBy('recommended'); }}
+            >
+              <Text style={[styles.clearButtonText, { color: tc.primary }]}>Clear All Filters</Text>
+            </TouchableOpacity>
+          </View>
+        }
       />
 
       {/* Experience Detail Sheet */}
@@ -286,17 +344,6 @@ export default function ExperienceResultsScreen({
         experience={selectedExperience}
       />
 
-      {/* Cancel Modal */}
-      <CancelBookingModal
-        visible={showCancelModal}
-        onCancel={() => setShowCancelModal(false)}
-        onConfirm={() => {
-          setShowCancelModal(false);
-          onClose();
-        }}
-        title="Cancel Search?"
-        message="Are you sure you want to cancel? Your search results will be lost."
-      />
     </View>
   );
 }
@@ -304,7 +351,6 @@ export default function ExperienceResultsScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     paddingBottom: spacing.md,
@@ -332,7 +378,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
   headerSubtitle: {
     fontSize: typography.fontSize.sm,
@@ -344,125 +390,92 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  filterBar: {
-    flexDirection: 'row',
+
+  // Filter section
+  filterSection: {
+    borderBottomWidth: 1,
+    position: 'relative',
+  },
+  filterScroll: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.bgElevated,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
     gap: spacing.sm,
   },
-  filterButton: {
+  sortButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.gray50,
     borderRadius: borderRadius.full,
-    gap: spacing.xs,
+    gap: 6,
   },
-  filterText: {
+  sortButtonText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
   },
+  filterChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+  },
+  filterChipText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+  },
+  sortMenu: {
+    position: 'absolute',
+    top: '100%',
+    left: spacing.lg,
+    right: spacing.lg,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    overflow: 'hidden',
+    zIndex: 100,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+  sortMenuItem: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+  },
+  sortMenuItemText: {
+    fontSize: typography.fontSize.sm,
+  },
+
+  // List
   listContent: {
     padding: spacing.lg,
     gap: spacing.md,
   },
-  experienceCard: {
-    backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.gray200,
-    marginBottom: spacing.sm,
-  },
-  imageContainer: {
-    position: 'relative',
-  },
-  experienceImage: {
-    width: '100%',
-    height: 180,
-  },
-  favoriteButton: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'center',
+
+  // Empty state
+  emptyContainer: {
     alignItems: 'center',
+    paddingTop: 60,
+    paddingHorizontal: spacing.xl,
   },
-  bestSellerBadge: {
-    position: 'absolute',
-    top: spacing.sm,
-    left: spacing.sm,
-    backgroundColor: colors.warning,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.sm,
-  },
-  bestSellerText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.white,
-  },
-  cardContent: {
-    padding: spacing.md,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  ratingText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginLeft: 4,
-  },
-  reviewCount: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginLeft: 4,
-  },
-  experienceTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-    gap: 4,
-  },
-  infoText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  priceLabel: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginRight: 4,
-  },
-  priceValue: {
+  emptyTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary,
+    marginBottom: spacing.sm,
   },
-  priceUnit: {
+  emptySubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginLeft: 4,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  clearButton: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.full,
+  },
+  clearButtonText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
 });

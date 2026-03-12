@@ -58,8 +58,8 @@ const DEFAULT_SETTINGS: SecuritySettings = {
 export default function SecuritySettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
-  const { user } = useAuth();
+  const { colors: tc, isDark } = useTheme();
+  const { profile } = useAuth();
   const [settings, setSettings] = useState<SecuritySettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -88,13 +88,13 @@ export default function SecuritySettingsScreen() {
 
   // Load settings
   const loadSettings = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('security_settings')
-        .eq('id', user.id)
+        .eq('id', profile.id)
         .single();
 
       if (error) throw error;
@@ -110,7 +110,7 @@ export default function SecuritySettingsScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [profile?.id]);
 
   useEffect(() => {
     loadSettings();
@@ -118,14 +118,14 @@ export default function SecuritySettingsScreen() {
 
   // Save settings
   const saveSettings = async (newSettings: SecuritySettings) => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     setIsSaving(true);
     try {
       const { error } = await supabase
         .from('profiles')
         .update({ security_settings: newSettings })
-        .eq('id', user.id);
+        .eq('id', profile.id);
 
       if (error) throw error;
       
@@ -241,25 +241,25 @@ export default function SecuritySettingsScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: tc.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <ActivityIndicator size="large" color={tc.primary} />
       </View>
     );
   }
 
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Security</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Security</Text>
         <View style={styles.headerSpacer}>
-          {isSaving && <ActivityIndicator size="small" color={colors.primary} />}
+          {isSaving && <ActivityIndicator size="small" color={tc.primary} />}
         </View>
       </View>
 
@@ -270,37 +270,38 @@ export default function SecuritySettingsScreen() {
       >
         {/* Password Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Password</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Password</Text>
           
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             <TouchableOpacity style={styles.settingItem} onPress={handleChangePassword}>
-              <View style={styles.settingIcon}>
-                <Lock size={20} color={colors.primary} variant="Bold" />
+              <View style={[styles.settingIcon, { backgroundColor: tc.primary + '10' }]}>
+                <Lock size={20} color={tc.primary} variant="Bold" />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Change Password</Text>
-                <Text style={styles.settingDescription}>Update your password regularly</Text>
+                <Text style={[styles.settingTitle, { color: tc.textPrimary }]}>Change Password</Text>
+                <Text style={[styles.settingDescription, { color: tc.textSecondary }]}>Update your password regularly</Text>
               </View>
-              <ArrowLeft size={18} color={colors.gray400} style={{ transform: [{ rotate: '180deg' }] }} />
+              <ArrowLeft size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Two-Factor Authentication Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Two-Factor Authentication</Text>
-          <Text style={styles.sectionSubtitle}>Add an extra layer of security to your account</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Two-Factor Authentication</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Add an extra layer of security to your account</Text>
           
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             <TouchableOpacity style={styles.settingItem} onPress={handleSetup2FA}>
-              <View style={[styles.settingIcon, settings.two_factor_enabled && styles.settingIconActive]}>
-                <ShieldTick size={20} color={settings.two_factor_enabled ? colors.success : colors.primary} variant="Bold" />
+              <View style={[styles.settingIcon, { backgroundColor: settings.two_factor_enabled ? tc.success + '10' : tc.primary + '10' }]}>
+                <ShieldTick size={20} color={settings.two_factor_enabled ? tc.success : tc.primary} variant="Bold" />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Two-Factor Authentication</Text>
+                <Text style={[styles.settingTitle, { color: tc.textPrimary }]}>Two-Factor Authentication</Text>
                 <Text style={[
                   styles.settingDescription,
-                  settings.two_factor_enabled && styles.settingDescriptionActive
+                  { color: tc.textSecondary },
+                  settings.two_factor_enabled && { color: tc.success }
                 ]}>
                   {settings.two_factor_enabled 
                     ? `Enabled via ${settings.two_factor_method === 'sms' ? 'SMS' : 'Authenticator App'}`
@@ -309,11 +310,11 @@ export default function SecuritySettingsScreen() {
                 </Text>
               </View>
               {settings.two_factor_enabled ? (
-                <View style={styles.enabledBadge}>
-                  <Text style={styles.enabledBadgeText}>On</Text>
+                <View style={[styles.enabledBadge, { backgroundColor: tc.success + '20' }]}>
+                  <Text style={[styles.enabledBadgeText, { color: tc.success }]}>On</Text>
                 </View>
               ) : (
-                <ArrowLeft size={18} color={colors.gray400} style={{ transform: [{ rotate: '180deg' }] }} />
+                <ArrowLeft size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
               )}
             </TouchableOpacity>
           </View>
@@ -322,22 +323,22 @@ export default function SecuritySettingsScreen() {
         {/* Biometric Login Section */}
         {biometricAvailable && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Biometric Login</Text>
+            <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Biometric Login</Text>
             
-            <View style={styles.card}>
+            <View style={[styles.card, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
               <View style={styles.settingItem}>
-                <View style={styles.settingIcon}>
-                  <FingerScan size={20} color={colors.primary} variant="Bold" />
+                <View style={[styles.settingIcon, { backgroundColor: tc.primary + '10' }]}>
+                  <FingerScan size={20} color={tc.primary} variant="Bold" />
                 </View>
                 <View style={styles.settingContent}>
-                  <Text style={styles.settingTitle}>{biometricType}</Text>
-                  <Text style={styles.settingDescription}>Quick and secure login</Text>
+                  <Text style={[styles.settingTitle, { color: tc.textPrimary }]}>{biometricType}</Text>
+                  <Text style={[styles.settingDescription, { color: tc.textSecondary }]}>Quick and secure login</Text>
                 </View>
                 <Switch
                   value={settings.biometric_enabled}
                   onValueChange={handleBiometricToggle}
-                  trackColor={{ false: colors.gray200, true: colors.primary + '40' }}
-                  thumbColor={settings.biometric_enabled ? colors.primary : colors.gray400}
+                  trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
+                  thumbColor={settings.biometric_enabled ? tc.primary : isDark ? '#666' : colors.gray400}
                 />
               </View>
             </View>
@@ -346,66 +347,66 @@ export default function SecuritySettingsScreen() {
 
         {/* Sessions Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sessions & Devices</Text>
-          <Text style={styles.sectionSubtitle}>Manage your active sessions</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Sessions & Devices</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Manage your active sessions</Text>
           
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             <TouchableOpacity style={styles.settingItem} onPress={handleActiveSessions}>
-              <View style={styles.settingIcon}>
-                <Monitor size={20} color={colors.primary} variant="Bold" />
+              <View style={[styles.settingIcon, { backgroundColor: tc.primary + '10' }]}>
+                <Monitor size={20} color={tc.primary} variant="Bold" />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Active Sessions</Text>
-                <Text style={styles.settingDescription}>
+                <Text style={[styles.settingTitle, { color: tc.textPrimary }]}>Active Sessions</Text>
+                <Text style={[styles.settingDescription, { color: tc.textSecondary }]}>
                   {sessionCount} {sessionCount === 1 ? 'device' : 'devices'} logged in
                 </Text>
               </View>
-              <ArrowLeft size={18} color={colors.gray400} style={{ transform: [{ rotate: '180deg' }] }} />
+              <ArrowLeft size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
 
             <View style={styles.settingItem}>
-              <View style={styles.settingIcon}>
-                <Notification size={20} color={colors.primary} variant="Bold" />
+              <View style={[styles.settingIcon, { backgroundColor: tc.primary + '10' }]}>
+                <Notification size={20} color={tc.primary} variant="Bold" />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Login Alerts</Text>
-                <Text style={styles.settingDescription}>Get notified of new logins</Text>
+                <Text style={[styles.settingTitle, { color: tc.textPrimary }]}>Login Alerts</Text>
+                <Text style={[styles.settingDescription, { color: tc.textSecondary }]}>Get notified of new logins</Text>
               </View>
               <Switch
                 value={settings.login_alerts}
                 onValueChange={handleLoginAlertsToggle}
-                trackColor={{ false: colors.gray200, true: colors.primary + '40' }}
-                thumbColor={settings.login_alerts ? colors.primary : colors.gray400}
+                trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
+                thumbColor={settings.login_alerts ? tc.primary : isDark ? '#666' : colors.gray400}
               />
             </View>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
 
             <TouchableOpacity style={styles.settingItem} onPress={handleLogoutAllDevices}>
-              <View style={[styles.settingIcon, styles.settingIconDanger]}>
-                <Logout size={20} color={colors.error} variant="Bold" />
+              <View style={[styles.settingIcon, { backgroundColor: tc.error + '10' }]}>
+                <Logout size={20} color={tc.error} variant="Bold" />
               </View>
               <View style={styles.settingContent}>
-                <Text style={[styles.settingTitle, styles.settingTitleDanger]}>Log Out All Devices</Text>
-                <Text style={styles.settingDescription}>Sign out from everywhere</Text>
+                <Text style={[styles.settingTitle, { color: tc.error }]}>Log Out All Devices</Text>
+                <Text style={[styles.settingDescription, { color: tc.textSecondary }]}>Sign out from everywhere</Text>
               </View>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Security Tips */}
-        <View style={styles.tipsCard}>
+        <View style={[styles.tipsCard, { backgroundColor: tc.warning + '10', borderColor: tc.warning + '20' }]}>
           <View style={styles.tipsHeader}>
-            <InfoCircle size={20} color={colors.warning} variant="Bold" />
-            <Text style={styles.tipsTitle}>Security Tips</Text>
+            <InfoCircle size={20} color={tc.warning} variant="Bold" />
+            <Text style={[styles.tipsTitle, { color: tc.warning }]}>Security Tips</Text>
           </View>
           <View style={styles.tipsList}>
-            <Text style={styles.tipItem}>• Use a strong, unique password</Text>
-            <Text style={styles.tipItem}>• Enable two-factor authentication</Text>
-            <Text style={styles.tipItem}>• Review your active sessions regularly</Text>
-            <Text style={styles.tipItem}>• Never share your login credentials</Text>
+            <Text style={[styles.tipItem, { color: tc.textSecondary }]}>• Use a strong, unique password</Text>
+            <Text style={[styles.tipItem, { color: tc.textSecondary }]}>• Enable two-factor authentication</Text>
+            <Text style={[styles.tipItem, { color: tc.textSecondary }]}>• Review your active sessions regularly</Text>
+            <Text style={[styles.tipItem, { color: tc.textSecondary }]}>• Never share your login credentials</Text>
           </View>
         </View>
       </ScrollView>

@@ -24,16 +24,12 @@ import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import {
   ArrowLeft,
   ArrowDown2,
-  Setting4,
   Airplane,
   Clock,
   TickCircle,
   Calendar,
   Sort,
-  Filter,
   DollarCircle,
-  Star1,
-  Briefcase,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing } from '@/styles';
@@ -75,9 +71,7 @@ interface FlightResultsScreenProps {
   onClose: () => void;
 }
 
-// Mock date prices for horizontal scroll
-const generateDatePrices = (startDate: Date | string | null) => {
-  // Ensure we have a valid Date object
+const generateDateRange = (startDate: Date | string | null, currentPrice?: number) => {
   let baseDate: Date;
   if (!startDate) {
     baseDate = new Date();
@@ -94,23 +88,20 @@ const generateDatePrices = (startDate: Date | string | null) => {
     date.setDate(date.getDate() + i);
     dates.push({
       date,
-      price: Math.floor(Math.random() * 200) + 150,
+      price: i === 0 ? (currentPrice || null) : null,
       isSelected: i === 0,
     });
   }
   return dates;
 };
 
-// Filter options with values
 const FILTER_OPTIONS = [
   { id: 'sort', label: 'Sort', icon: 'sort', values: ['Price', 'Duration', 'Departure', 'Arrival'] },
-  { id: 'filters', label: 'Filters', icon: 'filter', values: ['Direct Only', 'Refundable', 'WiFi', 'Meals Included'] },
-  { id: 'price', label: 'Price', icon: 'price', values: ['Under $200', '$200-$400', '$400+'] },
+  { id: 'price', label: 'Price', icon: 'price', values: ['Under $200', '$200-$400', '$400-$600', '$600+'] },
   { id: 'transit', label: 'Stops', icon: 'stops', values: ['Direct', '1 Stop', '2+ Stops'] },
   { id: 'time', label: 'Time', icon: 'time', values: ['Morning', 'Afternoon', 'Evening', 'Night'] },
 ];
 
-// Mock flight type for display
 interface MockFlight {
   id: string;
   airlineName: string;
@@ -124,6 +115,7 @@ interface MockFlight {
   stops: number;
   price: number;
   seatsAvailable: number;
+  airlineLogo?: string;
 }
 
 export default function FlightResultsScreen({
@@ -144,11 +136,6 @@ export default function FlightResultsScreen({
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
   
-  // NOTE: Flight search is now performed in FlightSearchLoadingScreen
-  // The useFlightSearch hook shares state, so results are already available when this screen mounts
-  // We only re-fetch if the user changes the date from the date picker
-  
-  const datePrices = generateDatePrices(searchParams.departureDate || new Date());
   
   const formatRouteHeader = () => {
     const origin = searchParams.origin?.code || 'SAN';
@@ -197,12 +184,10 @@ export default function FlightResultsScreen({
   };
 
   const getFilterIcon = (iconType: string, isSelected: boolean) => {
-    const iconColor = isSelected ? colors.primary : colors.textPrimary;
+    const iconColor = isSelected ? tc.primary : tc.textPrimary;
     switch (iconType) {
       case 'sort':
         return <Sort size={16} color={iconColor} />;
-      case 'filter':
-        return <Filter size={16} color={iconColor} />;
       case 'price':
         return <DollarCircle size={16} color={iconColor} />;
       case 'stops':
@@ -222,15 +207,15 @@ export default function FlightResultsScreen({
     
     return (
       <TouchableOpacity
-        style={[styles.dateItem, isSelected && styles.dateItemSelected]}
+        style={[styles.dateItem, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }, isSelected && { backgroundColor: `${tc.primary}10`, borderColor: tc.primary }]}
         onPress={() => handleDateSelect(index)}
         activeOpacity={0.7}
       >
-        <Text style={[styles.dateDay, isSelected && styles.dateDaySelected]}>
+        <Text style={[styles.dateDay, { color: tc.textPrimary }, isSelected && { color: tc.textPrimary }]}>
           {dayName}, {dayNum} {month}
         </Text>
-        <Text style={[styles.datePrice, isSelected && styles.datePriceSelected]}>
-          ${item.price}
+        <Text style={[styles.datePrice, { color: isSelected ? tc.primary : tc.textTertiary }]}>
+          {item.price != null ? `$${item.price.toLocaleString('en-US')}` : '–'}
         </Text>
       </TouchableOpacity>
     );
@@ -267,22 +252,91 @@ export default function FlightResultsScreen({
         stops: result.totalStops || outbound.stops || 0,
         price: result.price?.amount || 0,
         seatsAvailable: 10,
+        airlineLogo: result.airlineLogo || firstSegment.carrier?.logo || undefined,
       };
     });
   }, [searchState.results, searchParams.origin?.code, searchParams.destination?.code]);
 
+  const cheapestPrice = useMemo(() => {
+    if (flights.length === 0) return null;
+    return Math.min(...flights.map(f => f.price));
+  }, [flights]);
+
+  const datePrices = useMemo(
+    () => generateDateRange(searchParams.departureDate || new Date(), cheapestPrice ?? undefined),
+    [searchParams.departureDate, cheapestPrice]
+  );
+
+  // Apply filters to flight results
+  const filteredFlights = useMemo(() => {
+    let result = [...flights];
+
+    const stopsFilter = selectedFilters['transit'];
+    if (stopsFilter === 'Direct') {
+      result = result.filter(f => f.stops === 0);
+    } else if (stopsFilter === '1 Stop') {
+      result = result.filter(f => f.stops === 1);
+    } else if (stopsFilter === '2+ Stops') {
+      result = result.filter(f => f.stops >= 2);
+    }
+
+    const priceFilter = selectedFilters['price'];
+    if (priceFilter === 'Under $200') {
+      result = result.filter(f => f.price < 200);
+    } else if (priceFilter === '$200-$400') {
+      result = result.filter(f => f.price >= 200 && f.price <= 400);
+    } else if (priceFilter === '$400-$600') {
+      result = result.filter(f => f.price > 400 && f.price <= 600);
+    } else if (priceFilter === '$600+') {
+      result = result.filter(f => f.price > 600);
+    }
+
+    const timeFilter = selectedFilters['time'];
+    if (timeFilter) {
+      result = result.filter(f => {
+        const hour = f.departureTime instanceof Date ? f.departureTime.getHours() : new Date(f.departureTime).getHours();
+        switch (timeFilter) {
+          case 'Morning': return hour >= 5 && hour < 12;
+          case 'Afternoon': return hour >= 12 && hour < 17;
+          case 'Evening': return hour >= 17 && hour < 21;
+          case 'Night': return hour >= 21 || hour < 5;
+          default: return true;
+        }
+      });
+    }
+
+    const sortOption = selectedFilters['sort'];
+    if (sortOption === 'Price') {
+      result.sort((a, b) => a.price - b.price);
+    } else if (sortOption === 'Duration') {
+      result.sort((a, b) => a.duration - b.duration);
+    } else if (sortOption === 'Departure') {
+      result.sort((a, b) => {
+        const aTime = a.departureTime instanceof Date ? a.departureTime.getTime() : new Date(a.departureTime).getTime();
+        const bTime = b.departureTime instanceof Date ? b.departureTime.getTime() : new Date(b.departureTime).getTime();
+        return aTime - bTime;
+      });
+    } else if (sortOption === 'Arrival') {
+      result.sort((a, b) => {
+        const aTime = a.arrivalTime instanceof Date ? a.arrivalTime.getTime() : new Date(a.arrivalTime).getTime();
+        const bTime = b.arrivalTime instanceof Date ? b.arrivalTime.getTime() : new Date(b.arrivalTime).getTime();
+        return aTime - bTime;
+      });
+    }
+
+    return result;
+  }, [flights, selectedFilters]);
+
   // Calculate best deal and recommended flights
   const { bestDealId, recommendedId } = useMemo(() => {
-    if (flights.length === 0) return { bestDealId: null, recommendedId: null };
+    if (filteredFlights.length === 0) return { bestDealId: null, recommendedId: null };
     
-    // Best Deal = lowest price
-    const sortedByPrice = [...flights].sort((a, b) => a.price - b.price);
+    const sortedByPrice = [...filteredFlights].sort((a, b) => a.price - b.price);
     const bestDeal = sortedByPrice[0];
     
-    // Recommended = best score (price 40% + duration 30% + stops 20% + early departure 10%)
-    const scored = flights.map(f => {
+    const scored = filteredFlights.map(f => {
       const priceScore = 100 - (f.price / (sortedByPrice[sortedByPrice.length - 1]?.price || 1)) * 100;
-      const durationScore = 100 - (f.duration / Math.max(...flights.map(x => x.duration))) * 100;
+      const durationScore = 100 - (f.duration / Math.max(...filteredFlights.map(x => x.duration))) * 100;
       const stopsScore = f.stops === 0 ? 100 : f.stops === 1 ? 60 : 30;
       const depHour = f.departureTime instanceof Date ? f.departureTime.getHours() : new Date(f.departureTime).getHours();
       const timeScore = depHour >= 6 && depHour <= 10 ? 100 : depHour >= 10 && depHour <= 14 ? 80 : 50;
@@ -300,7 +354,7 @@ export default function FlightResultsScreen({
     }
     
     return { bestDealId: bestDeal?.id, recommendedId: recommended?.id };
-  }, [flights]);
+  }, [filteredFlights]);
 
   // Use the shared FlightCard component for consistent premium UI
   const renderFlightCard = ({ item, index }: { item: MockFlight; index: number }) => {
@@ -317,8 +371,60 @@ export default function FlightResultsScreen({
       stops: item.stops,
       price: item.price,
       seatsAvailable: item.seatsAvailable,
-      // No facilities - will be shown on detail screen after API call
+      airlineLogo: item.airlineLogo,
     };
+
+    // Convert MockFlight to proper Flight type for FlightDealScreen
+    const toFlight = (): Flight => ({
+      id: item.id,
+      segments: [{
+        id: `${item.id}-seg-0`,
+        flightNumber: item.flightNumber,
+        airline: {
+          code: item.airlineCode,
+          name: item.airlineName,
+          logo: '',
+        },
+        aircraft: '',
+        origin: {
+          type: 'airport' as const,
+          id: item.originCode,
+          name: item.originCode,
+          code: item.originCode,
+          city: item.originCode,
+          timezone: '',
+        },
+        destination: {
+          type: 'airport' as const,
+          id: item.destCode,
+          name: item.destCode,
+          code: item.destCode,
+          city: item.destCode,
+          timezone: '',
+        },
+        departureTime: item.departureTime instanceof Date ? item.departureTime : new Date(item.departureTime),
+        arrivalTime: item.arrivalTime instanceof Date ? item.arrivalTime : new Date(item.arrivalTime),
+        duration: item.duration,
+        cabinClass: 'economy' as const,
+        status: 'scheduled' as const,
+      }],
+      layovers: [],
+      totalDuration: item.duration,
+      stops: item.stops,
+      price: {
+        amount: item.price,
+        currency: 'USD',
+        formatted: `$${item.price}`,
+      },
+      seatsAvailable: item.seatsAvailable,
+      refundable: false,
+      changeable: false,
+      baggageIncluded: {
+        cabin: { included: true, quantity: 1, weight: 7 },
+        checked: { included: false, quantity: 0, weight: 0 },
+      },
+      fareClass: 'economy',
+    });
 
     return (
       <FlightCard
@@ -326,7 +432,7 @@ export default function FlightResultsScreen({
         index={index}
         isRecommended={item.id === recommendedId}
         isBestDeal={item.id === bestDealId}
-        onPress={() => onSelectFlight(item as any)}
+        onPress={() => onSelectFlight(toFlight())}
       />
     );
   };
@@ -398,21 +504,23 @@ export default function FlightResultsScreen({
                 key={filter.id}
                 style={[
                   styles.filterButton,
-                  isActive && styles.filterButtonActive,
-                  hasSelection && styles.filterButtonSelected,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  isActive && { borderColor: tc.primary, backgroundColor: `${tc.primary}08` },
+                  hasSelection && { borderColor: tc.primary, backgroundColor: `${tc.primary}10` },
                 ]}
                 onPress={() => handleFilterPress(filter.id)}
               >
                 {getFilterIcon(filter.icon, hasSelection)}
                 <Text style={[
                   styles.filterText,
-                  hasSelection && styles.filterTextSelected,
+                  { color: tc.textPrimary },
+                  hasSelection && { color: tc.primary },
                 ]}>
                   {selectedFilters[filter.id] || filter.label}
                 </Text>
                 <ArrowDown2 
                   size={14} 
-                  color={hasSelection ? colors.primary : colors.textSecondary} 
+                  color={hasSelection ? tc.primary : tc.textSecondary} 
                   style={{ transform: [{ rotate: isActive ? '180deg' : '0deg' }] }}
                 />
               </TouchableOpacity>
@@ -422,24 +530,26 @@ export default function FlightResultsScreen({
         
         {/* Filter Dropdown */}
         {activeFilter && (
-          <View style={styles.filterDropdown}>
+          <View style={[styles.filterDropdown, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             {getActiveFilterOptions()?.values.map((value) => (
               <TouchableOpacity
                 key={value}
                 style={[
                   styles.filterOption,
-                  selectedFilters[activeFilter] === value && styles.filterOptionSelected,
+                  { borderBottomColor: tc.borderSubtle },
+                  selectedFilters[activeFilter] === value && { backgroundColor: `${tc.primary}08` },
                 ]}
                 onPress={() => handleFilterSelect(activeFilter, value)}
               >
                 <Text style={[
                   styles.filterOptionText,
-                  selectedFilters[activeFilter] === value && styles.filterOptionTextSelected,
+                  { color: tc.textPrimary },
+                  selectedFilters[activeFilter] === value && { color: tc.primary },
                 ]}>
                   {value}
                 </Text>
                 {selectedFilters[activeFilter] === value && (
-                  <TickCircle size={16} color={colors.primary} variant="Bold" />
+                  <TickCircle size={16} color={tc.primary} variant="Bold" />
                 )}
               </TouchableOpacity>
             ))}
@@ -450,23 +560,25 @@ export default function FlightResultsScreen({
       {/* Flight List */}
       {searchState.isLoading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 }}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={{ marginTop: 16, color: colors.textSecondary }}>
+          <ActivityIndicator size="large" color={tc.primary} />
+          <Text style={{ marginTop: 16, color: tc.textSecondary }}>
             Searching {searchState.totalCount > 0 ? `${searchState.totalCount} flights...` : 'flights...'}
           </Text>
         </View>
       ) : searchState.error ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60, paddingHorizontal: 20 }}>
-          <Text style={{ color: colors.error, textAlign: 'center' }}>{searchState.error}</Text>
+          <Text style={{ color: tc.error, textAlign: 'center' }}>{searchState.error}</Text>
         </View>
-      ) : flights.length === 0 ? (
+      ) : filteredFlights.length === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 }}>
-          <Airplane size={48} color={colors.textSecondary} />
-          <Text style={{ marginTop: 16, color: colors.textSecondary }}>No flights found</Text>
+          <Airplane size={48} color={tc.textSecondary} />
+          <Text style={{ marginTop: 16, color: tc.textSecondary }}>
+            {flights.length > 0 ? 'No flights match your filters' : 'No flights found'}
+          </Text>
         </View>
       ) : (
         <FlatList
-          data={flights}
+          data={filteredFlights}
           keyExtractor={(item) => item.id}
           renderItem={renderFlightCard}
           contentContainerStyle={[
@@ -475,8 +587,10 @@ export default function FlightResultsScreen({
           ]}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <Text style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, color: colors.textSecondary }}>
-              {searchState.totalCount} flights found • Source: {searchState.source || 'live'}
+            <Text style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, color: tc.textSecondary }}>
+              {filteredFlights.length === flights.length
+                ? `${flights.length} flights found`
+                : `${filteredFlights.length} of ${flights.length} flights`}
             </Text>
           }
         />

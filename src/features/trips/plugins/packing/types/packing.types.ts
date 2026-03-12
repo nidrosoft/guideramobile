@@ -1,14 +1,20 @@
 export enum PackingCategory {
   ESSENTIALS = 'essentials',
+  DOCUMENTS = 'documents',
   CLOTHING = 'clothing',
   TOILETRIES = 'toiletries',
   ELECTRONICS = 'electronics',
   HEALTH = 'health',
-  DOCUMENTS = 'documents',
   ACCESSORIES = 'accessories',
+  WORK = 'work',
   ACTIVITIES = 'activities',
+  BABY_KIDS = 'baby_kids',
+  FAITH = 'faith',
+  FOOD_SNACKS = 'food_snacks',
   CUSTOM = 'custom',
 }
+
+export type PackingPriority = 'critical' | 'essential' | 'recommended' | 'optional';
 
 export interface PackingItem {
   id: string;
@@ -20,6 +26,10 @@ export interface PackingItem {
   isSuggested: boolean;
   addedBy: 'system' | 'user';
   notes?: string;
+  priority?: PackingPriority;
+  reason?: string;
+  actionRequired?: string;
+  displayOrder?: number;
 }
 
 export interface CategoryInfo {

@@ -1,48 +1,22 @@
 /**
  * SCAN SUCCESS STEP
  * 
- * Final step in scan import flow - Success confirmation.
- * Shows success message and closes the flow.
+ * Final step in scan import flow - Shows real import result.
  */
 
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { TickCircle } from 'iconsax-react-native';
-import { colors, spacing, typography } from '@/styles';
-import { useTheme } from '@/context/ThemeContext';
+import React from 'react';
 import { StepComponentProps } from '../../types/import-flow.types';
+import SuccessStep from '../../components/shared/SuccessStep';
 
-export default function ScanSuccessStep({ data }: StepComponentProps) {
+export default function ScanSuccessStep({ data, onNext }: StepComponentProps) {
+  const tripTitle = data.importResult?.title || 'your trip';
+
   return (
-    <View style={styles.container}>
-      <TickCircle size={80} color={colors.success} variant="Bold" />
-      <Text style={styles.title}>Trip Added Successfully!</Text>
-      <Text style={styles.description}>
-        Your booking has been added to your trip. We'll help you plan the perfect itinerary!
-      </Text>
-    </View>
+    <SuccessStep
+      title="Trip Added Successfully!"
+      message={`Your booking has been added to "${tripTitle}". Check your Trips tab to view it and plan your itinerary!`}
+      buttonText="View My Trips"
+      onButtonPress={() => onNext(data)}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-  },
-  title: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginTop: spacing.xl,
-    marginBottom: spacing.xs,
-    textAlign: 'center',
-  },
-  description: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-});

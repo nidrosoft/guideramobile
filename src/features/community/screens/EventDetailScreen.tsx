@@ -4,7 +4,7 @@
  * Full event info with RSVP functionality.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,60 +33,103 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { eventService } from '@/services/community';
+import { useAuth } from '@/context/AuthContext';
 
 type RSVPStatus = 'going' | 'maybe' | 'not_going' | null;
-
-// Mock event data
-const MOCK_EVENT = {
-  id: 'event-1',
-  title: 'Tokyo Travelers Meetup 🗼',
-  description: 'Join us for an amazing meetup in Shibuya! We\'ll explore the famous crossing, grab some ramen, and visit a hidden izakaya. Perfect for solo travelers looking to make new friends.\n\nBring your camera and an appetite for adventure!',
-  coverImage: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800',
-  type: 'in_person' as const,
-  location: {
-    name: 'Shibuya Crossing',
-    address: 'Shibuya, Tokyo, Japan',
-    coordinates: { lat: 35.6595, lng: 139.7004 },
-  },
-  date: new Date('2025-01-20T18:00:00'),
-  endDate: new Date('2025-01-20T22:00:00'),
-  timezone: 'Asia/Tokyo',
-  community: {
-    id: 'comm-1',
-    name: 'Tokyo Travelers 2025',
-    avatar: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200',
-  },
-  host: {
-    id: 'user-1',
-    name: 'Yuki Tanaka',
-    avatar: 'https://i.pravatar.cc/150?img=3',
-    isVerified: true,
-  },
-  attendees: {
-    going: 24,
-    maybe: 8,
-    limit: 30,
-  },
-  goingUsers: [
-    { id: 'u1', avatar: 'https://i.pravatar.cc/150?img=1' },
-    { id: 'u2', avatar: 'https://i.pravatar.cc/150?img=2' },
-    { id: 'u3', avatar: 'https://i.pravatar.cc/150?img=3' },
-    { id: 'u4', avatar: 'https://i.pravatar.cc/150?img=4' },
-    { id: 'u5', avatar: 'https://i.pravatar.cc/150?img=5' },
-  ],
-  tags: ['meetup', 'food', 'nightlife', 'photography'],
-  isFree: true,
-  price: null,
-};
 
 export default function EventDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { profile } = useAuth();
   const [rsvpStatus, setRsvpStatus] = useState<RSVPStatus>(null);
   const [isLoading, setIsLoading] = useState(false);
-  
-  const event = MOCK_EVENT;
+  const [isFetching, setIsFetching] = useState(true);
+  const [event, setEvent] = useState<{
+    id: string;
+    title: string;
+    description: string;
+    coverImage: string;
+    type: 'in_person' | 'virtual';
+    location: { name: string; address: string; coordinates: { lat: number; lng: number } };
+    date: Date;
+    endDate: Date;
+    timezone: string;
+    community: { id: string; name: string; avatar: string };
+    host: { id: string; name: string; avatar: string; isVerified: boolean };
+    attendees: { going: number; maybe: number; limit: number };
+    goingUsers: { id: string; avatar: string }[];
+    tags: string[];
+    isFree: boolean;
+    price: string | null;
+  } | null>(null);
+
+  const fetchEvent = useCallback(async () => {
+    if (!id) return;
+    try {
+      setIsFetching(true);
+      const data = await eventService.getEvent(id);
+      if (!data) return;
+
+      const attendees = await eventService.getAttendees(data.id);
+      const goingAttendees = attendees.filter(a => a.rsvpStatus === 'going');
+      const maybeAttendees = attendees.filter(a => a.rsvpStatus === 'maybe');
+
+      const myRsvp = attendees.find(a => a.userId === profile?.id);
+      if (myRsvp) {
+        setRsvpStatus(myRsvp.rsvpStatus as RSVPStatus);
+      }
+
+      setEvent({
+        id: data.id,
+        title: data.title,
+        description: data.description || '',
+        coverImage: data.coverImageUrl || 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800',
+        type: data.locationType === 'virtual' ? 'virtual' : 'in_person',
+        location: {
+          name: data.locationName || '',
+          address: data.locationAddress || '',
+          coordinates: { lat: data.latitude || 0, lng: data.longitude || 0 },
+        },
+        date: data.startDate,
+        endDate: data.endDate || data.startDate,
+        timezone: data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        community: {
+          id: data.group?.id || '',
+          name: data.group?.name || '',
+          avatar: data.group?.group_photo_url || '',
+        },
+        host: {
+          id: data.creator?.id || data.createdBy,
+          name: data.creator ? `${data.creator.firstName} ${data.creator.lastName}` : '',
+          avatar: data.creator?.avatarUrl || '',
+          isVerified: true,
+        },
+        attendees: {
+          going: goingAttendees.length,
+          maybe: maybeAttendees.length,
+          limit: data.maxAttendees || 999,
+        },
+        goingUsers: goingAttendees.slice(0, 5).map(a => ({
+          id: a.userId,
+          avatar: a.user?.avatarUrl || `https://i.pravatar.cc/150?u=${a.userId}`,
+        })),
+        tags: data.category ? [data.category] : [],
+        isFree: true,
+        price: null,
+      });
+    } catch (err) {
+      console.error('Failed to fetch event:', err);
+      Alert.alert('Error', 'Could not load event details.');
+    } finally {
+      setIsFetching(false);
+    }
+  }, [id, profile?.id]);
+
+  useEffect(() => {
+    fetchEvent();
+  }, [fetchEvent]);
   
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -94,30 +138,44 @@ export default function EventDetailScreen() {
   
   const handleShare = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // Share functionality
   };
   
   const handleRSVP = async (status: RSVPStatus) => {
+    if (!profile?.id || !id) return;
+
     if (status === rsvpStatus) {
-      // Cancel RSVP
-      setRsvpStatus(null);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      try {
+        setIsLoading(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        await eventService.cancelRsvp(profile.id, id);
+        setRsvpStatus(null);
+        fetchEvent();
+      } catch (err) {
+        console.error('Failed to cancel RSVP:', err);
+      } finally {
+        setIsLoading(false);
+      }
       return;
     }
     
     setIsLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await eventService.rsvp(profile.id, id, status as 'going' | 'maybe' | 'not_going');
       setRsvpStatus(status);
-      setIsLoading(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      fetchEvent();
       
       if (status === 'going') {
         Alert.alert('You\'re Going! 🎉', 'We\'ll send you a reminder before the event.');
       }
-    }, 500);
+    } catch (err: any) {
+      console.error('Failed to RSVP:', err);
+      Alert.alert('Error', err?.message || 'Could not update RSVP.');
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const formatDate = (date: Date) => {
@@ -136,6 +194,14 @@ export default function EventDetailScreen() {
     }).format(date);
   };
   
+  if (isFetching || !event) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   const spotsLeft = event.attendees.limit - event.attendees.going;
   
   return (

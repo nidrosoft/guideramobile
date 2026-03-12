@@ -1,84 +1,112 @@
 /**
  * SCAN CAMERA STEP
  * 
- * Step 2 in scan import flow - Camera view for scanning tickets/QR codes.
- * User scans their booking document to extract details.
+ * Step 2 in scan import flow - Camera/gallery for scanning tickets.
+ * Uses expo-image-picker to capture or select an image, converts to base64.
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Scan, Gallery, InfoCircle } from 'iconsax-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { Scan, Gallery, InfoCircle, Camera } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
 import { StepComponentProps } from '../../types/import-flow.types';
 
 export default function ScanCameraStep({ onNext }: StepComponentProps) {
-  const [isScanning, setIsScanning] = useState(false);
+  const { colors: tc, isDark } = useTheme();
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleScan = () => {
-    setIsScanning(true);
-    // Simulate scanning
-    setTimeout(() => {
-      onNext({ scannedData: { type: 'flight', code: 'ABC123' } });
-    }, 1500);
+  const processResult = (result: ImagePicker.ImagePickerResult) => {
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    if (!asset.base64) {
+      Alert.alert('Error', 'Failed to read the image. Please try again.');
+      return;
+    }
+
+    setIsProcessing(true);
+    const ext = (asset.uri || '').split('.').pop()?.toLowerCase() || 'jpeg';
+    const mediaType = ext === 'png' ? 'image/png' : 'image/jpeg';
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onNext({ scannedData: { imageBase64: asset.base64, mediaType } });
   };
 
-  const handleGallery = () => {
-    // TODO: Implement image picker
-    onNext({ scannedData: { type: 'hotel', code: 'HTL456' } });
+  const handleCamera = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission Required', 'Camera access is needed to scan your ticket.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      base64: true,
+    });
+    processResult(result);
+  };
+
+  const handleGallery = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission Required', 'Photo library access is needed to select your ticket.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      base64: true,
+    });
+    processResult(result);
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Scan Your Ticket</Text>
-        <Text style={styles.description}>
-          Position your ticket, boarding pass, or booking QR code within the frame
+        <Text style={[styles.title, { color: tc.textPrimary }]}>Scan Your Ticket</Text>
+        <Text style={[styles.description, { color: tc.textSecondary }]}>
+          Take a photo or choose an image of your boarding pass, hotel voucher, or booking confirmation.
         </Text>
 
-        {/* Camera Placeholder */}
-        <View style={styles.cameraContainer}>
-          <View style={styles.scanFrame}>
-            <View style={[styles.corner, styles.topLeft]} />
-            <View style={[styles.corner, styles.topRight]} />
-            <View style={[styles.corner, styles.bottomLeft]} />
-            <View style={[styles.corner, styles.bottomRight]} />
-            
-            <Scan size={80} color={colors.primary} variant="Bold" />
-            <Text style={styles.scanText}>
-              {isScanning ? 'Scanning...' : 'Align ticket within frame'}
-            </Text>
-          </View>
+        {/* Buttons */}
+        <View style={styles.buttonsContainer}>
+          <TouchableOpacity
+            style={[styles.scanButton, { backgroundColor: tc.primary }, isProcessing && { backgroundColor: tc.borderSubtle }]}
+            onPress={handleCamera}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Camera size={20} color="#fff" variant="Bold" />
+                <Text style={styles.scanButtonText}>Take Photo</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.galleryButton, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
+            onPress={handleGallery}
+            disabled={isProcessing}
+          >
+            <Gallery size={20} color={tc.textPrimary} variant="Bold" />
+            <Text style={[styles.galleryButtonText, { color: tc.textPrimary }]}>Choose from Gallery</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Info Box */}
-        <View style={styles.infoBox}>
-          <InfoCircle size={20} color={colors.primary} variant="Bold" />
-          <Text style={styles.infoText}>
+        {/* Helper text */}
+        <View style={[styles.helperBox, { backgroundColor: tc.primary + '08' }]}>
+          <InfoCircle size={18} color={tc.primary} variant="Bold" />
+          <Text style={[styles.helperText, { color: tc.textSecondary }]}>
             We support boarding passes, hotel vouchers, rental car confirmations, and booking QR codes
           </Text>
         </View>
-      </View>
-
-      {/* Fixed Footer Buttons */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.galleryButton}
-          onPress={handleGallery}
-        >
-          <Gallery size={20} color={colors.textPrimary} variant="Bold" />
-          <Text style={styles.galleryButtonText}>Choose from Gallery</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.scanButton, isScanning && styles.scanButtonDisabled]}
-          onPress={handleScan}
-          disabled={isScanning}
-        >
-          <Text style={styles.scanButtonText}>
-            {isScanning ? 'Scanning...' : 'Scan Now'}
-          </Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -90,125 +118,58 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.lg,
   },
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   description: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     lineHeight: 20,
     marginBottom: spacing.xl,
   },
-  cameraContainer: {
-    flex: 1,
-    backgroundColor: colors.gray900,
-    borderRadius: borderRadius.lg,
-    padding: spacing.xl,
-    justifyContent: 'center',
-    alignItems: 'center',
+  buttonsContainer: {
+    gap: spacing.sm,
     marginBottom: spacing.lg,
   },
-  scanFrame: {
-    width: 280,
-    height: 280,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  corner: {
-    position: 'absolute',
-    width: 40,
-    height: 40,
-    borderColor: colors.primary,
-    borderWidth: 3,
-  },
-  topLeft: {
-    top: 0,
-    left: 0,
-    borderRightWidth: 0,
-    borderBottomWidth: 0,
-    borderTopLeftRadius: 12,
-  },
-  topRight: {
-    top: 0,
-    right: 0,
-    borderLeftWidth: 0,
-    borderBottomWidth: 0,
-    borderTopRightRadius: 12,
-  },
-  bottomLeft: {
-    bottom: 0,
-    left: 0,
-    borderRightWidth: 0,
-    borderTopWidth: 0,
-    borderBottomLeftRadius: 12,
-  },
-  bottomRight: {
-    bottom: 0,
-    right: 0,
-    borderLeftWidth: 0,
-    borderTopWidth: 0,
-    borderBottomRightRadius: 12,
-  },
-  scanText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.white,
-    marginTop: spacing.md,
-    textAlign: 'center',
-  },
-  infoBox: {
-    flexDirection: 'row',
-    backgroundColor: `${colors.primary}10`,
-    padding: spacing.md,
-    borderRadius: 12,
-    gap: spacing.sm,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  footer: {
-    paddingTop: spacing.md,
-    paddingBottom: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray100,
-    gap: spacing.sm,
-  },
-  galleryButton: {
-    flexDirection: 'row',
-    backgroundColor: colors.background,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.gray200,
-  },
-  galleryButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
   scanButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.full,
+    flexDirection: 'row',
+    height: 52,
+    borderRadius: borderRadius.lg,
     alignItems: 'center',
-  },
-  scanButtonDisabled: {
-    backgroundColor: colors.gray300,
+    justifyContent: 'center',
+    gap: spacing.sm,
   },
   scanButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
     color: colors.white,
+  },
+  galleryButton: {
+    flexDirection: 'row',
+    height: 52,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+  },
+  galleryButtonText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  helperBox: {
+    flexDirection: 'row',
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    gap: spacing.sm,
+    alignItems: 'flex-start',
+  },
+  helperText: {
+    flex: 1,
+    fontSize: typography.fontSize.xs,
+    lineHeight: 18,
   },
 });

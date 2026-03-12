@@ -24,14 +24,14 @@ const ACTIVITY_ICONS = {
 };
 
 const ACTIVITY_COLORS = {
-  [ActivityType.FLIGHT]: '#6366F1', // Indigo
-  [ActivityType.HOTEL]: '#10B981', // Green
-  [ActivityType.RESTAURANT]: '#F59E0B', // Amber
-  [ActivityType.ATTRACTION]: '#EC4899', // Pink
-  [ActivityType.ACTIVITY]: '#8B5CF6', // Purple
-  [ActivityType.TRANSPORT]: '#6B7280', // Gray
-  [ActivityType.COFFEE]: '#92400E', // Brown
-  [ActivityType.SHOPPING]: '#EF4444', // Red
+  [ActivityType.FLIGHT]: colors.purple,
+  [ActivityType.HOTEL]: colors.success,
+  [ActivityType.RESTAURANT]: colors.warning,
+  [ActivityType.ATTRACTION]: colors.pink,
+  [ActivityType.ACTIVITY]: colors.purple,
+  [ActivityType.TRANSPORT]: colors.gray500,
+  [ActivityType.COFFEE]: colors.orange,
+  [ActivityType.SHOPPING]: colors.error,
   [ActivityType.CUSTOM]: colors.primary,
 };
 
@@ -134,13 +134,15 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.bgElevated,
-    borderRadius: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     padding: spacing.md,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
   cardHeader: {
     flexDirection: 'row',

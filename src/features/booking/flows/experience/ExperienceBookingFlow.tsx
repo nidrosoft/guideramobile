@@ -11,9 +11,9 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, Modal, StatusBar } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useExperienceStore } from '../../stores/useExperienceStore';
 import { Experience } from '../../types/experience.types';
 
@@ -32,7 +32,7 @@ export default function ExperienceBookingFlow({ visible, onClose }: ExperienceBo
   const [currentScreen, setCurrentScreen] = useState<ExperienceScreen>('search');
   const [screenHistory, setScreenHistory] = useState<ExperienceScreen[]>(['search']);
   const [selectedExperience, setSelectedExperience] = useState<Experience | null>(null);
-  
+  const { colors: tc } = useTheme();
   const experienceStore = useExperienceStore();
 
   // Navigation helpers
@@ -100,7 +100,6 @@ export default function ExperienceBookingFlow({ visible, onClose }: ExperienceBo
           <Animated.View 
             key="search"
             entering={FadeIn.duration(300)}
-            exiting={FadeOut.duration(200)}
             style={styles.screen}
           >
             <ExperienceSearchScreen
@@ -116,7 +115,6 @@ export default function ExperienceBookingFlow({ visible, onClose }: ExperienceBo
           <Animated.View 
             key="loading"
             entering={FadeIn.duration(300)}
-            exiting={FadeOut.duration(200)}
             style={styles.screen}
           >
             <ExperienceSearchLoadingScreen
@@ -130,7 +128,6 @@ export default function ExperienceBookingFlow({ visible, onClose }: ExperienceBo
           <Animated.View 
             key="results"
             entering={FadeIn.duration(300)}
-            exiting={FadeOut.duration(200)}
             style={styles.screen}
           >
             <ExperienceResultsScreen
@@ -154,7 +151,7 @@ export default function ExperienceBookingFlow({ visible, onClose }: ExperienceBo
       onRequestClose={handleClose}
     >
       <StatusBar barStyle="light-content" />
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: tc.background }]}>
         {renderScreen()}
       </View>
     </Modal>
@@ -164,7 +161,6 @@ export default function ExperienceBookingFlow({ visible, onClose }: ExperienceBo
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   screen: {
     flex: 1,

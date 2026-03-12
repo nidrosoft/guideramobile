@@ -57,14 +57,6 @@ interface FAQCategory {
   color: string;
 }
 
-const FAQ_CATEGORIES: FAQCategory[] = [
-  { id: 'getting-started', title: 'Getting Started', icon: Airplane, color: colors.primary },
-  { id: 'trips', title: 'Trips & Bookings', icon: Card, color: colors.success },
-  { id: 'community', title: 'Community', icon: Profile2User, color: colors.info },
-  { id: 'account', title: 'Account & Security', icon: ShieldTick, color: colors.warning },
-  { id: 'notifications', title: 'Notifications', icon: Notification, color: colors.error },
-  { id: 'settings', title: 'App Settings', icon: Setting2, color: colors.gray500 },
-];
 
 const FAQ_ITEMS: FAQItem[] = [
   // Getting Started
@@ -162,9 +154,18 @@ const FAQ_ITEMS: FAQItem[] = [
 export default function HelpCenterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
+
+  const FAQ_CATEGORIES: FAQCategory[] = [
+    { id: 'getting-started', title: 'Getting Started', icon: Airplane, color: tc.primary },
+    { id: 'trips', title: 'Trips & Bookings', icon: Card, color: tc.success },
+    { id: 'community', title: 'Community', icon: Profile2User, color: tc.info },
+    { id: 'account', title: 'Account & Security', icon: ShieldTick, color: tc.warning },
+    { id: 'notifications', title: 'Notifications', icon: Notification, color: tc.error },
+    { id: 'settings', title: 'App Settings', icon: Setting2, color: tc.textTertiary },
+  ];
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -204,14 +205,14 @@ export default function HelpCenterScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Help Center</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Help Center</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -222,12 +223,12 @@ export default function HelpCenterScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <SearchNormal1 size={20} color={colors.gray400} />
+        <View style={[styles.searchContainer, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+          <SearchNormal1 size={20} color={tc.textTertiary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: tc.textPrimary }]}
             placeholder="Search for help..."
-            placeholderTextColor={colors.gray400}
+            placeholderTextColor={tc.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -236,21 +237,21 @@ export default function HelpCenterScreen() {
         {/* Categories Grid */}
         {showCategories && (
           <View style={styles.categoriesSection}>
-            <Text style={styles.sectionTitle}>Browse by Topic</Text>
+            <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Browse by Topic</Text>
             <View style={styles.categoriesGrid}>
               {FAQ_CATEGORIES.map((category) => {
                 const Icon = category.icon;
                 return (
                   <TouchableOpacity
                     key={category.id}
-                    style={styles.categoryCard}
+                    style={[styles.categoryCard, { backgroundColor: tc.bgElevated, borderRadius: borderRadius.md }]}
                     onPress={() => handleCategoryPress(category.id)}
                     activeOpacity={0.7}
                   >
                     <View style={[styles.categoryIcon, { backgroundColor: category.color + '15' }]}>
                       <Icon size={24} color={category.color} variant="Bold" />
                     </View>
-                    <Text style={styles.categoryTitle}>{category.title}</Text>
+                    <Text style={[styles.categoryTitle, { color: tc.textPrimary }]}>{category.title}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -261,7 +262,7 @@ export default function HelpCenterScreen() {
         {/* FAQ List - Search Results */}
         {searchQuery.trim() && (
           <View style={styles.faqSection}>
-            <Text style={styles.searchResultsText}>
+            <Text style={[styles.searchResultsText, { color: tc.textSecondary }]}>
               {filteredFAQs.length} result{filteredFAQs.length !== 1 ? 's' : ''} found
             </Text>
             
@@ -269,29 +270,29 @@ export default function HelpCenterScreen() {
               filteredFAQs.map((faq) => (
                 <TouchableOpacity
                   key={faq.id}
-                  style={styles.faqCard}
+                  style={[styles.faqCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
                   onPress={() => handleFAQPress(faq.id)}
                   activeOpacity={0.7}
                 >
                   <View style={styles.faqHeader}>
-                    <MessageQuestion size={20} color={colors.primary} variant="Bold" />
-                    <Text style={styles.faqQuestion}>{faq.question}</Text>
+                    <MessageQuestion size={20} color={tc.primary} variant="Bold" />
+                    <Text style={[styles.faqQuestion, { color: tc.textPrimary }]}>{faq.question}</Text>
                     {expandedFAQ === faq.id ? (
-                      <ArrowUp2 size={18} color={colors.gray400} />
+                      <ArrowUp2 size={18} color={tc.textTertiary} />
                     ) : (
-                      <ArrowDown2 size={18} color={colors.gray400} />
+                      <ArrowDown2 size={18} color={tc.textTertiary} />
                     )}
                   </View>
                   {expandedFAQ === faq.id && (
-                    <Text style={styles.faqAnswer}>{faq.answer}</Text>
+                    <Text style={[styles.faqAnswer, { color: tc.textSecondary, borderTopColor: tc.borderSubtle }]}>{faq.answer}</Text>
                   )}
                 </TouchableOpacity>
               ))
             ) : (
               <View style={styles.noResults}>
-                <MessageQuestion size={48} color={colors.gray300} variant="Bulk" />
-                <Text style={styles.noResultsTitle}>No results found</Text>
-                <Text style={styles.noResultsText}>
+                <MessageQuestion size={48} color={tc.textTertiary} variant="Bulk" />
+                <Text style={[styles.noResultsTitle, { color: tc.textPrimary }]}>No results found</Text>
+                <Text style={[styles.noResultsText, { color: tc.textSecondary }]}>
                   Try different keywords or browse by topic
                 </Text>
               </View>
@@ -302,25 +303,25 @@ export default function HelpCenterScreen() {
         {/* Popular Questions */}
         {showCategories && (
           <View style={styles.popularSection}>
-            <Text style={styles.sectionTitle}>Popular Questions</Text>
+            <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Popular Questions</Text>
             {FAQ_ITEMS.slice(0, 5).map((faq) => (
               <TouchableOpacity
                 key={faq.id}
-                style={styles.faqCard}
+                style={[styles.faqCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
                 onPress={() => handleFAQPress(faq.id)}
                 activeOpacity={0.7}
               >
                 <View style={styles.faqHeader}>
-                  <MessageQuestion size={20} color={colors.primary} variant="Bold" />
-                  <Text style={styles.faqQuestion}>{faq.question}</Text>
+                  <MessageQuestion size={20} color={tc.primary} variant="Bold" />
+                  <Text style={[styles.faqQuestion, { color: tc.textPrimary }]}>{faq.question}</Text>
                   {expandedFAQ === faq.id ? (
-                    <ArrowUp2 size={18} color={colors.gray400} />
+                    <ArrowUp2 size={18} color={tc.textTertiary} />
                   ) : (
-                    <ArrowDown2 size={18} color={colors.gray400} />
+                    <ArrowDown2 size={18} color={tc.textTertiary} />
                   )}
                 </View>
                 {expandedFAQ === faq.id && (
-                  <Text style={styles.faqAnswer}>{faq.answer}</Text>
+                  <Text style={[styles.faqAnswer, { color: tc.textSecondary, borderTopColor: tc.borderSubtle }]}>{faq.answer}</Text>
                 )}
               </TouchableOpacity>
             ))}
@@ -328,18 +329,18 @@ export default function HelpCenterScreen() {
         )}
 
         {/* Contact Support Card */}
-        <View style={styles.contactSection}>
-          <Text style={styles.contactTitle}>Still need help?</Text>
-          <Text style={styles.contactText}>
+        <View style={[styles.contactSection, { backgroundColor: tc.primary + '10' }]}>
+          <Text style={[styles.contactTitle, { color: tc.textPrimary }]}>Still need help?</Text>
+          <Text style={[styles.contactText, { color: tc.textSecondary }]}>
             Our support team is here to assist you with any questions or issues.
           </Text>
           <View style={styles.contactButtons}>
             <TouchableOpacity
-              style={styles.contactButton}
+              style={[styles.contactButton, { backgroundColor: tc.primary }]}
               onPress={handleContactSupport}
               activeOpacity={0.8}
             >
-              <Message size={20} color={colors.white} variant="Bold" />
+              <Message size={20} color="#FFFFFF" variant="Bold" />
               <Text style={styles.contactButtonText}>Contact Support</Text>
             </TouchableOpacity>
           </View>

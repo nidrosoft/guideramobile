@@ -29,6 +29,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 type ReportType = 'user' | 'group' | 'message' | 'event';
 
@@ -81,6 +82,7 @@ const REPORT_REASONS: ReportReason[] = [
 export default function ReportScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const { type, id } = useLocalSearchParams<{ type: ReportType; id: string }>();
   
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
@@ -174,7 +176,7 @@ export default function ReportScreen() {
               }}
             >
               <View style={[styles.reasonIcon, isSelected && styles.reasonIconSelected]}>
-                <Icon size={20} color={isSelected ? colors.white : colors.bgElevated0} />
+                <Icon size={20} color={isSelected ? colors.white : tc.textTertiary} />
               </View>
               <View style={styles.reasonContent}>
                 <Text style={[styles.reasonLabel, isSelected && styles.reasonLabelSelected]}>
@@ -194,7 +196,7 @@ export default function ReportScreen() {
         <TextInput
           style={styles.textArea}
           placeholder="Provide any additional context that might help us understand the issue..."
-          placeholderTextColor={colors.gray400}
+          placeholderTextColor={tc.textTertiary}
           value={additionalInfo}
           onChangeText={setAdditionalInfo}
           multiline

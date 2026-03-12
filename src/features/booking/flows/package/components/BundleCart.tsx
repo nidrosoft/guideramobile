@@ -136,7 +136,7 @@ export default function BundleCart({
   return (
     <Animated.View 
       entering={FadeInUp.duration(400).springify()}
-      style={[styles.container, { paddingBottom: spacing.lg + bottomInset }]}
+      style={[styles.container, { paddingBottom: spacing.lg + bottomInset, backgroundColor: tc.bgElevated }]}
     >
       {/* Selected Items Only */}
       <View style={styles.itemsContainer}>
@@ -156,7 +156,7 @@ export default function BundleCart({
               style={styles.cartItem}
             >
               <TouchableOpacity
-                style={styles.itemContent}
+                style={[styles.itemContent, { backgroundColor: tc.bgCard }]}
                 onPress={() => handleCategoryPress(category)}
                 activeOpacity={0.7}
               >
@@ -165,18 +165,18 @@ export default function BundleCart({
                 </View>
                 
                 <View style={styles.itemInfo}>
-                  <Text style={styles.itemTitle} numberOfLines={1}>{info.title}</Text>
-                  <Text style={styles.itemSubtitle} numberOfLines={1}>{info.subtitle}</Text>
+                  <Text style={[styles.itemTitle, { color: tc.textPrimary }]} numberOfLines={1}>{info.title}</Text>
+                  <Text style={[styles.itemSubtitle, { color: tc.textSecondary }]} numberOfLines={1}>{info.subtitle}</Text>
                 </View>
                 
                 <View style={styles.priceContainer}>
-                  <Text style={styles.itemPrice}>${info.price}</Text>
+                  <Text style={[styles.itemPrice, { color: tc.textPrimary }]}>${(info.price || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</Text>
                   <TouchableOpacity
                     style={styles.removeButton}
                     onPress={() => handleRemove(category)}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
-                    <CloseCircle size={16} color={colors.textTertiary} />
+                    <CloseCircle size={16} color={tc.textSecondary} />
                   </TouchableOpacity>
                 </View>
               </TouchableOpacity>
@@ -189,42 +189,48 @@ export default function BundleCart({
       {pricing.savings > 0 && (
         <Animated.View 
           entering={FadeIn.duration(300).delay(200)}
-          style={styles.savingsBadge}
+          style={[styles.savingsBadge, { backgroundColor: `${tc.success}10` }]}
         >
-          <TickCircle size={16} color={colors.success} variant="Bold" />
-          <Text style={styles.savingsText}>
-            Bundle Savings: <Text style={styles.savingsAmount}>-${pricing.savings.toFixed(0)}</Text>
-            {' '}({pricing.savingsPercentage.toFixed(0)}% off)
+          <TickCircle size={16} color={tc.success} variant="Bold" />
+          <Text style={[styles.savingsText, { color: tc.success }]}>
+            Bundle Savings: <Text style={styles.savingsAmount}>-${(pricing.savings || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}</Text>
+            {' '}({(pricing.savingsPercentage || 0).toFixed(0)}% off)
           </Text>
         </Animated.View>
       )}
       
       {/* Required Items Prompt - only show when not complete */}
       {!canContinue && (
-        <Animated.View entering={FadeIn.duration(200)} style={styles.requiredPrompt}>
-          <Text style={styles.requiredPromptText}>
+        <Animated.View entering={FadeIn.duration(200)} style={[styles.requiredPrompt, { backgroundColor: `${tc.warning}15` }]}>
+          <Text style={[styles.requiredPromptText, { color: tc.warning }]}>
             Select {!isCategoryComplete('flight') ? 'flight' : ''}{!isCategoryComplete('flight') && !isCategoryComplete('hotel') ? ' & ' : ''}{!isCategoryComplete('hotel') ? 'hotel' : ''} to continue
           </Text>
         </Animated.View>
       )}
       
       {/* Total & Book on Provider */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { borderTopColor: tc.borderSubtle }]}>
         <View style={styles.totalContainer}>
           <Text style={[styles.totalLabel, { color: tc.textSecondary }]}>Package Total</Text>
-          <Text style={[styles.totalAmount, { color: tc.textPrimary }]}>${pricing.total.toFixed(2)}</Text>
+          <Text style={[styles.totalAmount, { color: tc.textPrimary }]}>${(pricing.total || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
         </View>
         
         {showContinue && (
           <View style={{ flex: 1, marginLeft: spacing.md }}>
             <BookOnProviderButton
               provider="kiwi"
-              price={`$${pricing.total.toFixed(0)}`}
+              price={`$${(pricing.total || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
               onPress={async () => {
                 if (!canContinue) {
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                   return;
                 }
+                const depDate = tripSetup.departureDate instanceof Date
+                  ? tripSetup.departureDate.toISOString().split('T')[0]
+                  : '';
+                const retDate = tripSetup.returnDate instanceof Date
+                  ? tripSetup.returnDate.toISOString().split('T')[0]
+                  : '';
                 await redirect({
                   deal_type: 'flight',
                   provider: 'kiwi',
@@ -233,12 +239,14 @@ export default function BundleCart({
                     title: `${tripSetup.origin?.name || ''} → ${tripSetup.destination?.name || ''}`,
                     subtitle: 'Package Deal',
                     provider: { code: 'kiwi', name: 'Kiwi.com' },
-                    price: { amount: pricing.total, currency: 'USD', formatted: `$${pricing.total.toFixed(0)}` },
+                    price: { amount: pricing.total || 0, currency: 'USD', formatted: `$${(pricing.total || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}` },
                   },
                   price_amount: pricing.total,
                   source: 'search',
                   origin: tripSetup.origin?.code,
                   destination: tripSetup.destination?.code,
+                  date: depDate,
+                  return_date: retDate,
                 });
               }}
               disabled={!canContinue}

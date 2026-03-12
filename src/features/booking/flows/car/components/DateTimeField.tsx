@@ -1,13 +1,15 @@
 /**
  * DATE TIME FIELD COMPONENT
- * 
+ *
  * Displays date and time for pickup/return.
+ * Theme-aware for dark/light mode.
  */
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Calendar, Clock } from 'iconsax-react-native';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 interface DateTimeFieldProps {
   label: string;
@@ -26,16 +28,17 @@ export default function DateTimeField({
   onTimePress,
   variant = 'pickup',
 }: DateTimeFieldProps) {
-  const iconColor = variant === 'pickup' ? colors.primary : colors.success;
+  const { colors: tc } = useTheme();
+  const iconColor = variant === 'pickup' ? tc.primary : tc.success;
 
   const formatDate = (d: Date | null): string => {
     if (!d) return 'Select date';
     const dateObj = d instanceof Date ? d : new Date(d);
     if (isNaN(dateObj.getTime())) return 'Select date';
-    return dateObj.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric' 
+    return dateObj.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
     });
   };
 
@@ -49,26 +52,26 @@ export default function DateTimeField({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, { color: tc.textSecondary }]}>{label}</Text>
       <View style={styles.row}>
-        <TouchableOpacity 
-          style={[styles.field, styles.dateField]} 
+        <TouchableOpacity
+          style={[styles.field, styles.dateField, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
           onPress={onDatePress}
           activeOpacity={0.7}
         >
           <Calendar size={18} color={iconColor} />
-          <Text style={[styles.value, !date && styles.placeholder]}>
+          <Text style={[styles.value, { color: tc.textPrimary }, !date && { color: tc.textTertiary, fontWeight: typography.fontWeight.regular }]}>
             {formatDate(date)}
           </Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.field, styles.timeField]} 
+
+        <TouchableOpacity
+          style={[styles.field, styles.timeField, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
           onPress={onTimePress}
           activeOpacity={0.7}
         >
           <Clock size={18} color={iconColor} />
-          <Text style={styles.value}>{formatTime(time)}</Text>
+          <Text style={[styles.value, { color: tc.textPrimary }]}>{formatTime(time)}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -76,42 +79,15 @@ export default function DateTimeField({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: spacing.md,
-  },
-  label: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
+  container: { marginBottom: spacing.md },
+  label: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, marginBottom: spacing.xs },
+  row: { flexDirection: 'row', gap: spacing.sm },
   field: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bgElevated,
-    borderRadius: 16,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    gap: spacing.sm,
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: borderRadius.lg, padding: spacing.md,
+    borderWidth: 1, gap: spacing.sm,
   },
-  dateField: {
-    flex: 1.5,
-  },
-  timeField: {
-    flex: 1,
-  },
-  value: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
-  },
-  placeholder: {
-    color: colors.gray400,
-    fontWeight: typography.fontWeight.regular,
-  },
+  dateField: { flex: 1.5 },
+  timeField: { flex: 1 },
+  value: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.medium },
 });

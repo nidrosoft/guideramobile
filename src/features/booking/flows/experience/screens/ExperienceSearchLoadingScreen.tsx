@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
@@ -19,11 +19,10 @@ import Animated, {
   FadeInDown,
 } from 'react-native-reanimated';
 import { Map1, Ticket, Coffee, Activity, Star1 } from 'iconsax-react-native';
-import { colors, spacing, typography } from '@/styles';
+import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useExperienceStore } from '../../../stores/useExperienceStore';
-import { useExperienceSearch } from '@/hooks/useProviderSearch';
-import { ExperienceSearchParams as ProviderExperienceSearchParams } from '@/types/unified';
+import { localExperiencesService, LocalExperience } from '@/services/localExperiences.service';
 
 interface ExperienceSearchLoadingScreenProps {
   onComplete: () => void;
@@ -44,7 +43,6 @@ export default function ExperienceSearchLoadingScreen({
   const { colors: tc } = useTheme();
   const { searchParams, setResults } = useExperienceStore();
   const [messageIndex, setMessageIndex] = useState(0);
-  const [searchState, { search }] = useExperienceSearch();
   const searchInitiated = useRef(false);
 
   // Animation values
@@ -54,35 +52,85 @@ export default function ExperienceSearchLoadingScreen({
   const icon4Scale = useSharedValue(1);
   const progressWidth = useSharedValue(0);
 
-  // Perform actual search via Provider Manager
+  // Perform search using the same Viator API as local experiences
   useEffect(() => {
     if (searchInitiated.current) return;
     searchInitiated.current = true;
 
     const performSearch = async () => {
       try {
-        const startDate = searchParams.date instanceof Date
-          ? searchParams.date.toISOString().split('T')[0]
-          : typeof searchParams.date === 'string'
-            ? new Date(searchParams.date).toISOString().split('T')[0]
-            : new Date().toISOString().split('T')[0];
+        const city = searchParams.destination?.name || searchParams.destination?.code || 'New York';
 
-        const providerParams: ProviderExperienceSearchParams = {
-          destination: {
-            type: 'city',
-            value: searchParams.destination?.name || searchParams.destination?.code || 'New York',
-          },
-          dates: {
-            startDate,
-            flexibleDates: false,
-          },
-          participants: {
-            adults: searchParams.participants?.adults || 2,
-            children: searchParams.participants?.children || 0,
-          },
-        };
+        const { experiences } = await localExperiencesService.searchExperiences({
+          city,
+          limit: 20,
+          sortBy: 'default',
+        });
 
-        await search(providerParams);
+        if (experiences.length > 0) {
+          // Map LocalExperience → Experience store format, preserving ALL rich fields
+          const mappedResults = experiences.map((exp: LocalExperience) => {
+            // Duration in minutes
+            let durationMinutes = 120;
+            if (exp.duration?.value) {
+              const unit = exp.duration.unit || 'hours';
+              durationMinutes = unit === 'hours' ? exp.duration.value * 60
+                : unit === 'days' ? exp.duration.value * 1440
+                : exp.duration.value;
+            }
+
+            // Images: use heroImage first, then mapped image urls
+            const imageUrls = (exp.images || []).map(img =>
+              typeof img === 'string' ? img : img.url || ''
+            ).filter(Boolean);
+            if (exp.heroImage && !imageUrls.includes(exp.heroImage)) {
+              imageUrls.unshift(exp.heroImage);
+            }
+
+            return {
+              id: exp.productCode || exp.id,
+              title: exp.title,
+              description: exp.description || '',
+              shortDescription: exp.shortDescription || '',
+              category: exp.category || 'tours',
+              subcategory: '',
+              images: imageUrls,
+              location: {
+                name: exp.location?.city || '',
+                city: exp.location?.city || '',
+                country: exp.location?.country || '',
+                address: exp.location?.address || '',
+                coordinates: exp.location?.coordinates,
+              },
+              duration: durationMinutes,
+              rating: exp.rating?.score ?? 4.5,
+              reviewCount: exp.rating?.reviewCount ?? 0,
+              price: {
+                amount: exp.price?.amount || 0,
+                currency: exp.price?.currency || 'USD',
+                formatted: exp.price?.formatted || `$${exp.price?.amount || 0}`,
+              },
+              includes: exp.included || [],
+              excludes: exp.notIncluded || [],
+              highlights: exp.highlights || [],
+              languages: exp.languages || ['English'],
+              maxParticipants: exp.maxGroupSize || 0,
+              cancellationPolicy: exp.freeCancellation ? 'free_24h' : 'non_refundable',
+              instantConfirmation: exp.instantConfirmation || false,
+              bookingUrl: exp.bookingUrl || '',
+              freeCancellation: exp.freeCancellation || false,
+              mobileTicket: true,
+              available: true,
+              bestSeller: false,
+              featured: false,
+              tags: exp.tags || [],
+            };
+          }) as any[];
+
+          setResults(mappedResults);
+        }
+
+        onComplete();
       } catch (error) {
         console.error('Experience search error:', error);
         onComplete();
@@ -91,54 +139,6 @@ export default function ExperienceSearchLoadingScreen({
 
     performSearch();
   }, []);
-
-  // Handle search completion
-  useEffect(() => {
-    if (!searchState.isLoading && searchState.results.length > 0) {
-      const mappedResults = searchState.results.map((exp: any) => ({
-        id: exp.id,
-        title: exp.title,
-        description: exp.description || '',
-        shortDescription: exp.shortDescription || '',
-        category: exp.category || 'tours',
-        subcategory: exp.subcategory || '',
-        images: exp.images?.map((img: any) => img.url) || [],
-        location: {
-          name: exp.location?.address?.city || '',
-          address: exp.location?.address?.formatted || '',
-          coordinates: exp.location?.coordinates,
-        },
-        duration: {
-          value: exp.duration?.value || 2,
-          unit: exp.duration?.unit || 'hours',
-        },
-        rating: {
-          score: exp.rating?.score || 4.5,
-          reviewCount: exp.rating?.reviewCount || 100,
-        },
-        price: {
-          amount: exp.price?.amount || 50,
-          currency: exp.price?.currency || 'USD',
-          formatted: exp.price?.formatted || '$50',
-        },
-        includes: exp.includes || [],
-        excludes: exp.excludes || [],
-        highlights: exp.highlights || [],
-        languages: exp.languages || ['English'],
-        cancellationPolicy: exp.cancellationPolicy?.freeCancellation 
-          ? 'Free cancellation' 
-          : 'Non-refundable',
-        instantConfirmation: true,
-        mobileTicket: true,
-        available: true,
-      })) as any[];
-
-      setResults(mappedResults);
-      onComplete();
-    } else if (!searchState.isLoading && searchState.error) {
-      onComplete();
-    }
-  }, [searchState.isLoading, searchState.results, searchState.error]);
 
   useEffect(() => {
     // Icon pulse animations
@@ -197,10 +197,8 @@ export default function ExperienceSearchLoadingScreen({
 
     // Fallback timeout if search takes too long
     const fallbackTimer = setTimeout(() => {
-      if (searchState.isLoading) {
-        onComplete();
-      }
-    }, 10000);
+      onComplete();
+    }, 15000);
 
     return () => {
       clearTimeout(fallbackTimer);
@@ -229,62 +227,74 @@ export default function ExperienceSearchLoadingScreen({
   }));
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Icons */}
-      <Animated.View entering={FadeIn.duration(400)} style={styles.iconsContainer}>
-        <Animated.View style={[styles.iconCircle, styles.iconCircle1, icon1Style]}>
-          <Map1 size={28} color={colors.primary} variant="Bold" />
-        </Animated.View>
-        <Animated.View style={[styles.iconCircle, styles.iconCircle2, icon2Style]}>
-          <Ticket size={28} color={colors.success} variant="Bold" />
-        </Animated.View>
-        <Animated.View style={[styles.iconCircle, styles.iconCircle3, icon3Style]}>
-          <Coffee size={28} color={colors.warning} variant="Bold" />
-        </Animated.View>
-        <Animated.View style={[styles.iconCircle, styles.iconCircle4, icon4Style]}>
-          <Activity size={28} color={colors.error} variant="Bold" />
-        </Animated.View>
-        <View style={styles.centerIcon}>
-          <Star1 size={32} color={colors.primary} variant="Bold" />
+    <View style={styles.container}>
+      <ImageBackground
+        source={require('../../../../../../assets/images/experiencebg.png')}
+        style={[styles.background, { paddingTop: insets.top }]}
+        resizeMode="cover"
+      >
+        <View style={styles.overlay} />
+
+        <View style={styles.content}>
+          {/* Icons */}
+          <Animated.View entering={FadeIn.duration(400)} style={styles.iconsContainer}>
+            <Animated.View style={[styles.iconCircle, styles.iconCircle1, icon1Style]}>
+              <Map1 size={28} color="#FFFFFF" variant="Bold" />
+            </Animated.View>
+            <Animated.View style={[styles.iconCircle, styles.iconCircle2, icon2Style]}>
+              <Ticket size={28} color="#FFFFFF" variant="Bold" />
+            </Animated.View>
+            <Animated.View style={[styles.iconCircle, styles.iconCircle3, icon3Style]}>
+              <Coffee size={28} color="#FFFFFF" variant="Bold" />
+            </Animated.View>
+            <Animated.View style={[styles.iconCircle, styles.iconCircle4, icon4Style]}>
+              <Activity size={28} color="#FFFFFF" variant="Bold" />
+            </Animated.View>
+            <View style={[styles.centerIcon, { backgroundColor: `${tc.primary}40` }]}>
+              <Star1 size={32} color="#FFFFFF" variant="Bold" />
+            </View>
+          </Animated.View>
+
+          {/* Search Summary */}
+          <Animated.View entering={FadeInDown.duration(400).delay(200)} style={styles.summaryContainer}>
+            <Text style={styles.searchingText}>Searching experiences in</Text>
+            <Text style={styles.destinationText}>
+              {searchParams.destination?.name || 'your destination'}
+            </Text>
+            {searchParams.date && (
+              <Text style={styles.dateText}>
+                {new Date(searchParams.date).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </Text>
+            )}
+          </Animated.View>
+
+          {/* Loading Message */}
+          <Animated.View entering={FadeInDown.duration(400).delay(400)} style={styles.messageContainer}>
+            <Text style={styles.loadingMessage}>{LOADING_MESSAGES[messageIndex]}</Text>
+          </Animated.View>
+
+          {/* Progress Bar */}
+          <Animated.View entering={FadeInDown.duration(400).delay(600)} style={styles.progressContainer}>
+            <View style={styles.progressTrack}>
+              <Animated.View style={[styles.progressBar, { backgroundColor: tc.primary }, progressStyle]} />
+            </View>
+          </Animated.View>
         </View>
-      </Animated.View>
-
-      {/* Search Summary */}
-      <Animated.View entering={FadeInDown.duration(400).delay(200)} style={styles.summaryContainer}>
-        <Text style={styles.searchingText}>Searching experiences in</Text>
-        <Text style={styles.destinationText}>
-          {searchParams.destination?.name || 'your destination'}
-        </Text>
-        {searchParams.date && (
-          <Text style={styles.dateText}>
-            {new Date(searchParams.date).toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </Text>
-        )}
-      </Animated.View>
-
-      {/* Loading Message */}
-      <Animated.View entering={FadeInDown.duration(400).delay(400)} style={styles.messageContainer}>
-        <Text style={styles.loadingMessage}>{LOADING_MESSAGES[messageIndex]}</Text>
-      </Animated.View>
-
-      {/* Progress Bar */}
-      <Animated.View entering={FadeInDown.duration(400).delay(600)} style={styles.progressContainer}>
-        <View style={styles.progressTrack}>
-          <Animated.View style={[styles.progressBar, progressStyle]} />
-        </View>
-      </Animated.View>
+      </ImageBackground>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1 },
+  background: { flex: 1 },
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)' },
+  content: {
     flex: 1,
-    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
@@ -300,14 +310,9 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
   iconCircle1: {
     top: 0,
@@ -338,7 +343,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: `${colors.primary}15`,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -348,18 +352,18 @@ const styles = StyleSheet.create({
   },
   searchingText: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.8)',
     marginBottom: spacing.xs,
   },
   destinationText: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
+    color: '#FFFFFF',
     marginBottom: spacing.xs,
   },
   dateText: {
     fontSize: typography.fontSize.base,
-    color: colors.primary,
+    color: 'rgba(255,255,255,0.9)',
   },
   messageContainer: {
     height: 30,
@@ -368,7 +372,7 @@ const styles = StyleSheet.create({
   },
   loadingMessage: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
   },
   progressContainer: {
@@ -377,13 +381,12 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     height: 4,
-    backgroundColor: colors.gray200,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 2,
     overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
-    backgroundColor: colors.primary,
     borderRadius: 2,
   },
 });

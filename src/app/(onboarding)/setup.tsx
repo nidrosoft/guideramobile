@@ -8,6 +8,7 @@ import { User, Location, Heart, Shield, Airplane } from 'iconsax-react-native';
 import { colors, typography, spacing, borderRadius } from '@/styles';
 import { useOnboardingStore } from '@/stores/useOnboardingStore';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase/client';
 
 const setupSteps = [
   { id: 1, text: 'Setting up your account', icon: User, color: '#6366F1', bgColor: '#EEF2FF', duration: 1500 },
@@ -24,8 +25,8 @@ export default function Setup() {
   const confettiRef = useRef<any>(null);
   const [hasSavedProfile, setHasSavedProfile] = useState(false);
   
-  const { updateProfile, completeOnboarding } = useAuth();
-  const { getProfileUpdates, reset: resetOnboarding } = useOnboardingStore();
+  const { updateProfile, completeOnboarding, profile } = useAuth();
+  const { getProfileUpdates, reset: resetOnboarding, data: onboardingData } = useOnboardingStore();
 
   const saveProfileData = async () => {
     if (hasSavedProfile) return;
@@ -34,6 +35,36 @@ export default function Setup() {
     try {
       const profileUpdates = getProfileUpdates();
       await updateProfile(profileUpdates);
+
+      // Also upsert travel_preferences table so it's the single source of truth
+      if (profile?.id) {
+        const travelPrefsRow: Record<string, any> = {
+          user_id: profile.id,
+          preferences_completed: true,
+          updated_at: new Date().toISOString(),
+        };
+        if (onboardingData.travelStyle) {
+          travelPrefsRow.preferred_trip_styles = [onboardingData.travelStyle];
+        }
+        if (onboardingData.dietaryRestrictions && onboardingData.dietaryRestrictions !== 'None') {
+          travelPrefsRow.dietary_restrictions = [onboardingData.dietaryRestrictions];
+        }
+        if (onboardingData.accessibilityNeeds && onboardingData.accessibilityNeeds !== 'None') {
+          travelPrefsRow.accessibility_needs = [onboardingData.accessibilityNeeds];
+          if (onboardingData.accessibilityNeeds === 'Wheelchair accessible') {
+            travelPrefsRow.wheelchair_accessible = true;
+          }
+        }
+
+        const { error: tpError } = await supabase
+          .from('travel_preferences')
+          .upsert(travelPrefsRow, { onConflict: 'user_id' });
+
+        if (tpError) {
+          console.warn('Error saving travel_preferences row:', tpError.message);
+        }
+      }
+
       await completeOnboarding();
       resetOnboarding();
     } catch (error) {

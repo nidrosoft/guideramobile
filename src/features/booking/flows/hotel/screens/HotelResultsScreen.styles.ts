@@ -1,7 +1,7 @@
 /**
  * HOTEL RESULTS SCREEN STYLES
- * 
- * Extracted styles for HotelResultsScreen to keep the component file lean.
+ *
+ * Matches FlightResultsScreen styling for visual consistency.
  */
 
 import { StyleSheet } from 'react-native';
@@ -10,7 +10,6 @@ import { colors, spacing, typography, borderRadius } from '@/styles';
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     paddingBottom: spacing.lg,
@@ -29,7 +28,7 @@ export const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -53,70 +52,57 @@ export const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // Date Scroll
+
+  // Date Scroll — matches flight date chips
   dateScrollContainer: {
-    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
   },
   dateScrollContent: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    gap: spacing.sm,
   },
   dateItem: {
-    alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.gray50,
+    paddingVertical: spacing.md,
     marginRight: spacing.sm,
-    minWidth: 80,
-  },
-  dateItemSelected: {
-    backgroundColor: `${colors.primary}10`,
-    borderColor: colors.primary,
-    borderWidth: 2,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    minWidth: 110,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   dateDay: {
-    fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
-  },
-  dateDaySelected: {
-    color: colors.textPrimary,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    marginBottom: 2,
   },
   dateNum: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginVertical: 2,
   },
-  dateNumSelected: {
-    color: colors.primary,
-  },
   datePrice: {
-    fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
-  datePriceSelected: {
-    color: colors.textPrimary,
-    fontWeight: typography.fontWeight.bold,
-  },
-  // Filters
+
+  // Filters — pill-shaped, matching flight filter bar
   filtersContainer: {
-    backgroundColor: colors.bgElevated,
+    zIndex: 100,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
   },
   filterBar: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    gap: spacing.sm,
   },
   filterChip: {
     flexDirection: 'row',
@@ -124,41 +110,29 @@ export const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.gray50,
+    borderWidth: 1,
+    marginRight: spacing.sm,
+    minHeight: 40,
     gap: 6,
-  },
-  filterChipActive: {
-    backgroundColor: `${colors.primary}10`,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  filterChipSelected: {
-    backgroundColor: `${colors.primary}10`,
-    borderWidth: 1,
-    borderColor: colors.primary,
   },
   filterChipText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textPrimary,
-  },
-  filterChipTextSelected: {
-    color: colors.primary,
-    fontWeight: typography.fontWeight.medium,
+    marginRight: spacing.xs,
   },
   filterDropdown: {
     position: 'absolute',
-    top: '100%',
-    left: spacing.lg,
-    right: spacing.lg,
-    backgroundColor: colors.bgElevated,
+    top: 52,
+    left: spacing.md,
+    right: spacing.md,
     borderRadius: borderRadius.lg,
-    paddingVertical: spacing.sm,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
-    zIndex: 100,
+    zIndex: 1000,
+    maxHeight: 280,
   },
   filterOption: {
     flexDirection: 'row',
@@ -166,18 +140,12 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-  },
-  filterOptionSelected: {
-    backgroundColor: `${colors.primary}08`,
+    borderBottomWidth: 1,
   },
   filterOptionText: {
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
   },
-  filterOptionTextSelected: {
-    color: colors.primary,
-    fontWeight: typography.fontWeight.medium,
-  },
+
   // Results
   resultsHeader: {
     paddingHorizontal: spacing.lg,
@@ -185,7 +153,6 @@ export const styles = StyleSheet.create({
   },
   resultsCount: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   listContent: {
     paddingTop: spacing.sm,

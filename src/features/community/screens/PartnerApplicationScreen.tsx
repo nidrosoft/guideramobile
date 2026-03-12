@@ -52,6 +52,8 @@ import { spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { partnerService } from '@/services/community/partner.service';
 import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/context/AuthContext';
+import * as ImagePicker from 'expo-image-picker';
 import {
   SERVICE_CATEGORIES,
   RESIDENCY_OPTIONS,
@@ -84,37 +86,163 @@ export default function PartnerApplicationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { profile } = useAuth();
 
   const [step, setStep] = useState(1);
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isApproved, setIsApproved] = useState(false);
+  const [approvedAt, setApprovedAt] = useState<string | null>(null);
 
   // Didit WebView state
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
   const [webViewVisible, setWebViewVisible] = useState(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Initialize application on mount
+  // Initialize application on mount using Clerk profile ID
   useEffect(() => {
+    if (!profile?.id) return;
+
     (async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const app = await partnerService.getOrCreateApplication(user.id);
+        const app = await partnerService.getOrCreateApplication(profile.id);
         setApplicationId(app.id);
 
-        // Restore verification state if already done
-        if (app.didit_verification_status === 'approved') {
+        // Restore saved draft data if the application already has data
+        const savedApp = app as any;
+        if (savedApp.first_name) setFirstName(savedApp.first_name);
+        else if (profile.first_name) setFirstName(profile.first_name);
+
+        if (savedApp.last_name) setLastName(savedApp.last_name);
+        else if (profile.last_name) setLastName(profile.last_name);
+
+        if (savedApp.email) setEmail(savedApp.email);
+        else if (profile.email) setEmail(profile.email);
+
+        if (savedApp.phone_number) setPhoneNumber(savedApp.phone_number);
+        else if (profile.phone) {
+          // Extract phone number (remove country code if present)
+          const ph = profile.phone;
+          if (ph.startsWith('+')) {
+            // Try to split country code from number
+            const match = ph.match(/^(\+\d{1,3})(\d+)$/);
+            if (match) {
+              setPhoneCountryCode(match[1]);
+              setPhoneNumber(match[2]);
+            } else {
+              setPhoneNumber(ph);
+            }
+          } else {
+            setPhoneNumber(ph);
+          }
+        }
+
+        if (savedApp.phone_country_code) setPhoneCountryCode(savedApp.phone_country_code);
+
+        if (savedApp.date_of_birth) setDateOfBirth(savedApp.date_of_birth);
+        else if (profile.date_of_birth) {
+          // Format date from YYYY-MM-DD to MM/DD/YYYY
+          const d = new Date(profile.date_of_birth);
+          if (!isNaN(d.getTime())) {
+            setDateOfBirth(`${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`);
+          }
+        }
+
+        if (savedApp.gender) setGender(savedApp.gender);
+        else if (profile.gender) {
+          // Map profile gender to form gender options
+          const genderMap: Record<string, string> = { 'Man': 'male', 'Woman': 'female', 'Non-binary': 'non_binary' };
+          const mapped = genderMap[profile.gender] || null;
+          if (mapped) setGender(mapped as Gender);
+        }
+
+        if (savedApp.nationality) setNationality(savedApp.nationality);
+        else if ((profile as any).nationality) setNationality((profile as any).nationality);
+
+        // Location fields
+        if (savedApp.city) setCity(savedApp.city);
+        else if (profile.city) setCity(profile.city);
+
+        if (savedApp.country) setCountry(savedApp.country);
+        else if (profile.country) setCountry(profile.country);
+
+        if (savedApp.street_address) setStreetAddress(savedApp.street_address);
+        if (savedApp.state_region) setStateRegion(savedApp.state_region);
+        if (savedApp.postal_code) setPostalCode(savedApp.postal_code);
+        if (savedApp.residency_duration) setResidencyDuration(savedApp.residency_duration);
+
+        // Languages
+        if (savedApp.languages?.length > 0) setSelectedLanguages(savedApp.languages);
+        else if ((profile as any).languages_spoken?.length > 0) setSelectedLanguages((profile as any).languages_spoken);
+
+        // Step 3 fields
+        if (savedApp.service_categories?.length > 0) setServiceCategories(savedApp.service_categories);
+        if (savedApp.bio) setBio(savedApp.bio);
+        if (savedApp.experience_years) setExperienceYears(savedApp.experience_years);
+        if (savedApp.certifications) setCertifications(savedApp.certifications);
+        if (savedApp.website_or_social) setWebsiteOrSocial(savedApp.website_or_social);
+
+        // Step 4 fields
+        if (savedApp.profile_photo_url) setProfilePhotoUri(savedApp.profile_photo_url);
+        else if (profile.avatar_url) setProfilePhotoUri(profile.avatar_url);
+        if (savedApp.banner_photo_url) setBannerPhotoUri(savedApp.banner_photo_url);
+        else if (profile.cover_photo_url) setBannerPhotoUri(profile.cover_photo_url);
+        if (savedApp.portfolio_photo_urls?.length > 0) setPortfolioPhotoUris(savedApp.portfolio_photo_urls);
+        if (savedApp.tagline) setTagline(savedApp.tagline);
+
+        // Step 5 fields
+        if (savedApp.emergency_contact_name) setEmergencyContactName(savedApp.emergency_contact_name);
+        else if (profile.emergency_contact?.name) setEmergencyContactName(profile.emergency_contact.name);
+        if (savedApp.emergency_contact_phone) setEmergencyContactPhone(savedApp.emergency_contact_phone);
+        else if (profile.emergency_contact?.phone) setEmergencyContactPhone(profile.emergency_contact.phone);
+
+        // Restore verification state if already done (via Didit or profile flag)
+        if (savedApp.didit_verification_status === 'approved' || profile?.is_verified) {
           setVerificationDone(true);
         }
-      } catch (err) {
+
+        // If approved (either status or didit), show verified perks screen
+        const isEffectivelyApproved =
+          savedApp.status === 'approved' ||
+          savedApp.didit_verification_status === 'approved';
+
+        if (isEffectivelyApproved) {
+          // Auto-promote status in DB if didit approved but status wasn't updated
+          if (savedApp.status !== 'approved' && savedApp.didit_verification_status === 'approved') {
+            try {
+              await supabase
+                .from('partner_applications')
+                .update({ status: 'approved', updated_at: new Date().toISOString() })
+                .eq('id', savedApp.id);
+              // Also mark profile as verified
+              if (!profile?.is_verified) {
+                await supabase
+                  .from('profiles')
+                  .update({ is_verified: true, verified_at: new Date().toISOString() })
+                  .eq('id', profile.id);
+              }
+            } catch (promoteErr) {
+              console.warn('Failed to auto-promote application status:', promoteErr);
+            }
+          }
+          setIsApproved(true);
+          setApprovedAt(savedApp.updated_at || null);
+          return;
+        }
+        // If submitted/under review, show success screen
+        if (['submitted', 'under_review', 'identity_verification'].includes(savedApp.status)) {
+          setIsSubmitted(true);
+        }
+      } catch (err: any) {
         console.warn('Failed to init partner application:', err);
+        Alert.alert('Initialization Error', err?.message || 'Failed to start application. Please try again.');
       }
     })();
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
-  }, []);
+  }, [profile?.id]);
 
   // Step 1: Personal Information
   const [firstName, setFirstName] = useState('');
@@ -173,20 +301,47 @@ export default function PartnerApplicationScreen() {
     );
   };
 
-  const handlePhotoUploadMock = (setter: (uri: string) => void) => {
+  const handlePhotoPick = async (
+    setter: (uri: string) => void,
+    options?: { aspect?: [number, number] },
+  ) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // Mock: set a placeholder image
-    setter('https://i.pravatar.cc/300?img=' + Math.floor(Math.random() * 70));
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: options?.aspect || [1, 1],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setter(result.assets[0].uri);
+      }
+    } catch (err) {
+      console.warn('Image picker error:', err);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
   };
 
-  const handlePortfolioAdd = () => {
+  const handlePortfolioAdd = async () => {
     if (portfolioPhotoUris.length >= 6) {
       Alert.alert('Maximum reached', 'You can upload up to 6 portfolio photos.');
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const newUri = 'https://picsum.photos/400/300?random=' + Date.now();
-    setPortfolioPhotoUris(prev => [...prev, newUri]);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setPortfolioPhotoUris(prev => [...prev, result.assets[0].uri]);
+      }
+    } catch (err) {
+      console.warn('Image picker error:', err);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
   };
 
   const handlePortfolioRemove = (index: number) => {
@@ -287,13 +442,24 @@ export default function PartnerApplicationScreen() {
         emergency_contact_phone: emergencyContactPhone,
       });
 
+      // Convert DOB from MM/DD/YYYY to YYYY-MM-DD for Didit API
+      let dobIso: string | undefined;
+      if (dateOfBirth) {
+        const parts = dateOfBirth.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (parts) {
+          dobIso = `${parts[3]}-${parts[1]}-${parts[2]}`;
+        } else {
+          dobIso = dateOfBirth; // Already in another format, pass as-is
+        }
+      }
+
       // Create Didit verification session
       const session = await partnerService.createVerificationSession(
         applicationId,
         {
           first_name: firstName,
           last_name: lastName,
-          date_of_birth: dateOfBirth || undefined,
+          date_of_birth: dobIso,
           email: email || undefined,
           phone: phoneNumber ? `${phoneCountryCode}${phoneNumber}` : undefined,
         },
@@ -338,9 +504,24 @@ export default function PartnerApplicationScreen() {
             clearInterval(pollIntervalRef.current);
             pollIntervalRef.current = null;
           }
+        } else if (result.verification_status === 'in_progress') {
+          // Didit is reviewing — mark as done so user can proceed
+          setVerificationDone(true);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
         }
-      } catch (err) {
+      } catch (err: any) {
         console.warn('Poll error:', err);
+        // Stop polling on unrecoverable errors (e.g., 404)
+        if (err?.message?.includes('404') || err?.message?.includes('not found')) {
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+        }
       }
     };
 
@@ -394,12 +575,25 @@ export default function PartnerApplicationScreen() {
       // Submit the application
       await partnerService.submitApplication(applicationId);
 
+      // If user is already verified as traveler, auto-approve the partner application
+      if (profile?.is_verified) {
+        await supabase
+          .from('partner_applications')
+          .update({
+            status: 'approved',
+            didit_verification_status: 'approved',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', applicationId);
+
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setIsApproved(true);
+        setApprovedAt(new Date().toISOString());
+        return;
+      }
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(
-        'Application Submitted!',
-        'Welcome to the Guidera Partner Program! We\'ll review your profile and notify you within 24-48 hours.',
-        [{ text: 'Back to Community', onPress: () => router.replace('/community' as any) }]
-      );
+      setIsSubmitted(true);
     } catch (err: any) {
       console.error('Submit error:', err);
       Alert.alert('Submission Error', err.message || 'Failed to submit application. Please try again.');
@@ -419,6 +613,130 @@ export default function PartnerApplicationScreen() {
       default: return '';
     }
   };
+
+  // ===============================
+  // SUCCESS SCREEN (post-submission)
+  // ===============================
+
+  const renderSuccessScreen = () => (
+    <View style={[styles.screen, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: tc.borderSubtle }]}>
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: tc.bgElevated }]} onPress={() => router.back()}>
+          <ArrowLeft size={20} color={tc.textPrimary} />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Application Submitted</Text>
+        </View>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 32, paddingBottom: insets.bottom + 40 }}
+      >
+        <View style={{ alignItems: 'center', marginBottom: 32 }}>
+          <View style={[successStyles.iconCircle, { backgroundColor: '#22C55E15' }]}>
+            <ShieldTick size={56} color="#22C55E" variant="Bold" />
+          </View>
+          <Text style={[successStyles.title, { color: tc.textPrimary }]}>
+            You're All Set!
+          </Text>
+          <Text style={[successStyles.subtitle, { color: tc.textSecondary }]}>
+            Your partner application has been submitted successfully. Here's what happens next.
+          </Text>
+        </View>
+
+        {/* Timeline Steps */}
+        <View style={successStyles.timeline}>
+          {[
+            {
+              step: '1',
+              title: 'Application Review',
+              desc: 'Our team will review your personal details, services, and qualifications. This usually takes 24–48 hours.',
+              active: true,
+            },
+            {
+              step: '2',
+              title: 'Identity Verification',
+              desc: 'Your ID and selfie are being processed by our secure verification partner. You\'ll be notified once complete.',
+              active: true,
+            },
+            {
+              step: '3',
+              title: 'Approval & Onboarding',
+              desc: 'Once approved, you\'ll get access to your partner dashboard to manage bookings, set your availability, and start earning.',
+              active: false,
+            },
+            {
+              step: '4',
+              title: 'Go Live',
+              desc: 'Your profile will appear in search results and travelers can start booking your services.',
+              active: false,
+            },
+          ].map((item, index) => (
+            <View key={index} style={successStyles.timelineItem}>
+              <View style={successStyles.timelineLeft}>
+                <View
+                  style={[
+                    successStyles.stepCircle,
+                    { backgroundColor: item.active ? tc.primary : tc.borderSubtle },
+                  ]}
+                >
+                  <Text style={successStyles.stepNumber}>{item.step}</Text>
+                </View>
+                {index < 3 && (
+                  <View
+                    style={[
+                      successStyles.timelineLine,
+                      { backgroundColor: item.active ? tc.primary + '40' : tc.borderSubtle },
+                    ]}
+                  />
+                )}
+              </View>
+              <View style={successStyles.timelineContent}>
+                <Text style={[successStyles.timelineTitle, { color: tc.textPrimary }]}>
+                  {item.title}
+                </Text>
+                <Text style={[successStyles.timelineDesc, { color: tc.textSecondary }]}>
+                  {item.desc}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* Info Card */}
+        <View style={[successStyles.infoCard, { backgroundColor: isDark ? tc.primary + '10' : '#EFF6FF', borderColor: isDark ? tc.primary + '20' : '#BFDBFE' }]}>
+          <Text style={[successStyles.infoTitle, { color: isDark ? tc.textPrimary : '#1E40AF' }]}>
+            While you wait...
+          </Text>
+          <Text style={[successStyles.infoText, { color: isDark ? tc.textSecondary : '#1E3A5F' }]}>
+            • Make sure your phone notifications are enabled{'\n'}
+            • Prepare high-quality photos for your profile{'\n'}
+            • Think about your service pricing & availability{'\n'}
+            • Check your email for updates from Guidera
+          </Text>
+        </View>
+
+        {/* Buttons */}
+        <TouchableOpacity
+          style={[successStyles.primaryBtn, { backgroundColor: tc.primary }]}
+          onPress={() => router.replace('/community' as any)}
+          activeOpacity={0.8}
+        >
+          <Text style={successStyles.primaryBtnText}>Back to Community</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[successStyles.secondaryBtn, { borderColor: tc.borderSubtle }]}
+          onPress={() => router.replace('/(tabs)' as any)}
+          activeOpacity={0.8}
+        >
+          <Text style={[successStyles.secondaryBtnText, { color: tc.textSecondary }]}>Go to Home</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
 
   // ===============================
   // RENDER HELPERS
@@ -519,8 +837,8 @@ export default function PartnerApplicationScreen() {
         We need this to verify your identity and keep travelers safe.
       </Text>
 
-      {renderInput('First Name', firstName, setFirstName, 'e.g., Carlos')}
-      {renderInput('Last Name', lastName, setLastName, 'e.g., Medina')}
+      {renderInput('First Name', firstName, setFirstName, 'e.g., John')}
+      {renderInput('Last Name', lastName, setLastName, 'e.g., Smith')}
 
       <View style={styles.phoneRow}>
         <View style={styles.phoneCodeWrap}>
@@ -535,14 +853,14 @@ export default function PartnerApplicationScreen() {
           />
         </View>
         <View style={styles.phoneNumberWrap}>
-          {renderInput('Phone Number', phoneNumber, setPhoneNumber, '555 123 4567', { keyboardType: 'phone-pad' })}
+          {renderInput('Phone Number', phoneNumber, setPhoneNumber, '619 555 1234', { keyboardType: 'phone-pad' })}
         </View>
       </View>
 
-      {renderInput('Email Address', email, setEmail, 'carlos@email.com', { keyboardType: 'email-address' })}
+      {renderInput('Email Address', email, setEmail, 'john.smith@email.com', { keyboardType: 'email-address' })}
       {renderInput('Date of Birth', dateOfBirth, setDateOfBirth, 'MM/DD/YYYY')}
       {renderDropdown('Gender', GENDER_OPTIONS, gender, setGender, false)}
-      {renderInput('Nationality', nationality, setNationality, 'e.g., Colombian')}
+      {renderInput('Nationality', nationality, setNationality, 'e.g., American')}
     </View>
   );
 
@@ -553,11 +871,11 @@ export default function PartnerApplicationScreen() {
         Your physical address helps us verify your location and match you with nearby travelers.
       </Text>
 
-      {renderInput('Street Address', streetAddress, setStreetAddress, 'e.g., Calle 10 #43A-35')}
-      {renderInput('City', city, setCity, 'e.g., Medellín')}
-      {renderInput('State / Region', stateRegion, setStateRegion, 'e.g., Antioquia')}
-      {renderInput('Country', country, setCountry, 'e.g., Colombia')}
-      {renderInput('Postal / ZIP Code', postalCode, setPostalCode, 'e.g., 050021')}
+      {renderInput('Street Address', streetAddress, setStreetAddress, 'e.g., 1234 Pacific Beach Dr')}
+      {renderInput('City', city, setCity, 'e.g., San Diego')}
+      {renderInput('State / Region', stateRegion, setStateRegion, 'e.g., California')}
+      {renderInput('Country', country, setCountry, 'e.g., United States')}
+      {renderInput('Postal / ZIP Code', postalCode, setPostalCode, 'e.g., 92109')}
       {renderDropdown('How long have you lived here?', RESIDENCY_OPTIONS, residencyDuration, setResidencyDuration)}
 
       <View style={styles.inputGroup}>
@@ -645,8 +963,8 @@ export default function PartnerApplicationScreen() {
       <Text style={[styles.charCount, { color: tc.textTertiary }]}>{bio.length}/500</Text>
 
       {renderDropdown('Years of experience', EXPERIENCE_OPTIONS, experienceYears, setExperienceYears, false)}
-      {renderInput('Certifications / Licenses', certifications, setCertifications, 'e.g., Licensed tour guide #12345', { required: false })}
-      {renderInput('Website or Social Media', websiteOrSocial, setWebsiteOrSocial, 'e.g., instagram.com/yourprofile', { required: false })}
+      {renderInput('Certifications / Licenses', certifications, setCertifications, 'e.g., CA Tourism License #12345', { required: false })}
+      {renderInput('Website or Social Media', websiteOrSocial, setWebsiteOrSocial, 'e.g., instagram.com/sandiegotours', { required: false })}
     </View>
   );
 
@@ -661,7 +979,7 @@ export default function PartnerApplicationScreen() {
       <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Profile Photo</Text>
       <TouchableOpacity
         style={[styles.photoUpload, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
-        onPress={() => handlePhotoUploadMock(setProfilePhotoUri)}
+        onPress={() => handlePhotoPick(setProfilePhotoUri, { aspect: [1, 1] })}
       >
         {profilePhotoUri ? (
           <Image source={{ uri: profilePhotoUri }} style={styles.uploadedPhoto} />
@@ -677,7 +995,7 @@ export default function PartnerApplicationScreen() {
       <Text style={[styles.inputLabel, { color: tc.textSecondary, marginTop: spacing.lg }]}>Banner / Cover Photo</Text>
       <TouchableOpacity
         style={[styles.bannerUpload, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
-        onPress={() => handlePhotoUploadMock(setBannerPhotoUri)}
+        onPress={() => handlePhotoPick(setBannerPhotoUri, { aspect: [16, 9] })}
       >
         {bannerPhotoUri ? (
           <Image source={{ uri: bannerPhotoUri }} style={styles.uploadedBanner} />
@@ -724,7 +1042,7 @@ export default function PartnerApplicationScreen() {
         'Tagline',
         tagline,
         setTagline,
-        'e.g., Your friendly Medellín guide since 2018',
+        'e.g., Your local San Diego adventure guide',
         { required: false, maxLength: 80 },
       )}
 
@@ -740,60 +1058,79 @@ export default function PartnerApplicationScreen() {
     <View style={styles.stepContent}>
       <Text style={[styles.stepTitle, { color: tc.textPrimary }]}>Identity Verification</Text>
       <Text style={[styles.stepSubtitle, { color: tc.textSecondary }]}>
-        This protects both you and the travelers you'll serve. We use Didit's secure identity verification.
+        {profile?.is_verified
+          ? 'Your identity has already been verified. You can proceed to the next step.'
+          : 'This protects both you and the travelers you\'ll serve. We use Didit\'s secure identity verification.'}
       </Text>
 
-      {/* ID Type Selection */}
-      {renderDropdown('Select ID Type', ID_TYPE_OPTIONS, idType, setIdType)}
-
-      {/* Verification Card */}
-      <View style={[styles.verificationCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
-        <View style={[styles.verificationIcon, { backgroundColor: tc.primary + '10' }]}>
-          <ShieldTick size={40} color={verificationDone ? '#22C55E' : tc.primary} variant="Bold" />
-        </View>
-
-        {!isVerifying && !verificationDone && (
-          <>
-            <Text style={[styles.verificationTitle, { color: tc.textPrimary }]}>Government ID Verification</Text>
-            <View style={styles.verificationSteps}>
-              <Text style={[styles.verificationStep, { color: tc.textSecondary }]}>1. Photograph front of your ID</Text>
-              <Text style={[styles.verificationStep, { color: tc.textSecondary }]}>2. Photograph back of your ID (if applicable)</Text>
-              <Text style={[styles.verificationStep, { color: tc.textSecondary }]}>3. Take a live selfie for face matching</Text>
-              <Text style={[styles.verificationStep, { color: tc.textSecondary }]}>4. AI verifies document authenticity</Text>
-            </View>
-            <TouchableOpacity
-              style={[styles.verifyButton, { backgroundColor: tc.primary }]}
-              onPress={handleStartVerification}
-            >
-              <Text style={styles.verifyButtonText}>Start Verification</Text>
-            </TouchableOpacity>
-            <Text style={[styles.verificationNote, { color: tc.textTertiary }]}>
-              Takes less than a minute. Your data is encrypted and secure.
-            </Text>
-          </>
-        )}
-
-        {isVerifying && (
-          <View style={styles.verifyingState}>
-            <Text style={[styles.verifyingText, { color: tc.textPrimary }]}>Verifying your identity...</Text>
-            <Text style={[styles.verifyingSubtext, { color: tc.textTertiary }]}>This usually takes less than a minute</Text>
-            <View style={styles.loadingDots}>
-              {[0, 1, 2].map(i => (
-                <View key={i} style={[styles.loadingDot, { backgroundColor: tc.primary, opacity: 0.3 + (i * 0.3) }]} />
-              ))}
-            </View>
+      {/* Already verified as traveler — skip Didit entirely */}
+      {profile?.is_verified ? (
+        <View style={[styles.verificationCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+          <View style={[styles.verificationIcon, { backgroundColor: '#22C55E' + '15' }]}>
+            <ShieldTick size={40} color="#22C55E" variant="Bold" />
           </View>
-        )}
-
-        {verificationDone && (
           <View style={styles.verifiedState}>
-            <Text style={styles.verifiedTitle}>Identity Verified! ✅</Text>
+            <Text style={styles.verifiedTitle}>Already Verified</Text>
             <Text style={[styles.verifiedSubtext, { color: tc.textSecondary }]}>
-              Your face matches your ID. You're ready to proceed.
+              You're verified as a Trusted Traveler. No additional verification is needed to become a Local Guide.
             </Text>
           </View>
-        )}
-      </View>
+        </View>
+      ) : (
+        <>
+          {/* ID Type Selection */}
+          {renderDropdown('Select ID Type', ID_TYPE_OPTIONS, idType, setIdType)}
+
+          {/* Verification Card */}
+          <View style={[styles.verificationCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+            <View style={[styles.verificationIcon, { backgroundColor: tc.primary + '10' }]}>
+              <ShieldTick size={40} color={verificationDone ? '#22C55E' : tc.primary} variant="Bold" />
+            </View>
+
+            {!isVerifying && !verificationDone && (
+              <>
+                <Text style={[styles.verificationTitle, { color: tc.textPrimary }]}>Government ID Verification</Text>
+                <View style={styles.verificationSteps}>
+                  <Text style={[styles.verificationStep, { color: tc.textSecondary }]}>1. Photograph front of your ID</Text>
+                  <Text style={[styles.verificationStep, { color: tc.textSecondary }]}>2. Photograph back of your ID (if applicable)</Text>
+                  <Text style={[styles.verificationStep, { color: tc.textSecondary }]}>3. Take a live selfie for face matching</Text>
+                  <Text style={[styles.verificationStep, { color: tc.textSecondary }]}>4. AI verifies document authenticity</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.verifyButton, { backgroundColor: tc.primary }]}
+                  onPress={handleStartVerification}
+                >
+                  <Text style={styles.verifyButtonText}>Start Verification</Text>
+                </TouchableOpacity>
+                <Text style={[styles.verificationNote, { color: tc.textTertiary }]}>
+                  Takes less than a minute. Your data is encrypted and secure.
+                </Text>
+              </>
+            )}
+
+            {isVerifying && (
+              <View style={styles.verifyingState}>
+                <Text style={[styles.verifyingText, { color: tc.textPrimary }]}>Verifying your identity...</Text>
+                <Text style={[styles.verifyingSubtext, { color: tc.textTertiary }]}>This usually takes less than a minute</Text>
+                <View style={styles.loadingDots}>
+                  {[0, 1, 2].map(i => (
+                    <View key={i} style={[styles.loadingDot, { backgroundColor: tc.primary, opacity: 0.3 + (i * 0.3) }]} />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {verificationDone && (
+              <View style={styles.verifiedState}>
+                <Text style={styles.verifiedTitle}>Identity Verified! ✅</Text>
+                <Text style={[styles.verifiedSubtext, { color: tc.textSecondary }]}>
+                  Your face matches your ID. You're ready to proceed.
+                </Text>
+              </View>
+            )}
+          </View>
+        </>
+      )}
 
       {/* Emergency Contact */}
       <Text style={[styles.sectionLabel, { color: tc.textPrimary, marginTop: spacing.xl }]}>
@@ -802,8 +1139,8 @@ export default function PartnerApplicationScreen() {
       <Text style={[styles.inputHint, { color: tc.textTertiary }]}>
         In case of an emergency, we need a way to reach someone who knows you.
       </Text>
-      {renderInput('Contact Full Name', emergencyContactName, setEmergencyContactName, 'e.g., Maria Medina')}
-      {renderInput('Contact Phone Number', emergencyContactPhone, setEmergencyContactPhone, '+57 300 123 4567', { keyboardType: 'phone-pad' })}
+      {renderInput('Contact Full Name', emergencyContactName, setEmergencyContactName, 'e.g., Jane Smith')}
+      {renderInput('Contact Phone Number', emergencyContactPhone, setEmergencyContactPhone, '+1 619 555 6789', { keyboardType: 'phone-pad' })}
     </View>
   );
 
@@ -880,6 +1217,103 @@ export default function PartnerApplicationScreen() {
       </View>
     );
   };
+
+  // Show verified perks screen if approved
+  if (isApproved) {
+    const GUIDE_PERKS = [
+      { title: 'Verified Local Guide Badge', desc: 'A trusted badge on your profile visible to all travelers' },
+      { title: 'Accept Bookings', desc: 'Receive and manage tour & experience bookings directly' },
+      { title: 'Set Your Own Pricing', desc: 'Full control over your service rates and availability' },
+      { title: 'Featured in Search', desc: 'Priority placement in local guide search results' },
+      { title: 'Community Reputation', desc: 'Build ratings and reviews from verified travelers' },
+      { title: 'Earnings Dashboard', desc: 'Track your income, payouts, and performance analytics' },
+      { title: 'Partner Support', desc: 'Dedicated partner support channel with faster response' },
+      { title: 'Marketing Tools', desc: 'Promotional tools to share your services and grow your reach' },
+    ];
+
+    return (
+      <View style={[styles.screen, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: tc.borderSubtle }]}>
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: tc.bgElevated }]} onPress={() => router.back()}>
+            <ArrowLeft size={20} color={tc.textPrimary} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Local Guide</Text>
+          </View>
+          <View style={{ width: 40 }} />
+        </View>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: insets.bottom + 40 }}
+        >
+          {/* Hero Card */}
+          <View style={{
+            borderRadius: 20, padding: 24, marginBottom: 24, borderWidth: 1, alignItems: 'center' as const,
+            backgroundColor: isDark ? 'rgba(63,195,158,0.08)' : 'rgba(63,195,158,0.06)',
+            borderColor: 'rgba(63,195,158,0.20)',
+          }}>
+            <View style={{
+              width: 72, height: 72, borderRadius: 36, justifyContent: 'center' as const, alignItems: 'center' as const, marginBottom: 12,
+              backgroundColor: isDark ? 'rgba(63,195,158,0.15)' : 'rgba(63,195,158,0.12)',
+            }}>
+              <ShieldTick size={40} color={tc.primary} variant="Bold" />
+            </View>
+            <Text style={{ fontSize: 22, fontWeight: '700', color: tc.primary, marginBottom: 4, textAlign: 'center' as const }}>
+              Verified Local Guide
+            </Text>
+            <Text style={{ fontSize: 14, color: tc.textSecondary, textAlign: 'center' as const, lineHeight: 20 }}>
+              You are an approved Guidera partner — start accepting bookings and earning
+            </Text>
+            {approvedAt && (
+              <View style={{
+                marginTop: 12, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20,
+                backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+              }}>
+                <Text style={{ fontSize: 12, color: tc.textTertiary }}>
+                  Approved on {new Date(approvedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Perks */}
+          <Text style={{ fontSize: 16, fontWeight: '700', color: tc.textPrimary, marginBottom: 12 }}>Your Partner Perks</Text>
+          {GUIDE_PERKS.map((perk, index) => (
+            <View key={index} style={{
+              flexDirection: 'row' as const, alignItems: 'center' as const, borderRadius: 16, padding: 14,
+              marginBottom: 8, borderWidth: 1, backgroundColor: tc.bgCard, borderColor: tc.borderSubtle,
+            }}>
+              <View style={{
+                width: 40, height: 40, borderRadius: 10, justifyContent: 'center' as const, alignItems: 'center' as const,
+                marginRight: 14, backgroundColor: tc.primary + '12',
+              }}>
+                <TickCircle size={20} color={tc.primary} variant="Bold" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: tc.textPrimary }}>{perk.title}</Text>
+                <Text style={{ fontSize: 12, color: tc.textSecondary, marginTop: 2, lineHeight: 16 }}>{perk.desc}</Text>
+              </View>
+              <TickCircle size={16} color="#16A34A" variant="Bold" />
+            </View>
+          ))}
+
+          {/* CTA */}
+          <TouchableOpacity
+            style={{ borderRadius: 16, height: 52, justifyContent: 'center' as const, alignItems: 'center' as const, marginTop: 16, backgroundColor: tc.primary }}
+            onPress={() => router.replace('/community' as any)}
+            activeOpacity={0.8}
+          >
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>Go to Community</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // Show success screen if already submitted
+  if (isSubmitted) {
+    return renderSuccessScreen();
+  }
 
   return (
     <KeyboardAvoidingView
@@ -1041,6 +1475,111 @@ const summaryStyles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
     marginLeft: 12,
+  },
+});
+
+// ===============================
+// SUCCESS SCREEN STYLES
+// ===============================
+
+const successStyles = StyleSheet.create({
+  iconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+    paddingHorizontal: 8,
+  },
+  timeline: {
+    marginBottom: 24,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    minHeight: 80,
+  },
+  timelineLeft: {
+    width: 40,
+    alignItems: 'center',
+  },
+  stepCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepNumber: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  timelineLine: {
+    width: 2,
+    flex: 1,
+    marginVertical: 4,
+  },
+  timelineContent: {
+    flex: 1,
+    paddingLeft: 12,
+    paddingBottom: 20,
+  },
+  timelineTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  timelineDesc: {
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  infoCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+  },
+  infoTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 13,
+    lineHeight: 22,
+  },
+  primaryBtn: {
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  primaryBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  secondaryBtn: {
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  secondaryBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

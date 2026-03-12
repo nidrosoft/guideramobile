@@ -41,7 +41,7 @@ interface LocationResult {
 export default function LocationSettingsScreen() {
   const router = useRouter();
   const { colors: tc, isDark } = useTheme();
-  const { profile, refreshProfile, user } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isDetecting, setIsDetecting] = useState(false);
@@ -95,7 +95,7 @@ export default function LocationSettingsScreen() {
     } finally {
       setIsDetecting(false);
     }
-  }, [user?.id]);
+  }, [profile?.id]);
 
   // Search for cities using reverse geocoding
   const searchCities = useCallback(async (query: string) => {
@@ -157,13 +157,13 @@ export default function LocationSettingsScreen() {
 
   // Save selected location to profile
   const saveLocation = async (location: LocationResult) => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     setIsSaving(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     try {
-      const { error } = await profileService.updateProfile(user.id, {
+      const { error } = await profileService.updateProfile(profile.id, {
         city: location.city,
         country: location.country,
         location_name: location.displayName,

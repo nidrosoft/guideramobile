@@ -15,7 +15,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { getProviderDisplayName, getProviderColor } from '@/services/deal';
+import { getProviderDisplayName } from '@/services/deal';
+import { useTheme } from '@/context/ThemeContext';
+import { borderRadius as br } from '@/styles';
 
 interface BookOnProviderButtonProps {
   provider: string;
@@ -31,8 +33,8 @@ export default function BookOnProviderButton({
   disabled = false,
 }: BookOnProviderButtonProps) {
   const [loading, setLoading] = useState(false);
+  const { colors } = useTheme();
   const displayName = getProviderDisplayName(provider);
-  const color = getProviderColor(provider);
 
   const handlePress = async () => {
     if (loading || disabled) return;
@@ -50,7 +52,7 @@ export default function BookOnProviderButton({
     <TouchableOpacity
       style={[
         styles.button,
-        { backgroundColor: color },
+        { backgroundColor: colors.primary },
         disabled && styles.disabled,
       ]}
       onPress={handlePress}
@@ -79,7 +81,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 14,
+    borderRadius: br.xl,
     gap: 8,
   },
   disabled: {

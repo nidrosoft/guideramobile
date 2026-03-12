@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   StatusBar,
   TextInput,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import MapView, { Marker } from 'react-native-maps';
@@ -26,6 +27,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { BlockType, BlockSize, ContentBlock, LayoutType } from '../types/journal.types';
 import { useToast } from '@/contexts/ToastContext';
 import * as Haptics from 'expo-haptics';
+import { journalService } from '@/services/journal.service';
 
 // Layout templates
 const LAYOUT_TEMPLATES: Record<LayoutType, { size: BlockSize; position: number }[]> = {
@@ -52,10 +54,10 @@ export default function EntryEditorScreen() {
   const { showSuccess } = useToast();
   
   const tripId = params.tripId as string;
+  const entryId = params.entryId as string | undefined;
   const title = params.title as string || 'Untitled Entry';
   const layout = (params.layout as LayoutType) || LayoutType.MIXED;
 
-  // Initialize blocks based on layout
   const initialBlocks: ContentBlock[] = LAYOUT_TEMPLATES[layout].map((template, index) => ({
     id: `block-${index}`,
     position: template.position,
@@ -67,6 +69,31 @@ export default function EntryEditorScreen() {
   const [blocks, setBlocks] = useState<ContentBlock[]>(initialBlocks);
   const [addContentVisible, setAddContentVisible] = useState(false);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!!entryId);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!entryId) return;
+    let mounted = true;
+    const loadEntry = async () => {
+      try {
+        setLoading(true);
+        const entry = await journalService.getEntry(entryId);
+        if (entry && mounted) {
+          setEntryTitle(entry.title);
+          if (entry.blocks.length > 0) {
+            setBlocks(entry.blocks);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load journal entry:', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    loadEntry();
+    return () => { mounted = false; };
+  }, [entryId]);
 
   const handleAddContent = (blockId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -196,10 +223,41 @@ export default function EntryEditorScreen() {
     ));
   };
 
-  const handleSave = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    showSuccess('Journal entry saved!');
-    router.back();
+  const handleSave = async () => {
+    if (!entryId) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showSuccess('Journal entry saved!');
+      router.back();
+      return;
+    }
+    try {
+      setSaving(true);
+      const blocksToSave = blocks
+        .filter(b => b.content !== null)
+        .map(b => ({
+          type: b.content!.type,
+          content: b.content,
+          position: b.position,
+          size: b.size,
+        }));
+      await journalService.saveBlocks(entryId, blocksToSave);
+
+      const wordCount = blocks
+        .filter(b => b.content?.type === BlockType.TEXT && b.content?.data?.text)
+        .reduce((sum, b) => {
+          const text: string = b.content!.data.text;
+          return sum + text.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+        }, 0);
+
+      await journalService.updateEntry(entryId, { title: entryTitle, word_count: wordCount });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showSuccess('Journal entry saved!');
+      router.back();
+    } catch (err) {
+      console.error('Failed to save journal entry:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getBlockStyle = (size: BlockSize) => {
@@ -217,6 +275,14 @@ export default function EntryEditorScreen() {
     }
   };
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
@@ -227,8 +293,8 @@ export default function EntryEditorScreen() {
             <ArrowLeft size={24} color={colors.gray900} variant="Linear" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Entry</Text>
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Save</Text>
+          <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
+            <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -331,7 +397,7 @@ export default function EntryEditorScreen() {
                     {block.content.type === BlockType.AUDIO && (
                       <View style={styles.audioContent}>
                         <View style={styles.audioPlayButton}>
-                          <Microphone2 size={24} color={colors.white} variant="Bold" />
+                          <Microphone2 size={28} color={colors.purple} variant="Bold" />
                         </View>
                         <Text style={styles.audioDuration}>
                           {Math.floor(block.content.data.duration / 60)}:
@@ -360,36 +426,36 @@ export default function EntryEditorScreen() {
               
               <View style={styles.contentOptions}>
                 <TouchableOpacity style={styles.contentOption} onPress={handleAddText}>
-                  <View style={[styles.contentOptionIcon, { backgroundColor: '#3B82F615' }]}>
-                    <DocumentText size={28} color="#3B82F6" variant="Bold" />
+                  <View style={[styles.contentOptionIcon, { backgroundColor: colors.infoBg }]}>
+                    <DocumentText size={28} color={colors.info} variant="Bold" />
                   </View>
                   <Text style={styles.contentOptionText}>Text</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.contentOption} onPress={handleAddImage}>
-                  <View style={[styles.contentOptionIcon, { backgroundColor: '#10B98115' }]}>
-                    <Gallery size={28} color="#10B981" variant="Bold" />
+                  <View style={[styles.contentOptionIcon, { backgroundColor: colors.successBg }]}>
+                    <Gallery size={28} color={colors.success} variant="Bold" />
                   </View>
                   <Text style={styles.contentOptionText}>Photo</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.contentOption} onPress={handleAddGallery}>
-                  <View style={[styles.contentOptionIcon, { backgroundColor: '#10B98115' }]}>
-                    <Gallery size={28} color="#10B981" variant="Bold" />
+                  <View style={[styles.contentOptionIcon, { backgroundColor: colors.successBg }]}>
+                    <Gallery size={28} color={colors.success} variant="Bold" />
                   </View>
                   <Text style={styles.contentOptionText}>Gallery</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.contentOption} onPress={handleAddMap}>
-                  <View style={[styles.contentOptionIcon, { backgroundColor: '#EF444415' }]}>
-                    <LocationIcon size={28} color="#EF4444" variant="Bold" />
+                  <View style={[styles.contentOptionIcon, { backgroundColor: colors.errorBg }]}>
+                    <LocationIcon size={28} color={colors.error} variant="Bold" />
                   </View>
                   <Text style={styles.contentOptionText}>Location</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.contentOption} onPress={handleAddAudio}>
-                  <View style={[styles.contentOptionIcon, { backgroundColor: '#8B5CF615' }]}>
-                    <Microphone2 size={28} color="#8B5CF6" variant="Bold" />
+                  <View style={[styles.contentOptionIcon, { backgroundColor: `${colors.purple}15` }]}>
+                    <Microphone2 size={28} color={colors.purple} variant="Bold" />
                   </View>
                   <Text style={styles.contentOptionText}>Audio</Text>
                 </TouchableOpacity>

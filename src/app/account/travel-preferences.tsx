@@ -1,8 +1,8 @@
 /**
- * TRAVEL PREFERENCES SCREEN
+ * TRAVEL PROFILE SCREEN
  * 
- * User's default travel preferences for trip planning.
- * Organized into sections: Style, Budget, Interests, Accommodation, Transportation, Accessibility
+ * User's default travel profile for trip planning and packing personalization.
+ * Organized into sections: Style, Budget, Interests, Accommodation, Transportation, Food/Health/Access, Lifestyle
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -27,6 +27,7 @@ import {
   Building,
   Car,
   Health,
+  Activity,
   TickCircle,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
@@ -46,24 +47,25 @@ interface PreferenceSectionProps {
   value: string;
   onPress: () => void;
   isComplete?: boolean;
+  tc: any;
 }
 
-function PreferenceSection({ icon, title, subtitle, value, onPress, isComplete }: PreferenceSectionProps) {
+function PreferenceSection({ icon, title, subtitle, value, onPress, isComplete, tc }: PreferenceSectionProps) {
   return (
-    <TouchableOpacity style={styles.sectionCard} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.sectionIcon}>
+    <TouchableOpacity style={[styles.sectionCard, { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle }]} onPress={onPress} activeOpacity={0.7}>
+      <View style={[styles.sectionIcon, { backgroundColor: tc.bgElevated }]}>
         {icon}
       </View>
       <View style={styles.sectionContent}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={styles.sectionSubtitle} numberOfLines={1}>{subtitle}</Text>
-        <Text style={styles.sectionValue} numberOfLines={1}>{value}</Text>
+        <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>{title}</Text>
+        <Text style={[styles.sectionSubtitle, { color: tc.textTertiary }]} numberOfLines={1}>{subtitle}</Text>
+        <Text style={[styles.sectionValue, { color: tc.primary }]} numberOfLines={1}>{value}</Text>
       </View>
       <View style={styles.sectionRight}>
         {isComplete && (
-          <TickCircle size={18} color={colors.success} variant="Bold" style={{ marginRight: spacing.xs }} />
+          <TickCircle size={18} color={tc.success} variant="Bold" style={{ marginRight: spacing.xs }} />
         )}
-        <ArrowRight2 size={20} color={colors.gray400} />
+        <ArrowRight2 size={20} color={tc.textTertiary} />
       </View>
     </TouchableOpacity>
   );
@@ -71,7 +73,7 @@ function PreferenceSection({ icon, title, subtitle, value, onPress, isComplete }
 
 export default function TravelPreferencesScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const insets = useSafeAreaInsets();
   const { colors: tc } = useTheme();
   const [preferences, setPreferences] = useState<TravelPreferences | null>(null);
@@ -79,10 +81,10 @@ export default function TravelPreferencesScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchPreferences = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     try {
-      const { data, error } = await preferencesService.getPreferences(user.id);
+      const { data, error } = await preferencesService.getPreferences(profile.id);
       if (data) {
         setPreferences(data);
       }
@@ -92,7 +94,7 @@ export default function TravelPreferencesScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [user?.id]);
+  }, [profile?.id]);
 
   useEffect(() => {
     fetchPreferences();
@@ -158,9 +160,29 @@ export default function TravelPreferencesScreen() {
     if (preferences.dietaryRestrictions.length > 0) {
       items.push(`${preferences.dietaryRestrictions.length} dietary`);
     }
+    if (preferences.cuisinePreferences && preferences.cuisinePreferences.length > 0) {
+      items.push(`${preferences.cuisinePreferences.length} cuisines`);
+    }
+    if (preferences.medicalConditions && preferences.medicalConditions.length > 0 && !preferences.medicalConditions.includes('none' as any)) {
+      items.push(`${preferences.medicalConditions.length} medical`);
+    }
     if (preferences.wheelchairAccessible) items.push('Wheelchair');
     if (preferences.travelingWithPet) items.push('Pet');
     return items.length > 0 ? items.join(' • ') : 'None specified';
+  };
+
+  const getLifestyleValue = () => {
+    if (!preferences) return 'Not set';
+    const items: string[] = [];
+    const actOpt = PREFERENCE_OPTIONS.activityLevels.find(a => a.id === preferences.activityLevel);
+    if (actOpt) items.push(`${actOpt.emoji} ${actOpt.label}`);
+    items.push(preferences.morningPerson ? '🌅 Early' : '🌙 Night');
+    const susOpt = PREFERENCE_OPTIONS.sustainabilityPreferences.find(s => s.id === preferences.sustainabilityPreference);
+    if (susOpt && preferences.sustainabilityPreference !== 'none') items.push(`${susOpt.emoji}`);
+    if (preferences.childrenDefaultAges && preferences.childrenDefaultAges.length > 0) {
+      items.push(`👶 ${preferences.childrenDefaultAges.length} kids`);
+    }
+    return items.length > 0 ? items.join(' • ') : 'Not set';
   };
 
   // Check if sections are complete
@@ -171,23 +193,23 @@ export default function TravelPreferencesScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: tc.bgPrimary }]}>
+        <StatusBar style="auto" />
+        <ActivityIndicator size="large" color={tc.primary} />
       </View>
     );
   }
   
   return (
-    <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
+    <View style={[styles.container, { backgroundColor: tc.bgPrimary }]}>
+      <StatusBar style="auto" />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Travel Preferences</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Travel Profile</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -199,22 +221,23 @@ export default function TravelPreferencesScreen() {
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={onRefresh}
-            tintColor={colors.primary}
+            tintColor={tc.primary}
           />
         }
       >
         {/* Description */}
-        <View style={styles.descriptionCard}>
-          <Text style={styles.descriptionTitle}>Your Default Settings</Text>
-          <Text style={styles.descriptionText}>
-            These preferences will be used to pre-fill your trip planning. You can always customize them for each trip.
+        <View style={[styles.descriptionCard, { backgroundColor: `${tc.primary}10` }]}>
+          <Text style={[styles.descriptionTitle, { color: tc.primary }]}>Your Travel Profile</Text>
+          <Text style={[styles.descriptionText, { color: tc.textSecondary }]}>
+            These settings personalize your trip plans, packing lists, and recommendations. You can always customize them for each trip.
           </Text>
         </View>
 
         {/* Preference Sections */}
         <View style={styles.sectionsContainer}>
           <PreferenceSection
-            icon={<People size={22} color={colors.primary} variant="Bold" />}
+            tc={tc}
+            icon={<People size={22} color={tc.primary} variant="Bold" />}
             title="Travel Style"
             subtitle="Companion, trip styles & pace"
             value={getTravelStyleValue()}
@@ -223,7 +246,8 @@ export default function TravelPreferencesScreen() {
           />
 
           <PreferenceSection
-            icon={<Wallet2 size={22} color={colors.warning} variant="Bold" />}
+            tc={tc}
+            icon={<Wallet2 size={22} color={tc.warning} variant="Bold" />}
             title="Budget & Spending"
             subtitle="Default budget & spending style"
             value={getBudgetValue()}
@@ -232,7 +256,8 @@ export default function TravelPreferencesScreen() {
           />
 
           <PreferenceSection
-            icon={<Heart size={22} color={colors.error} variant="Bold" />}
+            tc={tc}
+            icon={<Heart size={22} color={tc.error} variant="Bold" />}
             title="Interests"
             subtitle="What you love to do"
             value={getInterestsValue()}
@@ -241,7 +266,8 @@ export default function TravelPreferencesScreen() {
           />
 
           <PreferenceSection
-            icon={<Building size={22} color={colors.info} variant="Bold" />}
+            tc={tc}
+            icon={<Building size={22} color={tc.info} variant="Bold" />}
             title="Accommodation"
             subtitle="Where you like to stay"
             value={getAccommodationValue()}
@@ -250,7 +276,8 @@ export default function TravelPreferencesScreen() {
           />
 
           <PreferenceSection
-            icon={<Car size={22} color={colors.success} variant="Bold" />}
+            tc={tc}
+            icon={<Car size={22} color={tc.success} variant="Bold" />}
             title="Transportation"
             subtitle="How you like to travel"
             value={getTransportationValue()}
@@ -259,20 +286,31 @@ export default function TravelPreferencesScreen() {
           />
 
           <PreferenceSection
-            icon={<Health size={22} color="#9333EA" variant="Bold" />}
-            title="Dietary & Accessibility"
-            subtitle="Special requirements"
+            tc={tc}
+            icon={<Health size={22} color={tc.purple} variant="Bold" />}
+            title="Food, Health & Access"
+            subtitle="Diet, medical, skin, hair & vision"
             value={getAccessibilityValue()}
             onPress={() => navigateToSection('accessibility')}
             isComplete={true}
+          />
+
+          <PreferenceSection
+            tc={tc}
+            icon={<Activity size={22} color={tc.warning} variant="Bold" />}
+            title="Lifestyle & Identity"
+            subtitle="Activity, sustainability & more"
+            value={getLifestyleValue()}
+            onPress={() => navigateToSection('lifestyle')}
+            isComplete={preferences?.activityLevel !== undefined}
           />
         </View>
 
         {/* Completion Status */}
         {preferences && !preferences.preferencesCompleted && (
-          <View style={styles.completionCard}>
-            <Text style={styles.completionTitle}>Complete Your Profile</Text>
-            <Text style={styles.completionText}>
+          <View style={[styles.completionCard, { backgroundColor: `${tc.warning}15`, borderColor: `${tc.warning}30` }]}>
+            <Text style={[styles.completionTitle, { color: tc.warning }]}>Complete Your Profile</Text>
+            <Text style={[styles.completionText, { color: tc.textSecondary }]}>
               Fill in your preferences to get personalized trip recommendations and faster planning.
             </Text>
           </View>

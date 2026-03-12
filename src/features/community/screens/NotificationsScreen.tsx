@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   Image,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,6 +32,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useNotifications } from '@/hooks/useNotifications';
 
 type NotificationType = 'message' | 'join_request' | 'approved' | 'denied' | 'new_member' | 'event';
 
@@ -47,113 +49,54 @@ interface CommunityNotification {
   userAvatar?: string;
   isRead: boolean;
   createdAt: Date;
-  // For join requests that need action
   actionRequired?: boolean;
 }
 
-// Mock notifications data
-const MOCK_NOTIFICATIONS: CommunityNotification[] = [
-  {
-    id: 'notif-1',
-    type: 'join_request',
-    title: 'Join Request',
-    message: 'wants to join your group',
-    groupName: 'Tokyo Travelers 2025',
-    groupAvatar: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200',
-    groupId: 'comm-1',
-    userId: 'user-20',
-    userName: 'Sarah Chen',
-    userAvatar: 'https://i.pravatar.cc/150?img=5',
-    isRead: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 5), // 5 mins ago
-    actionRequired: true,
-  },
-  {
-    id: 'notif-2',
-    type: 'message',
-    title: 'New Messages',
-    message: '3 new messages in the group',
-    groupName: 'Solo Female Travelers',
-    groupAvatar: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=200',
-    groupId: 'comm-3',
-    isRead: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 15), // 15 mins ago
-  },
-  {
-    id: 'notif-3',
-    type: 'approved',
-    title: 'Request Approved',
-    message: 'Your request to join has been approved',
-    groupName: 'Bali Digital Nomads',
-    groupAvatar: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=200',
-    groupId: 'comm-2',
-    isRead: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
-  },
-  {
-    id: 'notif-4',
-    type: 'join_request',
-    title: 'Join Request',
-    message: 'wants to join your group',
-    groupName: 'Tokyo Travelers 2025',
-    groupAvatar: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200',
-    groupId: 'comm-1',
-    userId: 'user-21',
-    userName: 'Mike Johnson',
-    userAvatar: 'https://i.pravatar.cc/150?img=8',
-    isRead: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-    actionRequired: true,
-  },
-  {
-    id: 'notif-5',
-    type: 'new_member',
-    title: 'New Member',
-    message: 'joined the group',
-    groupName: 'NYC Foodies',
-    groupAvatar: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=200',
-    groupId: 'comm-6',
-    userId: 'user-22',
-    userName: 'Emma Wilson',
-    userAvatar: 'https://i.pravatar.cc/150?img=9',
-    isRead: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
-  },
-  {
-    id: 'notif-6',
-    type: 'event',
-    title: 'Event Reminder',
-    message: 'Tokyo Meetup starts in 2 days',
-    groupName: 'Tokyo Travelers 2025',
-    groupAvatar: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200',
-    groupId: 'comm-1',
-    isRead: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-  },
-  {
-    id: 'notif-7',
-    type: 'denied',
-    title: 'Request Denied',
-    message: 'Your request to join was declined',
-    groupName: 'Exclusive Travel Club',
-    groupAvatar: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=200',
-    groupId: 'comm-99',
-    isRead: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48), // 2 days ago
-  },
-];
+function mapNotificationTypeCode(typeCode: string): NotificationType {
+  if (typeCode.includes('message') || typeCode.includes('chat')) return 'message';
+  if (typeCode.includes('join_request') || typeCode.includes('request')) return 'join_request';
+  if (typeCode.includes('approved') || typeCode.includes('accept')) return 'approved';
+  if (typeCode.includes('denied') || typeCode.includes('reject')) return 'denied';
+  if (typeCode.includes('member') || typeCode.includes('joined')) return 'new_member';
+  if (typeCode.includes('event') || typeCode.includes('reminder')) return 'event';
+  return 'message';
+}
 
 export default function NotificationsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+
+  const {
+    notifications: rawNotifications,
+    isLoading,
+    markAsRead,
+    markAllAsRead: hookMarkAllAsRead,
+    refresh,
+  } = useNotifications({ category: 'social' });
+
+  const notifications: CommunityNotification[] = rawNotifications.map(n => ({
+    id: n.id,
+    type: mapNotificationTypeCode(n.typeCode),
+    title: n.title,
+    message: n.body,
+    groupName: (n.data?.groupName as string) || '',
+    groupAvatar: (n.data?.groupAvatar as string) || 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200',
+    groupId: (n.data?.groupId as string) || '',
+    userId: (n.data?.userId as string) || undefined,
+    userName: (n.data?.userName as string) || undefined,
+    userAvatar: (n.data?.userAvatar as string) || undefined,
+    isRead: n.isRead,
+    createdAt: new Date(n.createdAt),
+    actionRequired: n.typeCode.includes('join_request') && !n.isRead,
+  }));
   
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+    await refresh();
+    setRefreshing(false);
+  }, [refresh]);
   
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -163,12 +106,8 @@ export default function NotificationsScreen() {
   const handleNotificationPress = (notification: CommunityNotification) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
-    // Mark as read
-    setNotifications(prev => 
-      prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n)
-    );
+    markAsRead(notification.id);
     
-    // Navigate based on type
     if (notification.type === 'message') {
       router.push(`/community/${notification.groupId}` as any);
     } else if (notification.type === 'event') {
@@ -180,25 +119,17 @@ export default function NotificationsScreen() {
   
   const handleApprove = (notification: CommunityNotification) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    
-    // Remove from list and show success
-    setNotifications(prev => prev.filter(n => n.id !== notification.id));
-    
-    // In real app, call API to approve
+    markAsRead(notification.id);
   };
   
   const handleDeny = (notification: CommunityNotification) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    
-    // Remove from list
-    setNotifications(prev => prev.filter(n => n.id !== notification.id));
-    
-    // In real app, call API to deny
+    markAsRead(notification.id);
   };
   
   const handleMarkAllRead = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    hookMarkAllAsRead();
   };
   
   const formatTime = (date: Date) => {
@@ -227,6 +158,14 @@ export default function NotificationsScreen() {
   };
   
   const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: tc.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={tc.primary} />
+      </View>
+    );
+  }
   
   const renderNotification = (notification: CommunityNotification) => {
     const { icon: Icon, color } = getNotificationIcon(notification.type);

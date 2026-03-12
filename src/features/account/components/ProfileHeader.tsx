@@ -5,13 +5,16 @@
  * Dark theme header with gradient background.
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { Edit2, Verify, Star1, Location } from 'iconsax-react-native';
+import { Setting2, Verify, Star1, Location, Clock, CloseCircle, TickCircle } from 'iconsax-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { spacing, typography, borderRadius, colors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { UserProfile } from '../types/account.types';
+import { partnerService } from '@/services/community/partner.service';
 
 interface ProfileHeaderProps {
   user: UserProfile;
@@ -19,11 +22,57 @@ interface ProfileHeaderProps {
   onAvatarPress?: () => void;
 }
 
+// Map application + verification status to a display state
+type VerificationDisplayStatus = 'none' | 'draft' | 'in_review' | 'verified' | 'declined';
+
+function getVerificationDisplay(appStatus: string | null, diditStatus: string | null): {
+  status: VerificationDisplayStatus;
+  label: string;
+  color: string;
+  bgColor: string;
+  Icon: any;
+} {
+  if (!appStatus || appStatus === 'draft') {
+    return { status: 'none', label: '', color: '', bgColor: '', Icon: null };
+  }
+  if (appStatus === 'approved' || diditStatus === 'approved') {
+    return { status: 'verified', label: 'Verified Partner', color: '#16A34A', bgColor: 'rgba(22,163,74,0.12)', Icon: TickCircle };
+  }
+  if (appStatus === 'rejected' || diditStatus === 'declined') {
+    return { status: 'declined', label: 'Verification Declined', color: '#EF4444', bgColor: 'rgba(239,68,68,0.12)', Icon: CloseCircle };
+  }
+  // submitted, under_review, identity_verification, in_progress
+  return { status: 'in_review', label: 'In Review', color: '#F59E0B', bgColor: 'rgba(245,158,11,0.12)', Icon: Clock };
+}
+
 export default function ProfileHeader({ user, onEditPress, onAvatarPress }: ProfileHeaderProps) {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { colors, isDark } = useTheme();
   const fullName = `${user.firstName} ${user.lastName}`;
   const isPremium = user.membership?.type === 'premium' || user.membership?.type === 'pro';
+
+  // Partner verification status
+  const [partnerStatus, setPartnerStatus] = useState<{ status: string; didit: string } | null>(null);
+
+  useEffect(() => {
+    if (!user.id) return;
+    partnerService.getApplicationStatus(user.id).then((data) => {
+      if (data) {
+        setPartnerStatus({ status: data.status, didit: data.didit_verification_status });
+      }
+    }).catch(() => {});
+  }, [user.id]);
+
+  const verification = getVerificationDisplay(
+    partnerStatus?.status ?? null,
+    partnerStatus?.didit ?? null,
+  );
+
+  const handleVerificationPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/community/partner-apply' as any);
+  };
   
   return (
     <View style={styles.container}>
@@ -63,6 +112,20 @@ export default function ProfileHeader({ user, onEditPress, onAvatarPress }: Prof
             )}
           </View>
           
+          {/* Verification Status Pill */}
+          {verification.status !== 'none' && (
+            <TouchableOpacity
+              style={[styles.verificationPill, { backgroundColor: verification.bgColor }]}
+              onPress={handleVerificationPress}
+              activeOpacity={0.7}
+            >
+              <verification.Icon size={14} color={verification.color} variant="Bold" />
+              <Text style={[styles.verificationPillText, { color: verification.color }]}>
+                {verification.label}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {user.location && (
             <View style={styles.locationRow}>
               <Location size={14} color={colors.success} variant="Bold" />
@@ -77,7 +140,7 @@ export default function ProfileHeader({ user, onEditPress, onAvatarPress }: Prof
         
         {/* Edit button */}
         <TouchableOpacity style={[styles.editButton, { backgroundColor: 'rgba(255,255,255,0.12)' }]} onPress={onEditPress}>
-          <Edit2 size={20} color="#FFFFFF" variant="Outline" />
+          <Setting2 size={20} color="#FFFFFF" variant="TwoTone" />
         </TouchableOpacity>
       </View>
       
@@ -189,6 +252,20 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: typography.fontWeight.bold,
     color: '#111827',
+  },
+  verificationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginTop: 6,
+    gap: 5,
+  },
+  verificationPillText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
   },
   locationRow: {
     flexDirection: 'row',

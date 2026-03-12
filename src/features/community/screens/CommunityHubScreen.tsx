@@ -7,7 +7,7 @@
  * No stats container, no hub-level search bar.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -34,6 +34,8 @@ import {
   useUpcomingEvents,
   usePendingBuddyRequests,
 } from '@/hooks/useCommunity';
+import { useNotifications } from '@/hooks/useNotifications';
+import { chatService } from '@/services/community/chat.service';
 import DiscoverFeed from '../components/DiscoverFeed';
 import GroupsTabContent from '../components/GroupsTabContent';
 import EventsTabContent from '../components/EventsTabContent';
@@ -53,8 +55,8 @@ export default function CommunityHubScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
-  const { user } = useAuth();
-  const userId = user?.id;
+  const { profile } = useAuth();
+  const userId = profile?.id;
 
   const [activeTab, setActiveTab] = useState<TabType>('discover');
 
@@ -63,9 +65,18 @@ export default function CommunityHubScreen() {
   const { events, loading: loadingEvents, refetch: refetchEvents } = useUpcomingEvents();
   const { requests: pendingRequests } = usePendingBuddyRequests(userId);
 
+  const { unreadCount: notificationCount } = useNotifications({ category: 'social', autoRefresh: true });
+
+  const [messageCount, setMessageCount] = useState(0);
   const isPremium = true;
-  const messageCount = 5;
-  const notificationCount = 7;
+
+  useEffect(() => {
+    if (!userId) return;
+    chatService.getConversations(userId).then(convs => {
+      const total = convs.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+      setMessageCount(total);
+    }).catch(console.warn);
+  }, [userId]);
 
   // Navigation handlers
   const handleSearch = () => {

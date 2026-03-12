@@ -1,8 +1,7 @@
 /**
  * LINK SUCCESS STEP
  * 
- * Step 7 (final) in link import flow - Success confirmation.
- * Shows success message and button to view imported trips.
+ * Step 7 (final) in link import flow - Shows real import results.
  */
 
 import React from 'react';
@@ -10,17 +9,20 @@ import { StepComponentProps } from '../../types/import-flow.types';
 import SuccessStep from '../../components/shared/SuccessStep';
 
 export default function LinkSuccessStep({ data, onNext }: StepComponentProps) {
-  const tripCount = data.selectedTrips?.length || 0;
+  const importResult = data.importResult;
+  const tripCount = importResult?.trips?.length || data.selectedTrips?.length || 0;
+  const totalBookings = importResult?.totalBookingsImported || 0;
+
+  const message = importResult?.imported
+    ? `We've imported ${totalBookings} booking${totalBookings !== 1 ? 's' : ''} across ${tripCount} trip${tripCount !== 1 ? 's' : ''}. Check your Trips tab to see them!`
+    : `Import completed. Check your trips tab to see the results.`;
 
   return (
     <SuccessStep
       title="Successfully Imported!"
-      message={`We've imported ${tripCount} trip${tripCount !== 1 ? 's' : ''} from your travel account. Your trips are ready to view!`}
+      message={message}
       buttonText="View My Trips"
-      onButtonPress={() => {
-        // AI TODO: Navigate to trips list or home
-        onNext();
-      }}
+      onButtonPress={() => onNext(data)}
     />
   );
 }

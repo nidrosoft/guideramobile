@@ -4,7 +4,7 @@
  * Admin tools for managing group members and settings.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   Alert,
   TextInput,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,60 +39,122 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
+import { notifyJoinApproved, notifyJoinDenied } from '@/services/notifications/community-notifications';
+import { groupService } from '@/services/community';
+import { useAuth } from '@/context/AuthContext';
 
 type AdminTab = 'members' | 'requests' | 'settings';
-
-// Mock data
-const MOCK_MEMBERS = [
-  { id: 'u1', name: 'Sarah Chen', avatar: 'https://i.pravatar.cc/150?img=5', role: 'admin', joinedAt: '2024-01-15' },
-  { id: 'u2', name: 'Mike Johnson', avatar: 'https://i.pravatar.cc/150?img=8', role: 'moderator', joinedAt: '2024-02-20' },
-  { id: 'u3', name: 'Emma Wilson', avatar: 'https://i.pravatar.cc/150?img=9', role: 'member', joinedAt: '2024-03-10' },
-  { id: 'u4', name: 'Alex Kim', avatar: 'https://i.pravatar.cc/150?img=12', role: 'member', joinedAt: '2024-04-05' },
-  { id: 'u5', name: 'Lisa Park', avatar: 'https://i.pravatar.cc/150?img=15', role: 'member', joinedAt: '2024-05-18' },
-];
-
-const MOCK_REQUESTS = [
-  { id: 'r1', name: 'John Doe', avatar: 'https://i.pravatar.cc/150?img=20', requestedAt: '2024-12-01', message: 'Would love to join! Planning a trip to Tokyo next month.' },
-  { id: 'r2', name: 'Jane Smith', avatar: 'https://i.pravatar.cc/150?img=21', requestedAt: '2024-12-01', message: 'Solo traveler looking for travel buddies!' },
-  { id: 'r3', name: 'Bob Wilson', avatar: 'https://i.pravatar.cc/150?img=22', requestedAt: '2024-11-30', message: '' },
-];
-
-const MOCK_GROUP = {
-  id: 'comm-1',
-  name: 'Tokyo Travelers 2025',
-  description: 'A community for travelers visiting Tokyo in 2025',
-  privacy: 'private' as const,
-  allowMemberPosts: true,
-  allowMemberEvents: false,
-  requireApproval: true,
-  muteNotifications: false,
-};
 
 export default function GroupAdminScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { profile } = useAuth();
   
   const [activeTab, setActiveTab] = useState<AdminTab>('members');
-  const [members, setMembers] = useState(MOCK_MEMBERS);
-  const [requests, setRequests] = useState(MOCK_REQUESTS);
+  const [members, setMembers] = useState<{ id: string; name: string; avatar: string; role: string; joinedAt: string }[]>([]);
+  const [requests, setRequests] = useState<{ id: string; name: string; avatar: string; requestedAt: string; message: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [groupSettings, setGroupSettings] = useState(MOCK_GROUP);
+  const [groupSettings, setGroupSettings] = useState({
+    id: id || '',
+    name: '',
+    description: '',
+    privacy: 'private' as const,
+    allowMemberPosts: true,
+    allowMemberEvents: false,
+    requireApproval: true,
+    muteNotifications: false,
+  });
+  const [isFetching, setIsFetching] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    if (!id) return;
+    try {
+      setIsFetching(true);
+      const [group, memberData, requestData] = await Promise.all([
+        groupService.getGroup(id),
+        groupService.getMembers(id),
+        groupService.getJoinRequests(id),
+      ]);
+
+      if (group) {
+        setGroupSettings({
+          id: group.id,
+          name: group.name,
+          description: group.description || '',
+          privacy: group.privacy === 'public' ? 'public' as const : 'private' as const,
+          allowMemberPosts: group.whoCanPost !== 'admins_only',
+          allowMemberEvents: false,
+          requireApproval: group.joinApproval === 'admin_approval',
+          muteNotifications: false,
+        });
+      }
+
+      setMembers(memberData.map(m => ({
+        id: m.userId,
+        name: m.user ? `${m.user.firstName} ${m.user.lastName}` : 'Unknown',
+        avatar: m.user?.avatarUrl || `https://i.pravatar.cc/150?u=${m.userId}`,
+        role: m.role,
+        joinedAt: m.joinedAt.toISOString().split('T')[0],
+      })));
+
+      setRequests(requestData.map(r => ({
+        id: r.id,
+        name: r.user ? `${r.user.firstName} ${r.user.lastName}` : 'Unknown',
+        avatar: r.user?.avatarUrl || `https://i.pravatar.cc/150?u=${r.userId}`,
+        requestedAt: r.requestedAt.toISOString().split('T')[0],
+        message: r.message || '',
+      })));
+    } catch (err) {
+      console.error('Failed to fetch group admin data:', err);
+    } finally {
+      setIsFetching(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
   
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.back();
   };
   
-  const handleApproveRequest = (requestId: string) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setRequests(prev => prev.filter(r => r.id !== requestId));
-    Alert.alert('Approved', 'Member has been added to the group.');
+  const handleApproveRequest = async (requestId: string) => {
+    if (!profile?.id) return;
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const request = requests.find(r => r.id === requestId);
+      await groupService.approveRequest(profile.id, requestId);
+      setRequests(prev => prev.filter(r => r.id !== requestId));
+      Alert.alert('Approved', 'Member has been added to the group.');
+      if (request) {
+        notifyJoinApproved(request.id, groupSettings.name, id || '').catch(() => {});
+      }
+      fetchData();
+    } catch (err: any) {
+      console.error('Failed to approve request:', err);
+      Alert.alert('Error', err?.message || 'Could not approve request.');
+    }
   };
   
-  const handleDenyRequest = (requestId: string) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    setRequests(prev => prev.filter(r => r.id !== requestId));
+  const handleDenyRequest = async (requestId: string) => {
+    if (!profile?.id) return;
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      const request = requests.find(r => r.id === requestId);
+      await groupService.rejectRequest(profile.id, requestId);
+      setRequests(prev => prev.filter(r => r.id !== requestId));
+      if (request) {
+        notifyJoinDenied(request.id, groupSettings.name, id || '').catch(() => {});
+      }
+    } catch (err: any) {
+      console.error('Failed to deny request:', err);
+      Alert.alert('Error', err?.message || 'Could not deny request.');
+    }
   };
   
   const handleRemoveMember = (memberId: string, memberName: string) => {
@@ -103,9 +166,16 @@ export default function GroupAdminScreen() {
         {
           text: 'Remove',
           style: 'destructive',
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            setMembers(prev => prev.filter(m => m.id !== memberId));
+          onPress: async () => {
+            if (!profile?.id || !id) return;
+            try {
+              await groupService.removeMember(profile.id, id, memberId);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              setMembers(prev => prev.filter(m => m.id !== memberId));
+            } catch (err: any) {
+              console.error('Failed to remove member:', err);
+              Alert.alert('Error', err?.message || 'Could not remove member.');
+            }
           },
         },
       ]
@@ -120,11 +190,18 @@ export default function GroupAdminScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Promote',
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            setMembers(prev => prev.map(m => 
-              m.id === memberId ? { ...m, role: 'moderator' } : m
-            ));
+          onPress: async () => {
+            if (!profile?.id || !id) return;
+            try {
+              await groupService.updateMemberRole(profile.id, id, memberId, 'moderator');
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              setMembers(prev => prev.map(m => 
+                m.id === memberId ? { ...m, role: 'moderator' } : m
+              ));
+            } catch (err: any) {
+              console.error('Failed to promote member:', err);
+              Alert.alert('Error', err?.message || 'Could not promote member.');
+            }
           },
         },
       ]
@@ -168,11 +245,11 @@ export default function GroupAdminScreen() {
     <>
       {/* Search */}
       <View style={styles.searchContainer}>
-        <SearchNormal1 size={20} color={colors.gray400} />
+        <SearchNormal1 size={20} color={tc.textTertiary} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search members..."
-          placeholderTextColor={colors.gray400}
+          placeholderTextColor={tc.textTertiary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -422,6 +499,14 @@ export default function GroupAdminScreen() {
     </>
   );
   
+  if (isFetching) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />

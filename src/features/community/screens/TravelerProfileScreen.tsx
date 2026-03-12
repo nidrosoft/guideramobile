@@ -15,6 +15,7 @@ import {
   Image,
   ImageBackground,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,27 +36,112 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/context/ThemeContext';
-import { spacing, typography, borderRadius, shadows } from '@/styles';
-import { MOCK_TRAVELER_PROFILE } from '../data/feedMockData';
+import { spacing, typography, borderRadius, shadows, colors } from '@/styles';
+import { supabase } from '@/lib/supabase/client';
+import { buddyService, groupService } from '@/services/community';
+import { useAuth } from '@/context/AuthContext';
+import { TravelerProfile } from '../types/feed.types';
 
 export default function TravelerProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
   const { userId } = useLocalSearchParams<{ userId: string }>();
+  const { profile: authProfile } = useAuth();
 
-  const [profile, setProfile] = useState(MOCK_TRAVELER_PROFILE);
-  const [isFollowing, setIsFollowing] = useState(profile.isFollowing);
-  const [buddyStatus, setBuddyStatus] = useState(profile.buddyStatus);
+  const [profile, setProfile] = useState<TravelerProfile | null>(null);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [buddyStatus, setBuddyStatus] = useState<string | null>(null);
+  const [isFetching, setIsFetching] = useState(true);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
+  const fetchProfile = useCallback(async () => {
+    const targetId = userId || authProfile?.id;
+    if (!targetId) return;
+    try {
+      setIsFetching(true);
+
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', targetId)
+        .single();
+
+      if (error || !profileData) throw new Error('Profile not found');
+
+      const { data: socialData } = await supabase
+        .from('user_social_profiles')
+        .select('interests, travel_styles, languages, countries_visited, buddy_count')
+        .eq('user_id', targetId)
+        .single();
+
+      let userGroups: string[] = [];
+      try {
+        const groupData = await groupService.getUserGroups(targetId);
+        userGroups = groupData.map(g => g.group.name);
+      } catch {}
+
+      let currentBuddyStatus: string | null = null;
+      if (authProfile?.id && authProfile.id !== targetId) {
+        const [id1, id2] = [authProfile.id, targetId].sort();
+        const { data: conn } = await supabase
+          .from('buddy_connections')
+          .select('status, requested_by')
+          .eq('user_id_1', id1)
+          .eq('user_id_2', id2)
+          .single();
+        if (conn) {
+          currentBuddyStatus = conn.status === 'connected' ? 'accepted' : 'pending';
+        }
+      }
+
+      const travelerProfile: TravelerProfile = {
+        id: profileData.id,
+        firstName: profileData.first_name || '',
+        lastName: profileData.last_name || '',
+        avatar: profileData.avatar_url || `https://i.pravatar.cc/150?u=${targetId}`,
+        coverPhoto: profileData.cover_photo_url,
+        bio: profileData.bio || '',
+        city: profileData.city,
+        country: profileData.nationality || profileData.country,
+        countryCode: profileData.country_code,
+        isVerified: profileData.is_verified || false,
+        stats: {
+          tripsCount: profileData.trips_count || 0,
+          countriesVisited: socialData?.countries_visited?.length || 0,
+          reviewsCount: profileData.reviews_count || 0,
+          groupsCount: userGroups.length,
+        },
+        travelInterests: socialData?.interests || [],
+        countriesVisited: socialData?.countries_visited || [],
+        mutualGroups: userGroups.slice(0, 5),
+        buddyStatus: currentBuddyStatus as any,
+        isFollowing: false,
+      };
+
+      setProfile(travelerProfile);
+      setIsFollowing(travelerProfile.isFollowing);
+      setBuddyStatus(travelerProfile.buddyStatus);
+    } catch (err) {
+      console.error('Failed to fetch traveler profile:', err);
+    } finally {
+      setIsFetching(false);
+    }
+  }, [userId, authProfile?.id]);
+
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
-    ]).start();
-  }, []);
+    fetchProfile();
+  }, [fetchProfile]);
+
+  useEffect(() => {
+    if (!isFetching && profile) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [isFetching, profile]);
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -67,12 +153,17 @@ export default function TravelerProfileScreen() {
     setIsFollowing(!isFollowing);
   };
 
-  const handleBuddyRequest = () => {
+  const handleBuddyRequest = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (!buddyStatus) {
-      setBuddyStatus('pending');
-    } else if (buddyStatus === 'pending') {
-      setBuddyStatus(null);
+    const targetId = userId || profile?.id;
+    if (!authProfile?.id || !targetId) return;
+    try {
+      if (!buddyStatus) {
+        await buddyService.sendRequest(authProfile.id, targetId);
+        setBuddyStatus('pending');
+      }
+    } catch (err) {
+      console.error('Failed to send buddy request:', err);
     }
   };
 
@@ -80,6 +171,14 @@ export default function TravelerProfileScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(`/community/chat/${userId || profile.id}` as any);
   };
+
+  if (isFetching || !profile) {
+    return (
+      <View style={[styles.container, { backgroundColor: tc.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   const stats = [
     { label: 'Trips', value: profile.stats.tripsCount, icon: Airplane },

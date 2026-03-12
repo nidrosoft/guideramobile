@@ -27,7 +27,7 @@ import { changeLanguage, getCurrentLanguage, SUPPORTED_LANGUAGES, LanguageCode }
 export default function LanguageSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const { t, i18n } = useTranslation();
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode>('en');
   const [isLoading, setIsLoading] = useState(true);
@@ -57,23 +57,23 @@ export default function LanguageSettingsScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: tc.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <ActivityIndicator size="large" color={tc.primary} />
       </View>
     );
   }
   
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('settings.items.language')}</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{t('settings.items.language')}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -83,13 +83,13 @@ export default function LanguageSettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Current Language */}
-        <View style={styles.currentLanguageCard}>
-          <Text style={styles.currentLabel}>{t('settings.language.current')}</Text>
+        <View style={[styles.currentLanguageCard, { backgroundColor: tc.primary + '10', borderColor: tc.primary + '20' }]}>
+          <Text style={[styles.currentLabel, { color: tc.primary }]}>{t('settings.language.current')}</Text>
           <View style={styles.currentLanguageRow}>
             <Text style={styles.currentFlag}>
               {SUPPORTED_LANGUAGES.find(l => l.code === selectedLanguage)?.flag}
             </Text>
-            <Text style={styles.currentName}>
+            <Text style={[styles.currentName, { color: tc.textPrimary }]}>
               {SUPPORTED_LANGUAGES.find(l => l.code === selectedLanguage)?.name}
             </Text>
           </View>
@@ -97,16 +97,17 @@ export default function LanguageSettingsScreen() {
 
         {/* Language List */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('settings.language.title')}</Text>
-          <Text style={styles.sectionSubtitle}>{t('settings.language.subtitle')}</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>{t('settings.language.title')}</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>{t('settings.language.subtitle')}</Text>
           
-          <View style={styles.languageList}>
+          <View style={[styles.languageList, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             {SUPPORTED_LANGUAGES.map((language) => (
               <TouchableOpacity
                 key={language.code}
                 style={[
                   styles.languageItem,
-                  selectedLanguage === language.code && styles.languageItemSelected,
+                  { borderBottomColor: tc.borderSubtle },
+                  selectedLanguage === language.code && [styles.languageItemSelected, { backgroundColor: tc.primary + '08' }],
                 ]}
                 onPress={() => handleSelectLanguage(language.code)}
               >
@@ -114,14 +115,15 @@ export default function LanguageSettingsScreen() {
                 <View style={styles.languageTextContainer}>
                   <Text style={[
                     styles.languageName,
-                    selectedLanguage === language.code && styles.languageNameSelected,
+                    { color: tc.textPrimary },
+                    selectedLanguage === language.code && { color: tc.primary },
                   ]}>
                     {language.name}
                   </Text>
-                  <Text style={styles.languageNative}>{language.nativeName}</Text>
+                  <Text style={[styles.languageNative, { color: tc.textSecondary }]}>{language.nativeName}</Text>
                 </View>
                 {selectedLanguage === language.code && (
-                  <TickCircle size={22} color={colors.primary} variant="Bold" />
+                  <TickCircle size={22} color={tc.primary} variant="Bold" />
                 )}
               </TouchableOpacity>
             ))}
@@ -129,9 +131,9 @@ export default function LanguageSettingsScreen() {
         </View>
 
         {/* Info Card */}
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>About Language Settings</Text>
-          <Text style={styles.infoText}>
+        <View style={[styles.infoCard, { backgroundColor: tc.info + '10', borderColor: tc.info + '20' }]}>
+          <Text style={[styles.infoTitle, { color: tc.info }]}>About Language Settings</Text>
+          <Text style={[styles.infoText, { color: tc.textSecondary }]}>
             Changing the language will update all text throughout the app. Some content from external sources may still appear in its original language.
           </Text>
         </View>

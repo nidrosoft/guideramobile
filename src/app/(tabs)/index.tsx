@@ -13,7 +13,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { SearchNormal1, Archive, Notification, Location } from 'iconsax-react-native';
+import { SearchNormal1, Archive, Location } from 'iconsax-react-native';
+import NotificationBell from '@/components/features/notifications/NotificationBell';
 import TripReminder from '@/components/features/home/TripReminder';
 import SectionRenderer from '@/components/features/home/SectionRenderer';
 import PlanBottomSheet from '@/components/features/home/PlanBottomSheet';
@@ -23,6 +24,8 @@ import { categories } from '@/data/categories';
 import { SECTIONS_CONFIG } from '@/config/sections.config';
 import { useAuth } from '@/context/AuthContext';
 import { useHomepageData } from '@/features/homepage';
+import { useTripStore } from '@/features/trips/stores/trip.store';
+import { TripState } from '@/features/trips/types/trip.types';
 
 export default function Home() {
   const router = useRouter();
@@ -44,6 +47,18 @@ export default function Home() {
   
   // Homepage data with pull-to-refresh
   const { isRefreshing, refresh } = useHomepageData();
+  
+  // Get nearest upcoming trip for reminder (use raw trips + useMemo to avoid infinite loop)
+  const trips = useTripStore(state => state.trips);
+  const nearestTrip = useMemo(() => {
+    const upcoming = trips.filter(t => t.state === TripState.UPCOMING);
+    if (upcoming.length === 0) return null;
+    return upcoming.sort((a, b) => {
+      const dateA = a.startDate instanceof Date ? a.startDate : new Date(a.startDate);
+      const dateB = b.startDate instanceof Date ? b.startDate : new Date(b.startDate);
+      return dateA.getTime() - dateB.getTime();
+    })[0];
+  }, [trips]);
   
   const handleRefresh = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -96,10 +111,21 @@ export default function Home() {
     setIsSearchFocused(true);
   };
 
-  const handleSelectSearch = (term: string) => {
+  const handleSelectSearch = (term: string, dates?: { start?: Date; end?: Date }, guests?: { adults: number; children: number; infants: number }) => {
     setSearchQuery(term);
     setIsSearchFocused(false);
-    router.push(`/search/results?q=${encodeURIComponent(term)}` as any);
+
+    // Default dates: tomorrow + 7 days if not provided
+    const now = new Date();
+    const defaultStart = new Date(now.getTime() + 86400000);
+    const defaultEnd = new Date(now.getTime() + 8 * 86400000);
+    const startDate = (dates?.start || defaultStart).toISOString().split('T')[0];
+    const endDate = (dates?.end || defaultEnd).toISOString().split('T')[0];
+    const adults = String(guests?.adults || 1);
+    const children = String(guests?.children || 0);
+    const infants = String(guests?.infants || 0);
+
+    router.push(`/search/snapshot?destination=${encodeURIComponent(term)}&startDate=${startDate}&endDate=${endDate}&adults=${adults}&children=${children}&infants=${infants}` as any);
   };
 
   const handleCloseSearchOverlay = () => {
@@ -162,13 +188,8 @@ export default function Home() {
             >
               <Archive size={20} color={colors.textPrimary} variant="Bold" />
             </TouchableOpacity>
-            <View style={styles.notificationContainer}>
-              <View style={[styles.notificationBadge, dynamicStyles.notificationBadge]}>
-                <Text style={[styles.notificationCount, dynamicStyles.notificationCount]}>3</Text>
-              </View>
-              <TouchableOpacity style={[styles.notificationIcon, dynamicStyles.notificationIcon]} activeOpacity={0.7}>
-                <Notification size={20} color={colors.textPrimary} variant="Bold" />
-              </TouchableOpacity>
+            <View style={[styles.notificationIcon, dynamicStyles.notificationIcon]}>
+              <NotificationBell size={20} />
             </View>
           </View>
         </View>
@@ -212,11 +233,21 @@ export default function Home() {
           })}
         </ScrollView>
 
-        {/* Trip Reminder */}
-        <TripReminder 
-          destination="Singapore" 
-          tripDate={new Date(Date.now() + 12 * 24 * 60 * 60 * 1000 + 20 * 60 * 60 * 1000)} 
-        />
+        {/* Trip Reminder — only shows if user has an upcoming trip */}
+        {nearestTrip && (() => {
+          const firstFlight = nearestTrip.bookings?.find(b => b.type === 'flight');
+          const flightDetails = firstFlight?.details as any;
+          return (
+            <TripReminder 
+              destination={nearestTrip.destination?.city || nearestTrip.title} 
+              tripDate={nearestTrip.startDate instanceof Date ? nearestTrip.startDate : new Date(nearestTrip.startDate)}
+              flightNumber={flightDetails?.flightNumber}
+              departureAirport={flightDetails?.departure?.airport}
+              isInternational={true}
+              tripId={nearestTrip.id}
+            />
+          );
+        })()}
 
         {/* Sections - Now using modular SectionRenderer */}
         {SECTIONS_CONFIG.map((section) => (

@@ -1,7 +1,14 @@
 /**
  * EXPERIENCE DETAIL SHEET
- * 
- * Bottom sheet showing full experience details.
+ *
+ * Rich detail bottom-sheet modeled after the LocalExperience detail page.
+ * - Photo with overlay nav (share, save, close)
+ * - Badges (category, free cancellation, instant confirmation)
+ * - Title, rating bar, price
+ * - Quick info bar (duration, languages, group size, location)
+ * - Collapsible sections: Overview, Highlights, What's Included
+ * - Cancellation policy card + partner note
+ * - Sticky bottom CTA: "Book Now"
  */
 
 import React, { useState } from 'react';
@@ -14,35 +21,64 @@ import {
   ScrollView,
   Image,
   Dimensions,
-  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  CloseCircle,
   Star1,
   Clock,
   People,
   Location,
   TickCircle,
-  CloseSquare,
-  Heart,
-  Share as ShareIcon,
-  Translate,
-  Shield,
+  CloseCircle,
+  LanguageSquare,
+  ArrowDown2,
+  ArrowUp2,
+  ShieldTick,
+  Add,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { colors as staticColors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Experience, CANCELLATION_POLICY_LABELS } from '../../../types/experience.types';
-import { BookOnProviderButton } from '../../../components/shared';
 import { useDealRedirect } from '@/hooks/useDeals';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const PHOTO_HEIGHT = 280;
 
 interface ExperienceDetailSheetProps {
   visible: boolean;
   onClose: () => void;
   onSelect: (experience: Experience) => void;
   experience: Experience | null;
+}
+
+// ─── Collapsible Section ───
+function CollapsibleSection({
+  title,
+  expanded,
+  onToggle,
+  colors,
+  children,
+}: {
+  title: string;
+  expanded: boolean;
+  onToggle: () => void;
+  colors: any;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={[styles.section, { borderColor: colors.borderSubtle }]}>
+      <TouchableOpacity style={styles.sectionHeader} onPress={onToggle} activeOpacity={0.7}>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{title}</Text>
+        {expanded ? (
+          <ArrowUp2 size={18} color={colors.textSecondary} />
+        ) : (
+          <ArrowDown2 size={18} color={colors.textSecondary} />
+        )}
+      </TouchableOpacity>
+      {expanded && <View style={styles.sectionBody}>{children}</View>}
+    </View>
+  );
 }
 
 export default function ExperienceDetailSheet({
@@ -52,59 +88,96 @@ export default function ExperienceDetailSheet({
   experience,
 }: ExperienceDetailSheetProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc, isDark } = useTheme();
   const { redirect } = useDealRedirect();
-  const [isFavorite, setIsFavorite] = useState(false);
+  const [expandedSection, setExpandedSection] = useState<string | null>('description');
 
   if (!experience) return null;
 
+  // ─── Safe data accessors ───
+  const exp = experience as any;
+  const images: string[] = (Array.isArray(exp.images) ? exp.images : []).filter(Boolean);
+  const ratingValue = typeof exp.rating === 'number' ? exp.rating : exp.rating?.score ?? 0;
+  const reviewCountValue = typeof exp.reviewCount === 'number'
+    ? exp.reviewCount
+    : exp.rating?.reviewCount ?? 0;
+  const durationMinutes = typeof exp.duration === 'number'
+    ? exp.duration
+    : exp.duration?.value
+      ? (exp.duration.unit === 'hours' ? exp.duration.value * 60 : exp.duration.value)
+      : 0;
+  const includesList: string[] = exp.included || exp.includes || [];
+  const notIncludedList: string[] = exp.notIncluded || exp.excludes || [];
+  const languagesList: string[] = exp.languages || [];
+  const maxParticipants = exp.maxParticipants || exp.maxGroupSize || 0;
+  const highlightsList: string[] = exp.highlights || [];
+  const description = exp.description || exp.shortDescription || '';
+  const locationName = exp.location?.name || exp.location?.city || exp.location?.address || '';
+  const cancellationPolicyKey = exp.cancellationPolicy || 'non_refundable';
+  const isFreeCancellation = exp.freeCancellation === true || cancellationPolicyKey === 'free_24h' || cancellationPolicyKey === 'free_48h' || cancellationPolicyKey === 'free_7d';
+  const cancellationLabel = CANCELLATION_POLICY_LABELS[cancellationPolicyKey as keyof typeof CANCELLATION_POLICY_LABELS]
+    || (typeof cancellationPolicyKey === 'string' ? cancellationPolicyKey : 'Non-refundable');
+  const priceAmount = typeof exp.price === 'number'
+    ? exp.price
+    : exp.price?.amount ?? 0;
+  const priceFormatted = typeof exp.price === 'number'
+    ? `$${exp.price}`
+    : exp.price?.formatted || `$${priceAmount}`;
+  const categoryLabel = exp.category
+    ? (typeof exp.category === 'string' ? exp.category.charAt(0).toUpperCase() + exp.category.slice(1).replace(/_/g, ' ') : '')
+    : '';
+
   const formatDuration = (minutes: number): string => {
+    if (!minutes) return 'Flexible';
     if (minutes < 60) return `${minutes} min`;
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return mins > 0 ? `${hours}h ${mins}m` : `${hours} hours`;
   };
 
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        title: experience.title,
-        message: `Check out this experience: ${experience.title}`,
-      });
-    } catch (error) {
-      console.error('Error sharing:', error);
-    }
+  const toggleSection = (section: string) => {
+    setExpandedSection(expandedSection === section ? null : section);
   };
 
-  const handleFavorite = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setIsFavorite(!isFavorite);
-  };
+  // ─── Quick info items ───
+  const quickInfo: { icon: any; label: string; value: string }[] = [];
+  if (durationMinutes > 0) {
+    quickInfo.push({ icon: Clock, label: 'Duration', value: formatDuration(durationMinutes) });
+  }
+  if (languagesList.length > 0) {
+    quickInfo.push({ icon: LanguageSquare, label: 'Languages', value: languagesList.slice(0, 3).join(', ') });
+  }
+  if (maxParticipants > 0) {
+    quickInfo.push({ icon: People, label: 'Group Size', value: `Up to ${maxParticipants}` });
+  }
+  if (locationName) {
+    quickInfo.push({ icon: Location, label: 'Location', value: locationName });
+  }
 
-  const handleBookOnProvider = async () => {
+  const handleBookNow = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const exp = experience as any;
     const expName = exp.name || exp.title || 'Experience';
-    const locName = exp.location?.name || exp.location?.city || '';
-    const dur = typeof exp.duration === 'number' ? String(exp.duration) : (exp.duration || '');
+    const locName = locationName;
     await redirect({
       deal_type: 'experience',
-      provider: 'getyourguide',
-      affiliate_url: '',
+      provider: 'viator',
+      affiliate_url: exp.bookingUrl || exp.deepLink || '',
+      deep_link: exp.bookingUrl || exp.deepLink || '',
       deal_snapshot: {
         title: expName,
         subtitle: locName,
-        provider: { code: 'getyourguide', name: 'GetYourGuide' },
-        price: experience.price,
+        provider: { code: 'viator', name: 'Viator' },
+        price: { amount: priceAmount, currency: 'USD', formatted: priceFormatted },
         experience: {
           name: expName,
-          duration: dur,
-          rating: exp.rating,
-          reviewCount: exp.reviewCount,
+          duration: formatDuration(durationMinutes),
+          rating: ratingValue,
+          reviewCount: reviewCountValue,
           date: '',
           participants: 1,
         },
       },
-      price_amount: experience.price.amount,
+      price_amount: priceAmount,
       source: 'search',
       query: expName,
       destination: locName,
@@ -114,141 +187,192 @@ export default function ExperienceDetailSheet({
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.overlay}>
-        <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Experience Details</Text>
-            <TouchableOpacity onPress={onClose}>
-              <CloseCircle size={28} color={colors.gray500} variant="Bold" />
-            </TouchableOpacity>
-          </View>
-
+        <View style={[styles.container, { backgroundColor: tc.background }]}>
           <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + insets.bottom }]}
             showsVerticalScrollIndicator={false}
           >
-            {/* Image with Action Buttons */}
-            <View style={styles.imageContainer}>
-              <Image source={{ uri: experience.images[0] }} style={styles.image} />
-              <View style={styles.actionButtons}>
-                <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-                  <ShareIcon size={20} color={colors.textPrimary} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton} onPress={handleFavorite}>
-                  <Heart
-                    size={20}
-                    color={isFavorite ? colors.error : colors.textPrimary}
-                    variant={isFavorite ? 'Bold' : 'Linear'}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Rating & Badges */}
-            <View style={styles.ratingRow}>
-              <View style={styles.ratingBadge}>
-                <Star1 size={14} color={colors.warning} variant="Bold" />
-                <Text style={styles.ratingText}>{experience.rating}</Text>
-                <Text style={styles.reviewCount}>({experience.reviewCount.toLocaleString()} reviews)</Text>
-              </View>
-              {experience.bestSeller && (
-                <View style={styles.bestSellerBadge}>
-                  <Text style={styles.bestSellerText}>Best Seller</Text>
+            {/* ─── Photo ─── */}
+            <View style={styles.photoContainer}>
+              {images.length > 0 ? (
+                <Image source={{ uri: images[0] }} style={styles.photo} resizeMode="cover" />
+              ) : (
+                <View style={[styles.photo, { backgroundColor: `${tc.primary}15`, justifyContent: 'center', alignItems: 'center' }]}>
+                  <Star1 size={56} color={tc.primary} variant="Bold" />
                 </View>
               )}
-            </View>
+              <View style={styles.photoOverlay} pointerEvents="none" />
 
-            {/* Title */}
-            <Text style={styles.title}>{experience.title}</Text>
-
-            {/* Quick Info */}
-            <View style={styles.quickInfo}>
-              <View style={styles.quickInfoItem}>
-                <Clock size={18} color={colors.primary} />
-                <Text style={styles.quickInfoText}>{formatDuration(experience.duration)}</Text>
-              </View>
-              <View style={styles.quickInfoItem}>
-                <People size={18} color={colors.primary} />
-                <Text style={styles.quickInfoText}>Max {experience.maxParticipants}</Text>
-              </View>
-              <View style={styles.quickInfoItem}>
-                <Translate size={18} color={colors.primary} />
-                <Text style={styles.quickInfoText}>{experience.languages.slice(0, 2).join(', ')}</Text>
+              {/* Close button over photo */}
+              <View style={[styles.heroNav, { top: 16 }]}>
+                <View />
+                <TouchableOpacity onPress={onClose} style={styles.navBtn}>
+                  <Add size={22} color="#FFF" style={{ transform: [{ rotate: '45deg' }] }} />
+                </TouchableOpacity>
               </View>
             </View>
 
-            {/* Description */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>About This Experience</Text>
-              <Text style={styles.description}>{experience.description}</Text>
-            </View>
-
-            {/* What's Included */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>What's Included</Text>
-              {experience.includes.map((item, index) => (
-                <View key={index} style={styles.listItem}>
-                  <TickCircle size={16} color={colors.success} variant="Bold" />
-                  <Text style={styles.listItemText}>{item}</Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Not Included */}
-            {experience.notIncluded.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Not Included</Text>
-                {experience.notIncluded.map((item, index) => (
-                  <View key={index} style={styles.listItem}>
-                    <CloseSquare size={16} color={colors.error} variant="Bold" />
-                    <Text style={styles.listItemText}>{item}</Text>
+            {/* ─── Content ─── */}
+            <View style={[styles.content, { backgroundColor: tc.background }]}>
+              {/* Badges */}
+              <View style={styles.badgeRow}>
+                {categoryLabel ? (
+                  <View style={[styles.badge, { backgroundColor: `${tc.primary}15` }]}>
+                    <Text style={[styles.badgeTxt, { color: tc.primary }]}>{categoryLabel.toUpperCase()}</Text>
                   </View>
-                ))}
+                ) : null}
+                {isFreeCancellation ? (
+                  <View style={[styles.badge, { backgroundColor: `${tc.success}15` }]}>
+                    <Text style={[styles.badgeTxt, { color: tc.success }]}>FREE CANCELLATION</Text>
+                  </View>
+                ) : null}
+                {exp.instantConfirmation ? (
+                  <View style={[styles.badge, { backgroundColor: `${tc.warning}15` }]}>
+                    <Text style={[styles.badgeTxt, { color: tc.warning }]}>INSTANT CONFIRMATION</Text>
+                  </View>
+                ) : null}
               </View>
-            )}
 
-            {/* Meeting Point */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Meeting Point</Text>
-              <View style={styles.meetingCard}>
-                <Location size={20} color={colors.primary} variant="Bold" />
-                <View style={styles.meetingInfo}>
-                  <Text style={styles.meetingName}>{experience.location.meetingPoint.name}</Text>
-                  <Text style={styles.meetingAddress}>{experience.location.meetingPoint.address}</Text>
-                  <Text style={styles.meetingInstructions}>{experience.location.meetingPoint.instructions}</Text>
-                </View>
-              </View>
-            </View>
+              {/* Title */}
+              <Text style={[styles.title, { color: tc.textPrimary }]}>{experience.title}</Text>
 
-            {/* Cancellation Policy */}
-            <View style={styles.section}>
-              <View style={styles.policyCard}>
-                <Shield size={20} color={colors.success} variant="Bold" />
-                <View style={styles.policyInfo}>
-                  <Text style={styles.policyTitle}>Cancellation Policy</Text>
-                  <Text style={styles.policyText}>
-                    {CANCELLATION_POLICY_LABELS[experience.cancellationPolicy]}
+              {/* Rating bar */}
+              {ratingValue > 0 ? (
+                <View style={styles.ratingBar}>
+                  <Star1 size={16} color={tc.warning} variant="Bold" />
+                  <Text style={[styles.ratingText, { color: tc.textPrimary }]}>{ratingValue.toFixed(1)}</Text>
+                  <Text style={[styles.ratingCount, { color: tc.textSecondary }]}>
+                    ({reviewCountValue.toLocaleString()} reviews)
                   </Text>
                 </View>
+              ) : null}
+
+              {/* Price */}
+              <View style={styles.priceRow}>
+                <Text style={[styles.price, { color: tc.textPrimary }]}>${Math.round(priceAmount)}</Text>
+                <Text style={[styles.priceLabel, { color: tc.textSecondary }]}>/ per person</Text>
+              </View>
+
+              {/* ─── Quick Info Bar ─── */}
+              {quickInfo.length > 0 ? (
+                <View style={[styles.infoBar, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+                  {quickInfo.map((item, i) => {
+                    const Icon = item.icon;
+                    return (
+                      <View key={i} style={[styles.infoItem, i < quickInfo.length - 1 && { borderRightWidth: 1, borderRightColor: tc.borderSubtle }]}>
+                        <Icon size={18} color={tc.primary} variant="Bold" />
+                        <Text style={[styles.infoLabel, { color: tc.textSecondary }]}>{item.label}</Text>
+                        <Text style={[styles.infoValue, { color: tc.textPrimary }]} numberOfLines={1}>
+                          {item.value}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : null}
+
+              {/* ─── Overview (collapsible) ─── */}
+              {description ? (
+                <CollapsibleSection
+                  title="Overview"
+                  expanded={expandedSection === 'description'}
+                  onToggle={() => toggleSection('description')}
+                  colors={tc}
+                >
+                  <Text style={[styles.bodyText, { color: tc.textSecondary }]}>{description}</Text>
+                </CollapsibleSection>
+              ) : null}
+
+              {/* ─── Highlights ─── */}
+              {highlightsList.length > 0 ? (
+                <CollapsibleSection
+                  title="Highlights"
+                  expanded={expandedSection === 'highlights'}
+                  onToggle={() => toggleSection('highlights')}
+                  colors={tc}
+                >
+                  {highlightsList.map((h: string, i: number) => (
+                    <View key={i} style={styles.listItem}>
+                      <TickCircle size={18} color={tc.primary} variant="Bold" />
+                      <Text style={[styles.listText, { color: tc.textSecondary }]}>{h}</Text>
+                    </View>
+                  ))}
+                </CollapsibleSection>
+              ) : null}
+
+              {/* ─── What's Included ─── */}
+              {includesList.length > 0 ? (
+                <CollapsibleSection
+                  title="What's Included"
+                  expanded={expandedSection === 'included'}
+                  onToggle={() => toggleSection('included')}
+                  colors={tc}
+                >
+                  {includesList.map((item: string, i: number) => (
+                    <View key={i} style={styles.listItem}>
+                      <TickCircle size={16} color={tc.success} variant="Bold" />
+                      <Text style={[styles.listText, { color: tc.textSecondary }]}>{item}</Text>
+                    </View>
+                  ))}
+                  {notIncludedList.length > 0 ? (
+                    <>
+                      <View style={[styles.miniDivider, { backgroundColor: tc.borderSubtle }]} />
+                      <Text style={[styles.subHeading, { color: tc.textPrimary }]}>Not Included</Text>
+                      {notIncludedList.map((item: string, i: number) => (
+                        <View key={i} style={styles.listItem}>
+                          <CloseCircle size={16} color={tc.error} variant="Bold" />
+                          <Text style={[styles.listText, { color: tc.textSecondary }]}>{item}</Text>
+                        </View>
+                      ))}
+                    </>
+                  ) : null}
+                </CollapsibleSection>
+              ) : null}
+
+              {/* ─── Cancellation Policy ─── */}
+              <View style={[styles.policyCard, {
+                backgroundColor: isFreeCancellation
+                  ? `${tc.success}10`
+                  : `${tc.textSecondary}08`,
+                borderColor: isFreeCancellation
+                  ? `${tc.success}30`
+                  : tc.borderSubtle,
+              }]}>
+                <TickCircle size={20} color={isFreeCancellation ? tc.success : tc.textSecondary} variant="Bold" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.policyTitle, { color: tc.textPrimary }]}>Cancellation Policy</Text>
+                  <Text style={[styles.policyBody, { color: isFreeCancellation ? tc.success : tc.textSecondary }]}>
+                    {isFreeCancellation ? 'Free cancellation available' : cancellationLabel}
+                  </Text>
+                </View>
+              </View>
+
+              {/* ─── Partner Note ─── */}
+              <View style={[styles.partnerNote, { backgroundColor: `${tc.primary}08` }]}>
+                <ShieldTick size={16} color={tc.primary} variant="Bold" />
+                <Text style={[styles.partnerText, { color: tc.textSecondary }]}>
+                  Secure booking through our trusted partner. You'll be taken directly to the booking page.
+                </Text>
               </View>
             </View>
           </ScrollView>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <View style={styles.priceContainer}>
-              <Text style={styles.priceLabel}>From</Text>
-              <Text style={styles.priceValue}>{experience.price.formatted}</Text>
-              <Text style={styles.priceUnit}>/ person</Text>
+          {/* ─── Bottom CTA ─── */}
+          <View style={[styles.bottomBar, {
+            backgroundColor: tc.background,
+            borderTopColor: tc.borderSubtle,
+            paddingBottom: insets.bottom + 10,
+          }]}>
+            <View>
+              <Text style={[styles.btmLabel, { color: tc.textSecondary }]}>From</Text>
+              <Text style={[styles.btmPrice, { color: tc.textPrimary }]}>
+                ${Math.round(priceAmount)}
+                <Text style={{ fontSize: 14, fontWeight: '400' as any }}> /person</Text>
+              </Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <BookOnProviderButton
-                provider="getyourguide"
-                price={experience.price.formatted}
-                onPress={handleBookOnProvider}
-              />
-            </View>
+            <TouchableOpacity style={[styles.ctaBtn, { backgroundColor: tc.primary }]} onPress={handleBookNow} activeOpacity={0.85}>
+              <Text style={styles.ctaTxt}>Book Now</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -263,222 +387,121 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   container: {
-    backgroundColor: colors.bgModal,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
-    height: '90%',
+    height: '95%',
+    overflow: 'hidden',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
-  },
-  headerTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: spacing.xl,
-  },
-  imageContainer: {
-    position: 'relative',
-  },
-  image: {
-    width: SCREEN_WIDTH,
-    height: 220,
-  },
-  actionButtons: {
+  scrollContent: {},
+
+  // Photo
+  photoContainer: { width: SCREEN_WIDTH, height: PHOTO_HEIGHT, position: 'relative' },
+  photo: { width: SCREEN_WIDTH, height: PHOTO_HEIGHT },
+  photoOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.15)' },
+  heroNav: {
     position: 'absolute',
-    bottom: spacing.md,
-    right: spacing.lg,
+    left: 16,
+    right: 16,
     flexDirection: 'row',
-    gap: spacing.sm,
+    justifyContent: 'space-between',
   },
-  actionButton: {
+  navBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.bgModal,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    gap: spacing.sm,
-  },
-  ratingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  ratingText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  reviewCount: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-  },
-  bestSellerBadge: {
-    backgroundColor: colors.warning,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: borderRadius.sm,
-  },
-  bestSellerText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.white,
-  },
+
+  // Content
+  content: { paddingHorizontal: spacing.lg, paddingTop: 18 },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
+  badge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10 },
+  badgeTxt: { fontSize: 9, fontWeight: '700' as any, letterSpacing: 0.7 },
   title: {
-    fontSize: typography.fontSize.xl,
+    fontSize: 22,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    lineHeight: 28,
+    marginBottom: 8,
   },
-  quickInfo: {
+  ratingBar: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 12 },
+  ratingText: { fontSize: 15, fontWeight: typography.fontWeight.bold },
+  ratingCount: { fontSize: 13 },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 4 },
+  priceLabel: { fontSize: 13 },
+  price: { fontSize: 36, fontWeight: typography.fontWeight.bold },
+
+  // Quick info bar
+  infoBar: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    gap: spacing.lg,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 8,
+    marginTop: 8,
   },
-  quickInfoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  quickInfoText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-  },
-  section: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  description: {
-    fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
-    lineHeight: 22,
-  },
-  listItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  listItemText: {
-    fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
-  },
-  meetingCard: {
-    flexDirection: 'row',
-    backgroundColor: colors.gray50,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    gap: spacing.md,
-  },
-  meetingInfo: {
-    flex: 1,
-  },
-  meetingName: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  meetingAddress: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  meetingInstructions: {
-    fontSize: typography.fontSize.sm,
-    color: colors.primary,
-    marginTop: 4,
-  },
+  infoItem: { flex: 1, alignItems: 'center', gap: 4 },
+  infoLabel: { fontSize: 10, textAlign: 'center' },
+  infoValue: { fontSize: 12, fontWeight: typography.fontWeight.semibold, textAlign: 'center' },
+
+  // Collapsible sections
+  section: { borderBottomWidth: 1, paddingVertical: 14 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionTitle: { fontSize: 16, fontWeight: typography.fontWeight.bold },
+  sectionBody: { marginTop: 12 },
+  bodyText: { fontSize: 14, lineHeight: 22 },
+  listItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
+  listText: { fontSize: 14, lineHeight: 20, flex: 1 },
+  miniDivider: { height: 1, marginVertical: 12 },
+  subHeading: { fontSize: 14, fontWeight: typography.fontWeight.semibold, marginBottom: 10 },
+
+  // Policy card
   policyCard: {
     flexDirection: 'row',
-    backgroundColor: `${colors.success}10`,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    gap: spacing.md,
+    gap: 12,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginTop: 16,
+    alignItems: 'flex-start',
   },
-  policyInfo: {
-    flex: 1,
+  policyTitle: { fontSize: 14, fontWeight: typography.fontWeight.semibold, marginBottom: 2 },
+  policyBody: { fontSize: 13, lineHeight: 19 },
+
+  // Partner note
+  partnerNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 14,
+    borderRadius: 14,
+    marginTop: 16,
   },
-  policyTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  policyText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.success,
-    marginTop: 2,
-  },
-  footer: {
+  partnerText: { fontSize: 12, lineHeight: 17, flex: 1 },
+
+  // Bottom CTA
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
-    backgroundColor: colors.bgModal,
   },
-  priceContainer: {
-    flex: 1,
+  btmLabel: { fontSize: 12 },
+  btmPrice: { fontSize: 26, fontWeight: typography.fontWeight.bold },
+  ctaBtn: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 24,
   },
-  priceLabel: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginRight: 4,
-  },
-  priceValue: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.primary,
-  },
-  priceUnit: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginLeft: 4,
-  },
-  selectButton: {
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
-  },
-  selectGradient: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  selectText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.white,
-  },
+  ctaTxt: { fontSize: 16, fontWeight: typography.fontWeight.bold, color: '#FFFFFF' },
 });

@@ -445,8 +445,12 @@ const airportFee = searchParams.pickupLocation?.type === 'airport' ? 25 : 0;
             filtered.sort((a, b) => a.rental.pricePerDay.amount - b.rental.pricePerDay.amount);
             break;
           case 'size':
-            const sizeOrder = ['economy', 'compact', 'midsize', 'fullsize', 'suv', 'luxury', 'van'];
-            filtered.sort((a, b) => sizeOrder.indexOf(a.category) - sizeOrder.indexOf(b.category));
+            const sizeOrder = ['economy', 'compact', 'midsize', 'standard', 'fullsize', 'suv_standard', 'suv', 'premium', 'luxury', 'convertible', 'minivan', 'van'];
+            filtered.sort((a, b) => {
+              const aIdx = sizeOrder.indexOf(a.category);
+              const bIdx = sizeOrder.indexOf(b.category);
+              return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+            });
             break;
           case 'recommended':
           default:

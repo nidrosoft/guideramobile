@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SearchNormal1, Location, CloseCircle, TickCircle, Airplane } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Location as LocationType } from '../../../types/booking.types';
 
 // Popular cities for package booking
@@ -57,6 +58,7 @@ export default function LocationPickerSheet({
   type = 'destination',
 }: LocationPickerSheetProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredLocations = useMemo(() => {
@@ -86,27 +88,27 @@ export default function LocationPickerSheet({
     
     return (
       <TouchableOpacity
-        style={[styles.locationItem, isSelected && styles.locationItemSelected]}
+        style={[styles.locationItem, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }, isSelected && { borderColor: tc.primary, backgroundColor: `${tc.primary}08` }]}
         onPress={() => handleSelect(item)}
         activeOpacity={0.7}
       >
-        <View style={[styles.locationIcon, isSelected && styles.locationIconSelected]}>
+        <View style={[styles.locationIcon, { backgroundColor: tc.bgCard }, isSelected && { backgroundColor: tc.primary }]}>
           {type === 'origin' ? (
-            <Airplane size={20} color={isSelected ? colors.white : colors.primary} variant="Bold" />
+            <Airplane size={20} color={isSelected ? '#FFFFFF' : tc.primary} variant="Bold" />
           ) : (
-            <Location size={20} color={isSelected ? colors.white : colors.success} variant="Bold" />
+            <Location size={20} color={isSelected ? '#FFFFFF' : tc.success} variant="Bold" />
           )}
         </View>
         <View style={styles.locationInfo}>
-          <Text style={[styles.locationName, isSelected && styles.locationNameSelected]}>
+          <Text style={[styles.locationName, { color: tc.textPrimary }, isSelected && { color: tc.primary }]}>
             {item.name}
           </Text>
-          <Text style={styles.locationDetails}>
+          <Text style={[styles.locationDetails, { color: tc.textSecondary }]}>
             {item.code} • {item.country}
           </Text>
         </View>
         {isSelected && (
-          <TickCircle size={24} color={colors.primary} variant="Bold" />
+          <TickCircle size={24} color={tc.primary} variant="Bold" />
         )}
       </TouchableOpacity>
     );
@@ -120,24 +122,24 @@ export default function LocationPickerSheet({
       onRequestClose={handleClose}
     >
       <KeyboardAvoidingView 
-        style={styles.container}
+        style={[styles.container, { backgroundColor: tc.background }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
+        <View style={[styles.header, { borderBottomColor: tc.borderSubtle }]}>
+          <Text style={[styles.title, { color: tc.textPrimary }]}>{title}</Text>
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <CloseCircle size={28} color={colors.textSecondary} variant="Bold" />
+            <CloseCircle size={28} color={tc.textSecondary} variant="Bold" />
           </TouchableOpacity>
         </View>
 
         {/* Search Input */}
-        <View style={styles.searchContainer}>
-          <SearchNormal1 size={20} color={colors.textTertiary} />
+        <View style={[styles.searchContainer, { backgroundColor: tc.bgCard }]}>
+          <SearchNormal1 size={20} color={tc.textSecondary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: tc.textPrimary }]}
             placeholder="Search city or airport..."
-            placeholderTextColor={colors.textTertiary}
+            placeholderTextColor={tc.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCapitalize="none"
@@ -145,14 +147,14 @@ export default function LocationPickerSheet({
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <CloseCircle size={20} color={colors.textTertiary} />
+              <CloseCircle size={20} color={tc.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
 
         {/* Section Label */}
         {!searchQuery && (
-          <Text style={styles.sectionLabel}>Popular Cities</Text>
+          <Text style={[styles.sectionLabel, { color: tc.textSecondary }]}>Popular Cities</Text>
         )}
 
         {/* Locations List */}
@@ -168,7 +170,7 @@ export default function LocationPickerSheet({
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No locations found</Text>
+              <Text style={[styles.emptyText, { color: tc.textSecondary }]}>No locations found</Text>
             </View>
           }
         />
@@ -180,7 +182,6 @@ export default function LocationPickerSheet({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -189,12 +190,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
   },
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
   },
   closeButton: {
     padding: spacing.xs,
@@ -202,7 +201,6 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.bgCard,
     marginHorizontal: spacing.lg,
     marginVertical: spacing.md,
     paddingHorizontal: spacing.md,
@@ -213,12 +211,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: spacing.md,
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
   },
   sectionLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textSecondary,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,
   },
@@ -228,43 +224,31 @@ const styles = StyleSheet.create({
   locationItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.bgElevated,
     padding: spacing.md,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
   },
-  locationItemSelected: {
-    borderColor: colors.primary,
-    backgroundColor: `${colors.primary}08`,
-  },
+  locationItemSelected: {},
   locationIcon: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.bgCard,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
   },
-  locationIconSelected: {
-    backgroundColor: colors.primary,
-  },
+  locationIconSelected: {},
   locationInfo: {
     flex: 1,
   },
   locationName: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
-  locationNameSelected: {
-    color: colors.primary,
-  },
+  locationNameSelected: {},
   locationDetails: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     marginTop: 2,
   },
   emptyState: {
@@ -273,6 +257,5 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
   },
 });

@@ -130,14 +130,38 @@ function buildFallbackUrl(params: GenerateAffiliateLinkParams): string {
       return `https://www.google.com/travel/flights?q=${encodeURIComponent(parts.join(' '))}`;
     }
 
+    case 'google_hotels': {
+      const q = destination ? encodeURIComponent(`Hotels in ${destination}`) : 'Hotels';
+      return `https://www.google.com/travel/hotels?q=${q}`;
+    }
+
     case 'kiwi':
       return `https://www.kiwi.com/en/search/results/${origin || ''}/${destination || ''}/${date || ''}`;
 
     case 'booking':
       return `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(destination || '')}`;
 
-    case 'rentalcars':
-      return `https://www.rentalcars.com/search-results?location=${encodeURIComponent(params.location || destination || '')}`;
+    case 'rentalcars': {
+      const loc = params.location || destination || '';
+      const puDate = date ? new Date(date) : new Date();
+      const doDate = return_date ? new Date(return_date) : new Date(puDate.getTime() + 3 * 86400000);
+      const rcParams = new URLSearchParams({
+        locationName: loc,
+        puDay: String(puDate.getDate()),
+        puMonth: String(puDate.getMonth() + 1),
+        puYear: String(puDate.getFullYear()),
+        puHour: String(puDate.getHours() || 10),
+        puMinute: String(puDate.getMinutes() || 0),
+        doDay: String(doDate.getDate()),
+        doMonth: String(doDate.getMonth() + 1),
+        doYear: String(doDate.getFullYear()),
+        doHour: String(doDate.getHours() || 10),
+        doMinute: String(doDate.getMinutes() || 0),
+        driversAge: '30',
+        puSameAsDo: 'on',
+      });
+      return `https://www.rentalcars.com/SearchResults.do?${rcParams.toString()}`;
+    }
 
     case 'getyourguide':
       return `https://www.getyourguide.com/s/?q=${encodeURIComponent(params.query || destination || '')}`;
@@ -156,6 +180,7 @@ export function getProviderDisplayName(provider: string): string {
     kiwi: 'Kiwi.com',
     booking: 'Booking.com',
     google_flights: 'Google Flights',
+    google_hotels: 'Google Hotels',
     amadeus: 'Amadeus',
     getyourguide: 'GetYourGuide',
     viator: 'Viator',

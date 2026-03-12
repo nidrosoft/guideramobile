@@ -36,6 +36,11 @@ export enum CategoryType {
   SHOPPING = 'shopping',                  // Shopping, bargaining, and markets
   HEALTH = 'health',                      // Health, medical, and hygiene
   EMERGENCY = 'emergency',                // Emergency contacts and procedures
+  LOCAL_LAWS = 'local_laws',              // Legal rules with real consequences
+  DIGITAL_PRIVACY = 'digital_privacy',    // Phone use, social media, WiFi laws
+  NATURE_ENVIRONMENT = 'nature_environment', // Wildlife, national park, eco rules
+  WITH_KIDS = 'with_kids',                // Child-specific customs
+  FAITH_CUSTOMS = 'faith_customs',        // Religion-specific travel customs
 }
 
 export enum ImportanceLevel {
@@ -86,6 +91,13 @@ export interface SmartTip {
   relatedTips?: string[];     // IDs of related tips
   sources?: string[];         // URLs or references
   lastUpdated: Date;
+  
+  // AI Generation Fields
+  severity?: 'legal_risk' | 'criminal_risk' | 'social_faux_pas' | 'safety_risk' | 'clarification' | 'cultural_note';
+  penalty?: string;           // Specific legal consequence
+  isCritical?: boolean;       // Carries serious legal/safety consequences
+  tags?: string[];            // For filtering
+  tabLabel?: string;          // Display label for category tab
   
   // AI Personalization
   relevanceScore?: number;    // AI: Calculate based on user profile and context

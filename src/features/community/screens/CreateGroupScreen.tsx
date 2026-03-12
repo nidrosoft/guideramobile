@@ -37,8 +37,10 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import { CommunityType, CommunityPrivacy } from '../types/community.types';
 import { COMMUNITY_TAGS } from '../config/community.config';
+import { groupService } from '@/services/community';
 
 interface GroupFormData {
   name: string;
@@ -74,6 +76,7 @@ export default function CreateGroupScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { profile } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   
@@ -118,24 +121,44 @@ export default function CreateGroupScreen() {
       Alert.alert('Required', 'Please enter a group name');
       return;
     }
+    if (!profile?.id) return;
     
     setIsSubmitting(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const privacyMap: Record<string, 'public' | 'private'> = {
+        public: 'public',
+        private: 'private',
+        invite_only: 'private',
+      };
+      const created = await groupService.createGroup(profile.id, {
+        name: formData.name.trim(),
+        description: formData.description.trim() || undefined,
+        coverPhotoUrl: formData.coverImage || undefined,
+        groupPhotoUrl: formData.avatar || undefined,
+        destinationName: formData.destination.trim() || undefined,
+        privacy: privacyMap[formData.privacy] || 'public',
+        joinApproval: formData.privacy === 'public' ? 'automatic' : 'admin_approval',
+        category: formData.type === 'destination' ? 'destination' : formData.type === 'interest' ? 'interest' : 'activity',
+        tags: formData.tags,
+      });
       setIsSubmitting(false);
       Alert.alert(
-        'Group Created! 🎉',
+        'Group Created!',
         `Your group "${formData.name}" has been created successfully.`,
         [
           {
             text: 'View Group',
-            onPress: () => router.replace('/community/new-group-id' as any),
+            onPress: () => router.replace(`/community/${created.id}` as any),
           },
         ]
       );
-    }, 1500);
+    } catch (err) {
+      console.warn('Create group error:', err);
+      setIsSubmitting(false);
+      Alert.alert('Error', 'Failed to create group. Please try again.');
+    }
   };
   
   const pickImage = async (type: 'cover' | 'avatar') => {

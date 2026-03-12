@@ -46,8 +46,8 @@ export default function LiveMapScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
-  const { user } = useAuth();
-  const userId = user?.id;
+  const { profile } = useAuth();
+  const userId = profile?.id;
   const mapRef = useRef<MapView>(null);
 
   const [location, setLocation] = useState<LocationState | null>(null);

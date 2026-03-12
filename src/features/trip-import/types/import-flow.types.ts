@@ -78,6 +78,17 @@ export interface ImportFlowData {
   // Scan data (QR/barcode scanning)
   scannedData?: any;
   scannedBooking?: any;
+
+  // Import engine data (real API integration)
+  scanJobId?: string;
+  scanStatus?: string;
+  scanProgress?: number;
+  scanProgressMessage?: string;
+  detectedTrips?: any[];       // NormalizedTrip[] from the engine
+  importResult?: any;           // ImportResult from the engine
+  connectedAccountId?: string;
+  connectedEmail?: string;
+  scanError?: string;
 }
 
 export interface ImportFlowProps {

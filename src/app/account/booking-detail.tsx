@@ -65,7 +65,7 @@ const TYPE_COLORS: Record<DealType, string> = {
 export default function DealDetailScreen() {
   const router = useRouter();
   const { colors: tc, isDark } = useTheme();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const { id } = useLocalSearchParams();
   const { redirect } = useDealRedirect();
 
@@ -106,15 +106,15 @@ export default function DealDetailScreen() {
   }, [deal, router]);
 
   const handleToggleAlert = useCallback(async () => {
-    if (!user?.id || !deal) return;
+    if (!profile?.id || !deal) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await createPriceAlert(user.id, {
+    await createPriceAlert(profile.id, {
       deal_type: deal.deal_type,
       route_key: deal.route_key || '',
       alert_type: 'price_drop',
       current_price: deal.current_price || deal.price_at_save,
     });
-  }, [user?.id, deal]);
+  }, [profile?.id, deal]);
 
   const handleBookOnProvider = useCallback(async () => {
     if (!deal) return;

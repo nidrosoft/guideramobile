@@ -420,10 +420,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing['2xl'],
-    height: '85%',
+    maxHeight: '90%',
   },
   bottomSheetShort: {
-    height: '75%',
+    maxHeight: '90%',
   },
   handleContainer: {
     alignItems: 'center',

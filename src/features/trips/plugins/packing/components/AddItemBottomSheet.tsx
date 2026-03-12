@@ -79,15 +79,15 @@ export default function AddItemBottomSheet({
           onPress={onClose}
         />
         
-        <View style={styles.bottomSheet}>
+        <View style={[styles.bottomSheet, { backgroundColor: tc.bgPrimary }]}>
           {/* Handle Bar */}
-          <View style={styles.handleBar} />
+          <View style={[styles.handleBar, { backgroundColor: tc.borderSubtle }]} />
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Add Item</Text>
+            <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Add Item</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <CloseCircle size={28} color={colors.gray400} variant="Linear" />
+              <CloseCircle size={28} color={tc.textTertiary} variant="Linear" />
             </TouchableOpacity>
           </View>
 
@@ -98,11 +98,11 @@ export default function AddItemBottomSheet({
           >
             {/* Item Name */}
             <View style={styles.field}>
-              <Text style={styles.label}>Item Name</Text>
+              <Text style={[styles.label, { color: tc.textPrimary }]}>Item Name</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: tc.bgInput, color: tc.textPrimary, borderColor: tc.borderSubtle }]}
                 placeholder="e.g. Sunglasses"
-                placeholderTextColor={colors.gray400}
+                placeholderTextColor={tc.textTertiary}
                 value={itemName}
                 onChangeText={setItemName}
                 autoFocus
@@ -111,11 +111,11 @@ export default function AddItemBottomSheet({
 
             {/* Quantity */}
             <View style={styles.field}>
-              <Text style={styles.label}>Quantity</Text>
+              <Text style={[styles.label, { color: tc.textPrimary }]}>Quantity</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: tc.bgInput, color: tc.textPrimary, borderColor: tc.borderSubtle }]}
                 placeholder="1"
-                placeholderTextColor={colors.gray400}
+                placeholderTextColor={tc.textTertiary}
                 value={quantity}
                 onChangeText={setQuantity}
                 keyboardType="number-pad"
@@ -124,14 +124,15 @@ export default function AddItemBottomSheet({
 
             {/* Category */}
             <View style={styles.field}>
-              <Text style={styles.label}>Category</Text>
+              <Text style={[styles.label, { color: tc.textPrimary }]}>Category</Text>
               <View style={styles.categoryGrid}>
                 {CATEGORIES.map(category => (
                   <TouchableOpacity
                     key={category.id}
                     style={[
                       styles.categoryChip,
-                      selectedCategory === category.id && styles.categoryChipSelected,
+                      { backgroundColor: tc.bgInput, borderColor: 'transparent' },
+                      selectedCategory === category.id && { backgroundColor: `${tc.primary}15`, borderColor: tc.primary },
                     ]}
                     onPress={() => setSelectedCategory(category.id)}
                     activeOpacity={0.7}
@@ -139,7 +140,8 @@ export default function AddItemBottomSheet({
                     <Text style={styles.categoryEmoji}>{category.emoji}</Text>
                     <Text style={[
                       styles.categoryChipText,
-                      selectedCategory === category.id && styles.categoryChipTextSelected,
+                      { color: tc.textSecondary },
+                      selectedCategory === category.id && { color: tc.primary, fontWeight: '600' },
                     ]}>
                       {category.name}
                     </Text>
@@ -153,7 +155,8 @@ export default function AddItemBottomSheet({
           <TouchableOpacity
             style={[
               styles.addButton,
-              !itemName.trim() && styles.addButtonDisabled,
+              { backgroundColor: tc.primary },
+              !itemName.trim() && { backgroundColor: tc.borderMedium, shadowOpacity: 0 },
             ]}
             onPress={handleAdd}
             disabled={!itemName.trim()}

@@ -18,6 +18,7 @@ import { CloseCircle, Add, Minus, People, Profile2User } from 'iconsax-react-nat
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 interface TravelersSheetProps {
   visible: boolean;
@@ -37,6 +38,7 @@ export default function TravelersSheet({
   onUpdate,
 }: TravelersSheetProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   
   const [localTravelers, setLocalTravelers] = useState(travelers);
 
@@ -80,26 +82,26 @@ export default function TravelersSheet({
     return (
       <View style={styles.counterRow}>
         <View style={styles.counterInfo}>
-          <Text style={styles.counterLabel}>{label}</Text>
-          <Text style={styles.counterDescription}>{description}</Text>
+          <Text style={[styles.counterLabel, { color: tc.textPrimary }]}>{label}</Text>
+          <Text style={[styles.counterDescription, { color: tc.textSecondary }]}>{description}</Text>
         </View>
         <View style={styles.counterControls}>
           <TouchableOpacity
-            style={[styles.counterButton, !canDecrement && styles.counterButtonDisabled]}
+            style={[styles.counterButton, { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle }, !canDecrement && { backgroundColor: tc.bgElevated, borderColor: tc.bgElevated }]}
             onPress={() => handleDecrement(type)}
             disabled={!canDecrement}
             activeOpacity={0.7}
           >
-            <Minus size={20} color={canDecrement ? colors.primary : colors.gray300} />
+            <Minus size={20} color={canDecrement ? tc.primary : tc.borderSubtle} />
           </TouchableOpacity>
-          <Text style={styles.counterValue}>{value}</Text>
+          <Text style={[styles.counterValue, { color: tc.textPrimary }]}>{value}</Text>
           <TouchableOpacity
-            style={[styles.counterButton, !canIncrement && styles.counterButtonDisabled]}
+            style={[styles.counterButton, { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle }, !canIncrement && { backgroundColor: tc.bgElevated, borderColor: tc.bgElevated }]}
             onPress={() => handleIncrement(type)}
             disabled={!canIncrement}
             activeOpacity={0.7}
           >
-            <Add size={20} color={canIncrement ? colors.primary : colors.gray300} />
+            <Add size={20} color={canIncrement ? tc.primary : tc.borderSubtle} />
           </TouchableOpacity>
         </View>
       </View>
@@ -113,55 +115,55 @@ export default function TravelersSheet({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: tc.background }]}>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Travelers</Text>
+        <View style={[styles.header, { borderBottomColor: tc.borderSubtle }]}>
+          <Text style={[styles.title, { color: tc.textPrimary }]}>Travelers</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <CloseCircle size={28} color={colors.textSecondary} variant="Bold" />
+            <CloseCircle size={28} color={tc.textSecondary} variant="Bold" />
           </TouchableOpacity>
         </View>
 
         {/* Summary */}
-        <View style={styles.summary}>
-          <View style={styles.summaryIcon}>
-            <Profile2User size={24} color={colors.primary} variant="Bold" />
+        <View style={[styles.summary, { backgroundColor: `${tc.primary}08` }]}>
+          <View style={[styles.summaryIcon, { backgroundColor: `${tc.primary}15` }]}>
+            <Profile2User size={24} color={tc.primary} variant="Bold" />
           </View>
-          <Text style={styles.summaryText}>
+          <Text style={[styles.summaryText, { color: tc.primary }]}>
             {getTotalTravelers()} traveler{getTotalTravelers() !== 1 ? 's' : ''}
           </Text>
         </View>
 
         {/* Counters */}
-        <View style={styles.countersContainer}>
+        <View style={[styles.countersContainer, { backgroundColor: tc.bgElevated }]}>
           {renderCounter('adults', 'Adults', 'Ages 12+', 1, 9)}
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
           {renderCounter('children', 'Children', 'Ages 2-11', 0, 6)}
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
           {renderCounter('infants', 'Infants', 'Under 2, on lap', 0, 2)}
         </View>
 
         {/* Info Note */}
-        <View style={styles.infoNote}>
-          <Text style={styles.infoNoteText}>
+        <View style={[styles.infoNote, { backgroundColor: `${tc.info}10` }]}>
+          <Text style={[styles.infoNoteText, { color: tc.info }]}>
             Infants must travel with an adult. Maximum 1 infant per adult.
           </Text>
         </View>
 
         {/* Confirm Button */}
-        <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+        <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md, backgroundColor: tc.bgElevated, borderTopColor: tc.borderSubtle }]}>
           <TouchableOpacity
             style={styles.confirmButton}
             onPress={handleConfirm}
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={[colors.primary, colors.primaryDark]}
+              colors={[tc.primary, colors.primaryDark]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.confirmButtonGradient}
             >
-              <People size={20} color={colors.white} />
+              <People size={20} color="#FFFFFF" />
               <Text style={styles.confirmButtonText}>
                 Confirm {getTotalTravelers()} Traveler{getTotalTravelers() !== 1 ? 's' : ''}
               </Text>

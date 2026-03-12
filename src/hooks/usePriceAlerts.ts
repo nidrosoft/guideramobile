@@ -16,17 +16,17 @@ import {
 import type { PriceAlert, CreatePriceAlertInput } from '@/services/deal';
 
 export function usePriceAlerts(activeOnly = true) {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     setIsLoading(true);
     setError(null);
     try {
-      const result = await getUserAlerts(user.id, activeOnly);
+      const result = await getUserAlerts(profile.id, activeOnly);
       if (result.error) throw result.error;
       setAlerts(result.data);
     } catch (err: any) {
@@ -34,16 +34,16 @@ export function usePriceAlerts(activeOnly = true) {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, activeOnly]);
+  }, [profile?.id, activeOnly]);
 
   const create = useCallback(
     async (input: CreatePriceAlertInput) => {
-      if (!user?.id) return null;
-      const result = await createPriceAlert(user.id, input);
+      if (!profile?.id) return null;
+      const result = await createPriceAlert(profile.id, input);
       if (!result.error) await load();
       return result;
     },
-    [user?.id, load]
+    [profile?.id, load]
   );
 
   const pause = useCallback(
@@ -72,13 +72,13 @@ export function usePriceAlerts(activeOnly = true) {
 }
 
 export function useHasAlert(routeKey: string | null) {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [hasAlert, setHasAlert] = useState(false);
 
   useEffect(() => {
-    if (!user?.id || !routeKey) return;
-    hasAlertForRoute(user.id, routeKey).then(setHasAlert);
-  }, [user?.id, routeKey]);
+    if (!profile?.id || !routeKey) return;
+    hasAlertForRoute(profile.id, routeKey).then(setHasAlert);
+  }, [profile?.id, routeKey]);
 
   return hasAlert;
 }

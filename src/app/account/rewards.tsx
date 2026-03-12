@@ -67,9 +67,9 @@ const SOURCE_ICONS: Record<string, any> = {
 
 export default function RewardsScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [pointsHistory, setPointsHistory] = useState<RewardPoints[]>([]);
   const [summary, setSummary] = useState({
@@ -101,12 +101,12 @@ export default function RewardsScreen() {
   });
 
   const fetchRewards = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     try {
       const [historyRes, summaryRes] = await Promise.all([
-        rewardsService.getPointsHistory(user.id),
-        rewardsService.getPointsSummary(user.id),
+        rewardsService.getPointsHistory(profile.id),
+        rewardsService.getPointsSummary(profile.id),
       ]);
       
       if (historyRes.data) setPointsHistory(historyRes.data);
@@ -117,7 +117,7 @@ export default function RewardsScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [user?.id]);
+  }, [profile?.id]);
 
   useEffect(() => {
     fetchRewards();
@@ -162,7 +162,7 @@ export default function RewardsScreen() {
   
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style="light" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Animated Header */}
       <Animated.View style={[styles.headerContainer, { height: headerHeight }]}>
@@ -174,7 +174,7 @@ export default function RewardsScreen() {
           style={[styles.headerGradient, { paddingTop: insets.top }]}
         >
           {/* Fixed Navigation Row - always visible and touchable */}
-          <View style={[styles.header, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
+          <View style={[styles.header, { backgroundColor: 'transparent', borderBottomColor: 'transparent' }]}>
             <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <ArrowLeft size={24} color={colors.white} />
             </TouchableOpacity>
@@ -215,7 +215,7 @@ export default function RewardsScreen() {
       
       <Animated.ScrollView 
         style={styles.content}
-        contentContainerStyle={[styles.contentContainer, { paddingTop: HEADER_MAX_HEIGHT + insets.top + spacing.md }]}
+        contentContainerStyle={[styles.contentContainer, { paddingTop: HEADER_MAX_HEIGHT + insets.top + spacing.md, backgroundColor: tc.background }]}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
         onScroll={Animated.event(
@@ -239,35 +239,35 @@ export default function RewardsScreen() {
           <>
             {/* Stats Cards */}
             <View style={styles.statsContainer}>
-              <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: `${colors.success}15` }]}>
-                  <ArrowUp size={18} color={colors.success} />
+              <View style={[styles.statCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+                <View style={[styles.statIcon, { backgroundColor: `${tc.success}15` }]}>
+                  <ArrowUp size={18} color={tc.success} />
                 </View>
-                <Text style={styles.statValue}>{summary.totalEarned.toLocaleString()}</Text>
-                <Text style={styles.statLabel}>Total Earned</Text>
+                <Text style={[styles.statValue, { color: tc.textPrimary }]}>{summary.totalEarned.toLocaleString()}</Text>
+                <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Total Earned</Text>
               </View>
               
-              <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: `${colors.error}15` }]}>
-                  <ArrowDown size={18} color={colors.error} />
+              <View style={[styles.statCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+                <View style={[styles.statIcon, { backgroundColor: `${tc.error}15` }]}>
+                  <ArrowDown size={18} color={tc.error} />
                 </View>
-                <Text style={styles.statValue}>{summary.totalRedeemed.toLocaleString()}</Text>
-                <Text style={styles.statLabel}>Redeemed</Text>
+                <Text style={[styles.statValue, { color: tc.textPrimary }]}>{summary.totalRedeemed.toLocaleString()}</Text>
+                <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Redeemed</Text>
               </View>
               
-              <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: `${colors.warning}15` }]}>
-                  <Warning2 size={18} color={colors.warning} />
+              <View style={[styles.statCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+                <View style={[styles.statIcon, { backgroundColor: `${tc.warning}15` }]}>
+                  <Warning2 size={18} color={tc.warning} />
                 </View>
-                <Text style={styles.statValue}>{summary.expiringThisMonth.toLocaleString()}</Text>
-                <Text style={styles.statLabel}>Expiring Soon</Text>
+                <Text style={[styles.statValue, { color: tc.textPrimary }]}>{summary.expiringThisMonth.toLocaleString()}</Text>
+                <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Expiring Soon</Text>
               </View>
             </View>
 
             {/* Ways to Earn */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Ways to Earn</Text>
-              <View style={styles.earnCard}>
+              <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>Ways to Earn</Text>
+              <View style={[styles.earnCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
                 <EarnOption 
                   icon={Airplane}
                   title="Book Flights"
@@ -298,20 +298,20 @@ export default function RewardsScreen() {
 
             {/* Points History */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Points History</Text>
+              <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>Points History</Text>
               
               {pointsHistory.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Gift size={48} color={colors.gray300} variant="Bold" />
-                  <Text style={styles.emptyTitle}>No points yet</Text>
-                  <Text style={styles.emptyText}>
+                <View style={[styles.emptyState, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+                  <Gift size={48} color={tc.textTertiary} variant="Bold" />
+                  <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No points yet</Text>
+                  <Text style={[styles.emptyText, { color: tc.textSecondary }]}>
                     Start earning points by making bookings
                   </Text>
                 </View>
               ) : (
                 sortedDates.map(date => (
                   <View key={date} style={styles.dateGroup}>
-                    <Text style={styles.dateHeader}>
+                    <Text style={[styles.dateHeader, { color: tc.textSecondary }]}>
                       {formatDateHeader(date)}
                     </Text>
                     {groupedHistory[date].map(points => (
@@ -361,14 +361,15 @@ interface EarnOptionProps {
 }
 
 function EarnOption({ icon: Icon, title, description, color, isLast }: EarnOptionProps) {
+  const { colors: tc } = useTheme();
   return (
-    <View style={[styles.earnOption, !isLast && styles.earnOptionBorder]}>
+    <View style={[styles.earnOption, !isLast && [styles.earnOptionBorder, { borderBottomColor: tc.borderSubtle }]]}>
       <View style={[styles.earnIcon, { backgroundColor: `${color}15` }]}>
         <Icon size={20} color={color} variant="Bold" />
       </View>
       <View style={styles.earnContent}>
-        <Text style={styles.earnTitle}>{title}</Text>
-        <Text style={styles.earnDescription}>{description}</Text>
+        <Text style={[styles.earnTitle, { color: tc.textPrimary }]}>{title}</Text>
+        <Text style={[styles.earnDescription, { color: tc.textSecondary }]}>{description}</Text>
       </View>
     </View>
   );
@@ -381,21 +382,22 @@ interface PointsHistoryCardProps {
 }
 
 function PointsHistoryCard({ points, formatDate }: PointsHistoryCardProps) {
+  const { colors: tc } = useTheme();
   const config = POINTS_TYPE_CONFIG[points.type] || POINTS_TYPE_CONFIG.earned;
   const SourceIcon = SOURCE_ICONS[points.source] || Gift;
   const isPositive = ['earned', 'bonus', 'referral'].includes(points.type);
   
   return (
-    <View style={styles.historyCard}>
+    <View style={[styles.historyCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
       <View style={[styles.historyIcon, { backgroundColor: `${config.color}15` }]}>
         <SourceIcon size={20} color={config.color} variant="Bold" />
       </View>
       
       <View style={styles.historyContent}>
-        <Text style={styles.historyTitle}>
+        <Text style={[styles.historyTitle, { color: tc.textPrimary }]}>
           {points.description || `${config.label} from ${points.source}`}
         </Text>
-        <Text style={styles.historyDate}>
+        <Text style={[styles.historyDate, { color: tc.textSecondary }]}>
           {formatDate(points.created_at)}
         </Text>
       </View>
@@ -517,6 +519,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: spacing.md,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -556,6 +560,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -597,6 +603,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.xl,
     padding: spacing.xl,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   emptyTitle: {
     fontSize: typography.fontSize.lg,
@@ -626,6 +634,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: spacing.md,
     marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,

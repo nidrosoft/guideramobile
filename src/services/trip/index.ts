@@ -20,6 +20,7 @@ export { TripCoreService } from './trip-core.service';
 export { TripLifecycleService } from './trip-lifecycle.service';
 export { TripCollaborationService } from './trip-collaboration.service';
 export { TripImportService } from './trip-import.service';
+export { tripImportEngine } from './trip-import-engine.service';
 
 // Re-export main functions for convenience
 export {

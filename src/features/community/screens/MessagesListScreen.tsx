@@ -4,7 +4,7 @@
  * Shows all group and DM conversations.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   Image,
   RefreshControl,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,7 +29,9 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import { spacing, typography, borderRadius } from '@/styles';
+import { chatService } from '@/services/community/chat.service';
 
 interface Conversation {
   id: string;
@@ -42,84 +45,68 @@ interface Conversation {
   memberCount?: number;
 }
 
-// Mock conversations
-const MOCK_CONVERSATIONS: Conversation[] = [
-  {
-    id: 'conv-1',
-    type: 'group',
-    name: 'Tokyo Travelers 2025',
-    avatar: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200',
-    lastMessage: 'Anyone want to join for ramen tonight?',
-    lastMessageTime: new Date(Date.now() - 1000 * 60 * 5),
-    unreadCount: 3,
-    memberCount: 156,
-  },
-  {
-    id: 'conv-2',
-    type: 'dm',
-    name: 'Sarah Chen',
-    avatar: 'https://i.pravatar.cc/150?img=5',
-    lastMessage: 'See you at the meetup! 🎉',
-    lastMessageTime: new Date(Date.now() - 1000 * 60 * 30),
-    unreadCount: 1,
-    isOnline: true,
-  },
-  {
-    id: 'conv-3',
-    type: 'group',
-    name: 'Solo Female Travelers',
-    avatar: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=200',
-    lastMessage: 'Great tips everyone! Thanks for sharing.',
-    lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    unreadCount: 0,
-    memberCount: 2340,
-  },
-  {
-    id: 'conv-4',
-    type: 'dm',
-    name: 'Mike Johnson',
-    avatar: 'https://i.pravatar.cc/150?img=8',
-    lastMessage: 'The hotel was amazing, highly recommend!',
-    lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 5),
-    unreadCount: 0,
-    isOnline: false,
-  },
-  {
-    id: 'conv-5',
-    type: 'group',
-    name: 'Bali Digital Nomads',
-    avatar: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=200',
-    lastMessage: 'New coworking space opened in Canggu!',
-    lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 24),
-    unreadCount: 12,
-    memberCount: 890,
-  },
-  {
-    id: 'conv-6',
-    type: 'dm',
-    name: 'Emma Wilson',
-    avatar: 'https://i.pravatar.cc/150?img=9',
-    lastMessage: 'Let me know when you arrive',
-    lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 48),
-    unreadCount: 0,
-    isOnline: true,
-  },
-];
-
 type FilterType = 'all' | 'groups' | 'dms';
 
 export default function MessagesListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { profile } = useAuth();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
+
+  const fetchConversations = useCallback(async () => {
+    if (!profile?.id) return;
+    try {
+      const [dmConversations, groupChats] = await Promise.all([
+        chatService.getConversations(profile.id),
+        chatService.getGroupChats(profile.id),
+      ]);
+
+      const dmMapped: Conversation[] = dmConversations.map(c => ({
+        id: c.id,
+        type: 'dm' as const,
+        name: c.otherUser.fullName,
+        avatar: c.otherUser.avatarUrl || 'https://i.pravatar.cc/150?img=1',
+        lastMessage: c.lastMessage || '',
+        lastMessageTime: c.lastMessageAt ? new Date(c.lastMessageAt) : new Date(),
+        unreadCount: c.unreadCount || 0,
+        isOnline: false,
+      }));
+
+      const groupMapped: Conversation[] = groupChats.map(g => ({
+        id: g.id,
+        type: 'group' as const,
+        name: g.name,
+        avatar: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200',
+        lastMessage: g.lastMessage || '',
+        lastMessageTime: g.lastMessageAt ? new Date(g.lastMessageAt) : new Date(),
+        unreadCount: 0,
+      }));
+
+      const combined = [...dmMapped, ...groupMapped].sort(
+        (a, b) => b.lastMessageTime.getTime() - a.lastMessageTime.getTime()
+      );
+      setConversations(combined);
+    } catch (err) {
+      console.warn('MessagesListScreen load error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [profile?.id]);
+
+  useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
   
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+    await fetchConversations();
+    setRefreshing(false);
+  }, [fetchConversations]);
   
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -154,7 +141,7 @@ export default function MessagesListScreen() {
     return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
   };
   
-  const filteredConversations = MOCK_CONVERSATIONS
+  const filteredConversations = conversations
     .filter(conv => {
       if (filter === 'groups') return conv.type === 'group';
       if (filter === 'dms') return conv.type === 'dm';
@@ -164,7 +151,15 @@ export default function MessagesListScreen() {
       conv.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   
-  const totalUnread = MOCK_CONVERSATIONS.reduce((sum, conv) => sum + conv.unreadCount, 0);
+  const totalUnread = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: tc.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={tc.primary} />
+      </View>
+    );
+  }
   
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>

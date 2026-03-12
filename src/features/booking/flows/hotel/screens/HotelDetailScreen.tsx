@@ -1,8 +1,9 @@
 /**
  * HOTEL DETAIL SCREEN
- * 
- * Detailed view of selected hotel with gallery, amenities, rooms.
- * Placeholder - to be fully implemented.
+ *
+ * Detailed view of selected hotel with gallery, amenities, rooms,
+ * and a "Book on Provider" button at the bottom.
+ * All colors are theme-aware (dark/light mode), no hardcoded hex.
  */
 
 import React, { useState } from 'react';
@@ -19,7 +20,7 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown, useSharedValue, useAnimatedStyle, withTiming, interpolate } from 'react-native-reanimated';
+import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, interpolate } from 'react-native-reanimated';
 import {
   ArrowLeft,
   Heart,
@@ -30,8 +31,7 @@ import {
   Coffee,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
-import { colors, spacing, typography, borderRadius, shadows } from '@/styles';
+import { spacing, typography, borderRadius as br } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useHotelStore } from '../../../stores/useHotelStore';
@@ -47,10 +47,7 @@ interface HotelDetailScreenProps {
   onBack: () => void;
 }
 
-export default function HotelDetailScreen({
-  onContinue,
-  onBack,
-}: HotelDetailScreenProps) {
+export default function HotelDetailScreen({ onContinue, onBack }: HotelDetailScreenProps) {
   const insets = useSafeAreaInsets();
   const { colors: tc } = useTheme();
   const { user } = useAuth();
@@ -60,13 +57,9 @@ export default function HotelDetailScreen({
   const [isFavorite, setIsFavorite] = useState(false);
   const scrollY = useSharedValue(0);
 
-  // Animated header style - shows background when scrolled past image
-  const headerAnimatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(scrollY.value, [180, 250], [0, 1], 'clamp');
-    return {
-      backgroundColor: `rgba(248, 249, 250, ${opacity})`,
-    };
-  });
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [180, 250], [0, 1], 'clamp'),
+  }));
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     scrollY.value = event.nativeEvent.contentOffset.y;
@@ -75,6 +68,8 @@ export default function HotelDetailScreen({
   if (!selectedHotel) return null;
 
   const nights = getNights();
+  const provider = selectedHotel.provider?.code || 'google_hotels';
+  const deepLink = selectedHotel.deepLink || '';
 
   const handleSelectRoom = (room: Room) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -83,20 +78,18 @@ export default function HotelDetailScreen({
 
   const handleBookOnProvider = async () => {
     if (!selectedHotel) return;
-    const deepLink = (selectedHotel as any).deepLink || (selectedHotel as any).url;
-    const provider = (selectedHotel as any).provider?.code || 'booking';
     const totalPrice = selectedRoom
-      ? (selectedRoom.price?.amount || 0) * nights
-      : (selectedHotel as any)?.lowestPrice?.amount || 0;
+      ? (typeof selectedRoom.price === 'object' ? selectedRoom.price?.amount || 0 : selectedRoom.price || 0) * nights
+      : (selectedHotel as any)?.lowestPrice?.amount || (selectedHotel.pricePerNight?.amount || 0) * nights;
 
     await redirect({
       deal_type: 'hotel',
       provider,
-      affiliate_url: deepLink || '',
+      affiliate_url: deepLink,
       deal_snapshot: {
         title: selectedHotel.name,
         subtitle: selectedHotel.location?.address || '',
-        provider: { code: provider, name: provider === 'booking' ? 'Booking.com' : provider },
+        provider: { code: provider, name: selectedHotel.provider?.name || provider },
         price: { amount: totalPrice, currency: 'USD', formatted: `$${totalPrice}` },
         hotel: {
           name: selectedHotel.name,
@@ -116,191 +109,126 @@ export default function HotelDetailScreen({
     });
   };
 
-  // Amenity colors mapping
-  const amenityColors: Record<string, { bg: string; text: string }> = {
-    'Free WiFi': { bg: '#EEF2FF', text: '#6366F1' },
-    'WiFi': { bg: '#EEF2FF', text: '#6366F1' },
-    'Air Conditioning': { bg: '#FEF3C7', text: '#D97706' },
-    'Flat-screen TV': { bg: '#DCFCE7', text: '#16A34A' },
-    'TV': { bg: '#DCFCE7', text: '#16A34A' },
-    'Free Parking': { bg: '#FCE7F3', text: '#DB2777' },
-    'Parking': { bg: '#FCE7F3', text: '#DB2777' },
-    'Pool': { bg: '#DBEAFE', text: '#3B82F6' },
-    'Spa': { bg: '#F3E8FF', text: '#9333EA' },
-    'Gym': { bg: '#FEE2E2', text: '#DC2626' },
-    'Restaurant': { bg: '#FFEDD5', text: '#EA580C' },
-    'Concierge': { bg: '#E0E7FF', text: '#4F46E5' },
-    'Business Center': { bg: '#F1F5F9', text: '#475569' },
-    'In-room Safe': { bg: '#ECFDF5', text: '#059669' },
-  };
-
-  const getAmenityColor = (name: string) => {
-    return amenityColors[name] || { bg: '#F3F4F6', text: '#6B7280' };
-  };
+  const lowestPrice = selectedRoom
+    ? (typeof selectedRoom.price === 'object' ? selectedRoom.price?.amount || 0 : selectedRoom.price || 0) * nights
+    : (selectedHotel.pricePerNight?.amount || 0) * nights;
 
   return (
-    <View style={[styles.container, { backgroundColor: tc.background }]}>
-      {/* Fixed Header */}
-      <Animated.View style={[styles.fixedHeader, { paddingTop: insets.top + spacing.sm }, headerAnimatedStyle]}>
-        <TouchableOpacity
-          style={styles.fixedHeaderButton}
-          onPress={onBack}
-        >
-          <ArrowLeft size={24} color={colors.textPrimary} />
+    <View style={[localStyles.container, { backgroundColor: tc.background }]}>
+      {/* Fixed Header (visible on scroll) */}
+      <Animated.View style={[localStyles.fixedHeader, { paddingTop: insets.top + spacing.xs, backgroundColor: tc.background }, headerAnimatedStyle]}>
+        <TouchableOpacity style={[localStyles.headerBtn, { backgroundColor: tc.bgElevated }]} onPress={onBack}>
+          <ArrowLeft size={22} color={tc.textPrimary} />
         </TouchableOpacity>
-        
-        <View style={styles.fixedHeaderActions}>
+        <View style={localStyles.fixedHeaderActions}>
           <TouchableOpacity
-            style={styles.fixedHeaderButton}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setIsFavorite(!isFavorite);
-            }}
+            style={[localStyles.headerBtn, { backgroundColor: tc.bgElevated }]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsFavorite(!isFavorite); }}
           >
-            <Heart
-              size={22}
-              color={isFavorite ? colors.error : colors.textPrimary}
-              variant={isFavorite ? 'Bold' : 'Linear'}
-            />
+            <Heart size={20} color={isFavorite ? tc.error : tc.textPrimary} variant={isFavorite ? 'Bold' : 'Linear'} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.fixedHeaderButton}>
-            <Share size={22} color={colors.textPrimary} />
+          <TouchableOpacity style={[localStyles.headerBtn, { backgroundColor: tc.bgElevated }]}>
+            <Share size={20} color={tc.textPrimary} />
           </TouchableOpacity>
         </View>
       </Animated.View>
 
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 130 }}
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
         {/* Image Gallery */}
-        <View style={styles.galleryContainer}>
+        <View style={localStyles.galleryContainer}>
           <FlatList
             data={selectedHotel.images}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             onMomentumScrollEnd={(e) => {
-              const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-              setCurrentImageIndex(index);
+              setCurrentImageIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH));
             }}
             renderItem={({ item }) => (
-              <Image
-                source={{ uri: item.url }}
-                style={styles.galleryImage}
-                resizeMode="cover"
-              />
+              <Image source={{ uri: item.url }} style={localStyles.galleryImage} resizeMode="cover" />
             )}
             keyExtractor={(item) => item.id}
           />
-
-          {/* Image Indicators */}
-          <View style={styles.imageIndicators}>
-            {selectedHotel.images.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.indicator,
-                  index === currentImageIndex && styles.indicatorActive,
-                ]}
-              />
+          <View style={localStyles.imageIndicators}>
+            {selectedHotel.images.map((_, i) => (
+              <View key={i} style={[localStyles.indicator, { backgroundColor: i === currentImageIndex ? tc.bgElevated : 'rgba(255,255,255,0.45)' }, i === currentImageIndex && localStyles.indicatorActive]} />
             ))}
           </View>
         </View>
 
-        {/* Hotel Info */}
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.infoSection}>
-          {/* Star Rating */}
-          <View style={styles.starRow}>
-            {Array.from({ length: selectedHotel.starRating }).map((_, i) => (
-              <Star1 key={i} size={16} color={colors.warning} variant="Bold" />
-            ))}
-          </View>
+        {/* Hotel Info Card */}
+        <Animated.View entering={FadeInDown.duration(400)} style={[localStyles.card, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+          <Text style={[localStyles.hotelName, { color: tc.textPrimary }]}>{selectedHotel.name}</Text>
 
-          {/* Name */}
-          <Text style={styles.hotelName}>{selectedHotel.name}</Text>
-
-          {/* Location */}
-          <View style={styles.locationRow}>
-            <Location size={16} color={colors.textSecondary} />
-            <Text style={styles.locationText}>{selectedHotel.location.address}</Text>
-          </View>
-
-          {/* Rating Badge */}
-          <View style={styles.ratingRow}>
-            <View style={styles.ratingBadge}>
-              <Text style={styles.ratingValue}>{selectedHotel.userRating.toFixed(1)}</Text>
-            </View>
-            <Text style={styles.ratingText}>
-              Excellent · {selectedHotel.reviewCount} reviews
+          <View style={localStyles.locationRow}>
+            <Location size={16} color={tc.textSecondary} />
+            <Text style={[localStyles.locationText, { color: tc.textSecondary }]}>
+              {typeof selectedHotel.location.city === 'string' ? selectedHotel.location.city : ''}
+              {!selectedHotel.location.city && (typeof selectedHotel.location.address === 'string' ? selectedHotel.location.address : (selectedHotel.location.address as any)?.formatted || '')}
             </Text>
           </View>
 
-          {/* Policy Badges */}
-          <View style={styles.policyRow}>
-            {selectedHotel.rooms?.[0]?.refundable && (
-              <View style={styles.policyBadge}>
-                <TickCircle size={14} color="#10B981" variant="Bold" />
-                <Text style={styles.policyBadgeText}>Free cancellation</Text>
-              </View>
-            )}
-            {(selectedHotel.rooms?.[0] as any)?.boardType === 'breakfast_included' && (
-              <View style={[styles.policyBadge, styles.breakfastPolicyBadge]}>
-                <Coffee size={14} color="#D97706" variant="Bold" />
-                <Text style={[styles.policyBadgeText, styles.breakfastPolicyText]}>Breakfast included</Text>
-              </View>
-            )}
+          <View style={localStyles.ratingRow}>
+            <View style={[localStyles.ratingBadge, { backgroundColor: tc.primary }]}>
+              <Text style={localStyles.ratingValue}>{selectedHotel.userRating.toFixed(1)}</Text>
+            </View>
+            <Text style={[localStyles.ratingLabel, { color: tc.textSecondary }]}>
+              {selectedHotel.userRating >= 4.5 ? 'Excellent' : selectedHotel.userRating >= 4 ? 'Very Good' : 'Good'} · {selectedHotel.reviewCount} reviews
+            </Text>
           </View>
         </Animated.View>
 
-        {/* Check-in/Check-out Info */}
-        <Animated.View entering={FadeInDown.duration(400).delay(50)} style={styles.section}>
-          <Text style={styles.sectionTitle}>Hotel Policies</Text>
-          <View style={styles.policiesGrid}>
-            <View style={styles.policyItem}>
-              <View style={styles.policyIconContainer}>
-                <ArrowLeft size={18} color={colors.primary} style={{ transform: [{ rotate: '45deg' }] }} />
+        {/* Check-in / Check-out Card */}
+        <Animated.View entering={FadeInDown.duration(400).delay(50)} style={[localStyles.card, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+          <Text style={[localStyles.sectionTitle, { color: tc.textPrimary }]}>Hotel Policies</Text>
+          <View style={localStyles.policiesGrid}>
+            <View style={[localStyles.policyItem, { backgroundColor: `${tc.primary}08` }]}>
+              <View style={[localStyles.policyIcon, { backgroundColor: `${tc.primary}15` }]}>
+                <ArrowLeft size={18} color={tc.primary} style={{ transform: [{ rotate: '45deg' }] }} />
               </View>
               <View>
-                <Text style={styles.policyLabel}>Check-in</Text>
-                <Text style={styles.policyValue}>
-                  {(selectedHotel.policies?.checkIn as any)?.time || selectedHotel.policies?.checkIn?.from || 'From 3:00 PM'}
+                <Text style={[localStyles.policyLabel, { color: tc.textSecondary }]}>Check-in</Text>
+                <Text style={[localStyles.policyValue, { color: tc.textPrimary }]}>
+                  {(selectedHotel.policies?.checkIn as any)?.time || selectedHotel.policies?.checkIn?.from || '15:00'}
                 </Text>
               </View>
             </View>
-            <View style={styles.policyItem}>
-              <View style={styles.policyIconContainer}>
-                <ArrowLeft size={18} color={colors.primary} style={{ transform: [{ rotate: '-135deg' }] }} />
+            <View style={[localStyles.policyItem, { backgroundColor: `${tc.primary}08` }]}>
+              <View style={[localStyles.policyIcon, { backgroundColor: `${tc.primary}15` }]}>
+                <ArrowLeft size={18} color={tc.primary} style={{ transform: [{ rotate: '-135deg' }] }} />
               </View>
               <View>
-                <Text style={styles.policyLabel}>Check-out</Text>
-                <Text style={styles.policyValue}>
-                  {(selectedHotel.policies?.checkOut as any)?.time || selectedHotel.policies?.checkOut?.until || 'Until 11:00 AM'}
+                <Text style={[localStyles.policyLabel, { color: tc.textSecondary }]}>Check-out</Text>
+                <Text style={[localStyles.policyValue, { color: tc.textPrimary }]}>
+                  {(selectedHotel.policies?.checkOut as any)?.time || selectedHotel.policies?.checkOut?.until || '11:00'}
                 </Text>
               </View>
             </View>
           </View>
         </Animated.View>
 
-        {/* Amenities */}
-        <Animated.View entering={FadeInDown.duration(400).delay(100)} style={styles.section}>
-          <Text style={styles.sectionTitle}>Amenities</Text>
-          <View style={styles.amenitiesGrid}>
+        {/* Amenities Card */}
+        <Animated.View entering={FadeInDown.duration(400).delay(100)} style={[localStyles.card, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+          <Text style={[localStyles.sectionTitle, { color: tc.textPrimary }]}>Amenities</Text>
+          <View style={localStyles.amenitiesGrid}>
             {selectedHotel.amenities.slice(0, 8).map((amenity) => (
-              <View key={amenity.id} style={styles.amenityItem}>
-                <TickCircle size={20} color={colors.success} variant="Bold" />
-                <Text style={styles.amenityText}>{amenity.name}</Text>
+              <View key={amenity.id} style={localStyles.amenityItem}>
+                <TickCircle size={20} color={tc.success} variant="Bold" />
+                <Text style={[localStyles.amenityText, { color: tc.textPrimary }]}>{amenity.name}</Text>
               </View>
             ))}
           </View>
         </Animated.View>
 
-        {/* Room Selection */}
-        <Animated.View entering={FadeInDown.duration(400).delay(200)} style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Room</Text>
+        {/* Room Selection Card */}
+        <Animated.View entering={FadeInDown.duration(400).delay(200)} style={[localStyles.card, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+          <Text style={[localStyles.sectionTitle, { color: tc.textPrimary }]}>Select Room</Text>
           {selectedHotel.rooms.map((room) => (
             <RoomCard
               key={room.id}
@@ -313,37 +241,31 @@ export default function HotelDetailScreen({
         </Animated.View>
       </ScrollView>
 
-      {/* Footer */}
-      {selectedRoom && (
-        <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
-          <View style={styles.priceInfo}>
-            <Text style={styles.totalLabel}>{nights} nights</Text>
-            <Text style={styles.totalPrice}>
-              ${Math.round((selectedRoom.price?.amount || 0) * nights)}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <BookOnProviderButton
-              provider={(selectedHotel as any)?.provider?.code || 'booking'}
-              onPress={handleBookOnProvider}
-            />
-          </View>
+      {/* Footer — always visible with booking link */}
+      <View style={[localStyles.footer, { paddingBottom: insets.bottom + spacing.md, backgroundColor: tc.bgElevated, borderTopColor: tc.borderSubtle }]}>
+        <View style={localStyles.priceInfo}>
+          <Text style={[localStyles.footerLabel, { color: tc.textSecondary }]}>{nights} night{nights > 1 ? 's' : ''}</Text>
+          <Text style={[localStyles.footerPrice, { color: tc.textPrimary }]}>
+            ${lowestPrice.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+          </Text>
         </View>
-      )}
+        <View style={{ flex: 1 }}>
+          <BookOnProviderButton
+            provider={provider}
+            onPress={handleBookOnProvider}
+          />
+        </View>
+      </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+const localStyles = StyleSheet.create({
+  container: { flex: 1 },
+
   fixedHeader: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+    top: 0, left: 0, right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -351,237 +273,63 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
     zIndex: 100,
   },
-  fixedHeaderButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  headerBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
   },
-  fixedHeaderActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  galleryContainer: {
-    height: 280,
-    position: 'relative',
-  },
-  galleryImage: {
-    width: SCREEN_WIDTH,
-    height: 280,
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backButton: {
-    position: 'absolute',
-    left: spacing.lg,
-  },
-  actionButtons: {
-    position: 'absolute',
-    right: spacing.lg,
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
+  fixedHeaderActions: { flexDirection: 'row', gap: spacing.sm },
+
+  galleryContainer: { height: 280, position: 'relative' },
+  galleryImage: { width: SCREEN_WIDTH, height: 280 },
   imageIndicators: {
-    position: 'absolute',
-    bottom: spacing.md,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
+    position: 'absolute', bottom: spacing.md, left: 0, right: 0,
+    flexDirection: 'row', justifyContent: 'center', gap: 6,
   },
-  indicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-  },
-  indicatorActive: {
-    backgroundColor: colors.bgElevated,
-    width: 24,
-  },
-  infoSection: {
+  indicator: { width: 8, height: 8, borderRadius: 4 },
+  indicatorActive: { width: 24 },
+
+  card: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
     padding: spacing.lg,
-    backgroundColor: colors.bgElevated,
+    borderRadius: br['2xl'],
+    borderWidth: 1.5,
   },
-  starRow: {
-    flexDirection: 'row',
-    gap: 2,
-    marginBottom: spacing.sm,
-  },
+
   hotelName: {
+    fontFamily: 'HostGrotesk-Bold',
     fontSize: typography.fontSize['2xl'],
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-  },
-  locationText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    flex: 1,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  ratingBadge: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.sm,
-  },
-  ratingValue: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.white,
-  },
-  ratingText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-  },
-  policyRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  policyBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 6,
-  },
-  breakfastPolicyBadge: {
-    backgroundColor: '#FEF3C7',
-  },
-  policyBadgeText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    color: '#10B981',
-  },
-  breakfastPolicyText: {
-    color: '#D97706',
-  },
-  policiesGrid: {
-    flexDirection: 'row',
-    gap: spacing.lg,
-  },
-  policyItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.gray50,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    gap: spacing.sm,
-  },
-  policyIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: `${colors.primary}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  policyLabel: {
-    fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
-    marginBottom: 2,
-  },
-  policyValue: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  section: {
-    padding: spacing.lg,
-    backgroundColor: colors.bgElevated,
-    marginTop: spacing.sm,
-  },
-  sectionTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
-  },
-  amenitiesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  amenityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    width: '50%',
-    paddingVertical: spacing.sm,
-  },
-  amenityText: {
-    fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
-  },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.md },
+  locationText: { fontSize: typography.fontSize.sm, flex: 1 },
+
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  ratingBadge: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: br.sm },
+  ratingValue: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.bold, color: '#fff' },
+  ratingLabel: { fontSize: typography.fontSize.sm },
+
+  sectionTitle: { fontFamily: 'Rubik-SemiBold', fontSize: typography.fontSize.lg, marginBottom: spacing.md },
+
+  policiesGrid: { flexDirection: 'row', gap: spacing.md },
+  policyItem: { flex: 1, flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: br.lg, gap: spacing.sm },
+  policyIcon: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  policyLabel: { fontSize: typography.fontSize.xs, marginBottom: 2 },
+  policyValue: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold },
+
+  amenitiesGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  amenityItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, width: '50%', paddingVertical: spacing.sm },
+  amenityText: { fontSize: typography.fontSize.base },
+
   footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    backgroundColor: colors.bgElevated,
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: spacing.lg, paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
-    ...shadows.lg,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 10,
   },
-  priceInfo: {
-    flex: 1,
-  },
-  totalLabel: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-  },
-  totalPrice: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  continueButton: {
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
-  },
-  continueGradient: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  continueText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.white,
-  },
+  priceInfo: { flex: 1 },
+  footerLabel: { fontSize: typography.fontSize.sm },
+  footerPrice: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold },
 });

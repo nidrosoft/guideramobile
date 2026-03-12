@@ -2,6 +2,7 @@
  * LOCATION PICKER SHEET
  * 
  * Bottom sheet for selecting destination city.
+ * Theme-aware for dark/light mode.
  */
 
 import React, { useState } from 'react';
@@ -19,7 +20,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CloseCircle, SearchNormal1, Location } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { Location as LocationType } from '../../../types/booking.types';
 
 // Popular destinations for experiences
@@ -50,6 +52,7 @@ export default function LocationPickerSheet({
   title,
 }: LocationPickerSheetProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const [search, setSearch] = useState('');
 
   const filteredLocations = POPULAR_DESTINATIONS.filter(l =>
@@ -74,22 +77,22 @@ export default function LocationPickerSheet({
         style={styles.overlay}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={[styles.container, { paddingBottom: insets.bottom + spacing.md }]}>
+        <View style={[styles.container, { paddingBottom: insets.bottom + spacing.md, backgroundColor: tc.background }]}>
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
+          <View style={[styles.header, { borderBottomColor: tc.borderSubtle }]}>
+            <Text style={[styles.title, { color: tc.textPrimary }]}>{title}</Text>
             <TouchableOpacity onPress={handleClose}>
-              <CloseCircle size={28} color={colors.gray500} variant="Bold" />
+              <CloseCircle size={28} color={tc.textSecondary} variant="Bold" />
             </TouchableOpacity>
           </View>
 
           {/* Search */}
-          <View style={styles.searchContainer}>
-            <SearchNormal1 size={20} color={colors.gray400} />
+          <View style={[styles.searchContainer, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+            <SearchNormal1 size={20} color={tc.textSecondary} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: tc.textPrimary }]}
               placeholder="Search cities..."
-              placeholderTextColor={colors.gray400}
+              placeholderTextColor={tc.textSecondary}
               value={search}
               onChangeText={setSearch}
               autoFocus
@@ -103,15 +106,15 @@ export default function LocationPickerSheet({
             keyboardShouldPersistTaps="always"
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={styles.locationItem}
+                style={[styles.locationItem, { borderBottomColor: tc.borderSubtle }]}
                 onPress={() => handleSelect(item)}
               >
-                <View style={styles.locationIcon}>
-                  <Location size={18} color={colors.primary} variant="Bold" />
+                <View style={[styles.locationIcon, { backgroundColor: `${tc.primary}15` }]}>
+                  <Location size={18} color={tc.primary} variant="Bold" />
                 </View>
                 <View style={styles.locationInfo}>
-                  <Text style={styles.locationName}>{item.name}</Text>
-                  <Text style={styles.locationType}>{item.country}</Text>
+                  <Text style={[styles.locationName, { color: tc.textPrimary }]}>{item.name}</Text>
+                  <Text style={[styles.locationType, { color: tc.textSecondary }]}>{item.country}</Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -131,7 +134,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   container: {
-    backgroundColor: colors.bgModal,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
     height: '80%',
@@ -143,27 +145,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
     paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
   },
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray50,
     marginHorizontal: spacing.lg,
     marginVertical: spacing.md,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
     height: 48,
     gap: spacing.sm,
   },
   searchInput: {
     flex: 1,
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
   },
   listContent: {
     paddingHorizontal: spacing.lg,
@@ -174,13 +175,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
   },
   locationIcon: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: `${colors.primary}15`,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
@@ -191,11 +190,9 @@ const styles = StyleSheet.create({
   locationName: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
   },
   locationType: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     marginTop: 2,
   },
 });

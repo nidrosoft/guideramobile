@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   StatusBar,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -24,106 +25,13 @@ import {
   Activity,
   TickCircle,
 } from 'iconsax-react-native';
-import { spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius, colors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import { PackingCategory, PackingItem } from '../types/packing.types';
 import AddItemBottomSheet from '../components/AddItemBottomSheet';
-
-// AI-Generated Packing Lists by Trip (Claude Opus 4.5)
-const COLOMBIA_PACKING_ITEMS: PackingItem[] = [
-  // Documents & Essentials - Critical for Colombia
-  { id: 'col-1', name: 'Passport (valid 6+ months)', category: PackingCategory.ESSENTIALS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'US citizens get 90-day visa-free entry' },
-  { id: 'col-2', name: 'Flight Confirmation (Avianca)', category: PackingCategory.ESSENTIALS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: 'col-3', name: 'Hotel Reservations Printed', category: PackingCategory.ESSENTIALS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Immigration may ask for proof' },
-  { id: 'col-4', name: 'Travel Insurance Documents', category: PackingCategory.ESSENTIALS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: 'col-5', name: 'Credit Cards (Visa/Mastercard)', category: PackingCategory.ESSENTIALS, quantity: 2, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Notify bank of travel dates' },
-  { id: 'col-6', name: 'Colombian Pesos (Cash)', category: PackingCategory.ESSENTIALS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Withdraw from ATMs - better rates' },
-  { id: 'col-7', name: 'Copy of Passport', category: PackingCategory.ESSENTIALS, quantity: 2, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Keep separate from original' },
-  
-  // Clothing - Layered for altitude changes
-  { id: 'col-8', name: 'Lightweight T-shirts', category: PackingCategory.CLOTHING, quantity: 6, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Quick-dry for Cartagena heat' },
-  { id: 'col-9', name: 'Long Pants (Hiking)', category: PackingCategory.CLOTHING, quantity: 2, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'For Cocora Valley hike' },
-  { id: 'col-10', name: 'Shorts', category: PackingCategory.CLOTHING, quantity: 3, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Cartagena is hot & humid' },
-  { id: 'col-11', name: 'Warm Fleece/Jacket', category: PackingCategory.CLOTHING, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Bogota is cool (8-18°C)' },
-  { id: 'col-12', name: 'Rain Jacket (Packable)', category: PackingCategory.CLOTHING, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'February can have rain in Coffee Region' },
-  { id: 'col-13', name: 'Comfortable Walking Shoes', category: PackingCategory.CLOTHING, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Cobblestone streets in Cartagena' },
-  { id: 'col-14', name: 'Hiking Boots', category: PackingCategory.CLOTHING, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Essential for Cocora Valley - muddy trails' },
-  { id: 'col-15', name: 'Sandals', category: PackingCategory.CLOTHING, quantity: 1, isPacked: false, isOptional: true, isSuggested: true, addedBy: 'system' },
-  { id: 'col-16', name: 'Swimsuit', category: PackingCategory.CLOTHING, quantity: 2, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Hotel pools & Caribbean beaches' },
-  { id: 'col-17', name: 'Underwear', category: PackingCategory.CLOTHING, quantity: 8, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: 'col-18', name: 'Socks (Hiking & Regular)', category: PackingCategory.CLOTHING, quantity: 8, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  
-  // Toiletries
-  { id: 'col-19', name: 'Sunscreen SPF 50+', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'High altitude = stronger UV' },
-  { id: 'col-20', name: 'Insect Repellent (DEET)', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Mosquitoes in Cartagena & Coffee Region' },
-  { id: 'col-21', name: 'Toothbrush & Toothpaste', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: 'col-22', name: 'Deodorant', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: 'col-23', name: 'Lip Balm with SPF', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Altitude dries lips' },
-  { id: 'col-24', name: 'Hand Sanitizer', category: PackingCategory.TOILETRIES, quantity: 2, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  
-  // Electronics
-  { id: 'col-25', name: 'Smartphone', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Download offline maps & Spanish translator' },
-  { id: 'col-26', name: 'Phone Charger & Cable', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Colombia uses Type A/B plugs (same as US)' },
-  { id: 'col-27', name: 'Power Bank (10000+ mAh)', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Long hiking days' },
-  { id: 'col-28', name: 'Camera', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: true, isSuggested: true, addedBy: 'system', notes: 'Wax palms are incredible!' },
-  { id: 'col-29', name: 'Headphones', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: true, isSuggested: true, addedBy: 'system' },
-  
-  // Health & Safety
-  { id: 'col-30', name: 'Altitude Sickness Pills', category: PackingCategory.HEALTH, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Bogota is 2,640m - take it easy day 1' },
-  { id: 'col-31', name: 'Anti-Diarrhea Medicine', category: PackingCategory.HEALTH, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Just in case - avoid tap water' },
-  { id: 'col-32', name: 'Pain Relievers (Ibuprofen)', category: PackingCategory.HEALTH, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: 'col-33', name: 'Band-Aids & Blister Pads', category: PackingCategory.HEALTH, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'For hiking' },
-  { id: 'col-34', name: 'Rehydration Salts', category: PackingCategory.HEALTH, quantity: 3, isPacked: false, isOptional: true, isSuggested: true, addedBy: 'system', notes: 'Hot weather in Cartagena' },
-  
-  // Activities - Specific to Colombia Trip
-  { id: 'col-35', name: 'Daypack (20-30L)', category: PackingCategory.ACTIVITIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'For Cocora Valley & day trips' },
-  { id: 'col-36', name: 'Reusable Water Bottle', category: PackingCategory.ACTIVITIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Stay hydrated at altitude' },
-  { id: 'col-37', name: 'Sunglasses (UV Protection)', category: PackingCategory.ACTIVITIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: 'col-38', name: 'Wide-Brim Hat', category: PackingCategory.ACTIVITIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system', notes: 'Sun protection for hiking & beach' },
-  { id: 'col-39', name: 'Trekking Poles (Optional)', category: PackingCategory.ACTIVITIES, quantity: 1, isPacked: false, isOptional: true, isSuggested: true, addedBy: 'system', notes: 'Helpful for Cocora Valley descent' },
-];
-
-// Default packing items for other trips
-const DEFAULT_PACKING_ITEMS: PackingItem[] = [
-  // Essentials
-  { id: '1', name: 'Passport', category: PackingCategory.ESSENTIALS, quantity: 1, isPacked: true, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: '2', name: 'Flight Tickets', category: PackingCategory.ESSENTIALS, quantity: 1, isPacked: true, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: '3', name: 'Wallet & Cards', category: PackingCategory.ESSENTIALS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: '4', name: 'Phone Charger', category: PackingCategory.ESSENTIALS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  
-  // Clothing
-  { id: '5', name: 'T-shirts', category: PackingCategory.CLOTHING, quantity: 5, isPacked: true, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: '6', name: 'Jeans', category: PackingCategory.CLOTHING, quantity: 2, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: '7', name: 'Underwear', category: PackingCategory.CLOTHING, quantity: 6, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: '8', name: 'Socks', category: PackingCategory.CLOTHING, quantity: 6, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: '9', name: 'Light Jacket', category: PackingCategory.CLOTHING, quantity: 1, isPacked: false, isOptional: true, isSuggested: true, addedBy: 'system' },
-  { id: '10', name: 'Pajamas', category: PackingCategory.CLOTHING, quantity: 2, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  
-  // Toiletries
-  { id: '11', name: 'Toothbrush & Toothpaste', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: true, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: '12', name: 'Shampoo & Conditioner', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: '13', name: 'Deodorant', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: '14', name: 'Sunscreen SPF 50', category: PackingCategory.TOILETRIES, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  
-  // Electronics
-  { id: '15', name: 'Laptop', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: true, isSuggested: false, addedBy: 'user' },
-  { id: '16', name: 'Camera', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: true, isSuggested: true, addedBy: 'system' },
-  { id: '17', name: 'Power Bank', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: '18', name: 'Travel Adapter', category: PackingCategory.ELECTRONICS, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  
-  // Health
-  { id: '19', name: 'Medications', category: PackingCategory.HEALTH, quantity: 1, isPacked: false, isOptional: false, isSuggested: true, addedBy: 'system' },
-  { id: '20', name: 'First Aid Kit', category: PackingCategory.HEALTH, quantity: 1, isPacked: false, isOptional: true, isSuggested: true, addedBy: 'system' },
-];
-
-// Get packing items based on trip destination
-const getPackingItemsForTrip = (tripId: string, destination?: string): PackingItem[] => {
-  if (tripId === '2' || destination?.toLowerCase().includes('colombia')) {
-    return COLOMBIA_PACKING_ITEMS;
-  }
-  return DEFAULT_PACKING_ITEMS;
-};
+import { packingService } from '@/services/packing.service';
+import { useAuth } from '@/context/AuthContext';
 
 const CATEGORY_INFO = [
   { id: PackingCategory.ESSENTIALS, name: 'Essentials', icon: 'bag', color: '#EF4444' },
@@ -141,19 +49,46 @@ export default function PackingScreen() {
   const params = useLocalSearchParams();
   const tripId = params.tripId as string;
   const { colors, isDark } = useTheme();
+  const { profile } = useAuth();
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
   
-  const [items, setItems] = useState<PackingItem[]>(getPackingItemsForTrip(tripId, trip?.destination?.country));
+  const [items, setItems] = useState<PackingItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState<Set<PackingCategory>>(
     new Set([PackingCategory.ESSENTIALS])
   );
   const [addItemVisible, setAddItemVisible] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchItems = async () => {
+      try {
+        setLoading(true);
+        const data = await packingService.getItems(tripId);
+        if (mounted) setItems(data);
+      } catch (err) {
+        console.error('Failed to load packing items:', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    fetchItems();
+    return () => { mounted = false; };
+  }, [tripId]);
 
   if (!trip) {
     return (
       <SafeAreaView style={styles.container}>
         <Text>Trip not found</Text>
       </SafeAreaView>
+    );
+  }
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bgPrimary, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
     );
   }
 
@@ -167,11 +102,9 @@ export default function PackingScreen() {
     setExpandedCategories(newExpanded);
   };
 
-  const toggleItemPacked = (itemId: string) => {
-    // Haptic feedback
+  const toggleItemPacked = async (itemId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
-    // Visual feedback - scale animation
     const scaleValue = new Animated.Value(1);
     Animated.sequence([
       Animated.timing(scaleValue, {
@@ -186,9 +119,20 @@ export default function PackingScreen() {
       }),
     ]).start();
     
-    setItems(items.map(item =>
-      item.id === itemId ? { ...item, isPacked: !item.isPacked } : item
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+    const newPacked = !item.isPacked;
+    setItems(items.map(i =>
+      i.id === itemId ? { ...i, isPacked: newPacked } : i
     ));
+    try {
+      await packingService.togglePacked(itemId, newPacked);
+    } catch (err) {
+      console.error('Failed to toggle packed:', err);
+      setItems(items.map(i =>
+        i.id === itemId ? { ...i, isPacked: !newPacked } : i
+      ));
+    }
   };
 
   const getCategoryItems = (category: PackingCategory) => {
@@ -201,28 +145,26 @@ export default function PackingScreen() {
     return { packed, total: categoryItems.length };
   };
 
-  const handleAddItem = (itemName: string, category: PackingCategory, quantity: number) => {
-    const newItem: PackingItem = {
-      id: Date.now().toString(),
-      name: itemName,
-      category,
-      quantity,
-      isPacked: false,
-      isOptional: false,
-      isSuggested: false,
-      addedBy: 'user',
-    };
-    setItems([...items, newItem]);
-    
-    // Auto-expand the category
-    const newExpanded = new Set(expandedCategories);
-    newExpanded.add(category);
-    setExpandedCategories(newExpanded);
+  const handleAddItem = async (itemName: string, category: PackingCategory, quantity: number) => {
+    try {
+      const newItem = await packingService.addItem(tripId, profile?.id ?? '', {
+        name: itemName,
+        category,
+        quantity,
+      });
+      setItems(prev => [...prev, newItem]);
+      
+      const newExpanded = new Set(expandedCategories);
+      newExpanded.add(category);
+      setExpandedCategories(newExpanded);
+    } catch (err) {
+      console.error('Failed to add packing item:', err);
+    }
   };
 
   const totalItems = items.length;
   const packedItems = items.filter(item => item.isPacked).length;
-  const progressPercentage = Math.round((packedItems / totalItems) * 100);
+  const progressPercentage = totalItems > 0 ? Math.round((packedItems / totalItems) * 100) : 0;
   const unpackedCount = totalItems - packedItems;
 
   const renderCategoryIcon = (iconName: string, color: string) => {
@@ -258,9 +200,22 @@ export default function PackingScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* TODO: [PREMIUM] Empty state will show upgrade CTA once paywall is implemented */}
+        {items.length === 0 ? (
+          <View style={styles.emptyStateContainer}>
+            <Bag2 size={56} color={colors.textTertiary} variant="Bold" />
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Suitcase Looking Empty</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+              {`Your AI-curated packing list for ${trip?.destination?.city || 'your trip'} hasn't been created yet! Head back to your trip card and tap "Generate Smart Plan" — we'll pack your bags with ${trip?.destination?.city ? trip.destination.city + '-specific' : 'destination-specific'} essentials, weather-smart clothing, and those things you always forget. This is a premium feature.`}
+            </Text>
+            <TouchableOpacity style={[styles.emptyCta, { backgroundColor: colors.primary }]} onPress={() => router.back()}>
+              <Text style={styles.emptyCtaText}>Go to Trip Card</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Progress Card */}
-          <View style={[styles.progressCard, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
+          <View style={[styles.progressCard, { backgroundColor: colors.bgCard }]}>
             <View style={styles.progressHeader}>
               <View style={styles.progressIconContainer}>
                 <Bag2 size={24} color={colors.primary} variant="Bold" />
@@ -277,7 +232,7 @@ export default function PackingScreen() {
             <View style={styles.progressBarContainer}>
               <View style={[styles.progressBarBackground, { backgroundColor: colors.borderMedium }]}>
                 <LinearGradient
-                  colors={[colors.primary, '#8B5CF6', '#3B82F6']}
+                  colors={[colors.primary, colors.primaryGradient, colors.primaryDark]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={[styles.progressBarFill, { width: `${progressPercentage}%` }]}
@@ -302,7 +257,7 @@ export default function PackingScreen() {
               const isExpanded = expandedCategories.has(categoryInfo.id);
 
               return (
-                <View key={categoryInfo.id} style={[styles.categoryCard, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
+                <View key={categoryInfo.id} style={[styles.categoryCard, { backgroundColor: colors.bgCard }]}>
                   {/* Category Header */}
                   <TouchableOpacity
                     style={styles.categoryHeader}
@@ -377,6 +332,7 @@ export default function PackingScreen() {
             })}
           </View>
         </ScrollView>
+        )}
 
         {/* Add Item Bottom Sheet */}
         <AddItemBottomSheet
@@ -428,13 +384,15 @@ const styles = StyleSheet.create({
   progressCard: {
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
-    padding: spacing.lg,
-    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
   progressHeader: {
     flexDirection: 'row',
@@ -492,14 +450,16 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   categoryCard: {
-    borderRadius: borderRadius.lg,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     marginBottom: spacing.md,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
   categoryHeader: {
     flexDirection: 'row',
@@ -542,22 +502,27 @@ const styles = StyleSheet.create({
   },
   itemRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
-    marginTop: 2,
   },
   checkboxChecked: {
-    backgroundColor: '#3FC39E',
-    borderColor: '#3FC39E',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   checkboxOptional: {
     borderStyle: 'dashed',
@@ -590,11 +555,42 @@ const styles = StyleSheet.create({
   suggestedText: {
     fontSize: typography.fontSize.xs,
     fontWeight: '600',
-    color: '#3FC39E',
+    color: colors.primary,
   },
   itemNotes: {
     fontSize: typography.fontSize.xs,
     marginTop: 4,
     fontStyle: 'italic',
+  },
+  // Empty State
+  emptyStateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  emptyTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: '700',
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: typography.fontSize.sm,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+    lineHeight: 20,
+    paddingHorizontal: spacing.sm,
+  },
+  emptyCta: {
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: 20,
+  },
+  emptyCtaText: {
+    color: '#FFFFFF',
+    fontSize: typography.fontSize.sm,
+    fontWeight: '700',
   },
 });

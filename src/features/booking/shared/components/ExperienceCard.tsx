@@ -27,6 +27,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 // Experience display data interface
 export interface ExperienceCardData {
@@ -95,6 +96,8 @@ export default function ExperienceCard({
   onPress,
   onFavorite,
 }: ExperienceCardProps) {
+  const { colors: tc } = useTheme();
+
   const handleFavorite = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onFavorite?.();
@@ -102,15 +105,22 @@ export default function ExperienceCard({
 
   const categoryConfig = getCategoryConfig(experience.category);
   const CategoryIcon = categoryConfig.icon;
-  const ratingLabel = getRatingLabel(experience.rating);
+  const ratingValue = typeof experience.rating === 'number'
+    ? experience.rating
+    : (experience.rating as any)?.score ?? 0;
+  const reviewCountValue = typeof experience.reviewCount === 'number'
+    ? experience.reviewCount
+    : (experience as any)?.rating?.reviewCount ?? 0;
+  const ratingLabel = getRatingLabel(ratingValue);
 
   return (
     <Animated.View entering={FadeInDown.duration(400).delay(index * 100)}>
       <TouchableOpacity
         style={[
           styles.container,
+          { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
           compact && styles.containerCompact,
-          isSelected && styles.containerSelected,
+          isSelected && { borderColor: tc.primary, borderWidth: 2 },
         ]}
         onPress={onPress}
         activeOpacity={0.9}
@@ -182,15 +192,15 @@ export default function ExperienceCard({
         <View style={[styles.content, compact && styles.contentCompact]}>
           {/* Rating Section */}
           <View style={styles.ratingSection}>
-            <View style={styles.ratingBadge}>
-              <Star1 size={12} color="#FFB800" variant="Bold" />
-              <Text style={styles.ratingScore}>{experience.rating.toFixed(1)}</Text>
+            <View style={[styles.ratingBadge, { backgroundColor: `${tc.warning}15` }]}>
+              <Star1 size={12} color={tc.warning} variant="Bold" />
+              <Text style={[styles.ratingScore, { color: tc.textPrimary }]}>{ratingValue.toFixed(1)}</Text>
             </View>
             {!compact && (
               <>
-                <Text style={styles.ratingLabel}>{ratingLabel}</Text>
-                <Text style={styles.reviewCount}>
-                  ({experience.reviewCount.toLocaleString()} reviews)
+                <Text style={[styles.ratingLabel, { color: tc.textPrimary }]}>{ratingLabel}</Text>
+                <Text style={[styles.reviewCount, { color: tc.textSecondary }]}>
+                  ({reviewCountValue.toLocaleString()} reviews)
                 </Text>
               </>
             )}
@@ -198,7 +208,7 @@ export default function ExperienceCard({
           
           {/* Title */}
           <Text 
-            style={[styles.title, compact && styles.titleCompact]} 
+            style={[styles.title, { color: tc.textPrimary }, compact && styles.titleCompact]} 
             numberOfLines={compact ? 1 : 2}
           >
             {experience.title}
@@ -206,38 +216,38 @@ export default function ExperienceCard({
           
           {/* Info Row - Duration & Participants */}
           <View style={styles.infoRow}>
-            <View style={styles.infoChip}>
-              <Clock size={12} color={colors.textSecondary} />
-              <Text style={styles.infoText}>{formatDuration(experience.duration)}</Text>
+            <View style={[styles.infoChip, { backgroundColor: tc.bgSunken }]}>
+              <Clock size={12} color={tc.textSecondary} />
+              <Text style={[styles.infoText, { color: tc.textSecondary }]}>{formatDuration(typeof experience.duration === 'number' ? experience.duration : (experience.duration as any)?.value ? ((experience.duration as any).unit === 'hours' ? (experience.duration as any).value * 60 : (experience.duration as any).value) : 0)}</Text>
             </View>
             {experience.instantConfirmation && !compact && (
-              <View style={[styles.infoChip, styles.instantChip]}>
-                <Flash size={12} color={colors.success} variant="Bold" />
-                <Text style={[styles.infoText, { color: colors.success }]}>Instant</Text>
+              <View style={[styles.infoChip, { backgroundColor: `${tc.success}10` }]}>
+                <Flash size={12} color={tc.success} variant="Bold" />
+                <Text style={[styles.infoText, { color: tc.success }]}>Instant</Text>
               </View>
             )}
           </View>
           
           {/* Divider */}
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
           
           {/* Price Section */}
           <View style={styles.priceSection}>
             <View style={styles.priceMain}>
-              <Text style={styles.priceFrom}>From</Text>
+              <Text style={[styles.priceFrom, { color: tc.textSecondary }]}>From</Text>
               <View style={styles.priceValue}>
-                <Text style={[styles.priceCurrency, isSelected && styles.priceSelected]}>$</Text>
-                <Text style={[styles.price, isSelected && styles.priceSelected]}>
-                  {experience.price}
+                <Text style={[styles.priceCurrency, { color: tc.textPrimary }, isSelected && { color: tc.primary }]}>$</Text>
+                <Text style={[styles.price, { color: tc.textPrimary }, isSelected && { color: tc.primary }]}>
+                  {typeof experience.price === 'number' ? experience.price.toFixed(2) : (experience.price as any)?.amount?.toFixed(2) || '0'}
                 </Text>
-                <Text style={styles.priceUnit}>/ person</Text>
+                <Text style={[styles.priceUnit, { color: tc.textSecondary }]}>/ person</Text>
               </View>
             </View>
             
             {/* Quick Book Indicator */}
             {!compact && (
-              <View style={styles.bookIndicator}>
-                <Text style={styles.bookText}>View Details</Text>
+              <View style={[styles.bookIndicator, { backgroundColor: `${tc.primary}10` }]}>
+                <Text style={[styles.bookText, { color: tc.primary }]}>View Details</Text>
               </View>
             )}
           </View>
@@ -375,7 +385,6 @@ const styles = StyleSheet.create({
   ratingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFBEB',
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: 8,
@@ -420,7 +429,6 @@ const styles = StyleSheet.create({
   infoChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray50,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
     borderRadius: 8,

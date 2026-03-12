@@ -16,12 +16,26 @@ import { useTheme } from '@/context/ThemeContext';
 import { Expense, ExpenseCategory, CategoryInfo, PaymentMethod } from '../types/expense.types';
 import { useToast } from '@/contexts/ToastContext';
 
+const COMMON_CURRENCIES = [
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+  { code: 'GBP', symbol: '£', name: 'British Pound' },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
+  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+  { code: 'CHF', symbol: 'Fr', name: 'Swiss Franc' },
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+  { code: 'THB', symbol: '฿', name: 'Thai Baht' },
+  { code: 'MXN', symbol: 'Mex$', name: 'Mexican Peso' },
+];
+
 interface AddExpenseBottomSheetProps {
   visible: boolean;
   onClose: () => void;
   onAdd: (expense: Omit<Expense, 'id' | 'tripId' | 'createdAt'>) => void;
   categories: CategoryInfo[];
   editingExpense?: Expense | null;
+  defaultCurrency?: string;
 }
 
 export default function AddExpenseBottomSheet({
@@ -30,15 +44,19 @@ export default function AddExpenseBottomSheet({
   onAdd,
   categories,
   editingExpense,
+  defaultCurrency = 'USD',
 }: AddExpenseBottomSheetProps) {
   const { showSuccess } = useToast();
   const { colors: tc } = useTheme();
   const [amount, setAmount] = useState(editingExpense?.amount.toString() || '');
   const [description, setDescription] = useState(editingExpense?.description || '');
+  const [merchant, setMerchant] = useState(editingExpense?.merchant || '');
+  const [selectedCurrency, setSelectedCurrency] = useState(editingExpense?.currency || defaultCurrency);
   const [selectedCategory, setSelectedCategory] = useState<ExpenseCategory>(editingExpense?.category || ExpenseCategory.FOOD);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(editingExpense?.paymentMethod || PaymentMethod.CREDIT_CARD);
   const [notes, setNotes] = useState(editingExpense?.notes || '');
   const [date, setDate] = useState(editingExpense?.date || new Date());
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
 
   const paymentMethods = [
     { id: PaymentMethod.CREDIT_CARD, name: 'Credit Card', icon: '💳' },
@@ -55,20 +73,24 @@ export default function AddExpenseBottomSheet({
 
     const expense: Omit<Expense, 'id' | 'tripId' | 'createdAt'> = {
       amount: parseFloat(amount),
-      currency: 'USD',
+      currency: selectedCurrency,
       category: selectedCategory,
       description: description.trim(),
+      merchant: merchant.trim() || undefined,
       date,
       paymentMethod: selectedPaymentMethod,
       notes: notes.trim() || undefined,
+      source: 'manual',
     };
 
     onAdd(expense);
-    showSuccess('Expense added!');
+    showSuccess(editingExpense ? 'Expense updated!' : 'Expense added!');
 
     // Reset form
     setAmount('');
     setDescription('');
+    setMerchant('');
+    setSelectedCurrency(defaultCurrency);
     setSelectedCategory(ExpenseCategory.FOOD);
     setSelectedPaymentMethod(PaymentMethod.CREDIT_CARD);
     setNotes('');
@@ -110,21 +132,53 @@ export default function AddExpenseBottomSheet({
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Amount */}
+            {/* Amount + Currency */}
             <View style={styles.field}>
               <Text style={styles.label}>Amount</Text>
-              <View style={styles.amountInput}>
-                <Text style={styles.currencySymbol}>$</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.gray400}
-                  value={amount}
-                  onChangeText={setAmount}
-                  keyboardType="decimal-pad"
-                  autoFocus
-                />
+              <View style={styles.amountRow}>
+                <TouchableOpacity
+                  style={styles.currencyToggle}
+                  onPress={() => setShowCurrencyPicker(!showCurrencyPicker)}
+                >
+                  <Text style={styles.currencyToggleText}>{selectedCurrency}</Text>
+                  <Text style={styles.currencyToggleArrow}>{showCurrencyPicker ? '▲' : '▼'}</Text>
+                </TouchableOpacity>
+                <View style={[styles.amountInput, { flex: 1 }]}>
+                  <Text style={styles.currencySymbol}>
+                    {COMMON_CURRENCIES.find(c => c.code === selectedCurrency)?.symbol || '$'}
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="0.00"
+                    placeholderTextColor={colors.gray400}
+                    value={amount}
+                    onChangeText={setAmount}
+                    keyboardType="decimal-pad"
+                    autoFocus
+                  />
+                </View>
               </View>
+              {showCurrencyPicker && (
+                <View style={styles.currencyPickerContainer}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.currencyPickerScroll}>
+                    {COMMON_CURRENCIES.map(cur => (
+                      <TouchableOpacity
+                        key={cur.code}
+                        style={[
+                          styles.currencyChip,
+                          selectedCurrency === cur.code && styles.currencyChipSelected,
+                        ]}
+                        onPress={() => { setSelectedCurrency(cur.code); setShowCurrencyPicker(false); }}
+                      >
+                        <Text style={[
+                          styles.currencyChipText,
+                          selectedCurrency === cur.code && styles.currencyChipTextSelected,
+                        ]}>{cur.symbol} {cur.code}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
             </View>
 
             {/* Category */}
@@ -154,6 +208,18 @@ export default function AddExpenseBottomSheet({
                   </TouchableOpacity>
                 ))}
               </View>
+            </View>
+
+            {/* Merchant (Optional) */}
+            <View style={styles.field}>
+              <Text style={styles.label}>Merchant (Optional)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="e.g. Starbucks, Uber, Hotel Marrakech"
+                placeholderTextColor={colors.gray400}
+                value={merchant}
+                onChangeText={setMerchant}
+              />
             </View>
 
             {/* Description */}
@@ -222,7 +288,7 @@ export default function AddExpenseBottomSheet({
             onPress={handleAdd}
             disabled={!amount.trim() || !description.trim()}
           >
-            <Text style={styles.addButtonText}>Add Expense</Text>
+            <Text style={styles.addButtonText}>{editingExpense ? 'Update Expense' : 'Add Expense'}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -285,6 +351,57 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.gray900,
     marginBottom: spacing.sm,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  currencyToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.gray100,
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+    gap: 4,
+  },
+  currencyToggleText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: '700',
+    color: colors.gray900,
+  },
+  currencyToggleArrow: {
+    fontSize: 8,
+    color: colors.gray500,
+  },
+  currencyPickerContainer: {
+    marginTop: spacing.sm,
+  },
+  currencyPickerScroll: {
+    gap: spacing.xs,
+  },
+  currencyChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 16,
+    backgroundColor: colors.gray100,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+  },
+  currencyChipSelected: {
+    backgroundColor: `${colors.primary}15`,
+    borderColor: colors.primary,
+  },
+  currencyChipText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: '600',
+    color: colors.gray600,
+  },
+  currencyChipTextSelected: {
+    color: colors.primary,
   },
   amountInput: {
     flexDirection: 'row',

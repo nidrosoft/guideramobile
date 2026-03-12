@@ -484,31 +484,33 @@ export const usePackageStore = create<PackageState>()(
         const nights = get().getNights();
         const totalTravelers = get().getTotalTravelers();
         
-        // Calculate flight price
+        const amt = (p: any): number => {
+          if (typeof p === 'number') return p;
+          if (p && typeof p === 'object' && typeof p.amount === 'number') return p.amount;
+          return 0;
+        };
+
         let flightPrice = 0;
         if (selections.flight.outbound) {
-          flightPrice += selections.flight.outbound.price.amount * totalTravelers;
+          flightPrice += amt(selections.flight.outbound.price) * totalTravelers;
         }
         if (selections.flight.return) {
-          flightPrice += selections.flight.return.price.amount * totalTravelers;
+          flightPrice += amt(selections.flight.return.price) * totalTravelers;
         }
-        
-        // Calculate hotel price
+
         let hotelPrice = 0;
         if (selections.hotel.room) {
-          hotelPrice = selections.hotel.room.price.amount * nights;
+          hotelPrice = amt(selections.hotel.room.price) * nights;
         }
-        
-        // Calculate car price
+
         let carPrice = 0;
         if (selections.car) {
-          carPrice = selections.car.rental.pricePerDay.amount * (nights + 1); // Usually rent for trip duration + 1
+          carPrice = amt(selections.car.rental?.pricePerDay) * (nights + 1);
         }
-        
-        // Calculate experiences price
+
         let experiencesPrice = 0;
         selections.experiences.forEach(exp => {
-          experiencesPrice += exp.price.amount * totalTravelers;
+          experiencesPrice += amt(exp.price) * totalTravelers;
         });
         
         // Calculate extras price

@@ -34,7 +34,7 @@ import {
 export default function BudgetPreferencesScreen() {
   const router = useRouter();
   const { colors: tc } = useTheme();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const insets = useSafeAreaInsets();
   const [preferences, setPreferences] = useState<TravelPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,10 +47,10 @@ export default function BudgetPreferencesScreen() {
   const [budgetPriority, setBudgetPriority] = useState<BudgetPriority>('balanced');
 
   const fetchPreferences = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     try {
-      const { data } = await preferencesService.getPreferences(user.id);
+      const { data } = await preferencesService.getPreferences(profile.id);
       if (data) {
         setPreferences(data);
         setBudgetAmount(data.defaultBudgetAmount);
@@ -63,7 +63,7 @@ export default function BudgetPreferencesScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [profile?.id]);
 
   useEffect(() => {
     fetchPreferences();
@@ -75,14 +75,14 @@ export default function BudgetPreferencesScreen() {
   };
 
   const handleSave = async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     setIsSaving(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     try {
       await preferencesService.updateBudgetPreferences(
-        user.id,
+        profile.id,
         budgetAmount,
         currency,
         spendingStyle,
@@ -118,29 +118,29 @@ export default function BudgetPreferencesScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <StatusBar style="dark" />
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: tc.bgPrimary }]}>
+        <StatusBar style="auto" />
+        <ActivityIndicator size="large" color={tc.primary} />
       </View>
     );
   }
   
   return (
-    <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.bgPrimary }]}>
+      <StatusBar style="auto" />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Budget & Spending</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Budget & Spending</Text>
         <TouchableOpacity 
           onPress={handleSave} 
-          style={[styles.saveButton, !hasChanges() && styles.saveButtonDisabled]}
+          style={[styles.saveButton, { backgroundColor: hasChanges() ? tc.primary : tc.borderSubtle }]}
           disabled={!hasChanges() || isSaving}
         >
-          <Text style={[styles.saveButtonText, !hasChanges() && styles.saveButtonTextDisabled]}>
+          <Text style={[styles.saveButtonText, { color: hasChanges() ? '#FFFFFF' : tc.textTertiary }]}>
             {isSaving ? 'Saving...' : 'Save'}
           </Text>
         </TouchableOpacity>
@@ -153,33 +153,34 @@ export default function BudgetPreferencesScreen() {
       >
         {/* Budget Amount */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Default trip budget</Text>
-          <Text style={styles.sectionSubtitle}>Your typical budget per trip</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Default trip budget</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Your typical budget per trip</Text>
           
-          <View style={styles.budgetInputContainer}>
-            <Text style={styles.currencySymbol}>{getCurrencySymbol()}</Text>
+          <View style={[styles.budgetInputContainer, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+            <Text style={[styles.currencySymbol, { color: tc.primary }]}>{getCurrencySymbol()}</Text>
             <TextInput
-              style={styles.budgetInput}
+              style={[styles.budgetInput, { color: tc.textPrimary }]}
               value={budgetAmount.toLocaleString()}
               onChangeText={handleAmountChange}
               keyboardType="numeric"
               placeholder="3,000"
-              placeholderTextColor={colors.gray400}
+              placeholderTextColor={tc.textTertiary}
             />
           </View>
         </View>
 
         {/* Currency */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferred currency</Text>
-          <Text style={styles.sectionSubtitle}>Select your default currency for budgeting</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Preferred currency</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Select your default currency for budgeting</Text>
           <View style={styles.currencyGrid}>
             {PREFERENCE_OPTIONS.currencies.map(curr => (
               <TouchableOpacity
                 key={curr.code}
                 style={[
                   styles.currencyCard,
-                  currency === curr.code && styles.currencyCardSelected,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  currency === curr.code && { backgroundColor: `${tc.primary}15`, borderColor: tc.primary },
                 ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -188,13 +189,15 @@ export default function BudgetPreferencesScreen() {
               >
                 <Text style={[
                   styles.currencySymbolCard,
-                  currency === curr.code && styles.currencySymbolCardSelected,
+                  { color: tc.textPrimary },
+                  currency === curr.code && { color: tc.primary },
                 ]}>
                   {curr.symbol}
                 </Text>
                 <Text style={[
                   styles.currencyCode,
-                  currency === curr.code && styles.currencyCodeSelected,
+                  { color: tc.textSecondary },
+                  currency === curr.code && { color: tc.primary },
                 ]}>
                   {curr.code}
                 </Text>
@@ -205,15 +208,16 @@ export default function BudgetPreferencesScreen() {
 
         {/* Spending Style */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Spending style</Text>
-          <Text style={styles.sectionSubtitle}>How do you prefer to spend on trips?</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Spending style</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>How do you prefer to spend on trips?</Text>
           <View style={styles.optionsContainer}>
             {PREFERENCE_OPTIONS.spendingStyles.map(option => (
               <TouchableOpacity
                 key={option.id}
                 style={[
                   styles.optionCard,
-                  spendingStyle === option.id && styles.optionCardSelected,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  spendingStyle === option.id && { backgroundColor: `${tc.primary}10`, borderColor: tc.primary },
                 ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -224,14 +228,15 @@ export default function BudgetPreferencesScreen() {
                 <View style={styles.optionContent}>
                   <Text style={[
                     styles.optionLabel,
-                    spendingStyle === option.id && styles.optionLabelSelected,
+                    { color: tc.textPrimary },
+                    spendingStyle === option.id && { color: tc.primary },
                   ]}>
                     {option.label}
                   </Text>
-                  <Text style={styles.optionDescription}>{option.description}</Text>
+                  <Text style={[styles.optionDescription, { color: tc.textSecondary }]}>{option.description}</Text>
                 </View>
                 {spendingStyle === option.id && (
-                  <TickCircle size={20} color={colors.primary} variant="Bold" />
+                  <TickCircle size={20} color={tc.primary} variant="Bold" />
                 )}
               </TouchableOpacity>
             ))}
@@ -240,15 +245,16 @@ export default function BudgetPreferencesScreen() {
 
         {/* Budget Priority */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Where to prioritize spending?</Text>
-          <Text style={styles.sectionSubtitle}>What matters most to you on a trip?</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Where to prioritize spending?</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>What matters most to you on a trip?</Text>
           <View style={styles.optionsContainer}>
             {PREFERENCE_OPTIONS.budgetPriorities.map(option => (
               <TouchableOpacity
                 key={option.id}
                 style={[
                   styles.priorityCard,
-                  budgetPriority === option.id && styles.priorityCardSelected,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  budgetPriority === option.id && { backgroundColor: `${tc.primary}10`, borderColor: tc.primary },
                 ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -258,14 +264,15 @@ export default function BudgetPreferencesScreen() {
                 <View style={styles.priorityContent}>
                   <Text style={[
                     styles.priorityLabel,
-                    budgetPriority === option.id && styles.priorityLabelSelected,
+                    { color: tc.textPrimary },
+                    budgetPriority === option.id && { color: tc.primary },
                   ]}>
                     {option.label}
                   </Text>
-                  <Text style={styles.priorityDescription}>{option.description}</Text>
+                  <Text style={[styles.priorityDescription, { color: tc.textSecondary }]}>{option.description}</Text>
                 </View>
                 {budgetPriority === option.id && (
-                  <TickCircle size={20} color={colors.primary} variant="Bold" />
+                  <TickCircle size={20} color={tc.primary} variant="Bold" />
                 )}
               </TouchableOpacity>
             ))}

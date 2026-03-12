@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedScrollHandler, useSharedValue, useAnimatedStyle, interpolate, Extrapolate } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, More, Calendar, User, Airplane, Building, Car, Location, CalendarEdit, Bag2, Book, ShieldTick, InfoCircle, SecuritySafe, DollarCircle } from 'iconsax-react-native';
+import { ArrowLeft, More, Calendar, User, Airplane, Building, Car, Location, CalendarEdit, Bag2, Book, ShieldTick, InfoCircle, SecuritySafe, DollarCircle, LanguageSquare, DocumentText } from 'iconsax-react-native';
 import { spacing, typography, borderRadius, colors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
@@ -13,6 +13,7 @@ import { BookingPassBottomSheet } from '@/features/trips/components/BookingPassB
 import InviteTravelersBottomSheet from '@/features/trips/components/InviteTravelersBottomSheet';
 import CircleButton from '@/components/atoms/CircleButton/CircleButton';
 import { useToast } from '@/contexts/ToastContext';
+import { Skeleton } from '@/components/common/SkeletonLoader';
 
 const { width } = Dimensions.get('window');
 const IMAGE_HEIGHT = width * 1.2;
@@ -25,22 +26,136 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+function TripDetailSkeleton({ isDark, colors: c, insets, onBack }: { isDark: boolean; colors: any; insets: any; onBack: () => void }) {
+  return (
+    <View style={[styles.container, { backgroundColor: c.bgPrimary }]}>
+      {/* Hero Image Skeleton */}
+      <View style={[styles.heroContainer, { backgroundColor: c.bgSecondary }]}>
+        <Skeleton width="100%" height={IMAGE_HEIGHT} borderRadius={0} />
+      </View>
+
+      {/* Back Button */}
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+        <CircleButton onPress={onBack} icon={<ArrowLeft size={20} color={c.textPrimary} />} />
+        <View style={styles.spacer} />
+      </View>
+
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View style={[styles.content, { backgroundColor: c.bgPrimary }]}>
+          {/* Date Card Skeleton */}
+          <View style={[styles.dateCard, { backgroundColor: c.bgCard, borderColor: c.borderSubtle }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
+              <Skeleton width={20} height={20} borderRadius={6} />
+              <Skeleton width="60%" height={14} />
+            </View>
+            <Skeleton width={70} height={28} borderRadius={12} />
+          </View>
+
+          {/* Stats Section Skeleton */}
+          <View style={[styles.statsSection, { backgroundColor: c.bgCard, borderColor: c.borderSubtle }]}>
+            {[0, 1, 2].map(i => (
+              <React.Fragment key={i}>
+                <View style={styles.statItem}>
+                  <Skeleton width={32} height={32} borderRadius={16} style={{ marginBottom: spacing.xs }} />
+                  <Skeleton width={50} height={10} style={{ marginBottom: spacing.xs }} />
+                  <Skeleton width={40} height={14} />
+                </View>
+                {i < 2 && <View style={[styles.statDivider, { backgroundColor: c.borderSubtle }]} />}
+              </React.Fragment>
+            ))}
+          </View>
+
+          {/* Trip Hub Skeleton */}
+          <View style={[styles.section, { backgroundColor: c.bgCard, borderColor: c.borderSubtle }]}>
+            <Skeleton width={80} height={20} borderRadius={6} style={{ marginBottom: spacing.md }} />
+            
+            {/* Wide card skeleton */}
+            <View style={[styles.hubListCard, { borderColor: c.borderSubtle }]}>
+              <Skeleton width={44} height={44} borderRadius={16} />
+              <View style={{ flex: 1, marginLeft: spacing.md }}>
+                <Skeleton width="50%" height={14} style={{ marginBottom: spacing.xs }} />
+                <Skeleton width="70%" height={12} />
+              </View>
+            </View>
+
+            {/* Grid skeleton */}
+            <View style={[styles.hubGridContainer, { marginTop: spacing.md }]}>
+              <View style={[styles.hubSquareCard, { borderColor: c.borderSubtle }]}>
+                <Skeleton width={44} height={44} borderRadius={16} style={{ marginBottom: spacing.sm }} />
+                <Skeleton width="60%" height={12} />
+              </View>
+              <View style={[styles.hubSquareCard, { borderColor: c.borderSubtle }]}>
+                <Skeleton width={44} height={44} borderRadius={16} style={{ marginBottom: spacing.sm }} />
+                <Skeleton width="60%" height={12} />
+              </View>
+            </View>
+
+            {/* Wide card skeleton */}
+            <View style={[styles.hubListCard, { borderColor: c.borderSubtle, marginTop: spacing.md }]}>
+              <Skeleton width={44} height={44} borderRadius={16} />
+              <View style={{ flex: 1, marginLeft: spacing.md }}>
+                <Skeleton width="55%" height={14} style={{ marginBottom: spacing.xs }} />
+                <Skeleton width="65%" height={12} />
+              </View>
+            </View>
+
+            {/* Grid skeleton */}
+            <View style={[styles.hubGridContainer, { marginTop: spacing.md }]}>
+              <View style={[styles.hubSquareCard, { borderColor: c.borderSubtle }]}>
+                <Skeleton width={44} height={44} borderRadius={16} style={{ marginBottom: spacing.sm }} />
+                <Skeleton width="70%" height={12} />
+              </View>
+              <View style={[styles.hubSquareCard, { borderColor: c.borderSubtle }]}>
+                <Skeleton width={44} height={44} borderRadius={16} style={{ marginBottom: spacing.sm }} />
+                <Skeleton width="60%" height={12} />
+              </View>
+            </View>
+
+            {/* Wide card skeleton */}
+            <View style={[styles.hubListCard, { borderColor: c.borderSubtle, marginTop: spacing.md }]}>
+              <Skeleton width={44} height={44} borderRadius={16} />
+              <View style={{ flex: 1, marginLeft: spacing.md }}>
+                <Skeleton width="40%" height={14} style={{ marginBottom: spacing.xs }} />
+                <Skeleton width="60%" height={12} />
+              </View>
+            </View>
+          </View>
+
+          {/* Travelers Section Skeleton */}
+          <View style={[styles.section, { backgroundColor: c.bgCard, borderColor: c.borderSubtle }]}>
+            <Skeleton width={100} height={20} borderRadius={6} style={{ marginBottom: spacing.md }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md }}>
+              <Skeleton width={44} height={44} borderRadius={22} />
+              <View style={{ flex: 1, marginLeft: spacing.md }}>
+                <Skeleton width="40%" height={14} style={{ marginBottom: spacing.xs }} />
+                <Skeleton width="55%" height={12} />
+              </View>
+            </View>
+          </View>
+
+          <View style={{ height: spacing.xl * 2 }} />
+        </View>
+      </Animated.ScrollView>
+    </View>
+  );
+}
+
 export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { showSuccess } = useToast();
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
+  const isLoading = useTripStore(state => state.isLoading);
   const [selectedBooking, setSelectedBooking] = useState<{ id: string; type: BookingType; details: any; number: string; status: string } | null>(null);
   const [inviteSheetVisible, setInviteSheetVisible] = useState(false);
   const scrollOffset = useSharedValue(0);
 
   if (!trip) {
-    return (
-      <View style={styles.container}>
-        <Text>Trip not found</Text>
-      </View>
-    );
+    return <TripDetailSkeleton isDark={isDark} colors={colors} insets={insets} onBack={() => router.back()} />;
   }
 
   const flights = trip.bookings.filter(b => b.type === BookingType.FLIGHT);
@@ -280,7 +395,7 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
             {/* 1. Trip Planner - Wide Card */}
             <View style={styles.hubListContainer}>
               <TouchableOpacity 
-                style={[styles.hubListCard, { borderColor: `${colors.primary}30` }]} 
+                style={[styles.hubListCard, { borderColor: colors.borderSubtle }]} 
                 activeOpacity={0.7}
                 onPress={() => router.push(`/planner/${tripId}`)}
               >
@@ -297,7 +412,7 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
             {/* 2. Packing + Journal - Square Grid */}
             <View style={styles.hubGridContainer}>
               <TouchableOpacity 
-                style={[styles.hubSquareCard, { borderColor: `${colors.warning}30` }]} 
+                style={[styles.hubSquareCard, { borderColor: colors.borderSubtle }]} 
                 activeOpacity={0.7}
                 onPress={() => router.push(`/packing/${tripId}`)}
               >
@@ -308,7 +423,7 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[styles.hubSquareCard, { borderColor: `${colors.info}30` }]} 
+                style={[styles.hubSquareCard, { borderColor: colors.borderSubtle }]} 
                 activeOpacity={0.7}
                 onPress={() => router.push(`/journal/${tripId}`)}
               >
@@ -322,7 +437,7 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
             {/* 3. Expense Tracker - Wide Card */}
             <View style={styles.hubListContainer}>
               <TouchableOpacity 
-                style={[styles.hubListCard, { borderColor: `${colors.success}30` }]} 
+                style={[styles.hubListCard, { borderColor: colors.borderSubtle }]} 
                 activeOpacity={0.7}
                 onPress={() => router.push(`/expenses/${tripId}`)}
               >
@@ -339,41 +454,66 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
             {/* 4. Compensation + Do's & Don'ts - Square Grid */}
             <View style={styles.hubGridContainer}>
               <TouchableOpacity
-                style={[styles.hubSquareCard, { borderColor: `#8B5CF630` }]}
+                style={[styles.hubSquareCard, { borderColor: colors.borderSubtle }]}
                 activeOpacity={0.7}
                 onPress={() => router.push(`/compensation/${tripId}`)}
               >
-                <View style={[styles.hubSquareIcon, { backgroundColor: `#8B5CF615` }]}>
-                  <ShieldTick size={32} color="#8B5CF6" variant="Bold" />
+                <View style={[styles.hubSquareIcon, { backgroundColor: `${colors.purple}15` }]}>
+                  <ShieldTick size={32} color={colors.purple} variant="Bold" />
                 </View>
                 <Text style={[styles.hubSquareTitle, { color: colors.textPrimary }]}>Compensation</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
-                style={[styles.hubSquareCard, { borderColor: `#10B98130` }]}
+                style={[styles.hubSquareCard, { borderColor: colors.borderSubtle }]}
                 activeOpacity={0.7}
                 onPress={() => router.push(`/dos-donts/${tripId}`)}
               >
-                <View style={[styles.hubSquareIcon, { backgroundColor: `#10B98115` }]}>
-                  <InfoCircle size={32} color="#10B981" variant="Bold" />
+                <View style={[styles.hubSquareIcon, { backgroundColor: colors.successBg }]}>
+                  <InfoCircle size={32} color={colors.success} variant="Bold" />
                 </View>
                 <Text style={[styles.hubSquareTitle, { color: colors.textPrimary }]}>Do's & Don'ts</Text>
               </TouchableOpacity>
             </View>
             
-            {/* 5. Safety - Wide Card */}
-            <View style={styles.hubListContainer}>
+            {/* 5. Safety + Language - Square Grid */}
+            <View style={styles.hubGridContainer}>
               <TouchableOpacity
-                style={[styles.hubListCard, { borderColor: `#EF444430` }]}
+                style={[styles.hubSquareCard, { borderColor: colors.borderSubtle }]}
                 activeOpacity={0.7}
                 onPress={() => router.push(`/safety/${tripId}`)}
               >
-                <View style={[styles.hubListIcon, { backgroundColor: `#EF444415` }]}>
-                  <SecuritySafe size={28} color="#EF4444" variant="Bold" />
+                <View style={[styles.hubSquareIcon, { backgroundColor: colors.errorBg }]}>
+                  <SecuritySafe size={32} color={colors.error} variant="Bold" />
+                </View>
+                <Text style={[styles.hubSquareTitle, { color: colors.textPrimary }]}>Safety</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.hubSquareCard, { borderColor: colors.borderSubtle }]}
+                activeOpacity={0.7}
+                onPress={() => router.push(`/language/${tripId}`)}
+              >
+                <View style={[styles.hubSquareIcon, { backgroundColor: `${colors.info}15` }]}>
+                  <LanguageSquare size={32} color={colors.info} variant="Bold" />
+                </View>
+                <Text style={[styles.hubSquareTitle, { color: colors.textPrimary }]}>Language</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {/* 6. Documents - Wide Card */}
+            <View style={styles.hubListContainer}>
+              <TouchableOpacity 
+                style={[styles.hubListCard, { borderColor: colors.borderSubtle }]} 
+                activeOpacity={0.7}
+                onPress={() => router.push(`/documents/${tripId}`)}
+              >
+                <View style={[styles.hubListIcon, { backgroundColor: `${colors.orange}15` }]}>
+                  <DocumentText size={28} color={colors.orange} variant="Bold" />
                 </View>
                 <View style={styles.hubListContent}>
-                  <Text style={[styles.hubListTitle, { color: colors.textPrimary }]}>Safety</Text>
-                  <Text style={[styles.hubListDescription, { color: colors.textSecondary }]}>Emergency contacts & alerts</Text>
+                  <Text style={[styles.hubListTitle, { color: colors.textPrimary }]}>Documents</Text>
+                  <Text style={[styles.hubListDescription, { color: colors.textSecondary }]}>Passport, visa & travel docs</Text>
                 </View>
               </TouchableOpacity>
             </View>
@@ -448,7 +588,7 @@ const styles = StyleSheet.create({
   heroImage: { width: '100%', height: '100%' },
   gradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 250 },
   heroOverlay: { position: 'absolute', bottom: spacing.xl * 4 + spacing.sm, left: 0, right: 0, padding: spacing.lg },
-  stateBadge: { position: 'absolute', bottom: spacing.xl * 4 + spacing.sm + spacing.xl * 2 + spacing.lg, left: spacing.lg, backgroundColor: '#F24B6D', paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: 8 },
+  stateBadge: { position: 'absolute', bottom: spacing.xl * 4 + spacing.sm + spacing.xl * 3 + spacing.lg + spacing.md, left: spacing.lg, backgroundColor: '#F24B6D', paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: 8 },
   stateBadgeText: { fontSize: 10, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5 },
   heroTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   heroTitle: { fontSize: typography.fontSize['2xl'], fontWeight: '700', color: '#FFFFFF', flex: 1 },
@@ -459,18 +599,18 @@ const styles = StyleSheet.create({
   spacer: { flex: 1 },
   scrollContent: { paddingTop: IMAGE_HEIGHT - 60 },
   content: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: spacing.lg },
-  dateCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: spacing.md, marginTop: -spacing.xl * 2, padding: spacing.md, borderRadius: 20, borderWidth: 1, borderColor: colors.borderSubtle, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
+  dateCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: spacing.md, marginTop: -spacing.xl * 2, padding: spacing.md, borderRadius: 16, borderWidth: 1, borderColor: colors.borderSubtle, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 },
   dateText: { fontSize: typography.fontSize.sm, fontWeight: '600', flex: 1 },
   durationBadge: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 12 },
   durationText: { fontSize: typography.fontSize.xs, fontWeight: '700', color: '#FFFFFF' },
-  statsSection: { flexDirection: 'row', marginHorizontal: spacing.md, marginTop: spacing.md, padding: spacing.lg, borderRadius: 20, borderWidth: 1, borderColor: colors.borderSubtle, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  statsSection: { flexDirection: 'row', marginHorizontal: spacing.md, marginTop: spacing.md, padding: spacing.lg, borderRadius: 16, borderWidth: 1, borderColor: colors.borderSubtle, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
   statItem: { flex: 1, alignItems: 'center' },
   statIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
   statLabel: { fontSize: typography.fontSize.xs, fontWeight: '500', marginBottom: spacing.xs },
   statValue: { fontSize: typography.fontSize.sm, fontWeight: '700' },
   statDivider: { width: 1 },
-  section: { marginHorizontal: spacing.md, marginTop: spacing.md, padding: spacing.lg, borderRadius: 24, borderWidth: 1, borderColor: colors.borderSubtle, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  section: { marginHorizontal: spacing.md, marginTop: spacing.md, padding: spacing.lg, borderRadius: 16, borderWidth: 1, borderColor: colors.borderSubtle, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
   sectionTitle: { fontSize: typography.fontSize.lg, fontWeight: '700', marginBottom: spacing.md },
   bookingCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1 },
@@ -489,14 +629,14 @@ const styles = StyleSheet.create({
   detailValue: { fontSize: typography.fontSize.sm, fontWeight: '500' },
   // Trip Hub Styles
   hubListContainer: { gap: spacing.md, marginTop: spacing.md },
-  hubListCard: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: 20, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
-  hubListIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
+  hubListCard: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: 16, borderWidth: 1, borderColor: colors.borderSubtle, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
+  hubListIcon: { width: 44, height: 44, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
   hubListContent: { flex: 1 },
   hubListTitle: { fontSize: typography.fontSize.base, fontWeight: '700', marginBottom: spacing.xs },
   hubListDescription: { fontSize: typography.fontSize.sm },
-  hubGridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: spacing.md, gap: spacing.md },
-  hubSquareCard: { width: (width - spacing.lg * 2 - spacing.md * 3) / 2, padding: spacing.md, borderRadius: 20, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
-  hubSquareIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
+  hubGridContainer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.md, gap: spacing.md },
+  hubSquareCard: { flex: 1, padding: spacing.md, borderRadius: 16, borderWidth: 1, borderColor: colors.borderSubtle, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
+  hubSquareIcon: { width: 44, height: 44, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
   hubSquareTitle: { fontSize: typography.fontSize.sm, fontWeight: '700' },
   inviteButtonContainer: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full },
   inviteButton: { fontSize: typography.fontSize.sm, fontWeight: '600' },

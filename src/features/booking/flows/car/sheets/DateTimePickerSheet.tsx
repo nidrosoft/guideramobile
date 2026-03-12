@@ -1,7 +1,8 @@
 /**
  * DATE TIME PICKER SHEET
- * 
+ *
  * Combined date and time picker for car rental.
+ * Theme-aware for dark/light mode.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -16,7 +17,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CloseCircle, ArrowLeft, ArrowRight, TickCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 const TIME_SLOTS = [
   '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
@@ -47,6 +49,7 @@ export default function DateTimePickerSheet({
   title,
 }: DateTimePickerSheetProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [tempDate, setTempDate] = useState<Date | null>(selectedDate);
   const [tempTime, setTempTime] = useState(selectedTime);
@@ -67,13 +70,11 @@ export default function DateTimePickerSheet({
     const lastDay = new Date(year, month + 1, 0);
     const days: (Date | null)[] = [];
 
-    // Add padding for days before first of month
     const startPadding = firstDay.getDay();
     for (let i = 0; i < startPadding; i++) {
       days.push(null);
     }
 
-    // Add days of month
     for (let i = 1; i <= lastDay.getDate(); i++) {
       days.push(new Date(year, month, i));
     }
@@ -130,12 +131,12 @@ export default function DateTimePickerSheet({
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.overlay}>
-        <View style={[styles.container, { paddingBottom: insets.bottom + spacing.md }]}>
+        <View style={[styles.container, { backgroundColor: tc.bgElevated, paddingBottom: insets.bottom + spacing.md }]}>
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
+          <View style={[styles.header, { borderBottomColor: tc.borderSubtle }]}>
+            <Text style={[styles.title, { color: tc.textPrimary }]}>{title}</Text>
             <TouchableOpacity onPress={onClose}>
-              <CloseCircle size={28} color={colors.gray500} variant="Bold" />
+              <CloseCircle size={28} color={tc.textSecondary} variant="Bold" />
             </TouchableOpacity>
           </View>
 
@@ -150,9 +151,9 @@ export default function DateTimePickerSheet({
                     setCurrentMonth(prev);
                   }}
                 >
-                  <ArrowLeft size={24} color={colors.textPrimary} />
+                  <ArrowLeft size={24} color={tc.textPrimary} />
                 </TouchableOpacity>
-                <Text style={styles.monthText}>
+                <Text style={[styles.monthText, { color: tc.textPrimary }]}>
                   {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </Text>
                 <TouchableOpacity
@@ -162,95 +163,109 @@ export default function DateTimePickerSheet({
                     setCurrentMonth(next);
                   }}
                 >
-                  <ArrowRight size={24} color={colors.textPrimary} />
+                  <ArrowRight size={24} color={tc.textPrimary} />
                 </TouchableOpacity>
               </View>
 
               {/* Weekday Headers */}
               <View style={styles.weekdayRow}>
                 {WEEKDAYS.map((day) => (
-                  <Text key={day} style={styles.weekdayText}>{day}</Text>
+                  <Text key={day} style={[styles.weekdayText, { color: tc.textSecondary }]}>{day}</Text>
                 ))}
               </View>
 
               {/* Calendar Grid */}
               <View style={styles.calendarGrid}>
-                {days.map((date, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.dayCell,
-                      isDateSelected(date) && styles.dayCellSelected,
-                      isDateDisabled(date) && styles.dayCellDisabled,
-                    ]}
-                    onPress={() => date && !isDateDisabled(date) && handleDateSelect(date)}
-                    disabled={!date || isDateDisabled(date)}
-                  >
-                    {date && (
-                      <Text style={[
-                        styles.dayText,
-                        isDateSelected(date) && styles.dayTextSelected,
-                        isDateDisabled(date) && styles.dayTextDisabled,
-                      ]}>
-                        {date.getDate()}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                ))}
+                {days.map((date, index) => {
+                  const selected = isDateSelected(date);
+                  const disabled = isDateDisabled(date);
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.dayCell,
+                        selected && [styles.dayCellSelected, { backgroundColor: tc.primary }],
+                        disabled && styles.dayCellDisabled,
+                      ]}
+                      onPress={() => date && !disabled && handleDateSelect(date)}
+                      disabled={!date || disabled}
+                    >
+                      {date && (
+                        <Text style={[
+                          styles.dayText,
+                          { color: tc.textPrimary },
+                          selected && { color: '#FFFFFF' },
+                          disabled && { color: tc.textTertiary },
+                        ]}>
+                          {date.getDate()}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </>
           ) : (
             <>
               {/* Selected Date Display */}
-              <View style={styles.selectedDateContainer}>
-                <Text style={styles.selectedDateLabel}>Selected Date</Text>
-                <Text style={styles.selectedDateText}>
-                  {tempDate?.toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    month: 'long', 
-                    day: 'numeric' 
+              <View style={[styles.selectedDateContainer, { borderBottomColor: tc.borderSubtle }]}>
+                <Text style={[styles.selectedDateLabel, { color: tc.textSecondary }]}>Selected Date</Text>
+                <Text style={[styles.selectedDateText, { color: tc.textPrimary }]}>
+                  {tempDate?.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric'
                   })}
                 </Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.changeDateButton}
                   onPress={() => setShowTimePicker(false)}
                 >
-                  <Text style={styles.changeDateText}>Change Date</Text>
+                  <Text style={[styles.changeDateText, { color: tc.primary }]}>Change Date</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Time Picker */}
-              <Text style={styles.timeTitle}>Select Time</Text>
-              <ScrollView 
+              <Text style={[styles.timeTitle, { color: tc.textPrimary }]}>Select Time</Text>
+              <ScrollView
                 style={styles.timeScroll}
                 contentContainerStyle={styles.timeGrid}
                 showsVerticalScrollIndicator={false}
               >
-                {TIME_SLOTS.map((time) => (
-                  <TouchableOpacity
-                    key={time}
-                    style={[
-                      styles.timeSlot,
-                      tempTime === time && styles.timeSlotSelected,
-                    ]}
-                    onPress={() => handleTimeSelect(time)}
-                  >
-                    <Text style={[
-                      styles.timeSlotText,
-                      tempTime === time && styles.timeSlotTextSelected,
-                    ]}>
-                      {formatTime(time)}
-                    </Text>
-                    {tempTime === time && (
-                      <TickCircle size={16} color={colors.primary} variant="Bold" />
-                    )}
-                  </TouchableOpacity>
-                ))}
+                {TIME_SLOTS.map((time) => {
+                  const isActive = tempTime === time;
+                  return (
+                    <TouchableOpacity
+                      key={time}
+                      style={[
+                        styles.timeSlot,
+                        { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle },
+                        isActive && { backgroundColor: `${tc.primary}10`, borderColor: tc.primary },
+                      ]}
+                      onPress={() => handleTimeSelect(time)}
+                    >
+                      <Text style={[
+                        styles.timeSlotText,
+                        { color: tc.textPrimary },
+                        isActive && { color: tc.primary },
+                      ]}>
+                        {formatTime(time)}
+                      </Text>
+                      {isActive && (
+                        <TickCircle size={16} color={tc.primary} variant="Bold" />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
 
               {/* Confirm Button */}
               <TouchableOpacity
-                style={[styles.confirmButton, !tempDate && styles.confirmButtonDisabled]}
+                style={[
+                  styles.confirmButton,
+                  { backgroundColor: tc.primary },
+                  !tempDate && { backgroundColor: tc.textTertiary },
+                ]}
                 onPress={handleConfirm}
                 disabled={!tempDate}
               >
@@ -265,167 +280,49 @@ export default function DateTimePickerSheet({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  container: {
-    backgroundColor: colors.bgModal,
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
-    maxHeight: '85%',
-  },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  container: { borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, maxHeight: '85%' },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
   },
-  title: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-  },
+  title: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold },
   monthNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
   },
-  monthText: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  weekdayRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  weekdayText: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.textSecondary,
-  },
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: spacing.md,
-  },
+  monthText: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold },
+  weekdayRow: { flexDirection: 'row', paddingHorizontal: spacing.md, marginBottom: spacing.sm },
+  weekdayText: { flex: 1, textAlign: 'center', fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.md },
   dayCell: {
-    width: '14.28%',
-    aspectRatio: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 4,
+    width: '14.28%', aspectRatio: 1,
+    justifyContent: 'center', alignItems: 'center', padding: 4,
   },
-  dayCellSelected: {
-    backgroundColor: colors.primary,
-    borderRadius: 100,
-    width: 40,
-    height: 40,
-  },
-  dayCellDisabled: {
-    opacity: 0.3,
-  },
-  dayText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
-  },
-  dayTextSelected: {
-    color: colors.white,
-  },
-  dayTextDisabled: {
-    color: colors.gray400,
-  },
-  selectedDateContainer: {
-    alignItems: 'center',
-    paddingVertical: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
-  },
-  selectedDateLabel: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  selectedDateText: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  changeDateButton: {
-    marginTop: spacing.sm,
-  },
-  changeDateText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.primary,
-    fontWeight: typography.fontWeight.medium,
-  },
+  dayCellSelected: { borderRadius: 100, width: 40, height: 40 },
+  dayCellDisabled: { opacity: 0.3 },
+  dayText: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.medium },
+  selectedDateContainer: { alignItems: 'center', paddingVertical: spacing.lg, borderBottomWidth: 1 },
+  selectedDateLabel: { fontSize: typography.fontSize.sm, marginBottom: spacing.xs },
+  selectedDateText: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold },
+  changeDateButton: { marginTop: spacing.sm },
+  changeDateText: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium },
   timeTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm,
   },
-  timeScroll: {
-    maxHeight: 200,
-  },
-  timeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
-  },
+  timeScroll: { maxHeight: 200 },
+  timeGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.md, gap: spacing.sm },
   timeSlot: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.gray50,
-    borderWidth: 1,
-    borderColor: colors.gray200,
-    gap: spacing.xs,
-    minWidth: 100,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md, borderWidth: 1, gap: spacing.xs, minWidth: 100,
   },
-  timeSlotSelected: {
-    backgroundColor: `${colors.primary}10`,
-    borderColor: colors.primary,
-  },
-  timeSlotText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
-  },
-  timeSlotTextSelected: {
-    color: colors.primary,
-  },
+  timeSlotText: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium },
   confirmButton: {
-    backgroundColor: colors.primary,
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.lg,
-    alignItems: 'center',
+    marginHorizontal: spacing.lg, marginTop: spacing.md,
+    paddingVertical: spacing.md, borderRadius: borderRadius.lg, alignItems: 'center',
   },
-  confirmButtonDisabled: {
-    backgroundColor: colors.gray300,
-  },
-  confirmButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
-  },
+  confirmButtonText: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold, color: '#FFFFFF' },
 });

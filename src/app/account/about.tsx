@@ -52,7 +52,7 @@ const MILESTONES = [
 export default function AboutScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -66,14 +66,14 @@ export default function AboutScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>About Guidera</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>About Guidera</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -84,74 +84,74 @@ export default function AboutScreen() {
       >
         {/* Hero Section */}
         <View style={styles.heroSection}>
-          <View style={styles.logoContainer}>
-            <Airplane size={48} color={colors.primary} variant="Bold" />
+          <View style={[styles.logoContainer, { backgroundColor: tc.primary + '15' }]}>
+            <Airplane size={48} color={tc.primary} variant="Bold" />
           </View>
-          <Text style={styles.appName}>Guidera</Text>
-          <Text style={styles.tagline}>Your Intelligent Travel Companion</Text>
-          <Text style={styles.version}>Version {APP_VERSION} ({BUILD_NUMBER})</Text>
+          <Text style={[styles.appName, { color: tc.textPrimary }]}>Guidera</Text>
+          <Text style={[styles.tagline, { color: tc.textSecondary }]}>Your Intelligent Travel Companion</Text>
+          <Text style={[styles.version, { color: tc.textTertiary }]}>Version {APP_VERSION} ({BUILD_NUMBER})</Text>
         </View>
 
         {/* The Story */}
         <View style={styles.storySection}>
-          <Text style={styles.sectionTitle}>Our Story</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Our Story</Text>
           
-          <Text style={styles.storyText}>
+          <Text style={[styles.storyText, { color: tc.textSecondary }]}>
             Eight years ago, I packed my bags and moved from West Africa to the United States. 
             What I thought would be a simple transition turned into a profound lesson in cultural 
             adaptation. Every city had its unwritten rules, every neighborhood its hidden gems 
             that no guidebook mentioned.
           </Text>
           
-          <Text style={styles.storyText}>
+          <Text style={[styles.storyText, { color: tc.textSecondary }]}>
             As a product engineer who became a digital nomad, I traveled extensively—experiencing 
             the same challenges in Tokyo, Barcelona, Cape Town, and beyond. I'd arrive in a new 
             city and spend hours researching: What's the local etiquette? Where do locals actually 
             eat? Is this neighborhood safe at night? How do I navigate public transit?
           </Text>
           
-          <Text style={styles.storyText}>
+          <Text style={[styles.storyText, { color: tc.textSecondary }]}>
             Existing travel apps felt like digital brochures—great for booking flights and hotels, 
             but missing the soul of travel. They couldn't tell me that in Japan, you don't tip. 
             They couldn't warn me about the pickpocket hotspots in Barcelona. They couldn't 
             connect me with a local who'd show me the real city.
           </Text>
           
-          <Text style={styles.storyHighlight}>
+          <Text style={[styles.storyHighlight, { color: tc.primary }]}>
             That's when Guidera was born.
           </Text>
           
-          <Text style={styles.storyText}>
+          <Text style={[styles.storyText, { color: tc.textSecondary }]}>
             We built Guidera to be the travel companion we wished we had—one that combines 
             AI-powered personalization with authentic local knowledge. An app that doesn't just 
             help you book a trip, but helps you truly experience a destination.
           </Text>
           
-          <Text style={styles.storyText}>
+          <Text style={[styles.storyText, { color: tc.textSecondary }]}>
             Our community of verified travelers shares real insights, warns about scams, 
             recommends hidden gems, and sometimes even meets up for coffee. Because the best 
             travel experiences come from human connections, not algorithms alone.
           </Text>
           
-          <Text style={styles.storySignature}>
+          <Text style={[styles.storySignature, { color: tc.textPrimary }]}>
             — The Guidera Team
           </Text>
         </View>
 
         {/* Core Values */}
         <View style={styles.valuesSection}>
-          <Text style={styles.sectionTitle}>What We Believe</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>What We Believe</Text>
           
           {CORE_VALUES.map((value, index) => {
             const Icon = value.icon;
             return (
-              <View key={index} style={styles.valueCard}>
-                <View style={styles.valueIcon}>
-                  <Icon size={24} color={colors.primary} variant="Bold" />
+              <View key={index} style={[styles.valueCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+                <View style={[styles.valueIcon, { backgroundColor: tc.primary + '10' }]}>
+                  <Icon size={24} color={tc.primary} variant="Bold" />
                 </View>
                 <View style={styles.valueContent}>
-                  <Text style={styles.valueTitle}>{value.title}</Text>
-                  <Text style={styles.valueDescription}>{value.description}</Text>
+                  <Text style={[styles.valueTitle, { color: tc.textPrimary }]}>{value.title}</Text>
+                  <Text style={[styles.valueDescription, { color: tc.textSecondary }]}>{value.description}</Text>
                 </View>
               </View>
             );
@@ -160,17 +160,17 @@ export default function AboutScreen() {
 
         {/* Timeline */}
         <View style={styles.timelineSection}>
-          <Text style={styles.sectionTitle}>Our Journey</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Our Journey</Text>
           
           <View style={styles.timeline}>
             {MILESTONES.map((milestone, index) => (
               <View key={index} style={styles.timelineItem}>
-                <View style={styles.timelineDot} />
-                {index < MILESTONES.length - 1 && <View style={styles.timelineLine} />}
+                <View style={[styles.timelineDot, { backgroundColor: tc.primary }]} />
+                {index < MILESTONES.length - 1 && <View style={[styles.timelineLine, { backgroundColor: tc.borderSubtle }]} />}
                 <View style={styles.timelineContent}>
-                  <Text style={styles.timelineYear}>{milestone.year}</Text>
-                  <Text style={styles.timelineTitle}>{milestone.title}</Text>
-                  <Text style={styles.timelineDescription}>{milestone.description}</Text>
+                  <Text style={[styles.timelineYear, { color: tc.primary }]}>{milestone.year}</Text>
+                  <Text style={[styles.timelineTitle, { color: tc.textPrimary }]}>{milestone.title}</Text>
+                  <Text style={[styles.timelineDescription, { color: tc.textSecondary }]}>{milestone.description}</Text>
                 </View>
               </View>
             ))}
@@ -178,10 +178,10 @@ export default function AboutScreen() {
         </View>
 
         {/* Mission Statement */}
-        <View style={styles.missionSection}>
-          <Star1 size={32} color={colors.primary} variant="Bold" />
-          <Text style={styles.missionTitle}>Our Mission</Text>
-          <Text style={styles.missionText}>
+        <View style={[styles.missionSection, { backgroundColor: tc.primary + '10' }]}>
+          <Star1 size={32} color={tc.primary} variant="Bold" />
+          <Text style={[styles.missionTitle, { color: tc.textPrimary }]}>Our Mission</Text>
+          <Text style={[styles.missionText, { color: tc.textSecondary }]}>
             To empower every traveler to explore the world with confidence, cultural awareness, 
             and authentic connections—making travel more accessible, safe, and meaningful for everyone.
           </Text>
@@ -189,33 +189,33 @@ export default function AboutScreen() {
 
         {/* Connect Section */}
         <View style={styles.connectSection}>
-          <Text style={styles.connectTitle}>Connect With Us</Text>
+          <Text style={[styles.connectTitle, { color: tc.textPrimary }]}>Connect With Us</Text>
           
           <View style={styles.socialLinks}>
             <TouchableOpacity
-              style={styles.socialButton}
+              style={[styles.socialButton, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
               onPress={() => handleOpenLink('https://guidera.app')}
               activeOpacity={0.7}
             >
-              <Global size={20} color={colors.primary} variant="Bold" />
-              <Text style={styles.socialText}>guidera.app</Text>
+              <Global size={20} color={tc.primary} variant="Bold" />
+              <Text style={[styles.socialText, { color: tc.primary }]}>guidera.app</Text>
             </TouchableOpacity>
             
             <TouchableOpacity
-              style={styles.socialButton}
+              style={[styles.socialButton, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
               onPress={() => handleOpenLink('https://instagram.com/guideraapp')}
               activeOpacity={0.7}
             >
-              <Instagram size={20} color={colors.primary} variant="Bold" />
-              <Text style={styles.socialText}>@guideraapp</Text>
+              <Instagram size={20} color={tc.primary} variant="Bold" />
+              <Text style={[styles.socialText, { color: tc.primary }]}>@guideraapp</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Made with ❤️ for travelers worldwide</Text>
-          <Text style={styles.copyright}>© {new Date().getFullYear()} Guidera. All rights reserved.</Text>
+        <View style={[styles.footer, { borderTopColor: tc.borderSubtle }]}>
+          <Text style={[styles.footerText, { color: tc.textSecondary }]}>Made with ❤️ for travelers worldwide</Text>
+          <Text style={[styles.copyright, { color: tc.textTertiary }]}>© {new Date().getFullYear()} Guidera. All rights reserved.</Text>
         </View>
       </ScrollView>
     </View>

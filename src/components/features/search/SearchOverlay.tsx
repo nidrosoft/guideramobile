@@ -36,7 +36,7 @@ interface GuestCounts {
 interface SearchOverlayProps {
   visible: boolean;
   query: string;
-  onSelectSearch: (term: string, dates?: { start?: Date; end?: Date }) => void;
+  onSelectSearch: (term: string, dates?: { start?: Date; end?: Date }, guests?: { adults: number; children: number; infants: number }) => void;
   onClose: () => void;
 }
 
@@ -131,7 +131,7 @@ export default function SearchOverlay({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (destination) {
       searchService.addRecentSearch(destination);
-      onSelectSearch(destination, { start: startDate || undefined, end: endDate || undefined });
+      onSelectSearch(destination, { start: startDate || undefined, end: endDate || undefined }, { adults: guests.adults, children: guests.children, infants: guests.infants });
     }
   };
 

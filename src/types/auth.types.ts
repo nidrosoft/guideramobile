@@ -29,6 +29,9 @@ export interface Profile {
   ethnicity?: string;
   preferences?: UserPreferences;
   travel_preferences?: TravelPreferences;
+  travel_style?: string;
+  languages?: string[];
+  visibility_settings?: ProfileVisibility;
   emergency_contact?: EmergencyContact;
   membership_type?: 'free' | 'premium' | 'business';
   membership_expires_at?: string;
@@ -39,6 +42,13 @@ export interface Profile {
   verified_at?: string;
   privacy_settings?: PrivacySettings;
   security_settings?: SecuritySettings;
+  // Packing profile fields
+  skin_tone?: string;
+  hair_type?: string;
+  wears_contacts?: boolean;
+  wears_glasses?: boolean;
+  wears_hearing_aid?: boolean;
+  
   onboarding_completed: boolean;
   onboarding_step: number;
   stats?: UserStats;
@@ -106,6 +116,18 @@ export interface UserStats {
   countries_visited: number;
   cities_explored: number;
   reviews_written: number;
+  communities_joined?: number;
+}
+
+export interface ProfileVisibility {
+  show_bio: boolean;
+  show_location: boolean;
+  show_phone: boolean;
+  show_dob: boolean;
+  show_languages: boolean;
+  show_travel_style: boolean;
+  show_stats: boolean;
+  show_member_since: boolean;
 }
 
 export interface SignUpWithEmailParams {

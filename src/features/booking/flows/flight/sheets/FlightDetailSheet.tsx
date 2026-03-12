@@ -33,6 +33,7 @@ import {
   ArrowRight2,
 } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -69,6 +70,7 @@ export default function FlightDetailSheet({
   flightInfo,
 }: FlightDetailSheetProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const [logoError, setLogoError] = useState(false);
 
   const formatTime = (date: Date | string | undefined) => {
@@ -123,7 +125,7 @@ export default function FlightDetailSheet({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+      <View style={[styles.container, { paddingBottom: insets.bottom, backgroundColor: tc.background }]}>
         {/* Premium Gradient Header */}
         <LinearGradient
           colors={['#1a1a2e', '#16213e', '#0f3460']}
@@ -138,7 +140,7 @@ export default function FlightDetailSheet({
 
           {/* Airline Logo & Info */}
           <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.airlineHeader}>
-            <View style={styles.airlineLogoContainer}>
+            <View style={[styles.airlineLogoContainer, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
               {!logoError && flightInfo.airlineCode ? (
                 <Image
                   source={{ uri: getAirlineLogoUrl(flightInfo.airlineCode) }}
@@ -213,8 +215,8 @@ export default function FlightDetailSheet({
         >
 
           {/* Detailed Timeline Card */}
-          <Animated.View entering={FadeInDown.delay(400).duration(400)} style={styles.timelineCard}>
-            <Text style={styles.cardTitle}>Flight Itinerary</Text>
+          <Animated.View entering={FadeInDown.delay(400).duration(400)} style={[styles.timelineCard, { backgroundColor: tc.bgElevated }]}>
+            <Text style={[styles.cardTitle, { color: tc.textPrimary }]}>Flight Itinerary</Text>
             
             {/* Departure */}
             <View style={styles.timelineRow}>
@@ -226,33 +228,33 @@ export default function FlightDetailSheet({
               </View>
               <View style={styles.timelineRightColumn}>
                 <View style={styles.timelineHeader}>
-                  <Text style={styles.timelineTime}>{formatTime(flightInfo.departureTime)}</Text>
-                  <View style={styles.departureBadge}>
-                    <Text style={styles.departureBadgeText}>Departure</Text>
+                  <Text style={[styles.timelineTime, { color: tc.textPrimary }]}>{formatTime(flightInfo.departureTime)}</Text>
+                  <View style={[styles.departureBadge, { backgroundColor: `${tc.primary}15` }]}>
+                    <Text style={[styles.departureBadgeText, { color: tc.primary }]}>Departure</Text>
                   </View>
                 </View>
-                <Text style={styles.timelineAirport}>
+                <Text style={[styles.timelineAirport, { color: tc.textPrimary }]}>
                   {flightInfo.originCity || flightInfo.originCode} ({flightInfo.originCode})
                 </Text>
                 <View style={styles.airportDetails}>
-                  <Location size={14} color={colors.textSecondary} />
-                  <Text style={styles.airportText}>
+                  <Location size={14} color={tc.textSecondary} />
+                  <Text style={[styles.airportText, { color: tc.textSecondary }]}>
                     {flightInfo.originAirport || 'International Airport'}
                   </Text>
                 </View>
-                <View style={styles.terminalBadge}>
-                  <Text style={styles.terminalText}>{flightInfo.originTerminal || 'Terminal 1'}</Text>
+                <View style={[styles.terminalBadge, { backgroundColor: tc.bgElevated }]}>
+                  <Text style={[styles.terminalText, { color: tc.textSecondary }]}>{flightInfo.originTerminal || 'Terminal 1'}</Text>
                 </View>
                 
                 {/* Duration pill inline */}
-                <View style={styles.durationPillInline}>
-                  <Airplane size={14} color={colors.primary} />
-                  <Text style={styles.durationPillText}>
+                <View style={[styles.durationPillInline, { backgroundColor: `${tc.primary}10` }]}>
+                  <Airplane size={14} color={tc.primary} />
+                  <Text style={[styles.durationPillText, { color: tc.primary }]}>
                     {formatDuration(flightInfo.duration)} flight time
                   </Text>
                 </View>
                 {flightInfo.stops > 0 && (
-                  <Text style={styles.stopsNote}>
+                  <Text style={[styles.stopsNote, { color: tc.textSecondary }]}>
                     {flightInfo.stops} stop{flightInfo.stops > 1 ? 's' : ''} en route
                   </Text>
                 )}
@@ -262,67 +264,67 @@ export default function FlightDetailSheet({
             {/* Arrival */}
             <View style={styles.timelineRow}>
               <View style={styles.timelineLeftColumn}>
-                <View style={styles.arrivalDot}>
-                  <TickCircle size={14} color={colors.white} variant="Bold" />
+                <View style={[styles.arrivalDot, { backgroundColor: tc.success }]}>
+                  <TickCircle size={14} color="#FFFFFF" variant="Bold" />
                 </View>
               </View>
               <View style={styles.timelineRightColumn}>
                 <View style={styles.timelineHeader}>
-                  <Text style={styles.timelineTime}>{formatTime(flightInfo.arrivalTime)}</Text>
-                  <View style={[styles.departureBadge, styles.arrivalBadgeStyle]}>
-                    <Text style={[styles.departureBadgeText, styles.arrivalBadgeText]}>Arrival</Text>
+                  <Text style={[styles.timelineTime, { color: tc.textPrimary }]}>{formatTime(flightInfo.arrivalTime)}</Text>
+                  <View style={[styles.departureBadge, { backgroundColor: `${tc.success}15` }]}>
+                    <Text style={[styles.departureBadgeText, { color: tc.success }]}>Arrival</Text>
                   </View>
                 </View>
-                <Text style={styles.timelineAirport}>
+                <Text style={[styles.timelineAirport, { color: tc.textPrimary }]}>
                   {flightInfo.destCity || flightInfo.destCode} ({flightInfo.destCode})
                 </Text>
                 <View style={styles.airportDetails}>
-                  <Location size={14} color={colors.textSecondary} />
-                  <Text style={styles.airportText}>
+                  <Location size={14} color={tc.textSecondary} />
+                  <Text style={[styles.airportText, { color: tc.textSecondary }]}>
                     {flightInfo.destAirport || 'International Airport'}
                   </Text>
                 </View>
-                <View style={styles.terminalBadge}>
-                  <Text style={styles.terminalText}>{flightInfo.destTerminal || 'Terminal 1'}</Text>
+                <View style={[styles.terminalBadge, { backgroundColor: tc.bgElevated }]}>
+                  <Text style={[styles.terminalText, { color: tc.textSecondary }]}>{flightInfo.destTerminal || 'Terminal 1'}</Text>
                 </View>
               </View>
             </View>
           </Animated.View>
 
           {/* Amenities Card */}
-          <Animated.View entering={FadeInDown.delay(500).duration(400)} style={styles.amenitiesCard}>
-            <Text style={styles.cardTitle}>Onboard Experience</Text>
+          <Animated.View entering={FadeInDown.delay(500).duration(400)} style={[styles.amenitiesCard, { backgroundColor: tc.bgElevated }]}>
+            <Text style={[styles.cardTitle, { color: tc.textPrimary }]}>Onboard Experience</Text>
             <View style={styles.amenitiesGrid}>
               <View style={styles.amenityItem}>
-                <View style={styles.amenityIcon}>
-                  <Briefcase size={18} color={colors.primary} />
+                <View style={[styles.amenityIcon, { backgroundColor: `${tc.primary}10` }]}>
+                  <Briefcase size={18} color={tc.primary} />
                 </View>
-                <Text style={styles.amenityText}>Cabin Bag</Text>
+                <Text style={[styles.amenityText, { color: tc.textPrimary }]}>Cabin Bag</Text>
               </View>
               <View style={styles.amenityItem}>
-                <View style={styles.amenityIcon}>
-                  <Coffee size={18} color={colors.primary} />
+                <View style={[styles.amenityIcon, { backgroundColor: `${tc.primary}10` }]}>
+                  <Coffee size={18} color={tc.primary} />
                 </View>
-                <Text style={styles.amenityText}>Meals</Text>
+                <Text style={[styles.amenityText, { color: tc.textPrimary }]}>Meals</Text>
               </View>
               <View style={styles.amenityItem}>
-                <View style={styles.amenityIcon}>
-                  <Wifi size={18} color={colors.primary} />
+                <View style={[styles.amenityIcon, { backgroundColor: `${tc.primary}10` }]}>
+                  <Wifi size={18} color={tc.primary} />
                 </View>
-                <Text style={styles.amenityText}>Wi-Fi</Text>
+                <Text style={[styles.amenityText, { color: tc.textPrimary }]}>Wi-Fi</Text>
               </View>
               <View style={styles.amenityItem}>
-                <View style={styles.amenityIcon}>
-                  <Monitor size={18} color={colors.primary} />
+                <View style={[styles.amenityIcon, { backgroundColor: `${tc.primary}10` }]}>
+                  <Monitor size={18} color={tc.primary} />
                 </View>
-                <Text style={styles.amenityText}>Entertainment</Text>
+                <Text style={[styles.amenityText, { color: tc.textPrimary }]}>Entertainment</Text>
               </View>
             </View>
           </Animated.View>
 
           {/* Fare Rules Card */}
-          <Animated.View entering={FadeInDown.delay(600).duration(400)} style={styles.fareRulesCard}>
-            <Text style={styles.cardTitle}>Fare Rules</Text>
+          <Animated.View entering={FadeInDown.delay(600).duration(400)} style={[styles.fareRulesCard, { backgroundColor: tc.bgElevated }]}>
+            <Text style={[styles.cardTitle, { color: tc.textPrimary }]}>Fare Rules</Text>
             <View style={styles.fareRuleRow}>
               <View style={styles.fareRuleItem}>
                 <View style={[styles.fareRuleIcon, flightInfo.refundable && styles.fareRuleIconActive]}>
@@ -333,10 +335,10 @@ export default function FlightDetailSheet({
                   )}
                 </View>
                 <View style={styles.fareRuleInfo}>
-                  <Text style={styles.fareRuleTitle}>
+                  <Text style={[styles.fareRuleTitle, { color: tc.textPrimary }]}>
                     {flightInfo.refundable ? 'Refundable' : 'Non-refundable'}
                   </Text>
-                  <Text style={styles.fareRuleDesc}>
+                  <Text style={[styles.fareRuleDesc, { color: tc.textSecondary }]}>
                     {flightInfo.refundable ? 'Full refund available' : 'No refund on cancellation'}
                   </Text>
                 </View>
@@ -346,16 +348,16 @@ export default function FlightDetailSheet({
               <View style={styles.fareRuleItem}>
                 <View style={[styles.fareRuleIcon, flightInfo.changeable && styles.fareRuleIconActive]}>
                   {flightInfo.changeable ? (
-                    <TickCircle size={16} color={colors.white} variant="Bold" />
+                    <TickCircle size={16} color="#FFFFFF" variant="Bold" />
                   ) : (
-                    <CloseCircle size={16} color={colors.white} variant="Bold" />
+                    <CloseCircle size={16} color="#FFFFFF" variant="Bold" />
                   )}
                 </View>
                 <View style={styles.fareRuleInfo}>
-                  <Text style={styles.fareRuleTitle}>
+                  <Text style={[styles.fareRuleTitle, { color: tc.textPrimary }]}>
                     {flightInfo.changeable ? 'Changeable' : 'Non-changeable'}
                   </Text>
-                  <Text style={styles.fareRuleDesc}>
+                  <Text style={[styles.fareRuleDesc, { color: tc.textSecondary }]}>
                     {flightInfo.changeable ? 'Date changes allowed' : 'Changes not permitted'}
                   </Text>
                 </View>
@@ -364,19 +366,19 @@ export default function FlightDetailSheet({
           </Animated.View>
 
           {/* Price Summary */}
-          <Animated.View entering={FadeInDown.delay(700).duration(400)} style={styles.priceCard}>
+          <Animated.View entering={FadeInDown.delay(700).duration(400)} style={[styles.priceCard, { backgroundColor: tc.bgElevated, borderColor: `${tc.primary}20` }]}>
             <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Total Price</Text>
-              <Text style={styles.priceValue}>
+              <Text style={[styles.priceLabel, { color: tc.textSecondary }]}>Total Price</Text>
+              <Text style={[styles.priceValue, { color: tc.primary }]}>
                 ${flightInfo.price.toFixed(2)} {flightInfo.currency || 'USD'}
               </Text>
             </View>
-            <Text style={styles.priceNote}>Price per person • All taxes included</Text>
+            <Text style={[styles.priceNote, { color: tc.textSecondary }]}>Price per person • All taxes included</Text>
           </Animated.View>
         </ScrollView>
 
         {/* Premium Footer */}
-        <View style={styles.footer}>
+        <View style={[styles.footer, { backgroundColor: tc.bgElevated, borderTopColor: tc.borderSubtle }]}>
           <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.8}>
             <LinearGradient
               colors={[colors.primary, '#8B5CF6']}

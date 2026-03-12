@@ -4,7 +4,7 @@
  * View travel buddy details, their travel plans, and connect.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,57 +34,138 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { supabase } from '@/lib/supabase/client';
+import { buddyService, groupService } from '@/services/community';
+import { useAuth } from '@/context/AuthContext';
 
-// Mock buddy data
-const MOCK_BUDDY = {
-  id: 'buddy-1',
-  firstName: 'Sarah',
-  lastName: 'Chen',
-  avatar: 'https://i.pravatar.cc/300?img=5',
-  coverImage: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
-  bio: 'Solo traveler & photographer. Love exploring hidden gems and local food scenes. Always up for an adventure! 📸✈️',
-  location: 'San Francisco, USA',
-  languages: ['English', 'Mandarin', 'Spanish'],
-  travelStyle: ['Adventure', 'Photography', 'Foodie', 'Budget'],
-  isPremium: true,
-  isVerified: true,
-  joinedDate: 'March 2023',
-  stats: {
-    tripsCompleted: 24,
-    countriesVisited: 15,
-    buddyConnections: 48,
-    rating: 4.9,
-  },
-  upcomingTrips: [
-    {
-      id: 'trip-1',
-      destination: 'Tokyo, Japan',
-      dates: 'Jan 15 - Jan 28, 2025',
-      lookingFor: 'Travel buddy for exploring temples and food tours',
-    },
-    {
-      id: 'trip-2',
-      destination: 'Bali, Indonesia',
-      dates: 'Mar 5 - Mar 15, 2025',
-      lookingFor: 'Someone to share villa and explore beaches',
-    },
-  ],
-  interests: ['Hiking', 'Street Food', 'Temples', 'Night Markets', 'Photography', 'Yoga'],
-  mutualGroups: [
-    { id: 'g1', name: 'Solo Female Travelers', avatar: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=200' },
-    { id: 'g2', name: 'Tokyo Travelers 2025', avatar: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200' },
-  ],
-};
+interface BuddyData {
+  id: string;
+  firstName: string;
+  lastName: string;
+  avatar: string;
+  coverImage: string;
+  bio: string;
+  location: string;
+  languages: string[];
+  travelStyle: string[];
+  isPremium: boolean;
+  isVerified: boolean;
+  joinedDate: string;
+  stats: { tripsCompleted: number; countriesVisited: number; buddyConnections: number; rating: number };
+  upcomingTrips: { id: string; destination: string; dates: string; lookingFor: string }[];
+  interests: string[];
+  mutualGroups: { id: string; name: string; avatar: string }[];
+}
 
 export default function BuddyProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { profile: authProfile } = useAuth();
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-  
-  const buddy = MOCK_BUDDY;
-  const isPremium = true; // Current user's premium status
+  const [buddy, setBuddy] = useState<BuddyData | null>(null);
+  const [isFetching, setIsFetching] = useState(true);
+  const isPremium = true;
+
+  const fetchBuddy = useCallback(async () => {
+    if (!id) return;
+    try {
+      setIsFetching(true);
+
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !profileData) throw new Error('Profile not found');
+
+      const { data: socialData } = await supabase
+        .from('user_social_profiles')
+        .select('interests, travel_styles, languages, countries_visited, buddy_count')
+        .eq('user_id', id)
+        .single();
+
+      const { data: trips } = await supabase
+        .from('trips')
+        .select('id, primary_destination_name, start_date, end_date')
+        .eq('user_id', id)
+        .gt('start_date', new Date().toISOString())
+        .limit(3);
+
+      let mutualGroups: { id: string; name: string; avatar: string }[] = [];
+      if (authProfile?.id) {
+        try {
+          const [myGroups, theirGroups] = await Promise.all([
+            groupService.getUserGroups(authProfile.id),
+            groupService.getUserGroups(id),
+          ]);
+          const theirGroupIds = new Set(theirGroups.map(g => g.group.id));
+          mutualGroups = myGroups
+            .filter(g => theirGroupIds.has(g.group.id))
+            .map(g => ({
+              id: g.group.id,
+              name: g.group.name,
+              avatar: g.group.groupPhotoUrl || '',
+            }));
+        } catch {}
+      }
+
+      if (authProfile?.id) {
+        const [id1, id2] = [authProfile.id, id].sort();
+        const { data: conn } = await supabase
+          .from('buddy_connections')
+          .select('status')
+          .eq('user_id_1', id1)
+          .eq('user_id_2', id2)
+          .single();
+        if (conn?.status === 'connected') setIsConnected(true);
+        else if (conn?.status === 'pending') { setIsConnecting(false); setIsConnected(false); }
+      }
+
+      const joinedDate = profileData.created_at
+        ? new Date(profileData.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+        : '';
+
+      setBuddy({
+        id: profileData.id,
+        firstName: profileData.first_name || '',
+        lastName: profileData.last_name || '',
+        avatar: profileData.avatar_url || `https://i.pravatar.cc/300?u=${id}`,
+        coverImage: profileData.cover_photo_url || 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
+        bio: profileData.bio || '',
+        location: [profileData.city, profileData.nationality].filter(Boolean).join(', ') || '',
+        languages: socialData?.languages || [],
+        travelStyle: socialData?.travel_styles || [],
+        isPremium: profileData.is_premium || false,
+        isVerified: profileData.is_verified || false,
+        joinedDate,
+        stats: {
+          tripsCompleted: profileData.trips_count || 0,
+          countriesVisited: socialData?.countries_visited?.length || 0,
+          buddyConnections: socialData?.buddy_count || 0,
+          rating: profileData.rating || 0,
+        },
+        upcomingTrips: (trips || []).map(t => ({
+          id: t.id,
+          destination: t.primary_destination_name || '',
+          dates: `${new Date(t.start_date).toLocaleDateString()} - ${new Date(t.end_date).toLocaleDateString()}`,
+          lookingFor: '',
+        })),
+        interests: socialData?.interests || [],
+        mutualGroups,
+      });
+    } catch (err) {
+      console.error('Failed to fetch buddy profile:', err);
+    } finally {
+      setIsFetching(false);
+    }
+  }, [id, authProfile?.id]);
+
+  useEffect(() => {
+    fetchBuddy();
+  }, [fetchBuddy]);
   
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -103,16 +185,21 @@ export default function BuddyProfileScreen() {
       return;
     }
     
+    if (!authProfile?.id || !id) return;
     setIsConnecting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await buddyService.sendRequest(authProfile.id, id);
       setIsConnecting(false);
       setIsConnected(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Request Sent!', `Your connection request has been sent to ${buddy.firstName}.`);
-    }, 1000);
+      Alert.alert('Request Sent!', `Your connection request has been sent to ${buddy?.firstName}.`);
+    } catch (err: any) {
+      setIsConnecting(false);
+      console.error('Failed to connect:', err);
+      Alert.alert('Error', err?.message || 'Could not send connection request.');
+    }
   };
   
   const handleMessage = () => {
@@ -134,8 +221,16 @@ export default function BuddyProfileScreen() {
   
   const handleReport = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/community/report?type=user&id=${buddy.id}` as any);
+    router.push(`/community/report?type=user&id=${buddy?.id}` as any);
   };
+
+  if (isFetching || !buddy) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
   
   return (
     <View style={styles.container}>

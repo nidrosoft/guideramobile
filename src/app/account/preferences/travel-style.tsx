@@ -36,7 +36,7 @@ const MAX_TRIP_STYLES = 4;
 export default function TravelStylePreferencesScreen() {
   const router = useRouter();
   const { colors: tc } = useTheme();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const insets = useSafeAreaInsets();
   const [preferences, setPreferences] = useState<TravelPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,10 +49,10 @@ export default function TravelStylePreferencesScreen() {
   const [timePreference, setTimePreference] = useState<TimePreference>('flexible');
 
   const fetchPreferences = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     try {
-      const { data } = await preferencesService.getPreferences(user.id);
+      const { data } = await preferencesService.getPreferences(profile.id);
       if (data) {
         setPreferences(data);
         setCompanionType(data.defaultCompanionType);
@@ -65,7 +65,7 @@ export default function TravelStylePreferencesScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [profile?.id]);
 
   useEffect(() => {
     fetchPreferences();
@@ -77,14 +77,14 @@ export default function TravelStylePreferencesScreen() {
   };
 
   const handleSave = async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     setIsSaving(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     try {
       await preferencesService.updateTravelStyle(
-        user.id,
+        profile.id,
         companionType,
         tripStyles,
         pace,
@@ -123,29 +123,29 @@ export default function TravelStylePreferencesScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <StatusBar style="dark" />
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: tc.bgPrimary }]}>
+        <StatusBar style="auto" />
+        <ActivityIndicator size="large" color={tc.primary} />
       </View>
     );
   }
   
   return (
-    <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.bgPrimary }]}>
+      <StatusBar style="auto" />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Travel Style</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Travel Style</Text>
         <TouchableOpacity 
           onPress={handleSave} 
-          style={[styles.saveButton, !hasChanges() && styles.saveButtonDisabled]}
+          style={[styles.saveButton, { backgroundColor: hasChanges() ? tc.primary : tc.borderSubtle }]}
           disabled={!hasChanges() || isSaving}
         >
-          <Text style={[styles.saveButtonText, !hasChanges() && styles.saveButtonTextDisabled]}>
+          <Text style={[styles.saveButtonText, { color: hasChanges() ? '#FFFFFF' : tc.textTertiary }]}>
             {isSaving ? 'Saving...' : 'Save'}
           </Text>
         </TouchableOpacity>
@@ -158,15 +158,16 @@ export default function TravelStylePreferencesScreen() {
       >
         {/* Companion Type */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Who do you usually travel with?</Text>
-          <Text style={styles.sectionSubtitle}>Select your typical travel companion</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Who do you usually travel with?</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Select your typical travel companion</Text>
           <View style={styles.chipsContainer}>
             {PREFERENCE_OPTIONS.companionTypes.map(option => (
               <TouchableOpacity
                 key={option.id}
                 style={[
                   styles.chip,
-                  companionType === option.id && styles.chipSelected,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  companionType === option.id && { backgroundColor: `${tc.primary}15`, borderColor: tc.primary },
                 ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -176,7 +177,8 @@ export default function TravelStylePreferencesScreen() {
                 <Text style={styles.chipEmoji}>{option.emoji}</Text>
                 <Text style={[
                   styles.chipLabel,
-                  companionType === option.id && styles.chipLabelSelected,
+                  { color: tc.textPrimary },
+                  companionType === option.id && { color: tc.primary },
                 ]}>
                   {option.label}
                 </Text>
@@ -187,28 +189,30 @@ export default function TravelStylePreferencesScreen() {
 
         {/* Trip Styles */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>What's your travel vibe?</Text>
-          <Text style={styles.sectionSubtitle}>Select up to {MAX_TRIP_STYLES} styles</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>What's your travel vibe?</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Select up to {MAX_TRIP_STYLES} styles</Text>
           <View style={styles.stylesGrid}>
             {PREFERENCE_OPTIONS.tripStyles.map(style => (
               <TouchableOpacity
                 key={style.id}
                 style={[
                   styles.styleCard,
-                  tripStyles.includes(style.id as TripStyle) && styles.styleCardSelected,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  tripStyles.includes(style.id as TripStyle) && { backgroundColor: `${tc.primary}15`, borderColor: tc.primary },
                 ]}
                 onPress={() => toggleTripStyle(style.id as TripStyle)}
               >
                 <Text style={styles.styleEmoji}>{style.emoji}</Text>
                 <Text style={[
                   styles.styleLabel,
-                  tripStyles.includes(style.id as TripStyle) && styles.styleLabelSelected,
+                  { color: tc.textPrimary },
+                  tripStyles.includes(style.id as TripStyle) && { color: tc.primary },
                 ]}>
                   {style.label}
                 </Text>
                 {tripStyles.includes(style.id as TripStyle) && (
-                  <View style={styles.checkBadge}>
-                    <TickCircle size={14} color={colors.white} variant="Bold" />
+                  <View style={[styles.checkBadge, { backgroundColor: tc.primary }]}>
+                    <TickCircle size={14} color="#FFFFFF" variant="Bold" />
                   </View>
                 )}
               </TouchableOpacity>
@@ -218,15 +222,16 @@ export default function TravelStylePreferencesScreen() {
 
         {/* Trip Pace */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your preferred pace</Text>
-          <Text style={styles.sectionSubtitle}>How many activities do you like per day?</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Your preferred pace</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>How many activities do you like per day?</Text>
           <View style={styles.optionsContainer}>
             {PREFERENCE_OPTIONS.tripPaces.map(option => (
               <TouchableOpacity
                 key={option.id}
                 style={[
                   styles.optionCard,
-                  pace === option.id && styles.optionCardSelected,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  pace === option.id && { backgroundColor: `${tc.primary}10`, borderColor: tc.primary },
                 ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -237,14 +242,15 @@ export default function TravelStylePreferencesScreen() {
                 <View style={styles.optionContent}>
                   <Text style={[
                     styles.optionLabel,
-                    pace === option.id && styles.optionLabelSelected,
+                    { color: tc.textPrimary },
+                    pace === option.id && { color: tc.primary },
                   ]}>
                     {option.label}
                   </Text>
-                  <Text style={styles.optionDescription}>{option.description}</Text>
+                  <Text style={[styles.optionDescription, { color: tc.textSecondary }]}>{option.description}</Text>
                 </View>
                 {pace === option.id && (
-                  <TickCircle size={20} color={colors.primary} variant="Bold" />
+                  <TickCircle size={20} color={tc.primary} variant="Bold" />
                 )}
               </TouchableOpacity>
             ))}
@@ -253,15 +259,16 @@ export default function TravelStylePreferencesScreen() {
 
         {/* Time Preference */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>When do you like to start your day?</Text>
-          <Text style={styles.sectionSubtitle}>Your ideal morning routine while traveling</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>When do you like to start your day?</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Your ideal morning routine while traveling</Text>
           <View style={styles.optionsContainer}>
             {PREFERENCE_OPTIONS.timePreferences.map(option => (
               <TouchableOpacity
                 key={option.id}
                 style={[
                   styles.optionCard,
-                  timePreference === option.id && styles.optionCardSelected,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  timePreference === option.id && { backgroundColor: `${tc.primary}10`, borderColor: tc.primary },
                 ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -272,14 +279,15 @@ export default function TravelStylePreferencesScreen() {
                 <View style={styles.optionContent}>
                   <Text style={[
                     styles.optionLabel,
-                    timePreference === option.id && styles.optionLabelSelected,
+                    { color: tc.textPrimary },
+                    timePreference === option.id && { color: tc.primary },
                   ]}>
                     {option.label}
                   </Text>
-                  <Text style={styles.optionDescription}>{option.description}</Text>
+                  <Text style={[styles.optionDescription, { color: tc.textSecondary }]}>{option.description}</Text>
                 </View>
                 {timePreference === option.id && (
-                  <TickCircle size={20} color={colors.primary} variant="Bold" />
+                  <TickCircle size={20} color={tc.primary} variant="Bold" />
                 )}
               </TouchableOpacity>
             ))}

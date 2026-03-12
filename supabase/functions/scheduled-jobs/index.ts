@@ -81,12 +81,16 @@ serve(async (req: Request) => {
         results.push(await gilScanDeals('experiences'));
         results.push(await gilDispatchNotifications());
         break;
+      case 'monitor_flights':
+        results.push(await monitorFlights());
+        break;
       case 'all':
       default:
         results.push(await scanDeals());
         results.push(await checkPriceAlerts());
         results.push(await processTripTransitions());
         results.push(await updateSavedDeals());
+        results.push(await monitorFlights());
         break;
     }
 
@@ -502,6 +506,128 @@ async function cleanupExpiredData(): Promise<JobResult> {
   }
 
   return { job: 'cleanup', success: errors.length === 0, processed, errors };
+}
+
+// ============================================
+// MONITOR FLIGHTS — Check upcoming flights for delays/cancellations
+// ============================================
+
+async function monitorFlights(): Promise<JobResult> {
+  const errors: string[] = [];
+  let processed = 0;
+
+  try {
+    // Get flights departing in the next 48 hours from trip_bookings
+    const now = new Date();
+    const fortyEightHours = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+
+    const { data: bookings } = await supabase
+      .from('trip_bookings')
+      .select('id, trip_id, type, details, trips!inner(owner_id, title, destination)')
+      .eq('type', 'flight')
+      .gte('start_date', now.toISOString())
+      .lte('start_date', fortyEightHours.toISOString());
+
+    for (const booking of bookings || []) {
+      try {
+        const details = booking.details as any;
+        const flightNumber = details?.flightNumber;
+        const departureTime = details?.departure?.time;
+        if (!flightNumber || !departureTime) continue;
+
+        const trip = (booking as any).trips;
+        const userId = trip?.owner_id;
+        if (!userId) continue;
+
+        const date = new Date(departureTime).toISOString().split('T')[0];
+
+        // Call flight-tracking edge function for status
+        const { data: trackingData, error: trackErr } = await supabase.functions.invoke('flight-tracking', {
+          body: { action: 'status', flightNumber, date },
+        });
+
+        if (trackErr || !trackingData?.success) continue;
+
+        const flight = trackingData.data?.flight;
+        if (!flight) continue;
+
+        const status = flight.status?.toLowerCase();
+        const delay = flight.departure?.delay;
+        const newGate = flight.departure?.gate;
+
+        // Check if we already alerted about this flight recently
+        const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
+        const { data: recentAlerts } = await supabase
+          .from('alerts')
+          .select('id, alert_type_code')
+          .eq('user_id', userId)
+          .gte('created_at', twoHoursAgo)
+          .like('context', `%${flightNumber}%`)
+          .limit(1);
+
+        // Flight delayed
+        if (delay && delay > 15 && (!recentAlerts || recentAlerts.length === 0)) {
+          const newTime = flight.departure?.estimatedTime || flight.departure?.scheduledTime || departureTime;
+          await supabase.from('alerts').insert({
+            user_id: userId,
+            alert_type_code: 'flight_delay',
+            category_code: 'trip',
+            title: `⏰ Flight ${flightNumber} Delayed`,
+            body: `Your flight is delayed by ${delay} minutes. New departure: ${new Date(newTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}.`,
+            context: { flightNumber, delay, newTime, tripId: booking.trip_id, bookingId: booking.id },
+            action_url: `/trip/${booking.trip_id}`,
+            priority: 8,
+            channels_requested: ['push', 'in_app'],
+            trip_id: booking.trip_id,
+            status: 'pending',
+          });
+          processed++;
+        }
+
+        // Flight cancelled
+        if (status === 'cancelled' && (!recentAlerts || !recentAlerts.some((a: any) => a.alert_type_code === 'flight_cancelled'))) {
+          await supabase.from('alerts').insert({
+            user_id: userId,
+            alert_type_code: 'flight_cancelled',
+            category_code: 'trip',
+            title: `❌ Flight ${flightNumber} Cancelled`,
+            body: `Your flight has been cancelled. Check with your airline for rebooking options.`,
+            context: { flightNumber, tripId: booking.trip_id, bookingId: booking.id },
+            action_url: `/trip/${booking.trip_id}`,
+            priority: 10,
+            channels_requested: ['push', 'in_app', 'sms'],
+            trip_id: booking.trip_id,
+            status: 'pending',
+          });
+          processed++;
+        }
+
+        // Gate change
+        if (newGate && details?.departure?.gate && newGate !== details.departure.gate) {
+          await supabase.from('alerts').insert({
+            user_id: userId,
+            alert_type_code: 'flight_gate_change',
+            category_code: 'trip',
+            title: `🚪 Gate Changed: ${flightNumber}`,
+            body: `Your gate has changed from ${details.departure.gate} to ${newGate}.`,
+            context: { flightNumber, oldGate: details.departure.gate, newGate, tripId: booking.trip_id },
+            action_url: `/trip/${booking.trip_id}`,
+            priority: 7,
+            channels_requested: ['push', 'in_app'],
+            trip_id: booking.trip_id,
+            status: 'pending',
+          });
+          processed++;
+        }
+      } catch (err: any) {
+        errors.push(`Flight ${booking.id}: ${err.message}`);
+      }
+    }
+  } catch (err: any) {
+    errors.push(`monitorFlights: ${err.message}`);
+  }
+
+  return { job: 'monitor_flights', success: errors.length === 0, processed, errors };
 }
 
 // ============================================

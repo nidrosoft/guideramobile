@@ -21,6 +21,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, Location, Clock, People } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useActivityActions } from '@/hooks/useCommunity';
 import type { ActivityType, ActivityTiming } from '@/services/community/types/community.types';
@@ -48,8 +49,9 @@ const TIMING_OPTIONS: { value: ActivityTiming; label: string; sublabel: string }
 export default function CreateActivityScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
-  const userId = user?.id;
+  const { colors: tc } = useTheme();
+  const { profile } = useAuth();
+  const userId = profile?.id;
   const { createActivity, loading } = useActivityActions(userId);
 
   const [activityType, setActivityType] = useState<ActivityType>('coffee');
@@ -144,7 +146,7 @@ export default function CreateActivityScreen() {
         <TextInput
           style={styles.input}
           placeholder="e.g., Coffee and croissant by the Eiffel Tower"
-          placeholderTextColor={colors.gray400}
+          placeholderTextColor={tc.textTertiary}
           value={title}
           onChangeText={setTitle}
           maxLength={100}
@@ -155,7 +157,7 @@ export default function CreateActivityScreen() {
         <TextInput
           style={[styles.input, styles.textArea]}
           placeholder="Tell others what you have in mind..."
-          placeholderTextColor={colors.gray400}
+          placeholderTextColor={tc.textTertiary}
           value={description}
           onChangeText={setDescription}
           multiline
@@ -166,11 +168,11 @@ export default function CreateActivityScreen() {
         {/* Location */}
         <Text style={styles.sectionTitle}>Location</Text>
         <View style={styles.inputWithIcon}>
-          <Location size={20} color={colors.gray400} />
+          <Location size={20} color={tc.textTertiary} />
           <TextInput
             style={styles.inputInner}
             placeholder="Where will you meet?"
-            placeholderTextColor={colors.gray400}
+            placeholderTextColor={tc.textTertiary}
             value={locationName}
             onChangeText={setLocationName}
           />
@@ -220,11 +222,11 @@ export default function CreateActivityScreen() {
         {/* Max Participants */}
         <Text style={styles.sectionTitle}>Max participants (optional)</Text>
         <View style={styles.inputWithIcon}>
-          <People size={20} color={colors.gray400} />
+          <People size={20} color={tc.textTertiary} />
           <TextInput
             style={styles.inputInner}
             placeholder="Leave empty for unlimited"
-            placeholderTextColor={colors.gray400}
+            placeholderTextColor={tc.textTertiary}
             value={maxParticipants}
             onChangeText={setMaxParticipants}
             keyboardType="number-pad"

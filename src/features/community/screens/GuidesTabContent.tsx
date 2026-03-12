@@ -10,7 +10,7 @@
  * - Featured communities with guide presence
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import {
   TouchableOpacity,
   TextInput,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -36,6 +37,8 @@ import {
 import { colors, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import {
+  GuideProfile,
+  GuideListing,
   ListingCategory,
   LISTING_CATEGORIES,
   EXPERTISE_OPTIONS,
@@ -45,11 +48,7 @@ import GuideCard from '../components/GuideCard';
 import ListingCard from '../components/ListingCard';
 import PartnerInviteCard from '../components/PartnerInviteCard';
 import PartnerProgramSheet from '../components/PartnerProgramSheet';
-import {
-  MOCK_GUIDES,
-  MOCK_LISTINGS,
-  MOCK_GUIDE_COMMUNITIES,
-} from '../data/guideMockData';
+import { supabase } from '@/lib/supabase/client';
 
 type FilterCategory = 'all' | ListingCategory;
 
@@ -60,41 +59,110 @@ export default function GuidesTabContent() {
   const [selectedCategory, setSelectedCategory] = useState<FilterCategory>('all');
   const [selectedExpertise, setSelectedExpertise] = useState<ExpertiseArea | null>(null);
   const [showPartnerSheet, setShowPartnerSheet] = useState(false);
+  const [guides, setGuides] = useState<GuideProfile[]>([]);
+  const [listings, setListings] = useState<GuideListing[]>([]);
+  const [communities, setCommunities] = useState<any[]>([]);
+  const [isFetching, setIsFetching] = useState(true);
 
-  const isPartner = false; // TODO: check from user profile
+  const isPartner = false;
+
+  const fetchData = useCallback(async () => {
+    try {
+      setIsFetching(true);
+
+      const [guidesRes, listingsRes, communitiesRes] = await Promise.all([
+        supabase.from('guide_profiles').select('*').eq('status', 'active').order('rating', { ascending: false }).limit(20),
+        supabase.from('guide_listings').select('*').eq('status', 'active').order('created_at', { ascending: false }).limit(20),
+        supabase.from('groups').select('*').eq('status', 'active').order('member_count', { ascending: false }).limit(5),
+      ]);
+
+      if (guidesRes.data) setGuides(guidesRes.data as any);
+      if (listingsRes.data) {
+        setListings(listingsRes.data.map((l: any) => ({
+          id: l.id,
+          guideId: l.guide_id,
+          guideName: l.guide_name || '',
+          guideAvatar: l.guide_avatar || '',
+          guideTrustTier: l.guide_trust_tier || 'verified_local',
+          guideRating: l.guide_rating || 0,
+          category: l.category || 'service',
+          title: l.title || '',
+          description: l.description || '',
+          photos: l.photos || [],
+          neighborhood: l.neighborhood,
+          city: l.city || '',
+          country: l.country || '',
+          priceRange: l.price_range,
+          currency: l.currency,
+          duration: l.duration,
+          whatsIncluded: l.whats_included,
+          availability: l.availability,
+          inquiryCount: l.inquiry_count || 0,
+          rating: l.rating,
+          reviewCount: l.review_count,
+          status: l.status,
+          createdAt: l.created_at,
+          updatedAt: l.updated_at,
+        })));
+      }
+      if (communitiesRes.data) {
+        setCommunities(communitiesRes.data.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          avatar: c.group_photo_url || '',
+          coverImage: c.cover_photo_url || '',
+          memberCount: c.member_count || 0,
+          guideCount: 0,
+          postsPerWeek: 0,
+          trustRating: 0,
+          city: c.destination_name || '',
+          country: c.destination_country || '',
+          description: c.description || '',
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to fetch guides tab data:', err);
+    } finally {
+      setIsFetching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const filteredGuides = useMemo(() => {
-    let guides = MOCK_GUIDES;
+    let g = guides;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      guides = guides.filter(g =>
-        g.displayName.toLowerCase().includes(q) ||
-        g.city.toLowerCase().includes(q) ||
-        g.country.toLowerCase().includes(q) ||
-        g.expertiseAreas.some(a => a.includes(q))
+      g = g.filter((guide: any) =>
+        (guide.displayName || guide.display_name || '').toLowerCase().includes(q) ||
+        (guide.city || '').toLowerCase().includes(q) ||
+        (guide.country || '').toLowerCase().includes(q) ||
+        (guide.expertiseAreas || guide.expertise_areas || []).some((a: string) => a.includes(q))
       );
     }
     if (selectedExpertise) {
-      guides = guides.filter(g => g.expertiseAreas.includes(selectedExpertise));
+      g = g.filter((guide: any) => (guide.expertiseAreas || guide.expertise_areas || []).includes(selectedExpertise));
     }
-    return guides;
-  }, [searchQuery, selectedExpertise]);
+    return g;
+  }, [searchQuery, selectedExpertise, guides]);
 
   const filteredListings = useMemo(() => {
-    let listings = MOCK_LISTINGS;
+    let l = listings;
     if (selectedCategory !== 'all') {
-      listings = listings.filter(l => l.category === selectedCategory);
+      l = l.filter(listing => listing.category === selectedCategory);
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      listings = listings.filter(l =>
-        l.title.toLowerCase().includes(q) ||
-        l.city.toLowerCase().includes(q) ||
-        l.guideName.toLowerCase().includes(q)
+      l = l.filter(listing =>
+        listing.title.toLowerCase().includes(q) ||
+        listing.city.toLowerCase().includes(q) ||
+        listing.guideName.toLowerCase().includes(q)
       );
     }
-    return listings;
-  }, [searchQuery, selectedCategory]);
+    return l;
+  }, [searchQuery, selectedCategory, listings]);
 
   const handleGuidePress = (guideId: string) => {
     router.push(`/community/guide/${guideId}`);
@@ -236,7 +304,7 @@ export default function GuidesTabContent() {
         </View>
 
         <View style={styles.sectionPadded}>
-          {MOCK_GUIDE_COMMUNITIES.map(comm => (
+          {communities.map(comm => (
             <TouchableOpacity key={comm.id} style={[styles.communityCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
               {/* Cover Image */}
               <Image source={{ uri: comm.coverImage }} style={styles.communityCover} />

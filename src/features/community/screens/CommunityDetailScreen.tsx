@@ -5,7 +5,7 @@
  * Tabs: Feed | Members | Events | About
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,9 +27,10 @@ import {
 import * as Haptics from 'expo-haptics';
 import { spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { ReactionType } from '../types/feed.types';
-import { MOCK_FEED_POSTS, MOCK_GROUP_DETAIL } from '../data/feedMockData';
-import { MOCK_EVENTS } from '../data/mockData';
+import { useAuth } from '@/context/AuthContext';
+import { ReactionType, FeedPost } from '../types/feed.types';
+import { groupService, eventService } from '@/services/community';
+import { postService } from '@/services/community/post.service';
 import { GroupHeader, FeedTab, MembersTab, AboutTab } from '../components/feed';
 import EventCard from '../components/EventCard';
 
@@ -41,26 +43,153 @@ const TABS: { id: TabType; label: string; icon: any }[] = [
   { id: 'about', label: 'About', icon: InfoCircle },
 ];
 
+function mapServicePostToFeedPost(p: any): FeedPost {
+  return {
+    id: p.id,
+    groupId: p.communityId || '',
+    author: {
+      id: p.author?.id || p.authorId,
+      firstName: p.author?.fullName?.split(' ')[0] || 'User',
+      lastName: p.author?.fullName?.split(' ').slice(1).join(' ') || '',
+      avatar: p.author?.avatarUrl || 'https://i.pravatar.cc/150?img=1',
+      isVerified: false,
+    },
+    postType: (p.postType || 'general') as any,
+    content: p.content,
+    photos: p.photos || [],
+    tags: p.tags || [],
+    location: p.locationName ? { name: p.locationName, verified: false } : undefined,
+    status: 'published',
+    isPinned: p.isPinned || false,
+    isAnswered: false,
+    reactionsCount: {
+      love: p.reactionsCount?.love || 0,
+      been_there: p.reactionsCount?.been_there || 0,
+      helpful: p.reactionsCount?.helpful || 0,
+      want_to_go: p.reactionsCount?.want_to_go || 0,
+      fire: p.reactionsCount?.fire || 0,
+    },
+    commentCount: p.commentCount || 0,
+    myReaction: null,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt || p.createdAt,
+  };
+}
+
 export default function CommunityDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { profile } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [activeTab, setActiveTab] = useState<TabType>('feed');
-  const [posts, setPosts] = useState(MOCK_FEED_POSTS);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [members, setMembers] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const group = MOCK_GROUP_DETAIL;
-  const userAvatar = 'https://i.pravatar.cc/150?img=12';
+  const [group, setGroup] = useState({
+    id: id || '',
+    name: '',
+    description: '',
+    coverImage: '',
+    avatar: '',
+    bannerImage: '',
+    privacy: 'public' as const,
+    isVerified: false,
+    memberCount: 0,
+    activeCount: 0,
+    isMember: false,
+    myRole: 'member' as const,
+    postingRule: 'anyone' as const,
+    tags: [] as string[],
+    guidelines: [] as string[],
+    createdAt: '',
+  });
+
+  const userAvatar = profile?.avatar_url || 'https://i.pravatar.cc/150?img=12';
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!id) return;
+      try {
+        const [groupData, postsData, eventsData, membersData] = await Promise.all([
+          groupService.getGroup(id),
+          postService.getPosts({ communityId: id }),
+          eventService.getUpcomingEvents({ groupId: id, limit: 3 }),
+          groupService.getMembers(id),
+        ]);
+        if (cancelled) return;
+
+        if (groupData) {
+          setGroup({
+            id: groupData.id,
+            name: groupData.name,
+            description: groupData.description || '',
+            coverImage: groupData.coverPhotoUrl || '',
+            avatar: groupData.groupPhotoUrl || '',
+            bannerImage: groupData.coverPhotoUrl || '',
+            privacy: groupData.privacy,
+            isVerified: groupData.isVerified,
+            memberCount: groupData.memberCount,
+            activeCount: groupData.activeMemberCount,
+            isMember: true,
+            myRole: 'member',
+            postingRule: groupData.whoCanPost === 'anyone' ? 'anyone' : 'admins_only' as any,
+            tags: groupData.tags || [],
+            guidelines: [],
+            createdAt: groupData.createdAt?.toString() || '',
+          });
+        }
+
+        setPosts(postsData.map(mapServicePostToFeedPost));
+        setEvents(eventsData.map((e: any) => ({
+          id: e.id,
+          communityId: e.groupId || '',
+          title: e.title,
+          coverImage: e.coverImageUrl,
+          type: 'meetup',
+          status: e.status || 'upcoming',
+          location: { city: e.locationName || 'Online', country: '', isVirtual: e.locationType === 'virtual' },
+          startDate: e.startDate,
+          attendeeCount: e.attendeeCount || 0,
+          myRSVP: 'none',
+        })));
+        setMembers(membersData);
+      } catch (err) {
+        console.warn('CommunityDetailScreen load error:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [id]);
 
   const handleBack = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.back();
   }, [router]);
 
-  const handleJoin = useCallback(() => {
+  const handleJoin = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }, []);
+    if (!profile?.id || !id) return;
+    try {
+      if (group.isMember) {
+        await groupService.leaveGroup(profile.id, id);
+        setGroup(prev => ({ ...prev, isMember: false, memberCount: Math.max(0, prev.memberCount - 1) }));
+      } else {
+        const result = await groupService.joinGroup(profile.id, id);
+        if (result.status === 'joined') {
+          setGroup(prev => ({ ...prev, isMember: true, memberCount: prev.memberCount + 1 }));
+        }
+      }
+    } catch (err) {
+      console.warn('Join/leave error:', err);
+    }
+  }, [profile?.id, id, group.isMember]);
 
   const handleShare = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -92,7 +221,10 @@ export default function CommunityDetailScreen() {
       }
       return { ...p, myReaction: wasMyReaction ? null : type, reactionsCount: newReactions };
     }));
-  }, []);
+    if (profile?.id) {
+      postService.toggleReaction(postId, profile.id, type).catch(console.warn);
+    }
+  }, [profile?.id]);
 
   const handleComment = useCallback((postId: string) => {
     router.push({ pathname: '/community/post-detail' as any, params: { postId, focusComment: 'true' } });
@@ -104,14 +236,14 @@ export default function CommunityDetailScreen() {
 
   const renderEventsTab = () => (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-      {MOCK_EVENTS.length === 0 ? (
+      {events.length === 0 ? (
         <View style={styles.emptyState}>
           <Calendar size={48} color={tc.textTertiary} variant="Bold" />
           <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No upcoming events</Text>
           <Text style={[styles.emptyText, { color: tc.textSecondary }]}>Events will appear here</Text>
         </View>
       ) : (
-        MOCK_EVENTS.slice(0, 3).map(event => (
+        events.map(event => (
           <EventCard key={event.id} event={event} variant="list" onPress={() => {}} />
         ))
       )}
@@ -137,7 +269,7 @@ export default function CommunityDetailScreen() {
       case 'members':
         return (
           <MembersTab
-            members={[]}
+            members={members}
             totalCount={group.memberCount}
             onMemberPress={handleMemberPress}
           />
@@ -159,6 +291,14 @@ export default function CommunityDetailScreen() {
         return null;
     }
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: tc.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={tc.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>

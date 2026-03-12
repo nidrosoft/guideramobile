@@ -4,7 +4,10 @@ export enum ExpenseCategory {
   ACCOMMODATION = 'accommodation',
   ACTIVITIES = 'activities',
   SHOPPING = 'shopping',
+  ENTERTAINMENT = 'entertainment',
   HEALTH = 'health',
+  COMMUNICATION = 'communication',
+  TIPS = 'tips',
   OTHER = 'other',
 }
 
@@ -16,6 +19,8 @@ export enum PaymentMethod {
   OTHER = 'other',
 }
 
+export type ExpenseSource = 'manual' | 'receipt_scan';
+
 export interface Expense {
   id: string;
   tripId: string;
@@ -23,10 +28,12 @@ export interface Expense {
   currency: string;
   category: ExpenseCategory;
   description: string;
+  merchant?: string;
   date: Date;
   paymentMethod: PaymentMethod;
   receipt?: string; // Image URI
   notes?: string;
+  source: ExpenseSource;
   createdAt: Date;
 }
 

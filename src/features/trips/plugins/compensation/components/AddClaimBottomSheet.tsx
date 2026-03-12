@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { CloseCircle, Calendar, Add, DocumentUpload, TickCircle } from 'iconsax-react-native';
-import { spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius, colors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -128,9 +128,9 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
   if (showSuccess) {
     return (
       <BlurView intensity={20} style={styles.overlay}>
-        <View style={[styles.successContainer, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
+        <View style={[styles.successContainer, { backgroundColor: colors.bgCard }]}>
           <View style={styles.successIconContainer}>
-            <TickCircle size={64} color="#10B981" variant="Bold" />
+            <TickCircle size={64} color={colors.success} variant="Bold" />
           </View>
           <Text style={[styles.successTitle, { color: colors.textPrimary }]}>Successfully Submitted!</Text>
           <Text style={[styles.successSubtitle, { color: colors.textSecondary }]}>
@@ -148,7 +148,7 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
   if (isSubmitting) {
     return (
       <BlurView intensity={20} style={styles.overlay}>
-        <View style={[styles.loadingContainer, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
+        <View style={[styles.loadingContainer, { backgroundColor: colors.bgCard }]}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingPercentage, { color: colors.primary }]}>25%</Text>
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Submitting Compensation</Text>
@@ -159,7 +159,7 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
 
   return (
     <BlurView intensity={20} style={styles.overlay}>
-      <View style={[styles.bottomSheet, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
+      <View style={[styles.bottomSheet, { backgroundColor: colors.bgCard }]}>
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -173,7 +173,7 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
 
         {/* Progress Bar */}
         <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBarBackground, { backgroundColor: isDark ? '#2A2A2A' : '#F3F4F6' }]}>
+          <View style={[styles.progressBarBackground, { backgroundColor: colors.bgSecondary }]}>
             <View style={[styles.progressBarFill, { width: `${progressPercentage}%` }]} />
           </View>
         </View>
@@ -184,7 +184,7 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
             <View style={styles.stepContainer}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>Incident</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: isDark ? '#2A2A2A' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.borderSubtle }]}
+                style={[styles.input, { backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
                 placeholder="Enter your incident"
                 placeholderTextColor={colors.textTertiary}
                 value={incident}
@@ -195,7 +195,7 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
                 <View style={styles.halfInput}>
                   <Text style={[styles.label, { color: colors.textSecondary }]}>ID</Text>
                   <TextInput
-                    style={[styles.input, { backgroundColor: isDark ? '#2A2A2A' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.borderSubtle }]}
+                    style={[styles.input, { backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
                     placeholder="Enter ID"
                     placeholderTextColor={colors.textTertiary}
                     value={claimId}
@@ -206,7 +206,7 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
                 <View style={styles.halfInput}>
                   <Text style={[styles.label, { color: colors.textSecondary }]}>Provider</Text>
                   <TextInput
-                    style={[styles.input, { backgroundColor: isDark ? '#2A2A2A' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.borderSubtle }]}
+                    style={[styles.input, { backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
                     placeholder="Enter provider"
                     placeholderTextColor={colors.textTertiary}
                     value={provider}
@@ -219,7 +219,7 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
                 <View style={styles.halfInput}>
                   <Text style={[styles.label, { color: colors.textSecondary }]}>Estimated Claim</Text>
                   <TextInput
-                    style={[styles.input, { backgroundColor: isDark ? '#2A2A2A' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.borderSubtle }]}
+                    style={[styles.input, { backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
                     placeholder="Enter estimated"
                     placeholderTextColor={colors.textTertiary}
                     value={estimatedClaim}
@@ -231,7 +231,7 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
                 <View style={styles.halfInput}>
                   <Text style={[styles.label, { color: colors.textSecondary }]}>Date</Text>
                   <TouchableOpacity
-                    style={[styles.dateInput, { backgroundColor: isDark ? '#2A2A2A' : '#F9FAFB', borderColor: colors.borderSubtle }]}
+                    style={[styles.dateInput, { backgroundColor: colors.bgSecondary, borderColor: colors.borderSubtle }]}
                     onPress={() => setShowDatePicker(true)}
                   >
                     <Calendar size={20} color={colors.textSecondary} />
@@ -251,7 +251,7 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
                   value={accuracy}
                   onValueChange={setAccuracy}
                   minimumTrackTintColor={colors.primary}
-                  maximumTrackTintColor={isDark ? '#2A2A2A' : '#E5E7EB'}
+                  maximumTrackTintColor={colors.bgSecondary}
                   thumbTintColor={colors.primary}
                   step={1}
                 />
@@ -276,7 +276,7 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
 
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Add Additional Document</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: isDark ? '#2A2A2A' : '#F9FAFB', color: colors.textPrimary, borderColor: colors.borderSubtle }]}
+                style={[styles.input, { backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
                 placeholder="Additional document"
                 placeholderTextColor={colors.textTertiary}
                 value={additionalDocument}
@@ -286,7 +286,7 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
               {documents.length > 0 && (
                 <View style={styles.documentsContainer}>
                   {documents.map((doc, index) => (
-                    <View key={index} style={[styles.documentItem, { backgroundColor: isDark ? '#2A2A2A' : '#F9FAFB' }]}>
+                    <View key={index} style={[styles.documentItem, { backgroundColor: colors.bgSecondary }]}>
                       <DocumentUpload size={20} color={colors.primary} />
                       <Text style={[styles.documentName, { color: colors.textPrimary }]}>{doc.name}</Text>
                     </View>
@@ -344,7 +344,7 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
         {/* Footer Buttons */}
         <View style={styles.footer}>
           {currentStep > 1 && (
-            <TouchableOpacity style={[styles.backButton, { backgroundColor: isDark ? '#2A2A2A' : '#F3F4F6' }]} onPress={handlePreviousStep}>
+            <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.bgSecondary }]} onPress={handlePreviousStep}>
               <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>Back</Text>
             </TouchableOpacity>
           )}
@@ -362,7 +362,7 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
       {/* Date Picker Modal */}
       {showDatePicker && (
         <BlurView intensity={20} style={styles.datePickerOverlay}>
-          <View style={[styles.datePickerModal, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' }]}>
+          <View style={[styles.datePickerModal, { backgroundColor: colors.bgCard }]}>
             <Text style={[styles.datePickerTitle, { color: colors.textPrimary }]}>Select Date</Text>
             <DateTimePicker
               value={date}
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#7C3AED',
+    backgroundColor: colors.primary,
     borderRadius: borderRadius.full,
   },
   content: {
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
     flex: 2,
     paddingVertical: spacing.md + 2,
     borderRadius: borderRadius.full,
-    backgroundColor: '#7C3AED',
+    backgroundColor: colors.primary,
     alignItems: 'center',
   },
   nextButtonFull: {
@@ -600,7 +600,7 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingVertical: spacing.md + 2,
     borderRadius: borderRadius.full,
-    backgroundColor: '#7C3AED',
+    backgroundColor: colors.primary,
     alignItems: 'center',
   },
   continueButtonText: {
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   datePickerButton: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: colors.primary,
     paddingVertical: spacing.md + 2,
     borderRadius: borderRadius.full,
     alignItems: 'center',

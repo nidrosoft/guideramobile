@@ -2,12 +2,12 @@
  * OPTION CARD
  * 
  * Reusable card component for displaying import options.
- * Used in method selection and provider selection steps.
+ * Uses design system tokens — no hardcoded colors.
  */
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 
 interface OptionCardProps {
@@ -21,26 +21,32 @@ interface OptionCardProps {
 
 export default function OptionCard({
   icon,
-  iconBackground = `${colors.primary}15`,
+  iconBackground,
   title,
   description,
   onPress,
   selected = false,
 }: OptionCardProps) {
+  const { colors: tc } = useTheme();
+
   return (
     <TouchableOpacity
-      style={[styles.card, selected && styles.selectedCard]}
+      style={[
+        styles.card,
+        { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+        selected && { backgroundColor: tc.primary + '08', borderColor: tc.primary },
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View style={[styles.iconContainer, { backgroundColor: iconBackground }]}>
+      <View style={[styles.iconContainer, { backgroundColor: iconBackground || (tc.primary + '12') }]}>
         {icon}
       </View>
       <View style={styles.content}>
-        <Text style={[styles.title, selected && styles.selectedTitle]}>
+        <Text style={[styles.title, { color: tc.textPrimary }, selected && { color: tc.primary }]}>
           {title}
         </Text>
-        <Text style={[styles.description, selected && styles.selectedDescription]}>
+        <Text style={[styles.description, { color: tc.textSecondary }]}>
           {description}
         </Text>
       </View>
@@ -51,44 +57,30 @@ export default function OptionCard({
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius['2xl'],
     padding: spacing.md,
     gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.gray200,
-    marginBottom: spacing.md,
-  },
-  selectedCard: {
-    backgroundColor: '#F5F3FF',
-    borderColor: colors.primary,
-    borderWidth: 2,
+    borderWidth: 1.5,
+    marginBottom: spacing.sm,
   },
   iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
   },
   content: {
     flex: 1,
+    justifyContent: 'center',
   },
   title: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginBottom: 4,
-  },
-  selectedTitle: {
-    color: colors.primary,
+    marginBottom: 2,
   },
   description: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: 18,
-  },
-  selectedDescription: {
-    color: '#6B5DD3',
+    fontSize: typography.fontSize.xs,
+    lineHeight: 16,
   },
 });

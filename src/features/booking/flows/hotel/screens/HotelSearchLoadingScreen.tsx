@@ -221,6 +221,8 @@ export default function HotelSearchLoadingScreen({
           featured: false,
           verified: true,
           propertyType: hotel.propertyType || 'hotel',
+          provider: hotel.provider || { code: 'google_hotels', name: 'Google Hotels' },
+          deepLink: hotel.deepLink || '',
         };
       }) as any[];
       

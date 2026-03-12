@@ -2,59 +2,54 @@
  * METHOD SELECTION STEP
  * 
  * First step in import flow - user selects how they want to import their trip.
- * Options: Email, Link, Manual Entry, Confirmation Code
+ * Options: Email, Manual Entry, Scan Ticket
+ * (Link Travel Accounts removed — email import captures all OTA bookings)
  */
 
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { Sms, Link2, DocumentText, Scan } from 'iconsax-react-native';
-import { colors, spacing, typography } from '@/styles';
+import { Sms, DocumentText, Scan } from 'iconsax-react-native';
+import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { StepComponentProps } from '../types/import-flow.types';
 import OptionCard from '../components/shared/OptionCard';
 
 export default function MethodSelectionStep({ onNext }: StepComponentProps) {
+  const { colors: tc } = useTheme();
+
   return (
     <ScrollView 
       style={styles.container}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.content}
     >
-      <Text style={styles.title}>How would you like to import?</Text>
-      <Text style={styles.description}>
+      <Text style={[styles.title, { color: tc.textPrimary }]}>How would you like to import?</Text>
+      <Text style={[styles.description, { color: tc.textSecondary }]}>
         Choose the method that works best for you. We'll guide you through the process.
       </Text>
 
       <View style={styles.options}>
         <OptionCard
-          icon={<Sms size={20} color={colors.primary} variant="Bold" />}
-          iconBackground={colors.white}
+          icon={<Sms size={20} color={tc.primary} variant="Bold" />}
+          iconBackground={tc.primary + '12'}
           title="Import via Email"
-          description="Forward your booking confirmation emails to your unique Guidera email"
+          description="Connect your email to automatically find and import all your travel bookings"
           onPress={() => onNext({}, 'email')}
         />
 
         <OptionCard
-          icon={<Link2 size={20} color="#3B82F6" variant="Bold" />}
-          iconBackground={colors.white}
-          title="Link Travel Accounts"
-          description="Connect your Expedia, Booking.com, or other travel accounts to sync your bookings."
-          onPress={() => onNext({}, 'link')}
-        />
-
-        <OptionCard
           icon={<DocumentText size={20} color="#10B981" variant="Bold" />}
-          iconBackground={colors.white}
+          iconBackground={'rgba(16,185,129,0.12)'}
           title="Enter Manually"
-          description="Add your travel details manually. Start typing and we'll suggest common options."
+          description="Add your flight, hotel, or car rental details manually"
           onPress={() => onNext({}, 'manual')}
         />
 
         <OptionCard
           icon={<Scan size={20} color="#F59E0B" variant="Bold" />}
-          iconBackground={colors.white}
+          iconBackground={'rgba(245,158,11,0.12)'}
           title="Scan Your Ticket"
-          description="Scan your flight ticket, hotel voucher, or booking QR code to automatically fetch details"
+          description="Take a photo of your boarding pass, hotel voucher, or booking confirmation"
           onPress={() => onNext({}, 'scan')}
         />
       </View>
@@ -73,16 +68,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   description: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     lineHeight: 20,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   options: {
-    gap: 0, // Gap is handled by OptionCard marginBottom
+    gap: 0,
   },
 });

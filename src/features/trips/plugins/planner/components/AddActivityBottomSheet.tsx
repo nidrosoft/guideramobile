@@ -82,15 +82,15 @@ export default function AddActivityBottomSheet({
           onPress={onClose}
         />
         
-        <View style={styles.bottomSheet}>
+        <View style={[styles.bottomSheet, { backgroundColor: tc.bgPrimary }]}>
           {/* Handle Bar */}
-          <View style={styles.handleBar} />
+          <View style={[styles.handleBar, { backgroundColor: tc.borderSubtle }]} />
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Add New Activity</Text>
+            <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Add New Activity</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <CloseCircle size={28} color={colors.gray400} variant="Linear" />
+              <CloseCircle size={28} color={tc.textTertiary} variant="Linear" />
             </TouchableOpacity>
           </View>
 
@@ -101,11 +101,11 @@ export default function AddActivityBottomSheet({
           >
             {/* Activity Name */}
             <View style={styles.field}>
-              <Text style={styles.label}>Activity</Text>
+              <Text style={[styles.label, { color: tc.textSecondary }]}>Activity</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: tc.bgInput, color: tc.textPrimary, borderColor: tc.borderSubtle }]}
                 placeholder="e.g hangout with friends"
-                placeholderTextColor={colors.gray400}
+                placeholderTextColor={tc.textTertiary}
                 value={activityName}
                 onChangeText={setActivityName}
               />
@@ -113,18 +113,18 @@ export default function AddActivityBottomSheet({
 
             {/* Place (Optional) */}
             <View style={styles.field}>
-              <Text style={styles.label}>Place</Text>
+              <Text style={[styles.label, { color: tc.textSecondary }]}>Place</Text>
               <View style={styles.inputWithIcon}>
                 <TextInput
-                  style={[styles.input, styles.inputWithIconPadding]}
+                  style={[styles.input, styles.inputWithIconPadding, { backgroundColor: tc.bgInput, color: tc.textPrimary, borderColor: tc.borderSubtle }]}
                   placeholder="Find place here"
-                  placeholderTextColor={colors.gray400}
+                  placeholderTextColor={tc.textTertiary}
                   value={place}
                   onChangeText={setPlace}
                 />
                 <SearchNormal
                   size={20}
-                  color={colors.gray400}
+                  color={tc.textTertiary}
                   variant="Linear"
                   style={styles.searchIcon}
                 />
@@ -133,18 +133,18 @@ export default function AddActivityBottomSheet({
 
             {/* Time */}
             <View style={styles.field}>
-              <Text style={styles.label}>Time</Text>
+              <Text style={[styles.label, { color: tc.textSecondary }]}>Time</Text>
               <View style={styles.timeRow}>
                 {/* Start Time */}
                 <View style={styles.timeInput}>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: tc.bgInput, color: tc.textPrimary, borderColor: tc.borderSubtle }]}
                     value={startTime}
                     onChangeText={setStartTime}
                   />
                   <Clock
                     size={20}
-                    color={colors.gray400}
+                    color={tc.textTertiary}
                     variant="Linear"
                     style={styles.clockIcon}
                   />
@@ -153,13 +153,13 @@ export default function AddActivityBottomSheet({
                 {/* End Time */}
                 <View style={styles.timeInput}>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: tc.bgInput, color: tc.textPrimary, borderColor: tc.borderSubtle }]}
                     value={endTime}
                     onChangeText={setEndTime}
                   />
                   <Clock
                     size={20}
-                    color={colors.gray400}
+                    color={tc.textTertiary}
                     variant="Linear"
                     style={styles.clockIcon}
                   />
@@ -169,11 +169,11 @@ export default function AddActivityBottomSheet({
 
             {/* Description */}
             <View style={styles.field}>
-              <Text style={styles.label}>Description</Text>
+              <Text style={[styles.label, { color: tc.textSecondary }]}>Description</Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[styles.input, styles.textArea, { backgroundColor: tc.bgInput, color: tc.textPrimary, borderColor: tc.borderSubtle }]}
                 placeholder="Add notes about this activity..."
-                placeholderTextColor={colors.gray400}
+                placeholderTextColor={tc.textTertiary}
                 value={description}
                 onChangeText={setDescription}
                 multiline
@@ -187,7 +187,8 @@ export default function AddActivityBottomSheet({
           <TouchableOpacity
             style={[
               styles.addButton,
-              !activityName.trim() && styles.addButtonDisabled,
+              { backgroundColor: tc.primary },
+              !activityName.trim() && { backgroundColor: tc.borderMedium, shadowOpacity: 0 },
             ]}
             onPress={handleAdd}
             disabled={!activityName.trim()}

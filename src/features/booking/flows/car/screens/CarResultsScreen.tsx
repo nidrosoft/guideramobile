@@ -1,7 +1,8 @@
 /**
  * CAR RESULTS SCREEN
- * 
+ *
  * Displays available cars with filtering and sorting.
+ * Theme-aware for dark/light mode.
  */
 
 import React, { useState, useMemo } from 'react';
@@ -25,15 +26,12 @@ import {
   Calendar,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useCarStore } from '../../../stores/useCarStore';
 import { Car } from '../../../types/car.types';
 
-// Import components
 import CarDetailSheet from '../sheets/CarDetailSheet';
-
-// Import shared premium card
 import { CarCard, CarCardData } from '../../../shared/components';
 
 interface CarResultsScreenProps {
@@ -52,7 +50,11 @@ const FILTER_CHIPS = [
   { id: 'automatic', label: 'Automatic' },
   { id: 'suv', label: 'SUV' },
   { id: 'compact', label: 'Compact' },
-  { id: 'unlimited', label: 'Unlimited km' },
+  { id: 'economy', label: 'Economy' },
+  { id: 'midsize', label: 'Midsize' },
+  { id: 'premium', label: 'Premium' },
+  { id: 'unlimited', label: 'Unlimited miles' },
+  { id: 'ac', label: 'A/C' },
 ];
 
 export default function CarResultsScreen({
@@ -63,7 +65,7 @@ export default function CarResultsScreen({
   const insets = useSafeAreaInsets();
   const { colors: tc } = useTheme();
   const { searchParams, getFilteredResults, sortBy, setSortBy, getRentalDays } = useCarStore();
-  
+
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [selectedCarForDetail, setSelectedCarForDetail] = useState<Car | null>(null);
@@ -71,10 +73,9 @@ export default function CarResultsScreen({
   const results = getFilteredResults();
   const rentalDays = getRentalDays();
 
-  // Apply local filters
   const filteredResults = useMemo(() => {
     let filtered = [...results];
-    
+
     if (activeFilters.includes('automatic')) {
       filtered = filtered.filter(car => car.specs.transmission === 'automatic');
     }
@@ -84,10 +85,22 @@ export default function CarResultsScreen({
     if (activeFilters.includes('compact')) {
       filtered = filtered.filter(car => car.category === 'compact');
     }
+    if (activeFilters.includes('economy')) {
+      filtered = filtered.filter(car => car.category === 'economy');
+    }
+    if (activeFilters.includes('midsize')) {
+      filtered = filtered.filter(car => car.category.includes('midsize'));
+    }
+    if (activeFilters.includes('premium')) {
+      filtered = filtered.filter(car => car.category.includes('premium') || car.category.includes('luxury'));
+    }
     if (activeFilters.includes('unlimited')) {
       filtered = filtered.filter(car => car.specs.mileage === 'unlimited');
     }
-    
+    if (activeFilters.includes('ac')) {
+      filtered = filtered.filter(car => car.specs.airConditioning);
+    }
+
     return filtered;
   }, [results, activeFilters]);
 
@@ -135,7 +148,7 @@ export default function CarResultsScreen({
         <View style={styles.headerOverlay} />
         <View style={styles.headerContent}>
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <ArrowLeft size={24} color={colors.white} />
+            <ArrowLeft size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Available Cars</Text>
@@ -144,18 +157,17 @@ export default function CarResultsScreen({
             </Text>
           </View>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <CloseCircle size={24} color={colors.white} variant="Bold" />
+            <CloseCircle size={24} color="#FFFFFF" variant="Bold" />
           </TouchableOpacity>
         </View>
-        
-        {/* Search Summary - Centered in Header */}
+
         <View style={styles.summaryBar}>
-          <Location size={14} color={colors.white} variant="Bold" />
+          <Location size={14} color="#FFFFFF" variant="Bold" />
           <Text style={styles.summaryText}>
             {searchParams.pickupLocation?.code || 'Location'}
           </Text>
           <View style={styles.summaryDivider} />
-          <Calendar size={14} color={colors.white} variant="Bold" />
+          <Calendar size={14} color="#FFFFFF" variant="Bold" />
           <Text style={styles.summaryText}>
             {formatDate(searchParams.pickupDate)} - {formatDate(searchParams.returnDate)} ({rentalDays} days)
           </Text>
@@ -163,62 +175,62 @@ export default function CarResultsScreen({
       </ImageBackground>
 
       {/* Filter Chips */}
-      <View style={styles.filterSection}>
+      <View style={[styles.filterSection, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterScroll}
         >
-          {/* Sort Button */}
           <TouchableOpacity
-            style={styles.sortButton}
+            style={[styles.sortButton, { backgroundColor: `${tc.primary}10` }]}
             onPress={() => setShowSortMenu(!showSortMenu)}
           >
-            <Setting4 size={16} color={colors.primary} />
-            <Text style={styles.sortButtonText}>{currentSortLabel}</Text>
-            <ArrowDown2 size={14} color={colors.primary} />
+            <Setting4 size={16} color={tc.primary} />
+            <Text style={[styles.sortButtonText, { color: tc.primary }]}>{currentSortLabel}</Text>
+            <ArrowDown2 size={14} color={tc.primary} />
           </TouchableOpacity>
 
-          {/* Filter Chips */}
-          {FILTER_CHIPS.map((filter) => (
-            <TouchableOpacity
-              key={filter.id}
-              style={[
-                styles.filterChip,
-                activeFilters.includes(filter.id) && styles.filterChipActive,
-              ]}
-              onPress={() => toggleFilter(filter.id)}
-            >
-              <Text
+          {FILTER_CHIPS.map((filter) => {
+            const isActive = activeFilters.includes(filter.id);
+            return (
+              <TouchableOpacity
+                key={filter.id}
                 style={[
-                  styles.filterChipText,
-                  activeFilters.includes(filter.id) && styles.filterChipTextActive,
+                  styles.filterChip,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  isActive && { backgroundColor: tc.primary, borderColor: tc.primary },
                 ]}
+                onPress={() => toggleFilter(filter.id)}
               >
-                {filter.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text style={[
+                  styles.filterChipText,
+                  { color: tc.textSecondary },
+                  isActive && { color: '#FFFFFF' },
+                ]}>
+                  {filter.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
-        {/* Sort Menu Dropdown */}
         {showSortMenu && (
-          <View style={styles.sortMenu}>
+          <View style={[styles.sortMenu, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             {SORT_OPTIONS.map((option) => (
               <TouchableOpacity
                 key={option.id}
                 style={[
                   styles.sortMenuItem,
-                  sortBy === option.id && styles.sortMenuItemActive,
+                  { borderBottomColor: tc.borderSubtle },
+                  sortBy === option.id && { backgroundColor: `${tc.primary}10` },
                 ]}
                 onPress={() => handleSort(option.id as 'recommended' | 'price' | 'size')}
               >
-                <Text
-                  style={[
-                    styles.sortMenuItemText,
-                    sortBy === option.id && styles.sortMenuItemTextActive,
-                  ]}
-                >
+                <Text style={[
+                  styles.sortMenuItemText,
+                  { color: tc.textPrimary },
+                  sortBy === option.id && { color: tc.primary, fontWeight: typography.fontWeight.semibold },
+                ]}>
                   {option.label}
                 </Text>
               </TouchableOpacity>
@@ -232,14 +244,17 @@ export default function CarResultsScreen({
         data={filteredResults}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => {
-          // Convert Car to CarCardData format for the premium shared card
+          const priceAmt = typeof item.rental.pricePerDay === 'number'
+            ? item.rental.pricePerDay
+            : item.rental.pricePerDay?.amount || 0;
+
           const cardData: CarCardData = {
             id: item.id,
             name: item.name,
             make: item.make,
             model: item.model,
             category: item.category.charAt(0).toUpperCase() + item.category.slice(1).replace('_', ' '),
-            pricePerDay: item.rental.pricePerDay.amount,
+            pricePerDay: priceAmt,
             images: item.images,
             specs: {
               seats: item.specs.seats,
@@ -271,15 +286,14 @@ export default function CarResultsScreen({
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>No cars found</Text>
-            <Text style={styles.emptySubtitle}>
+            <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No cars found</Text>
+            <Text style={[styles.emptySubtitle, { color: tc.textSecondary }]}>
               Try adjusting your filters or search criteria
             </Text>
           </View>
         }
       />
 
-      {/* Car Detail Sheet with Select Button */}
       <CarDetailSheet
         visible={!!selectedCarForDetail}
         onClose={() => setSelectedCarForDetail(null)}
@@ -291,166 +305,56 @@ export default function CarResultsScreen({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    minHeight: 160,
-    justifyContent: 'flex-end',
-  },
-  headerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
+  container: { flex: 1 },
+  header: { minHeight: 160, justifyContent: 'flex-end' },
+  headerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)' },
   headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg, paddingBottom: spacing.sm,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center',
   },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.white,
-  },
-  headerSubtitle: {
-    fontSize: typography.fontSize.sm,
-    color: 'rgba(255,255,255,0.8)',
-  },
+  headerCenter: { flex: 1, alignItems: 'center' },
+  headerTitle: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: '#FFFFFF' },
+  headerSubtitle: { fontSize: typography.fontSize.sm, color: 'rgba(255,255,255,0.8)' },
   closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center',
   },
   summaryBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    paddingBottom: spacing.md,
-    gap: spacing.xs,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, paddingBottom: spacing.md, gap: spacing.xs,
   },
-  summaryDivider: {
-    width: 1,
-    height: 12,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    marginHorizontal: spacing.sm,
-  },
-  summaryText: {
-    fontSize: typography.fontSize.sm,
-    color: 'rgba(255,255,255,0.9)',
-  },
-  filterSection: {
-    backgroundColor: colors.bgElevated,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
-    position: 'relative',
-  },
-  filterScroll: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    gap: spacing.sm,
-  },
+  summaryDivider: { width: 1, height: 12, backgroundColor: 'rgba(255,255,255,0.5)', marginHorizontal: spacing.sm },
+  summaryText: { fontSize: typography.fontSize.sm, color: 'rgba(255,255,255,0.9)' },
+  filterSection: { borderBottomWidth: 1, position: 'relative' },
+  filterScroll: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, gap: spacing.sm },
   sortButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${colors.primary}10`,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    gap: spacing.xs,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full, gap: spacing.xs,
   },
-  sortButtonText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.primary,
-  },
+  sortButtonText: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium },
   filterChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.gray100,
-    borderWidth: 1,
-    borderColor: colors.gray200,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full, borderWidth: 1,
   },
-  filterChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  filterChipText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.textSecondary,
-  },
-  filterChipTextActive: {
-    color: colors.white,
-  },
+  filterChipText: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium },
   sortMenu: {
-    position: 'absolute',
-    top: '100%',
-    left: spacing.lg,
-    backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    zIndex: 100,
-    minWidth: 180,
+    position: 'absolute', top: '100%', left: spacing.lg,
+    borderRadius: borderRadius.lg, borderWidth: 1,
+    shadowColor: '#000000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15, shadowRadius: 12, elevation: 8,
+    zIndex: 100, minWidth: 180,
   },
-  sortMenuItem: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
-  },
-  sortMenuItemActive: {
-    backgroundColor: `${colors.primary}10`,
-  },
-  sortMenuItemText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textPrimary,
-  },
-  sortMenuItemTextActive: {
-    color: colors.primary,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  listContent: {
-    paddingTop: spacing.md,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl * 2,
-  },
-  emptyTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  emptySubtitle: {
-    fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
+  sortMenuItem: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1 },
+  sortMenuItemText: { fontSize: typography.fontSize.sm },
+  listContent: { paddingTop: spacing.md, paddingHorizontal: spacing.lg },
+  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2 },
+  emptyTitle: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold },
+  emptySubtitle: { fontSize: typography.fontSize.base, marginTop: spacing.xs },
 });

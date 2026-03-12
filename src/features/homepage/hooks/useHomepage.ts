@@ -29,7 +29,7 @@ interface UseHomepageOptions {
 
 export function useHomepage(options: UseHomepageOptions = {}): UseHomepageResult {
   const { autoFetch = true, includeLocation = true } = options
-  const { user } = useAuth()
+  const { profile } = useAuth()
   
   const [sections, setSections] = useState<HomepageSection[]>([])
   const [meta, setMeta] = useState<ResponseMeta | null>(null)
@@ -73,7 +73,7 @@ export function useHomepage(options: UseHomepageOptions = {}): UseHomepageResult
    * Fetch homepage data
    */
   const fetchHomepage = useCallback(async (isRefresh = false) => {
-    if (!user?.id) {
+    if (!profile?.id) {
       setIsLoading(false)
       return
     }
@@ -93,7 +93,7 @@ export function useHomepage(options: UseHomepageOptions = {}): UseHomepageResult
       }
 
       const response = await homepageService.getHomepage({
-        userId: user.id,
+        userId: profile.id,
         latitude: location?.latitude,
         longitude: location?.longitude,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -113,7 +113,7 @@ export function useHomepage(options: UseHomepageOptions = {}): UseHomepageResult
       setIsLoading(false)
       setIsRefreshing(false)
     }
-  }, [user?.id, includeLocation, getUserLocation])
+  }, [profile?.id, includeLocation, getUserLocation])
 
   /**
    * Refresh homepage data
@@ -131,28 +131,27 @@ export function useHomepage(options: UseHomepageOptions = {}): UseHomepageResult
     sectionSlug?: string,
     position?: number
   ) => {
-    if (!user?.id) return
+    if (!profile?.id) return
 
-    // Fire and forget - don't await
     homepageService.trackInteraction({
-      userId: user.id,
+      userId: profile.id,
       itemId: item.id,
       itemType: item.type as 'destination' | 'experience',
       action,
       sectionSlug,
       position,
     }).catch(console.error)
-  }, [user?.id])
+  }, [profile?.id])
 
   /**
    * Toggle saved status
    */
   const toggleSaved = useCallback(async (item: ContentItem) => {
-    if (!user?.id) return
+    if (!profile?.id) return
 
     try {
       const newSavedStatus = await homepageService.toggleSaved(
-        user.id,
+        profile.id,
         item.id,
         item.type as 'destination' | 'experience'
       )
@@ -169,15 +168,14 @@ export function useHomepage(options: UseHomepageOptions = {}): UseHomepageResult
     } catch (err) {
       console.error('Failed to toggle saved:', err)
     }
-  }, [user?.id])
+  }, [profile?.id])
 
-  // Auto-fetch on mount
   useEffect(() => {
-    if (autoFetch && !hasFetched.current && user?.id) {
+    if (autoFetch && !hasFetched.current && profile?.id) {
       hasFetched.current = true
       fetchHomepage()
     }
-  }, [autoFetch, user?.id, fetchHomepage])
+  }, [autoFetch, profile?.id, fetchHomepage])
 
   return {
     sections,

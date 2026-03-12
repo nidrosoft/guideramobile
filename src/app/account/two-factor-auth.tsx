@@ -100,7 +100,7 @@ export default function TwoFactorAuthScreen() {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Save 2FA settings
-      if (user?.id) {
+      if (profile?.id) {
         const { error: updateError } = await supabase
           .from('profiles')
           .update({
@@ -110,7 +110,7 @@ export default function TwoFactorAuthScreen() {
               login_alerts: true,
             }
           })
-          .eq('id', user.id);
+          .eq('id', profile.id);
 
         if (updateError) throw updateError;
       }

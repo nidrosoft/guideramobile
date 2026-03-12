@@ -162,6 +162,25 @@ export interface Trip {
   travelers: Traveler[];
   bookings: Booking[];
   metadata: TripMetadata;
+  /** Extended DB fields for card UI — only present on trips fetched from Supabase */
+  _db?: {
+    flightCount: number;
+    hotelCount: number;
+    carCount: number;
+    experienceCount: number;
+    bookingCount: number;
+    totalBookedAmount: number;
+    createdVia?: string;
+    primaryDestinationName?: string;
+    primaryDestinationCountry?: string;
+    travelerCount: number;
+    airlineName?: string;
+    cabinClass?: string;
+    route?: string;
+    flightNumber?: string;
+    seatNumber?: string;
+    modulesGenerated?: boolean;
+  };
 }
 
 // Plugin-related types

@@ -18,6 +18,7 @@ import { CloseCircle, Calendar, ArrowRight2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 interface DateRangePickerSheetProps {
   visible: boolean;
@@ -35,6 +36,7 @@ export default function DateRangePickerSheet({
   returnDate,
 }: DateRangePickerSheetProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   
   const [selectedDeparture, setSelectedDeparture] = useState<Date | null>(
     departureDate instanceof Date ? departureDate : departureDate ? new Date(departureDate) : null
@@ -145,50 +147,50 @@ export default function DateRangePickerSheet({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: tc.background }]}>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Select Dates</Text>
+        <View style={[styles.header, { borderBottomColor: tc.borderSubtle }]}>
+          <Text style={[styles.title, { color: tc.textPrimary }]}>Select Dates</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <CloseCircle size={28} color={colors.textSecondary} variant="Bold" />
+            <CloseCircle size={28} color={tc.textSecondary} variant="Bold" />
           </TouchableOpacity>
         </View>
 
         {/* Date Selection Summary */}
-        <View style={styles.selectionSummary}>
+        <View style={[styles.selectionSummary, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
           <TouchableOpacity 
-            style={[styles.dateBox, !selectingReturn && styles.dateBoxActive]}
+            style={[styles.dateBox, !selectingReturn && { borderColor: tc.primary, backgroundColor: `${tc.primary}08` }]}
             onPress={() => setSelectingReturn(false)}
           >
-            <Text style={styles.dateBoxLabel}>Departure</Text>
-            <Text style={[styles.dateBoxValue, selectedDeparture && styles.dateBoxValueSelected]}>
+            <Text style={[styles.dateBoxLabel, { color: tc.textSecondary }]}>Departure</Text>
+            <Text style={[styles.dateBoxValue, { color: tc.textSecondary }, selectedDeparture && { color: tc.textPrimary }]}>
               {formatDate(selectedDeparture)}
             </Text>
           </TouchableOpacity>
           
-          <ArrowRight2 size={20} color={colors.gray400} />
+          <ArrowRight2 size={20} color={tc.textSecondary} />
           
           <TouchableOpacity 
-            style={[styles.dateBox, selectingReturn && styles.dateBoxActive]}
+            style={[styles.dateBox, selectingReturn && { borderColor: tc.primary, backgroundColor: `${tc.primary}08` }]}
             onPress={() => selectedDeparture && setSelectingReturn(true)}
           >
-            <Text style={styles.dateBoxLabel}>Return</Text>
-            <Text style={[styles.dateBoxValue, selectedReturn && styles.dateBoxValueSelected]}>
+            <Text style={[styles.dateBoxLabel, { color: tc.textSecondary }]}>Return</Text>
+            <Text style={[styles.dateBoxValue, { color: tc.textSecondary }, selectedReturn && { color: tc.textPrimary }]}>
               {formatDate(selectedReturn)}
             </Text>
           </TouchableOpacity>
           
           {getNights() > 0 && (
-            <View style={styles.nightsBadge}>
-              <Text style={styles.nightsText}>{getNights()} nights</Text>
+            <View style={[styles.nightsBadge, { backgroundColor: `${tc.primary}15` }]}>
+              <Text style={[styles.nightsText, { color: tc.primary }]}>{getNights()} nights</Text>
             </View>
           )}
         </View>
 
         {/* Weekday Headers */}
-        <View style={styles.weekdayHeader}>
+        <View style={[styles.weekdayHeader, { backgroundColor: `${tc.textSecondary}08` }]}>
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <Text key={day} style={styles.weekdayText}>{day}</Text>
+            <Text key={day} style={[styles.weekdayText, { color: tc.textSecondary }]}>{day}</Text>
           ))}
         </View>
 
@@ -200,7 +202,7 @@ export default function DateRangePickerSheet({
         >
           {months.map((month, monthIndex) => (
             <View key={monthIndex} style={styles.monthContainer}>
-              <Text style={styles.monthTitle}>
+              <Text style={[styles.monthTitle, { color: tc.textPrimary }]}>
                 {month.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
               </Text>
               <View style={styles.daysGrid}>
@@ -218,9 +220,9 @@ export default function DateRangePickerSheet({
                       key={day.toISOString()}
                       style={[
                         styles.dayCell,
-                        inRange && styles.dayCellInRange,
-                        selected === 'departure' && styles.dayCellDeparture,
-                        selected === 'return' && styles.dayCellReturn,
+                        inRange && { backgroundColor: `${tc.primary}15` },
+                        selected === 'departure' && { backgroundColor: tc.primary, borderTopLeftRadius: borderRadius.full, borderBottomLeftRadius: borderRadius.full },
+                        selected === 'return' && { backgroundColor: tc.primary, borderTopRightRadius: borderRadius.full, borderBottomRightRadius: borderRadius.full },
                       ]}
                       onPress={() => !disabled && handleDayPress(day)}
                       disabled={disabled}
@@ -228,8 +230,9 @@ export default function DateRangePickerSheet({
                     >
                       <Text style={[
                         styles.dayText,
-                        disabled && styles.dayTextDisabled,
-                        (selected || inRange) && styles.dayTextSelected,
+                        { color: tc.textPrimary },
+                        disabled && { color: tc.borderSubtle },
+                        (selected || inRange) && { color: '#FFFFFF' },
                       ]}>
                         {day.getDate()}
                       </Text>
@@ -242,7 +245,7 @@ export default function DateRangePickerSheet({
         </ScrollView>
 
         {/* Confirm Button */}
-        <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+        <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md, backgroundColor: tc.bgElevated, borderTopColor: tc.borderSubtle }]}>
           <TouchableOpacity
             style={[styles.confirmButton, !canConfirm && styles.confirmButtonDisabled]}
             onPress={handleConfirm}
@@ -250,12 +253,12 @@ export default function DateRangePickerSheet({
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={canConfirm ? [colors.primary, colors.primaryDark] : [colors.gray300, colors.gray400]}
+              colors={canConfirm ? [tc.primary, colors.primaryDark] : [colors.gray300, colors.gray400]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.confirmButtonGradient}
             >
-              <Calendar size={20} color={colors.white} />
+              <Calendar size={20} color="#FFFFFF" />
               <Text style={styles.confirmButtonText}>
                 {canConfirm ? `Confirm ${getNights()} Nights` : 'Select Dates'}
               </Text>

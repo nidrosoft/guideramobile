@@ -17,6 +17,7 @@ import {
   ArrowRight2,
 } from 'iconsax-react-native';
 import { colors, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 export interface ProfileSection {
   id: string;
@@ -57,6 +58,7 @@ export default function ProfileCompletenessCard({
   onCompletePress,
   variant = 'full',
 }: ProfileCompletenessCardProps) {
+  const { colors: tc } = useTheme();
   const isCompact = variant === 'compact';
   
   const getScoreColor = (score: number) => {
@@ -96,7 +98,7 @@ export default function ProfileCompletenessCard({
             {incompleteSections.length} sections remaining
           </Text>
         </View>
-        <ArrowRight2 size={20} color={colors.gray400} />
+        <ArrowRight2 size={20} color={tc.textTertiary} />
       </TouchableOpacity>
     );
   }
@@ -147,7 +149,7 @@ export default function ProfileCompletenessCard({
               ]}>
                 <IconComponent 
                   size={16} 
-                  color={section.complete ? colors.success : colors.gray400} 
+                  color={section.complete ? colors.success : tc.textTertiary} 
                   variant={section.complete ? 'Bold' : 'Linear'}
                 />
               </View>

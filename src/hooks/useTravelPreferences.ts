@@ -56,26 +56,26 @@ interface UseTravelPreferencesReturn {
 }
 
 export function useTravelPreferences(): UseTravelPreferencesReturn {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [preferences, setPreferences] = useState<TravelPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchPreferences = useCallback(async () => {
-    if (!user?.id) {
+    if (!profile?.id) {
       setIsLoading(false);
       return;
     }
     
     try {
       setIsLoading(true);
-      const { data } = await preferencesService.getPreferences(user.id);
+      const { data } = await preferencesService.getPreferences(profile.id);
       setPreferences(data);
     } catch (error) {
       console.error('Error fetching travel preferences:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [profile?.id]);
 
   useEffect(() => {
     fetchPreferences();

@@ -36,8 +36,8 @@ const CONFIRMATION_TEXT = 'delete';
 export default function DeleteAccountScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
-  const { user, signOut } = useAuth();
+  const { colors: tc, isDark } = useTheme();
+  const { user, profile, signOut } = useAuth();
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [understood, setUnderstood] = useState(false);
@@ -65,22 +65,11 @@ export default function DeleteAccountScreen() {
           onPress: async () => {
             setIsDeleting(true);
             try {
-              // Delete user data from database
-              if (user?.id) {
-                // Delete profile and related data (cascade should handle most)
-                await supabase.from('profiles').delete().eq('id', user.id);
-                
-                // Delete auth user (this will sign them out)
-                const { error } = await supabase.auth.admin.deleteUser(user.id);
-                
-                if (error) {
-                  // If admin delete fails, try regular signout and mark for deletion
-                  await supabase.from('account_deletion_requests').insert({
-                    user_id: user.id,
-                    requested_at: new Date().toISOString(),
-                    status: 'pending',
-                  });
-                }
+              const profileId = profile?.id;
+              if (profileId) {
+                await supabase.from('profiles')
+                  .update({ deleted_at: new Date().toISOString() })
+                  .eq('id', profileId);
               }
               
               // Sign out
@@ -107,14 +96,14 @@ export default function DeleteAccountScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Delete Account</Text>
+        <Text style={[styles.headerTitle, { color: tc.error }]}>Delete Account</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -126,34 +115,34 @@ export default function DeleteAccountScreen() {
       >
         {/* Warning Icon */}
         <View style={styles.warningSection}>
-          <View style={styles.warningIcon}>
-            <Warning2 size={48} color={colors.error} variant="Bold" />
+          <View style={[styles.warningIcon, { backgroundColor: tc.error + '15' }]}>
+            <Warning2 size={48} color={tc.error} variant="Bold" />
           </View>
-          <Text style={styles.warningTitle}>Delete Your Account?</Text>
-          <Text style={styles.warningText}>
+          <Text style={[styles.warningTitle, { color: tc.error }]}>Delete Your Account?</Text>
+          <Text style={[styles.warningText, { color: tc.textSecondary }]}>
             This action is permanent and cannot be undone. All your data will be permanently removed.
           </Text>
         </View>
 
         {/* What will be deleted */}
-        <View style={styles.infoSection}>
-          <Text style={styles.infoTitle}>What will be deleted:</Text>
+        <View style={[styles.infoSection, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.gray50 }]}>
+          <Text style={[styles.infoTitle, { color: tc.textPrimary }]}>What will be deleted:</Text>
           <View style={styles.infoList}>
-            <Text style={styles.infoItem}>• Your profile and personal information</Text>
-            <Text style={styles.infoItem}>• All your trips and itineraries</Text>
-            <Text style={styles.infoItem}>• Your saved items and collections</Text>
-            <Text style={styles.infoItem}>• Community posts, reviews, and comments</Text>
-            <Text style={styles.infoItem}>• Booking history and preferences</Text>
-            <Text style={styles.infoItem}>• All connected accounts and data</Text>
+            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>• Your profile and personal information</Text>
+            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>• All your trips and itineraries</Text>
+            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>• Your saved items and collections</Text>
+            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>• Community posts, reviews, and comments</Text>
+            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>• Booking history and preferences</Text>
+            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>• All connected accounts and data</Text>
           </View>
         </View>
 
         {/* What will NOT be deleted */}
-        <View style={styles.infoSection}>
-          <Text style={styles.infoTitle}>What will NOT be deleted:</Text>
+        <View style={[styles.infoSection, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.gray50 }]}>
+          <Text style={[styles.infoTitle, { color: tc.textPrimary }]}>What will NOT be deleted:</Text>
           <View style={styles.infoList}>
-            <Text style={styles.infoItem}>• Active bookings (contact providers directly)</Text>
-            <Text style={styles.infoItem}>• Transaction records (required by law)</Text>
+            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>• Active bookings (contact providers directly)</Text>
+            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>• Transaction records (required by law)</Text>
           </View>
         </View>
 
@@ -166,26 +155,27 @@ export default function DeleteAccountScreen() {
           }}
           activeOpacity={0.7}
         >
-          <View style={[styles.checkbox, understood && styles.checkboxChecked]}>
-            {understood && <TickCircle size={20} color={colors.white} variant="Bold" />}
+          <View style={[styles.checkbox, { borderColor: tc.borderSubtle }, understood && [styles.checkboxChecked, { backgroundColor: tc.error, borderColor: tc.error }]]}>
+            {understood && <TickCircle size={20} color="#FFFFFF" variant="Bold" />}
           </View>
-          <Text style={styles.checkboxText}>
+          <Text style={[styles.checkboxText, { color: tc.textSecondary }]}>
             I understand that this action is permanent and all my data will be deleted.
           </Text>
         </TouchableOpacity>
 
         {/* Confirmation Input */}
         <View style={styles.confirmSection}>
-          <Text style={styles.confirmLabel}>
-            Type <Text style={styles.confirmHighlight}>delete</Text> to confirm:
+          <Text style={[styles.confirmLabel, { color: tc.textPrimary }]}>
+            Type <Text style={[styles.confirmHighlight, { color: tc.error }]}>delete</Text> to confirm:
           </Text>
           <TextInput
             style={[
               styles.confirmInput,
-              isConfirmValid && styles.confirmInputValid,
+              { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary },
+              isConfirmValid && { borderColor: tc.error },
             ]}
             placeholder="Type 'delete' here"
-            placeholderTextColor={colors.gray400}
+            placeholderTextColor={tc.textTertiary}
             value={confirmText}
             onChangeText={setConfirmText}
             autoCapitalize="none"
@@ -197,17 +187,18 @@ export default function DeleteAccountScreen() {
         <TouchableOpacity
           style={[
             styles.deleteButton,
-            (!isConfirmValid || !understood) && styles.deleteButtonDisabled,
+            { backgroundColor: tc.error },
+            (!isConfirmValid || !understood) && { backgroundColor: isDark ? '#444' : colors.gray300 },
           ]}
           onPress={handleDeleteAccount}
           disabled={!isConfirmValid || !understood || isDeleting}
           activeOpacity={0.8}
         >
           {isDeleting ? (
-            <ActivityIndicator color={colors.white} />
+            <ActivityIndicator color="#FFFFFF" />
           ) : (
             <>
-              <Trash size={20} color={colors.white} variant="Bold" />
+              <Trash size={20} color="#FFFFFF" variant="Bold" />
               <Text style={styles.deleteButtonText}>Delete My Account</Text>
             </>
           )}
@@ -219,7 +210,7 @@ export default function DeleteAccountScreen() {
           onPress={handleBack}
           activeOpacity={0.7}
         >
-          <Text style={styles.cancelButtonText}>Cancel and keep my account</Text>
+          <Text style={[styles.cancelButtonText, { color: tc.primary }]}>Cancel and keep my account</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>

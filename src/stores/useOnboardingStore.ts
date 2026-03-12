@@ -128,6 +128,8 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
           allow_messages: 'friends',
         },
       },
+      // DEPRECATED: Kept for backward compat (AccountScreen reads this).
+      // Primary source of truth is the travel_preferences table (written in setup.tsx).
       travel_preferences: {
         styles: data.travelStyle ? [data.travelStyle] : [],
         interests: [],

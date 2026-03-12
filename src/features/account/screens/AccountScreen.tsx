@@ -33,6 +33,7 @@ import AccountSection from '../components/AccountSection';
 import { useAuth } from '@/context/AuthContext';
 import { profileService } from '@/services/profile.service';
 import { savedService } from '@/services/saved.service';
+import { partnerService } from '@/services/community/partner.service';
 
 // Apple-style dark color (same as ProfileHeader)
 const DARK_BG = '#1C1C1E';
@@ -79,6 +80,7 @@ export default function AccountScreen() {
   const [savedItemsCount, setSavedItemsCount] = useState(0);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [partnerStatus, setPartnerStatus] = useState<string | null>(null);
   
   // Dynamic styles based on theme
   const dynamicStyles = useMemo(() => ({
@@ -87,14 +89,30 @@ export default function AccountScreen() {
     },
   }), [colors]);
 
-  // Fetch saved items count
+  // Fetch saved items count and partner status
   useEffect(() => {
     const fetchSavedCount = async () => {
       if (!profile?.id) return;
       const { total } = await savedService.getSavedItemsCount(profile.id);
       setSavedItemsCount(total);
     };
+    const fetchPartnerStatus = async () => {
+      if (!profile?.id) return;
+      try {
+        const data = await partnerService.getApplicationStatus(profile.id);
+        if (data) {
+          if (data.didit_verification_status === 'approved' || data.status === 'approved') {
+            setPartnerStatus('verified');
+          } else if (['submitted', 'under_review', 'identity_verification'].includes(data.status) || data.didit_verification_status === 'in_progress') {
+            setPartnerStatus('pending');
+          } else if (data.status === 'rejected' || data.didit_verification_status === 'declined') {
+            setPartnerStatus('rejected');
+          }
+        }
+      } catch (e) { /* no partner app */ }
+    };
     fetchSavedCount();
+    fetchPartnerStatus();
   }, [profile?.id]);
   
   // Transform Supabase profile to UserProfile type
@@ -234,6 +252,27 @@ export default function AccountScreen() {
           ...item,
           badge: savedItemsCount > 0 ? savedItemsCount : undefined,
         };
+      }
+      // Update partner program subtitle dynamically
+      if (item.id === 'partner-program' && partnerStatus) {
+        const subtitles: Record<string, string> = {
+          verified: 'Verified Local Guide',
+          pending: 'Application in review',
+          rejected: 'Application declined — reapply',
+        };
+        return {
+          ...item,
+          subtitle: subtitles[partnerStatus] || item.subtitle,
+        };
+      }
+      // Update trusted traveler subtitle dynamically
+      if (item.id === 'verification') {
+        if (profile?.is_verified || partnerStatus === 'verified') {
+          return { ...item, subtitle: 'Verified — Trusted Traveler' };
+        }
+        if (partnerStatus === 'pending') {
+          return { ...item, subtitle: 'Verification in review' };
+        }
       }
       // Handle logout action
       if (item.id === 'logout') {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   StatusBar,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -20,130 +21,56 @@ import {
   Microphone2,
   Location,
 } from 'iconsax-react-native';
-import { spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius, colors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import { JournalEntry, BlockType, LayoutType } from '../types/journal.types';
 import CreateEntryBottomSheet from '../components/CreateEntryBottomSheet';
-
-// Mock journal entries
-const MOCK_JOURNAL_ENTRIES: JournalEntry[] = [
-  {
-    id: '1',
-    tripId: '1',
-    title: 'Journal for Trip to Sakura City - Japan',
-    date: new Date('2024-06-17'),
-    layout: 'mixed' as any,
-    blocks: [
-      {
-        id: 'b1',
-        position: 0,
-        size: 'large' as any,
-        content: {
-          type: BlockType.MAP,
-          data: {
-            latitude: 35.6762,
-            longitude: 139.6503,
-            locationName: 'Tokyo, Japan',
-          },
-        },
-      },
-      {
-        id: 'b2',
-        position: 1,
-        size: 'small' as any,
-        content: {
-          type: BlockType.AUDIO,
-          data: {
-            uri: 'audio.mp3',
-            duration: 84,
-          },
-        },
-      },
-      {
-        id: 'b3',
-        position: 2,
-        size: 'small' as any,
-        content: {
-          type: BlockType.GALLERY,
-          data: {
-            images: [
-              { uri: 'https://picsum.photos/200/200?random=1' },
-              { uri: 'https://picsum.photos/200/200?random=2' },
-            ],
-          },
-        },
-      },
-      {
-        id: 'b4',
-        position: 3,
-        size: 'wide' as any,
-        content: {
-          type: BlockType.TEXT,
-          data: {
-            text: 'After a long flight, I finally arrived in Tokyo! Navigating the busy airport was surprisingly smooth, and the efficiency of Japanese transport systems lived up to the hype. My first stop was my hotel in Shibuya—just a short walk from the iconic Shibuya Crossing. Watching the organized chaos of people crossing was mesmerizing. I ended the eve...',
-            wordCount: 450,
-          },
-        },
-      },
-    ],
-    wordCount: 450,
-    createdAt: new Date('2024-06-17'),
-    updatedAt: new Date('2024-06-17'),
-  },
-  {
-    id: '2',
-    tripId: '1',
-    title: 'Exploring the Streets of Shibuya',
-    date: new Date('2024-06-18'),
-    layout: 'grid' as any,
-    blocks: [
-      {
-        id: 'b5',
-        position: 0,
-        size: 'large' as any,
-        content: {
-          type: BlockType.IMAGE,
-          data: {
-            uri: 'https://picsum.photos/400/300?random=3',
-            caption: 'Shibuya Crossing at night',
-          },
-        },
-      },
-      {
-        id: 'b6',
-        position: 1,
-        size: 'large' as any,
-        content: {
-          type: BlockType.TEXT,
-          data: {
-            text: 'The neon lights of Shibuya are absolutely breathtaking at night. Every corner tells a story...',
-            wordCount: 320,
-          },
-        },
-      },
-    ],
-    wordCount: 320,
-    createdAt: new Date('2024-06-18'),
-    updatedAt: new Date('2024-06-18'),
-  },
-];
+import { journalService } from '@/services/journal.service';
+import { useAuth } from '@/context/AuthContext';
 
 export default function JournalScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const tripId = params.tripId as string;
   const { colors, isDark } = useTheme();
+  const { profile } = useAuth();
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
   
-  const [entries, setEntries] = useState<JournalEntry[]>(MOCK_JOURNAL_ENTRIES);
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   const [createEntryVisible, setCreateEntryVisible] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchEntries = async () => {
+      try {
+        setLoading(true);
+        const data = await journalService.getEntries(tripId);
+        if (mounted) setEntries(data);
+      } catch (err) {
+        console.error('Failed to load journal entries:', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    fetchEntries();
+    return () => { mounted = false; };
+  }, [tripId]);
 
   if (!trip) {
     return (
       <SafeAreaView style={styles.container}>
         <Text>Trip not found</Text>
       </SafeAreaView>
+    );
+  }
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bgPrimary, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
     );
   }
 
@@ -175,10 +102,19 @@ export default function JournalScreen() {
     }).format(date);
   };
 
-  const handleCreateEntry = (title: string, layout: LayoutType) => {
-    // TODO: Navigate to entry editor
-    console.log('Create entry:', title, layout);
-    router.push(`/journal/${tripId}/editor?title=${encodeURIComponent(title)}&layout=${layout}`);
+  const handleCreateEntry = async (title: string, layout: LayoutType) => {
+    try {
+      const entry = await journalService.createEntry(tripId, profile?.id ?? '', {
+        title,
+        date: new Date().toISOString(),
+        layout,
+      });
+      setEntries(prev => [entry, ...prev]);
+      router.push(`/journal/${tripId}/editor?entryId=${entry.id}&title=${encodeURIComponent(title)}&layout=${layout}`);
+    } catch (err) {
+      console.error('Failed to create journal entry:', err);
+      router.push(`/journal/${tripId}/editor?title=${encodeURIComponent(title)}&layout=${layout}`);
+    }
   };
 
   const getPreviewImage = (entry: JournalEntry) => {
@@ -219,7 +155,7 @@ export default function JournalScreen() {
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Progress Card */}
-          <View style={[styles.progressCard, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
+          <View style={[styles.progressCard, { backgroundColor: colors.bgCard }]}>
             <View style={styles.progressHeader}>
               <View style={styles.progressIconContainer}>
                 <Book1 size={24} color={colors.primary} variant="Bold" />
@@ -260,7 +196,7 @@ export default function JournalScreen() {
               return (
                 <TouchableOpacity
                   key={entry.id}
-                  style={[styles.entryCard, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}
+                  style={[styles.entryCard, { backgroundColor: colors.bgCard }]}
                   activeOpacity={0.7}
                   onPress={() => {
                     // TODO: Navigate to entry detail
@@ -352,7 +288,7 @@ export default function JournalScreen() {
 
                           {/* Text Block */}
                           {block.content.type === BlockType.TEXT && (
-                            <View style={[styles.textBlock, { backgroundColor: isDark ? '#1A1A1A' : colors.white }]}>
+                            <View style={[styles.textBlock, { backgroundColor: colors.bgCard }]}>
                               <DocumentText size={24} color={colors.textTertiary} variant="Bold" />
                               <Text style={[styles.textBlockPreview, { color: colors.textSecondary }]} numberOfLines={3}>
                                 {block.content.data.text}
@@ -368,27 +304,27 @@ export default function JournalScreen() {
                   <View style={styles.entryFooter}>
                     <View style={styles.contentIcons}>
                       <View style={styles.iconBadge}>
-                        <DocumentText size={16} color="#3B82F6" variant="Bold" />
+                        <DocumentText size={16} color={colors.info} variant="Bold" />
                         <Text style={[styles.iconBadgeText, { color: colors.textSecondary }]}>{entry.wordCount} words</Text>
                       </View>
                       
                       {photoCount > 0 && (
                         <View style={styles.iconBadge}>
-                          <Gallery size={16} color="#10B981" variant="Bold" />
+                          <Gallery size={16} color={colors.success} variant="Bold" />
                           <Text style={[styles.iconBadgeText, { color: colors.textSecondary }]}>{photoCount} {photoCount === 1 ? 'photo' : 'photos'}</Text>
                         </View>
                       )}
 
                       {hasAudio && (
                         <View style={styles.iconBadge}>
-                          <Microphone2 size={16} color="#8B5CF6" variant="Bold" />
+                          <Microphone2 size={16} color={colors.purple} variant="Bold" />
                           <Text style={[styles.iconBadgeText, { color: colors.textSecondary }]}>Audio</Text>
                         </View>
                       )}
 
                       {hasMap && (
                         <View style={styles.iconBadge}>
-                          <Location size={16} color="#EF4444" variant="Bold" />
+                          <Location size={16} color={colors.error} variant="Bold" />
                           <Text style={[styles.iconBadgeText, { color: colors.textSecondary }]}>Location</Text>
                         </View>
                       )}
@@ -401,7 +337,7 @@ export default function JournalScreen() {
 
           {/* Add Entry Button */}
           <TouchableOpacity
-            style={[styles.addEntryButton, { backgroundColor: isDark ? '#1A1A1A' : colors.white, borderColor: `${colors.primary}30` }]}
+            style={[styles.addEntryButton, { backgroundColor: colors.bgCard, borderColor: colors.primaryBorderSubtle }]}
             onPress={() => setCreateEntryVisible(true)}
             activeOpacity={0.7}
           >
@@ -460,13 +396,15 @@ const styles = StyleSheet.create({
   progressCard: {
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
-    padding: spacing.lg,
-    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
   progressHeader: {
     flexDirection: 'row',
@@ -524,14 +462,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   entryCard: {
-    borderRadius: borderRadius.lg,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     marginBottom: spacing.md,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
   entryHeader: {
     padding: spacing.md,
@@ -604,7 +544,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#3FC39E',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xs,
@@ -612,7 +552,7 @@ const styles = StyleSheet.create({
   audioDuration: {
     fontSize: typography.fontSize.xs,
     fontWeight: '600',
-    color: '#3FC39E',
+    color: colors.primary,
   },
   imageBlock: {
     width: '100%',

@@ -11,19 +11,19 @@ import { useAuth } from '@/context/AuthContext';
 import * as Haptics from 'expo-haptics';
 
 export function useSaveDestination(destinationId: string | null) {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Check initial saved state
   useEffect(() => {
-    if (!user?.id || !destinationId) return;
+    if (!profile?.id || !destinationId) return;
 
     const checkSaved = async () => {
       const { data } = await supabase
         .from('user_saved_items')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', profile.id)
         .eq('destination_id', destinationId)
         .maybeSingle();
 
@@ -31,10 +31,10 @@ export function useSaveDestination(destinationId: string | null) {
     };
 
     checkSaved();
-  }, [user?.id, destinationId]);
+  }, [profile?.id, destinationId]);
 
   const toggleSave = useCallback(async () => {
-    if (!user?.id || !destinationId || isLoading) return;
+    if (!profile?.id || !destinationId || isLoading) return;
 
     setIsLoading(true);
     const wasSaved = isSaved;
@@ -47,33 +47,29 @@ export function useSaveDestination(destinationId: string | null) {
 
     try {
       if (wasSaved) {
-        // Remove from saved
         await supabase
           .from('user_saved_items')
           .delete()
-          .eq('user_id', user.id)
+          .eq('user_id', profile.id)
           .eq('destination_id', destinationId);
 
-        // Track unsave interaction (fire and forget)
         try {
           await supabase.from('user_interactions').insert({
-            user_id: user.id,
+            user_id: profile.id,
             destination_id: destinationId,
             interaction_type: 'unsave',
             source: 'detail_page',
           });
         } catch (_) {}
       } else {
-        // Add to saved
         await supabase.from('user_saved_items').insert({
-          user_id: user.id,
+          user_id: profile.id,
           destination_id: destinationId,
         });
 
-        // Track save interaction (fire and forget)
         try {
           await supabase.from('user_interactions').insert({
-            user_id: user.id,
+            user_id: profile.id,
             destination_id: destinationId,
             interaction_type: 'save',
             source: 'detail_page',
@@ -81,13 +77,12 @@ export function useSaveDestination(destinationId: string | null) {
         } catch (_) {}
       }
     } catch (error) {
-      // Revert on error
       console.error('Save toggle error:', error);
       setIsSaved(wasSaved);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, destinationId, isSaved, isLoading]);
+  }, [profile?.id, destinationId, isSaved, isLoading]);
 
   return { isSaved, isLoading, toggleSave };
 }

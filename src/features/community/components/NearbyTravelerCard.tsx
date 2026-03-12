@@ -14,6 +14,7 @@ import {
   UserAdd,
 } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 export type TravelerStatus = 'available' | 'busy' | 'invisible';
 
@@ -46,7 +47,7 @@ interface NearbyTravelerCardProps {
 const STATUS_COLORS: Record<TravelerStatus, string> = {
   available: colors.success,
   busy: colors.warning,
-  invisible: colors.gray400,
+  invisible: colors.textTertiary,
 };
 
 const STATUS_LABELS: Record<TravelerStatus, string> = {
@@ -63,6 +64,7 @@ export default function NearbyTravelerCard({
   onMessage,
   showActions = true,
 }: NearbyTravelerCardProps) {
+  const { colors: tc } = useTheme();
   const isMapVariant = variant === 'map';
   
   const formatDistance = (km: number) => {
@@ -75,7 +77,7 @@ export default function NearbyTravelerCard({
   const getMatchColor = (score: number) => {
     if (score >= 80) return colors.success;
     if (score >= 60) return colors.primary;
-    return colors.gray400;
+    return tc.textTertiary;
   };
   
   // Map marker variant (compact)

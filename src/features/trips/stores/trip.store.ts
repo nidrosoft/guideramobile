@@ -7,6 +7,102 @@ import { create } from 'zustand';
 import { Trip, TripState, CreateTripData, UpdateTripData } from '../types/trip.types';
 import { canTransitionTo } from '../config/trip-states.config';
 import { mockTrip, colombiaTrip } from './mockTripData';
+import { supabase } from '@/lib/supabase/client';
+
+/**
+ * Map DB state/status to TripState enum based on dates
+ */
+function computeTripState(dbTrip: any): TripState {
+  // Explicit states from DB
+  if (dbTrip.state === 'cancelled' || dbTrip.status === 'cancelled') return TripState.CANCELLED;
+  if (dbTrip.state === 'draft' && dbTrip.status !== 'planning') return TripState.DRAFT;
+
+  // Date-based state computation
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startDate = dbTrip.start_date ? new Date(dbTrip.start_date) : null;
+  const endDate = dbTrip.end_date ? new Date(dbTrip.end_date) : null;
+
+  if (!startDate) return TripState.DRAFT;
+
+  // Past: end_date + 2 days has passed
+  if (endDate) {
+    const pastThreshold = new Date(endDate);
+    pastThreshold.setDate(pastThreshold.getDate() + 2);
+    if (today > pastThreshold) return TripState.PAST;
+  }
+
+  // Ongoing: between start_date and end_date + 2 days
+  if (startDate <= today && endDate && today <= new Date(endDate.getTime() + 2 * 86400000)) {
+    return TripState.ONGOING;
+  }
+
+  // Upcoming: start_date is in the future
+  if (startDate > today) return TripState.UPCOMING;
+
+  // Default to draft for planning trips
+  if (dbTrip.state === 'draft' || dbTrip.status === 'planning') return TripState.UPCOMING;
+
+  return TripState.DRAFT;
+}
+
+/**
+ * Convert a Supabase DB trip row into the Trip interface
+ */
+function dbTripToTrip(dbTrip: any): Trip {
+  const computedState = computeTripState(dbTrip);
+  const dest = dbTrip.destination || {};
+
+  return {
+    id: dbTrip.id,
+    userId: dbTrip.user_id,
+    state: computedState,
+    destination: {
+      id: dbTrip.id,
+      name: dest.name || dbTrip.primary_destination_name || 'Unknown',
+      city: dest.city || dbTrip.primary_destination_name || '',
+      country: dest.country || dbTrip.primary_destination_country || '',
+      coordinates: dest.latitude && dest.longitude
+        ? { latitude: dest.latitude, longitude: dest.longitude }
+        : undefined,
+    },
+    startDate: dbTrip.start_date ? new Date(dbTrip.start_date) : new Date(),
+    endDate: dbTrip.end_date ? new Date(dbTrip.end_date) : new Date(),
+    title: dbTrip.title || 'Untitled Trip',
+    coverImage: dbTrip.cover_image_url || '',
+    budget: dbTrip.budget_total
+      ? { amount: Number(dbTrip.budget_total), currency: dbTrip.budget_currency || 'USD' }
+      : undefined,
+    travelers: [],
+    bookings: [],
+    metadata: {
+      createdAt: new Date(dbTrip.created_at),
+      updatedAt: new Date(dbTrip.updated_at || dbTrip.created_at),
+      isShared: dbTrip.is_shared || false,
+      shareCount: 0,
+      tags: dbTrip.tags || [],
+    },
+    // Extended DB fields for the card UI
+    _db: {
+      flightCount: dbTrip.flight_count || 0,
+      hotelCount: dbTrip.hotel_count || 0,
+      carCount: dbTrip.car_count || 0,
+      experienceCount: dbTrip.experience_count || 0,
+      bookingCount: dbTrip.booking_count || 0,
+      totalBookedAmount: dbTrip.total_booked_amount || 0,
+      createdVia: dbTrip.created_via,
+      primaryDestinationName: dbTrip.primary_destination_name,
+      primaryDestinationCountry: dbTrip.primary_destination_country,
+      travelerCount: dbTrip.traveler_count || 1,
+      airlineName: dbTrip.airline_name,
+      cabinClass: dbTrip.cabin_class,
+      route: dbTrip.route,
+      flightNumber: dbTrip.flight_number,
+      seatNumber: dbTrip.seat_number,
+      modulesGenerated: dbTrip.modules_generated || false,
+    },
+  };
+}
 
 interface TripStore {
   // State
@@ -16,7 +112,7 @@ interface TripStore {
   error: string | null;
   
   // Actions
-  fetchTrips: () => Promise<void>;
+  fetchTrips: (userId?: string) => Promise<void>;
   createTrip: (data: CreateTripData) => Promise<Trip>;
   updateTrip: (id: string, data: UpdateTripData) => Promise<void>;
   deleteTrip: (id: string) => Promise<void>;
@@ -44,18 +140,41 @@ export const useTripStore = create<TripStore>((set, get) => ({
   isLoading: false,
   error: null,
   
-  // Fetch all trips
-  fetchTrips: async () => {
+  // Fetch all trips — queries Supabase, falls back to mock data
+  fetchTrips: async (userId?: string) => {
     set({ isLoading: true, error: null });
     try {
-      // TODO: Replace with actual API call
-      // Using mock data for demonstration - includes Colombia trip with AI-generated content
-      set({ trips: [colombiaTrip, mockTrip], isLoading: false });
+      // Query real trips from Supabase
+      let query = supabase
+        .from('trips')
+        .select('*')
+        .is('deleted_at', null)
+        .order('start_date', { ascending: false });
+
+      if (userId) {
+        query = query.eq('user_id', userId);
+      }
+
+      const { data: dbTrips, error: dbError } = await query;
+
+      if (dbError) {
+        console.warn('Failed to fetch trips from DB, using mock data:', dbError.message);
+        set({ trips: [colombiaTrip, mockTrip], isLoading: false });
+        return;
+      }
+
+      // Convert DB trips to Trip objects
+      const realTrips = (dbTrips || []).map(dbTripToTrip);
+
+      // Merge: real trips first, then mock data for demo
+      const allTrips = realTrips.length > 0
+        ? [...realTrips, colombiaTrip, mockTrip]
+        : [colombiaTrip, mockTrip];
+
+      set({ trips: allTrips, isLoading: false });
     } catch (error) {
-      set({ 
-        error: error instanceof Error ? error.message : 'Failed to fetch trips',
-        isLoading: false 
-      });
+      console.warn('fetchTrips error, using mock data:', error);
+      set({ trips: [colombiaTrip, mockTrip], isLoading: false });
     }
   },
   

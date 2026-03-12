@@ -26,6 +26,7 @@ import {
   Clock,
 } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius, shadows } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 // Flight display data interface
 export interface FlightCardData {
@@ -47,6 +48,7 @@ export interface FlightCardData {
   provider?: string;
   refundable?: boolean;
   changeable?: boolean;
+  airlineLogo?: string;
 }
 
 interface FlightCardProps {
@@ -109,10 +111,11 @@ const getAirlineInitials = (airlineName: string): string => {
   return airlineName.substring(0, 2).toUpperCase();
 };
 
-// Get airline logo URL from Kiwi CDN
-const getAirlineLogoUrl = (airlineCode: string): string => {
-  return `https://images.kiwi.com/airlines/64/${airlineCode}.png`;
-};
+const AIRLINE_LOGO_CDNS = [
+  (code: string) => `https://images.kiwi.com/airlines/64/${code}.png`,
+  (code: string) => `https://pics.avs.io/60/60/${code}.png`,
+  (code: string) => `https://content.airhex.com/content/logos/airlines_${code}_50_50_s.png`,
+];
 
 export default function FlightCard({
   flight,
@@ -128,16 +131,27 @@ export default function FlightCard({
   const facilities = flight.facilities || [];
   const airlineColors = getAirlineColors(flight.airlineName);
   const airlineInitials = getAirlineInitials(flight.airlineName);
-  const airlineLogoUrl = getAirlineLogoUrl(flight.airlineCode);
-  const [logoError, setLogoError] = React.useState(false);
+
+  const logoSources = React.useMemo(() => {
+    const sources: string[] = [];
+    if (flight.airlineLogo) sources.push(flight.airlineLogo);
+    AIRLINE_LOGO_CDNS.forEach(fn => sources.push(fn(flight.airlineCode)));
+    return sources;
+  }, [flight.airlineLogo, flight.airlineCode]);
+
+  const [logoSourceIndex, setLogoSourceIndex] = React.useState(0);
+  const logoError = logoSourceIndex >= logoSources.length;
+  const airlineLogoUrl = !logoError ? logoSources[logoSourceIndex] : '';
+  const { colors: tc } = useTheme();
 
   return (
     <Animated.View entering={FadeInDown.duration(400).delay(index * 100)}>
       <TouchableOpacity
         style={[
           styles.card,
+          { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
           compact && styles.cardCompact,
-          isSelected && styles.cardSelected,
+          isSelected && { borderColor: tc.primary, borderWidth: 2, backgroundColor: `${tc.primary}03` },
         ]}
         onPress={onPress}
         activeOpacity={0.9}
@@ -167,7 +181,7 @@ export default function FlightCard({
                   source={{ uri: airlineLogoUrl }}
                   style={styles.airlineLogoImage}
                   resizeMode="contain"
-                  onError={() => setLogoError(true)}
+                  onError={() => setLogoSourceIndex(prev => prev + 1)}
                 />
               </View>
             ) : (
@@ -183,38 +197,38 @@ export default function FlightCard({
               </LinearGradient>
             )}
             <View style={styles.airlineInfo}>
-              <Text style={[styles.airlineName, compact && styles.airlineNameCompact]} numberOfLines={1}>
+              <Text style={[styles.airlineName, { color: tc.textPrimary }, compact && styles.airlineNameCompact]} numberOfLines={1}>
                 {flight.airlineName}
               </Text>
-              <Text style={styles.flightNumber}>{flight.flightNumber}</Text>
+              <Text style={[styles.flightNumber, { color: tc.textSecondary }]}>{flight.flightNumber}</Text>
             </View>
           </View>
 
           {/* Price Block */}
           <View style={styles.priceSection}>
-            <Text style={[styles.price, compact && styles.priceCompact, isSelected && styles.priceSelected]}>
-              ${flight.price}
+            <Text style={[styles.price, { color: tc.textPrimary }, compact && styles.priceCompact, isSelected && { color: tc.primary }]}>
+              ${(flight.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </Text>
-            <Text style={styles.priceLabel}>per person</Text>
+            <Text style={[styles.priceLabel, { color: tc.textSecondary }]}>per person</Text>
           </View>
         </View>
 
         {/* Elegant Divider */}
         <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <View style={styles.dividerDot} />
-          <View style={styles.dividerLine} />
+          <View style={[styles.dividerLine, { backgroundColor: tc.borderSubtle }]} />
+          <View style={[styles.dividerDot, { backgroundColor: tc.borderSubtle }]} />
+          <View style={[styles.dividerLine, { backgroundColor: tc.borderSubtle }]} />
         </View>
 
         {/* Flight Route Visualization */}
         <View style={[styles.routeContainer, compact && styles.routeContainerCompact]}>
           {/* Departure */}
           <View style={styles.routeEndpoint}>
-            <Text style={[styles.routeTime, compact && styles.routeTimeCompact]}>
+            <Text style={[styles.routeTime, { color: tc.textPrimary }, compact && styles.routeTimeCompact]}>
               {formatTime(flight.departureTime)}
             </Text>
             <View style={styles.routeCodeContainer}>
-              <Text style={[styles.routeCode, compact && styles.routeCodeCompact]}>
+              <Text style={[styles.routeCode, { color: tc.primary }, compact && styles.routeCodeCompact]}>
                 {flight.originCode}
               </Text>
             </View>
@@ -224,26 +238,26 @@ export default function FlightCard({
           <View style={styles.flightPath}>
             <View style={styles.flightPathLine}>
               {/* Origin Dot */}
-              <View style={styles.pathDotOuter}>
-                <View style={styles.pathDotInner} />
+              <View style={[styles.pathDotOuter, { backgroundColor: `${tc.primary}15` }]}>
+                <View style={[styles.pathDotInner, { backgroundColor: tc.primary }]} />
               </View>
               
               {/* Dashed Line */}
               <View style={styles.dashedLine}>
                 {[...Array(compact ? 6 : 10)].map((_, i) => (
-                  <View key={i} style={styles.dash} />
+                  <View key={i} style={[styles.dash, { backgroundColor: tc.borderSubtle }]} />
                 ))}
               </View>
               
               {/* Airplane Icon */}
               <View style={styles.planeIconContainer}>
                 <LinearGradient
-                  colors={[colors.primary, colors.primaryDark]}
+                  colors={[tc.primary, colors.primaryDark]}
                   style={styles.planeIconBg}
                 >
                   <Airplane 
                     size={compact ? 12 : 14} 
-                    color={colors.white} 
+                    color="#FFFFFF" 
                     variant="Bold"
                     style={{ transform: [{ rotate: '45deg' }] }}
                   />
@@ -253,21 +267,21 @@ export default function FlightCard({
               {/* Dashed Line */}
               <View style={styles.dashedLine}>
                 {[...Array(compact ? 6 : 10)].map((_, i) => (
-                  <View key={i} style={styles.dash} />
+                  <View key={i} style={[styles.dash, { backgroundColor: tc.borderSubtle }]} />
                 ))}
               </View>
               
               {/* Destination Dot */}
-              <View style={styles.pathDotOuter}>
-                <View style={[styles.pathDotInner, { backgroundColor: colors.success }]} />
+              <View style={[styles.pathDotOuter, { backgroundColor: `${tc.success}15` }]}>
+                <View style={[styles.pathDotInner, { backgroundColor: tc.success }]} />
               </View>
             </View>
             
             {/* Duration & Stops */}
             <View style={styles.flightMeta}>
               <View style={styles.durationBadge}>
-                <Clock size={10} color={colors.textSecondary} />
-                <Text style={styles.durationText}>{formatDuration(flight.duration)}</Text>
+                <Clock size={10} color={tc.textSecondary} />
+                <Text style={[styles.durationText, { color: tc.textSecondary }]}>{formatDuration(flight.duration)}</Text>
               </View>
               <View style={[
                 styles.stopsBadge,
@@ -285,11 +299,11 @@ export default function FlightCard({
 
           {/* Arrival */}
           <View style={[styles.routeEndpoint, styles.routeEndpointRight]}>
-            <Text style={[styles.routeTime, compact && styles.routeTimeCompact]}>
+            <Text style={[styles.routeTime, { color: tc.textPrimary }, compact && styles.routeTimeCompact]}>
               {formatTime(flight.arrivalTime)}
             </Text>
             <View style={styles.routeCodeContainer}>
-              <Text style={[styles.routeCode, compact && styles.routeCodeCompact]}>
+              <Text style={[styles.routeCode, { color: tc.primary }, compact && styles.routeCodeCompact]}>
                 {flight.destCode}
               </Text>
             </View>
@@ -302,7 +316,7 @@ export default function FlightCard({
             {/* Dotted Divider Line */}
             <View style={styles.dottedDivider}>
               {[...Array(40)].map((_, i) => (
-                <View key={i} style={styles.dot} />
+                <View key={i} style={[styles.dot, { backgroundColor: tc.borderSubtle }]} />
               ))}
             </View>
             <View style={styles.facilitiesRow}>

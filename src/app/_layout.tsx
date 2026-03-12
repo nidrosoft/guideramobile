@@ -24,6 +24,7 @@ import { HomepageDataProvider } from '@/features/homepage';
 import { startHealthChecks, stopHealthChecks } from '@/services/health';
 import { logger } from '@/services/logging';
 import { initSentry } from '@/services/sentry';
+import { initNotifications, requestNotificationPermissions } from '@/services/notifications';
 import '@/lib/i18n'; // Initialize i18n
 import { loadSavedLanguage } from '@/lib/i18n';
 
@@ -61,6 +62,11 @@ export default function RootLayout() {
     
     // Load saved language preference
     loadSavedLanguage();
+    
+    // Initialize push notifications
+    initNotifications().then(() => {
+      requestNotificationPermissions();
+    }).catch(err => logger.warn('Notification init failed', err));
     
     // Start periodic health checks (every 60 seconds)
     startHealthChecks(60000);

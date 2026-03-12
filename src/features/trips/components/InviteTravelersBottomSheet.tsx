@@ -105,20 +105,20 @@ export default function InviteTravelersBottomSheet({
         activeOpacity={1} 
         onPress={onClose}
       >
-        <View style={styles.bottomSheet} onStartShouldSetResponder={() => true}>
+        <View style={[styles.bottomSheet, { backgroundColor: tc.bgPrimary }]} onStartShouldSetResponder={() => true}>
           {/* Handle Bar */}
-          <View style={styles.handleBar} />
+          <View style={[styles.handleBar, { backgroundColor: tc.borderSubtle }]} />
 
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, { borderBottomColor: tc.borderSubtle }]}>
             <View>
-              <Text style={styles.title}>Invite Travelers</Text>
-              <Text style={styles.subtitle}>
+              <Text style={[styles.title, { color: tc.textPrimary }]}>Invite Travelers</Text>
+              <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
                 Invite friends to join {tripName}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <CloseCircle size={28} color={colors.gray400} variant="Bold" />
+              <CloseCircle size={28} color={tc.textTertiary} variant="Bold" />
             </TouchableOpacity>
           </View>
 
@@ -128,11 +128,11 @@ export default function InviteTravelersBottomSheet({
             keyboardShouldPersistTaps="handled"
           >
             {/* Trip Info Card */}
-            <View style={styles.tripInfoCard}>
-              <Sms size={24} color={colors.primary} variant="Bold" />
+            <View style={[styles.tripInfoCard, { backgroundColor: `${tc.primary}10` }]}>
+              <Sms size={24} color={tc.primary} variant="Bold" />
               <View style={styles.tripInfoText}>
-                <Text style={styles.tripInfoTitle}>Email Invitation</Text>
-                <Text style={styles.tripInfoDescription}>
+                <Text style={[styles.tripInfoTitle, { color: tc.textPrimary }]}>Email Invitation</Text>
+                <Text style={[styles.tripInfoDescription, { color: tc.textSecondary }]}>
                   Invitees will receive an email to join your trip to {tripDestination}
                 </Text>
               </View>
@@ -140,15 +140,15 @@ export default function InviteTravelersBottomSheet({
 
             {/* Email Inputs */}
             <View style={styles.emailsSection}>
-              <Text style={styles.sectionLabel}>Email Addresses</Text>
+              <Text style={[styles.sectionLabel, { color: tc.textSecondary }]}>Email Addresses</Text>
               
               {emails.map((email, index) => (
                 <View key={index} style={styles.emailInputContainer}>
-                  <View style={styles.emailInputWrapper}>
+                  <View style={[styles.emailInputWrapper, { backgroundColor: tc.bgInput, borderColor: tc.borderSubtle }]}>
                     <TextInput
-                      style={styles.emailInput}
+                      style={[styles.emailInput, { color: tc.textPrimary }]}
                       placeholder="traveler@example.com"
-                      placeholderTextColor={colors.gray400}
+                      placeholderTextColor={tc.textTertiary}
                       value={email}
                       onChangeText={(text) => handleEmailChange(text, index)}
                       keyboardType="email-address"
@@ -162,7 +162,7 @@ export default function InviteTravelersBottomSheet({
                       }}
                     />
                     {email.trim() && isValidEmail(email.trim()) && (
-                      <TickCircle size={20} color={colors.success} variant="Bold" />
+                      <TickCircle size={20} color={tc.success} variant="Bold" />
                     )}
                   </View>
                   
@@ -171,7 +171,7 @@ export default function InviteTravelersBottomSheet({
                       onPress={() => handleRemoveEmail(index)}
                       style={styles.removeButton}
                     >
-                      <CloseCircle size={24} color={colors.gray400} variant="Bold" />
+                      <CloseCircle size={24} color={tc.textTertiary} variant="Bold" />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -180,36 +180,36 @@ export default function InviteTravelersBottomSheet({
               {/* Add Another Email Button */}
               {currentEmail.trim() && isValidEmail(currentEmail.trim()) && (
                 <TouchableOpacity
-                  style={styles.addEmailButton}
+                  style={[styles.addEmailButton, { borderColor: tc.primary }]}
                   onPress={handleAddEmail}
                 >
-                  <Add size={20} color={colors.primary} variant="Bold" />
-                  <Text style={styles.addEmailButtonText}>Add another email</Text>
+                  <Add size={20} color={tc.primary} variant="Bold" />
+                  <Text style={[styles.addEmailButtonText, { color: tc.primary }]}>Add another email</Text>
                 </TouchableOpacity>
               )}
             </View>
 
             {/* Preview Message */}
             <View style={styles.previewSection}>
-              <Text style={styles.sectionLabel}>Invitation Preview</Text>
-              <View style={styles.previewCard}>
-                <Text style={styles.previewTitle}>
+              <Text style={[styles.sectionLabel, { color: tc.textSecondary }]}>Invitation Preview</Text>
+              <View style={[styles.previewCard, { backgroundColor: tc.bgInput, borderColor: tc.borderSubtle }]}>
+                <Text style={[styles.previewTitle, { color: tc.textPrimary }]}>
                   You're invited to join {tripName}!
                 </Text>
-                <Text style={styles.previewMessage}>
+                <Text style={[styles.previewMessage, { color: tc.textSecondary }]}>
                   You've been invited to join an upcoming trip to {tripDestination}. 
                   Accept the invitation to view trip details, collaborate on planning, 
                   and stay connected with your travel companions.
                 </Text>
-                <View style={styles.previewButton}>
+                <View style={[styles.previewButton, { backgroundColor: tc.primary }]}>
                   <Text style={styles.previewButtonText}>Accept Invitation</Text>
                 </View>
               </View>
             </View>
 
             {/* Info Note */}
-            <View style={styles.infoNote}>
-              <Text style={styles.infoNoteText}>
+            <View style={[styles.infoNote, { backgroundColor: `${tc.warning}10` }]}>
+              <Text style={[styles.infoNoteText, { color: tc.textSecondary }]}>
                 💡 Invitees will be able to view trip details, add to the itinerary, 
                 and collaborate on planning once they accept.
               </Text>
@@ -217,20 +217,20 @@ export default function InviteTravelersBottomSheet({
           </ScrollView>
 
           {/* Footer */}
-          <View style={styles.footer}>
+          <View style={[styles.footer, { borderTopColor: tc.borderSubtle }]}>
             <TouchableOpacity
-              style={styles.cancelButton}
+              style={[styles.cancelButton, { borderColor: tc.borderSubtle }]}
               onPress={onClose}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={[styles.cancelButtonText, { color: tc.textSecondary }]}>Cancel</Text>
             </TouchableOpacity>
             
             <TouchableOpacity
-              style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}
+              style={[styles.sendButton, { backgroundColor: tc.primary }, !canSend && { backgroundColor: tc.borderMedium }]}
               onPress={handleSendInvites}
               disabled={!canSend}
             >
-              <Sms size={20} color={colors.white} variant="Bold" />
+              <Sms size={20} color="#FFFFFF" variant="Bold" />
               <Text style={styles.sendButtonText}>
                 Send {validEmailCount > 0 ? `(${validEmailCount})` : 'Invites'}
               </Text>

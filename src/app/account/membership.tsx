@@ -53,9 +53,9 @@ const TIER_ICONS: Record<MembershipTier, any> = {
 
 export default function MembershipScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [currentTier, setCurrentTier] = useState<MembershipTier>('free');
   const [expiresAt, setExpiresAt] = useState<string | undefined>();
@@ -64,10 +64,10 @@ export default function MembershipScreen() {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
 
   const fetchMembership = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     try {
-      const membership = await rewardsService.getUserMembership(user.id);
+      const membership = await rewardsService.getUserMembership(profile.id);
       setCurrentTier(membership.tier);
       setExpiresAt(membership.expiresAt);
       setPointsBalance(membership.pointsBalance);
@@ -76,7 +76,7 @@ export default function MembershipScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [profile?.id]);
 
   useEffect(() => {
     fetchMembership();
@@ -131,7 +131,7 @@ export default function MembershipScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: tc.background }]}>
-        <StatusBar style="light" />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -141,7 +141,7 @@ export default function MembershipScreen() {
   
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style="light" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Animated Header */}
       <Animated.View style={[styles.headerContainer, { height: headerHeight }]}>
@@ -152,7 +152,7 @@ export default function MembershipScreen() {
           style={[styles.headerGradient, { paddingTop: insets.top }]}
         >
           {/* Fixed Navigation Row - always visible and touchable */}
-          <View style={[styles.header, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
+          <View style={[styles.header, { backgroundColor: 'transparent', borderBottomColor: 'transparent' }]}>
             <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <ArrowLeft size={24} color={colors.white} />
             </TouchableOpacity>
@@ -196,7 +196,7 @@ export default function MembershipScreen() {
       
       <Animated.ScrollView 
         style={styles.content}
-        contentContainerStyle={[styles.contentContainer, { paddingTop: HEADER_MAX_HEIGHT + insets.top + spacing.md }]}
+        contentContainerStyle={[styles.contentContainer, { paddingTop: HEADER_MAX_HEIGHT + insets.top + spacing.md, backgroundColor: tc.background }]}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
         onScroll={Animated.event(
@@ -206,12 +206,12 @@ export default function MembershipScreen() {
       >
         {/* Current Benefits */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Benefits</Text>
-          <View style={styles.benefitsCard}>
+          <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>Your Benefits</Text>
+          <View style={[styles.benefitsCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             {currentTierInfo.benefits.map((benefit, index) => (
               <View key={index} style={styles.benefitRow}>
-                <TickCircle size={18} color={colors.success} variant="Bold" />
-                <Text style={styles.benefitText}>{benefit}</Text>
+                <TickCircle size={18} color={tc.success} variant="Bold" />
+                <Text style={[styles.benefitText, { color: tc.textPrimary }]}>{benefit}</Text>
               </View>
             ))}
           </View>
@@ -220,20 +220,21 @@ export default function MembershipScreen() {
         {/* Upgrade Options */}
         {currentTier !== 'platinum' && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Upgrade Your Experience</Text>
+            <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>Upgrade Your Experience</Text>
             
             {/* Plan Toggle */}
-            <View style={styles.planToggle}>
+            <View style={[styles.planToggle, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : colors.gray100 }]}>
               <TouchableOpacity
                 style={[
                   styles.planOption,
-                  selectedPlan === 'monthly' && styles.planOptionActive,
+                  selectedPlan === 'monthly' && [styles.planOptionActive, { backgroundColor: tc.bgElevated }],
                 ]}
                 onPress={() => setSelectedPlan('monthly')}
               >
                 <Text style={[
                   styles.planOptionText,
-                  selectedPlan === 'monthly' && styles.planOptionTextActive,
+                  { color: tc.textSecondary },
+                  selectedPlan === 'monthly' && [styles.planOptionTextActive, { color: tc.textPrimary }],
                 ]}>
                   Monthly
                 </Text>
@@ -241,13 +242,14 @@ export default function MembershipScreen() {
               <TouchableOpacity
                 style={[
                   styles.planOption,
-                  selectedPlan === 'yearly' && styles.planOptionActive,
+                  selectedPlan === 'yearly' && [styles.planOptionActive, { backgroundColor: tc.bgElevated }],
                 ]}
                 onPress={() => setSelectedPlan('yearly')}
               >
                 <Text style={[
                   styles.planOptionText,
-                  selectedPlan === 'yearly' && styles.planOptionTextActive,
+                  { color: tc.textSecondary },
+                  selectedPlan === 'yearly' && [styles.planOptionTextActive, { color: tc.textPrimary }],
                 ]}>
                   Yearly
                 </Text>
@@ -273,8 +275,8 @@ export default function MembershipScreen() {
 
         {/* Points Multiplier Info */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Points Multiplier</Text>
-          <View style={styles.multiplierCard}>
+          <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>Points Multiplier</Text>
+          <View style={[styles.multiplierCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             <View style={styles.multiplierRow}>
               {MEMBERSHIP_TIERS.map(tier => {
                 const Icon = TIER_ICONS[tier.id];
@@ -293,8 +295,8 @@ export default function MembershipScreen() {
                     ]}>
                       <Icon size={20} color={tier.color} variant="Bold" />
                     </View>
-                    <Text style={styles.multiplierValue}>{tier.pointsMultiplier}x</Text>
-                    <Text style={styles.multiplierLabel}>{tier.name}</Text>
+                    <Text style={[styles.multiplierValue, { color: tc.textPrimary }]}>{tier.pointsMultiplier}x</Text>
+                    <Text style={[styles.multiplierLabel, { color: tc.textSecondary }]}>{tier.name}</Text>
                   </View>
                 );
               })}
@@ -314,12 +316,13 @@ interface TierUpgradeCardProps {
 }
 
 function TierUpgradeCard({ tier, selectedPlan, onUpgrade }: TierUpgradeCardProps) {
+  const { colors: tc } = useTheme();
   const TierIcon = TIER_ICONS[tier.id as MembershipTier];
   const price = selectedPlan === 'monthly' ? tier.monthlyPrice : tier.yearlyPrice;
   const period = selectedPlan === 'monthly' ? '/month' : '/year';
   
   return (
-    <View style={styles.upgradeCard}>
+    <View style={[styles.upgradeCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
       <LinearGradient
         colors={tier.gradient as [string, string]}
         start={{ x: 0, y: 0 }}
@@ -337,7 +340,7 @@ function TierUpgradeCard({ tier, selectedPlan, onUpgrade }: TierUpgradeCardProps
       </LinearGradient>
       
       <View style={styles.upgradeCardBody}>
-        <Text style={styles.upgradeCardSubtitle}>
+        <Text style={[styles.upgradeCardSubtitle, { color: tc.textSecondary }]}>
           {tier.pointsMultiplier}x points on all bookings
         </Text>
         
@@ -345,13 +348,13 @@ function TierUpgradeCard({ tier, selectedPlan, onUpgrade }: TierUpgradeCardProps
           {tier.benefits.slice(0, 4).map((benefit, index) => (
             <View key={index} style={styles.upgradeBenefitRow}>
               <TickCircle size={14} color={tier.color} variant="Bold" />
-              <Text style={styles.upgradeBenefitText} numberOfLines={1}>
+              <Text style={[styles.upgradeBenefitText, { color: tc.textPrimary }]} numberOfLines={1}>
                 {benefit}
               </Text>
             </View>
           ))}
           {tier.benefits.length > 4 && (
-            <Text style={styles.moreBenefits}>
+            <Text style={[styles.moreBenefits, { color: tc.primary }]}>
               +{tier.benefits.length - 4} more benefits
             </Text>
           )}
@@ -512,6 +515,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -578,6 +583,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.xl,
     overflow: 'hidden',
     marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -657,6 +664,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,

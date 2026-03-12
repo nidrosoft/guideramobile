@@ -1,7 +1,9 @@
 /**
  * IDENTITY VERIFICATION SCREEN
  * 
- * Verify user identity for community trust and enhanced features.
+ * Trusted Traveler verification — simple identity verification
+ * to build trust within the Guidera community.
+ * If already verified as a Partner (Local Guide), auto-verified here.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -13,7 +15,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
@@ -31,12 +32,18 @@ import {
   People,
   Star1,
   MessageQuestion,
+  Global,
+  Ranking,
+  SecuritySafe,
+  Heart,
+  TicketDiscount,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
+import { partnerService } from '@/services/community/partner.service';
 
 type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'rejected';
 type VerificationStep = 'intro' | 'document-select' | 'document-capture' | 'selfie' | 'review' | 'submitted';
@@ -47,6 +54,7 @@ interface VerificationData {
   reviewed_at?: string;
   rejection_reason?: string;
   document_type?: string;
+  source?: 'traveler' | 'partner';
 }
 
 const DOCUMENT_TYPES = [
@@ -56,67 +64,102 @@ const DOCUMENT_TYPES = [
 ];
 
 const VERIFICATION_BENEFITS = [
-  { icon: ShieldTick, title: 'Verified Badge', description: 'Show others you\'re a trusted traveler' },
-  { icon: People, title: 'Community Trust', description: 'Connect with verified travel buddies' },
-  { icon: Star1, title: 'Priority Support', description: 'Get faster responses from our team' },
-  { icon: MessageQuestion, title: 'Premium Features', description: 'Access exclusive community features' },
+  { icon: ShieldTick, title: 'Verified Badge', description: 'A trusted badge on your profile visible to all users' },
+  { icon: People, title: 'Travel Buddy Matching', description: 'Connect with other verified travelers for group trips' },
+  { icon: Global, title: 'Priority Booking Access', description: 'Early access to exclusive deals and flash sales' },
+  { icon: Star1, title: 'Enhanced Profile', description: 'Stand out in the community with verified status' },
+  { icon: Heart, title: 'Trusted Reviews', description: 'Your reviews get a verified mark — more visibility' },
+  { icon: Ranking, title: 'Leaderboard Eligibility', description: 'Compete in community challenges and earn rewards' },
+  { icon: TicketDiscount, title: 'Exclusive Discounts', description: 'Up to 15% off partner tours and local experiences' },
+  { icon: SecuritySafe, title: 'Safety Network', description: 'Access to the verified traveler safety network' },
 ];
 
 export default function VerificationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const { user, profile } = useAuth();
   const [verificationData, setVerificationData] = useState<VerificationData>({ status: 'unverified' });
   const [isLoading, setIsLoading] = useState(true);
   const [step, setStep] = useState<VerificationStep>('intro');
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
 
-  // Load verification status
+  // Load verification status — also check partner verification
   const loadVerificationStatus = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
+    const userId = profile.id;
     
     try {
-      // Check if user is already verified from profile
+      // 1. Check if already verified via profile flag
       if (profile?.is_verified) {
-        setVerificationData({
-          status: 'verified',
-          reviewed_at: profile.verified_at,
-        });
-      } else {
-        // Check for pending verification
-        const { data, error } = await supabase
-          .from('identity_verifications')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
+        setVerificationData({ status: 'verified', reviewed_at: profile.verified_at });
+        setIsLoading(false);
+        return;
+      }
 
-        if (data) {
-          setVerificationData({
-            status: data.status as VerificationStatus,
-            submitted_at: data.submitted_at,
-            reviewed_at: data.reviewed_at,
-            rejection_reason: data.rejection_reason,
-            document_type: data.document_type,
-          });
+      // 2. Check partner verification (if verified as partner, auto-verified as traveler)
+      const partnerData = await partnerService.getApplicationStatus(userId!);
+      if (partnerData) {
+        if (partnerData.didit_verification_status === 'approved' || partnerData.status === 'approved') {
+          setVerificationData({ status: 'verified', source: 'partner', reviewed_at: partnerData.updated_at });
+          setIsLoading(false);
+          return;
+        }
+        if (partnerData.didit_verification_status === 'in_progress' || 
+            ['submitted', 'under_review', 'identity_verification'].includes(partnerData.status)) {
+          setVerificationData({ status: 'pending', source: 'partner', submitted_at: partnerData.submitted_at });
+          setIsLoading(false);
+          return;
+        }
+        if (partnerData.didit_verification_status === 'declined' || partnerData.status === 'rejected') {
+          setVerificationData({ status: 'rejected', source: 'partner' });
+          setIsLoading(false);
+          return;
         }
       }
+
+      // 3. Check identity_verifications table for traveler-specific verification
+      const { data } = await supabase
+        .from('identity_verifications')
+        .select('*')
+        .eq('user_id', userId!)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        setVerificationData({
+          status: data.status as VerificationStatus,
+          submitted_at: data.submitted_at,
+          reviewed_at: data.reviewed_at,
+          rejection_reason: data.rejection_reason,
+          document_type: data.document_type,
+          source: 'traveler',
+        });
+      }
     } catch (error) {
-      // No verification record found - user is unverified
       console.log('No verification record found');
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, profile]);
+  }, [profile?.id]);
 
   useEffect(() => {
     loadVerificationStatus();
   }, [loadVerificationStatus]);
 
+  // Auto-poll when pending — checks every 30s so status updates automatically
+  useEffect(() => {
+    if (verificationData.status !== 'pending') return;
+    const interval = setInterval(() => {
+      loadVerificationStatus();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [verificationData.status, loadVerificationStatus]);
+
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (step !== 'intro' && step !== 'submitted') {
-      // Go back to previous step
       if (step === 'document-select') setStep('intro');
       else if (step === 'document-capture') setStep('document-select');
       else if (step === 'selfie') setStep('document-capture');
@@ -139,8 +182,7 @@ export default function VerificationScreen() {
 
   const handleDocumentCapture = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // TODO: Implement camera capture for document
-    // For now, simulate capture
+    // TODO: Integrate with Didit for real document capture
     Alert.alert(
       'Document Capture',
       'In production, this would open the camera to capture your ID document.',
@@ -150,7 +192,7 @@ export default function VerificationScreen() {
 
   const handleSelfieCapture = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // TODO: Implement camera capture for selfie
+    // TODO: Integrate with Didit for real selfie capture
     Alert.alert(
       'Selfie Capture',
       'In production, this would open the camera for a selfie to match with your ID.',
@@ -163,11 +205,11 @@ export default function VerificationScreen() {
     setIsLoading(true);
     
     try {
-      // Create verification record
+      if (!profile?.id) return;
       const { error } = await supabase
         .from('identity_verifications')
         .upsert({
-          user_id: user?.id,
+          user_id: profile.id,
           status: 'pending',
           document_type: selectedDocument,
           submitted_at: new Date().toISOString(),
@@ -179,6 +221,7 @@ export default function VerificationScreen() {
         status: 'pending',
         submitted_at: new Date().toISOString(),
         document_type: selectedDocument || undefined,
+        source: 'traveler',
       });
       
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -191,29 +234,45 @@ export default function VerificationScreen() {
     }
   };
 
-  const getStatusColor = (status: VerificationStatus) => {
+  // Status helpers using dynamic theme colors
+  const STATUS_COLORS: Record<VerificationStatus, string> = {
+    verified: '#16A34A',
+    pending: '#F59E0B',
+    rejected: '#EF4444',
+    unverified: tc.textTertiary,
+  };
+
+  const getStatusColor = (status: VerificationStatus) => STATUS_COLORS[status];
+
+  const getStatusIcon = (status: VerificationStatus) => {
+    const color = getStatusColor(status);
     switch (status) {
-      case 'verified': return colors.success;
-      case 'pending': return colors.warning;
-      case 'rejected': return colors.error;
-      default: return colors.gray400;
+      case 'verified': return <TickCircle size={20} color={color} variant="Bold" />;
+      case 'pending': return <Clock size={20} color={color} variant="Bold" />;
+      case 'rejected': return <CloseCircle size={20} color={color} variant="Bold" />;
+      default: return <Verify size={20} color={color} variant="Bold" />;
     }
   };
 
-  const getStatusIcon = (status: VerificationStatus) => {
+  const getStatusLabel = (status: VerificationStatus) => {
     switch (status) {
-      case 'verified': return <TickCircle size={20} color={colors.success} variant="Bold" />;
-      case 'pending': return <Clock size={20} color={colors.warning} variant="Bold" />;
-      case 'rejected': return <CloseCircle size={20} color={colors.error} variant="Bold" />;
-      default: return <Verify size={20} color={colors.gray400} variant="Bold" />;
+      case 'verified': return 'Verified';
+      case 'pending': return 'In Review';
+      case 'rejected': return 'Declined';
+      default: return 'Not Verified';
     }
   };
+
+  // Shared card style
+  const cardBg = tc.bgCard;
+  const cardBorder = tc.borderSubtle;
+  const subtleBg = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)';
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.loadingContainer, { backgroundColor: tc.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <ActivityIndicator size="large" color={tc.primary} />
       </View>
     );
   }
@@ -221,71 +280,122 @@ export default function VerificationScreen() {
   const renderIntro = () => (
     <>
       {/* Status Card */}
-      <View style={[styles.statusCard, { borderColor: getStatusColor(verificationData.status) + '30' }]}>
-        <View style={[styles.statusIcon, { backgroundColor: getStatusColor(verificationData.status) + '15' }]}>
+      <View style={[styles.statusCard, { backgroundColor: cardBg, borderColor: getStatusColor(verificationData.status) + '30' }]}>
+        <View style={[styles.statusIconBox, { backgroundColor: getStatusColor(verificationData.status) + '15' }]}>
           {getStatusIcon(verificationData.status)}
         </View>
         <View style={styles.statusContent}>
-          <Text style={styles.statusLabel}>Verification Status</Text>
+          <Text style={[styles.statusLabel, { color: tc.textSecondary }]}>Verification Status</Text>
           <Text style={[styles.statusValue, { color: getStatusColor(verificationData.status) }]}>
-            {verificationData.status.charAt(0).toUpperCase() + verificationData.status.slice(1)}
+            {getStatusLabel(verificationData.status)}
           </Text>
         </View>
       </View>
 
-      {/* Verified State */}
+      {/* Verified State — Single Unified Card */}
       {verificationData.status === 'verified' && (
-        <View style={styles.verifiedSection}>
-          <View style={styles.verifiedBadge}>
-            <TickCircle size={48} color={colors.success} variant="Bold" />
-          </View>
-          <Text style={styles.verifiedTitle}>You're Verified!</Text>
-          <Text style={styles.verifiedText}>
-            Your identity has been verified. You now have access to all verified member benefits.
-          </Text>
-          {verificationData.reviewed_at && (
-            <Text style={styles.verifiedDate}>
-              Verified on {new Date(verificationData.reviewed_at).toLocaleDateString()}
+        <View style={[styles.unifiedVerifiedCard, { backgroundColor: isDark ? 'rgba(22,163,74,0.06)' : 'rgba(22,163,74,0.04)', borderColor: 'rgba(22,163,74,0.18)' }]}>
+          {/* Hero section */}
+          <View style={styles.unifiedHeroSection}>
+            <View style={[styles.unifiedBadgeCircle, { backgroundColor: isDark ? 'rgba(22,163,74,0.15)' : 'rgba(22,163,74,0.12)' }]}>
+              <TickCircle size={28} color="#16A34A" variant="Bold" />
+            </View>
+            <Text style={[styles.unifiedHeroTitle, { color: '#16A34A' }]}>Trusted Traveler</Text>
+            <Text style={[styles.unifiedHeroSubtitle, { color: tc.textSecondary }]}>
+              {verificationData.source === 'partner' 
+                ? 'Verified through the Local Guide Partner Program' 
+                : 'Your identity is verified — you are a trusted member'}
             </Text>
-          )}
+            {verificationData.reviewed_at && (
+              <View style={[styles.unifiedDatePill, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}>
+                <Text style={[styles.unifiedDateText, { color: tc.textTertiary }]}>
+                  Verified on {new Date(verificationData.reviewed_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Divider */}
+          <View style={[styles.unifiedDivider, { backgroundColor: isDark ? 'rgba(22,163,74,0.12)' : 'rgba(22,163,74,0.10)' }]} />
+
+          {/* Perks section */}
+          <Text style={[styles.unifiedPerksTitle, { color: tc.textPrimary }]}>Your Verified Perks</Text>
+          {VERIFICATION_BENEFITS.map((benefit, index) => {
+            const Icon = benefit.icon;
+            return (
+              <View key={index} style={[styles.unifiedPerkRow, index < VERIFICATION_BENEFITS.length - 1 && { marginBottom: 10 }]}>
+                <View style={[styles.unifiedPerkIcon, { backgroundColor: tc.primary + '10' }]}>
+                  <Icon size={16} color={tc.primary} variant="Bold" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.unifiedPerkTitle, { color: tc.textPrimary }]}>{benefit.title}</Text>
+                  <Text style={[styles.unifiedPerkDesc, { color: tc.textSecondary }]}>{benefit.description}</Text>
+                </View>
+                <TickCircle size={14} color="#16A34A" variant="Bold" />
+              </View>
+            );
+          })}
         </View>
       )}
 
       {/* Pending State */}
       {verificationData.status === 'pending' && (
-        <View style={styles.pendingSection}>
-          <View style={styles.pendingIcon}>
-            <Clock size={48} color={colors.warning} variant="Bold" />
-          </View>
-          <Text style={styles.pendingTitle}>Verification In Progress</Text>
-          <Text style={styles.pendingText}>
-            We're reviewing your documents. This usually takes 1-2 business days. 
-            We'll notify you once the review is complete.
-          </Text>
-          {verificationData.submitted_at && (
-            <Text style={styles.pendingDate}>
-              Submitted on {new Date(verificationData.submitted_at).toLocaleDateString()}
+        <>
+          <View style={[styles.pendingHeroCard, { backgroundColor: isDark ? 'rgba(245,158,11,0.08)' : 'rgba(245,158,11,0.06)', borderColor: 'rgba(245,158,11,0.20)' }]}>
+            <View style={[styles.verifiedBadgeCircle, { backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.12)' }]}>
+              <Clock size={40} color="#F59E0B" variant="Bold" />
+            </View>
+            <Text style={[styles.verifiedHeroTitle, { color: '#F59E0B' }]}>Verification In Review</Text>
+            <Text style={[styles.verifiedHeroSubtitle, { color: tc.textSecondary }]}>
+              {verificationData.source === 'partner'
+                ? 'Your partner identity verification is being reviewed. This also verifies your traveler profile.'
+                : 'Our team is reviewing your documents. This usually takes up to 1 hour.'}
             </Text>
-          )}
-        </View>
+            {verificationData.submitted_at && (
+              <View style={[styles.verifiedDatePill, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}>
+                <Text style={[styles.verifiedDateText, { color: tc.textTertiary }]}>
+                  Submitted on {new Date(verificationData.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Preview of what they'll unlock */}
+          <Text style={[styles.perksSectionTitle, { color: tc.textTertiary }]}>What you'll unlock</Text>
+          {VERIFICATION_BENEFITS.slice(0, 4).map((benefit, index) => {
+            const Icon = benefit.icon;
+            return (
+              <View key={index} style={[styles.perkRow, { backgroundColor: cardBg, borderColor: cardBorder, opacity: 0.6 }]}>
+                <View style={[styles.perkIconBox, { backgroundColor: tc.textTertiary + '10' }]}>
+                  <Icon size={20} color={tc.textTertiary} variant="Bold" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.perkTitle, { color: tc.textSecondary }]}>{benefit.title}</Text>
+                  <Text style={[styles.perkDesc, { color: tc.textTertiary }]}>{benefit.description}</Text>
+                </View>
+                <Clock size={14} color={tc.textTertiary} variant="Bold" />
+              </View>
+            );
+          })}
+        </>
       )}
 
       {/* Rejected State */}
       {verificationData.status === 'rejected' && (
-        <View style={styles.rejectedSection}>
-          <View style={styles.rejectedIcon}>
-            <CloseCircle size={48} color={colors.error} variant="Bold" />
+        <View style={styles.centeredSection}>
+          <View style={{ marginBottom: spacing.md }}>
+            <CloseCircle size={48} color="#EF4444" variant="Bold" />
           </View>
-          <Text style={styles.rejectedTitle}>Verification Failed</Text>
-          <Text style={styles.rejectedText}>
+          <Text style={[styles.sectionTitle, { color: '#EF4444' }]}>Verification Failed</Text>
+          <Text style={[styles.sectionText, { color: tc.textSecondary }]}>
             {verificationData.rejection_reason || 'Your verification could not be completed. Please try again with clearer documents.'}
           </Text>
           <TouchableOpacity
-            style={styles.retryButton}
+            style={[styles.primaryButton, { backgroundColor: tc.primary }]}
             onPress={handleStartVerification}
             activeOpacity={0.8}
           >
-            <Text style={styles.retryButtonText}>Try Again</Text>
+            <Text style={[styles.primaryButtonText, { color: tc.white }]}>Try Again</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -293,47 +403,45 @@ export default function VerificationScreen() {
       {/* Unverified State */}
       {verificationData.status === 'unverified' && (
         <>
-          <View style={styles.introSection}>
-            <View style={styles.introIcon}>
-              <Verify size={48} color={colors.primary} variant="Bold" />
+          <View style={styles.centeredSection}>
+            <View style={[styles.introIconCircle, { backgroundColor: tc.primary + '15' }]}>
+              <Verify size={48} color={tc.primary} variant="Bold" />
             </View>
-            <Text style={styles.introTitle}>Verify Your Identity</Text>
-            <Text style={styles.introText}>
-              Get verified to unlock exclusive features and build trust within the Guidera community.
+            <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Become a Trusted Traveler</Text>
+            <Text style={[styles.sectionText, { color: tc.textSecondary }]}>
+              Verify your identity to build trust and unlock exclusive community features.
             </Text>
           </View>
 
           {/* Benefits */}
-          <View style={styles.benefitsSection}>
-            <Text style={styles.benefitsTitle}>Benefits of Verification</Text>
+          <View style={{ marginBottom: spacing.xl }}>
+            <Text style={[styles.benefitsSectionTitle, { color: tc.textPrimary }]}>Benefits of Verification</Text>
             {VERIFICATION_BENEFITS.map((benefit, index) => {
               const Icon = benefit.icon;
               return (
-                <View key={index} style={styles.benefitItem}>
-                  <View style={styles.benefitIcon}>
-                    <Icon size={20} color={colors.primary} variant="Bold" />
+                <View key={index} style={[styles.benefitRow, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+                  <View style={[styles.benefitIconBox, { backgroundColor: tc.primary + '12' }]}>
+                    <Icon size={20} color={tc.primary} variant="Bold" />
                   </View>
-                  <View style={styles.benefitContent}>
-                    <Text style={styles.benefitTitle}>{benefit.title}</Text>
-                    <Text style={styles.benefitDescription}>{benefit.description}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.benefitItemTitle, { color: tc.textPrimary }]}>{benefit.title}</Text>
+                    <Text style={[styles.benefitItemDesc, { color: tc.textSecondary }]}>{benefit.description}</Text>
                   </View>
                 </View>
               );
             })}
           </View>
 
-          {/* Start Button */}
           <TouchableOpacity
-            style={styles.startButton}
+            style={[styles.primaryButton, { backgroundColor: tc.primary }]}
             onPress={handleStartVerification}
             activeOpacity={0.8}
           >
-            <Text style={styles.startButtonText}>Start Verification</Text>
+            <Text style={[styles.primaryButtonText, { color: tc.white }]}>Start Verification</Text>
           </TouchableOpacity>
 
-          {/* Time Estimate */}
-          <Text style={styles.timeEstimate}>
-            Takes about 2 minutes • Review within 1-2 business days
+          <Text style={[styles.timeEstimate, { color: tc.textTertiary }]}>
+            Takes about 2 minutes
           </Text>
         </>
       )}
@@ -343,41 +451,41 @@ export default function VerificationScreen() {
   const renderDocumentSelect = () => (
     <>
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>Select Document Type</Text>
-        <Text style={styles.stepDescription}>
+        <Text style={[styles.stepTitle, { color: tc.textPrimary }]}>Select Document Type</Text>
+        <Text style={[styles.stepDesc, { color: tc.textSecondary }]}>
           Choose a valid government-issued ID to verify your identity
         </Text>
       </View>
 
-      <View style={styles.documentList}>
+      <View style={{ marginBottom: spacing.lg }}>
         {DOCUMENT_TYPES.map((doc) => {
           const Icon = doc.icon;
           return (
             <TouchableOpacity
               key={doc.id}
-              style={styles.documentCard}
+              style={[styles.documentCard, { backgroundColor: cardBg, borderColor: cardBorder }]}
               onPress={() => handleSelectDocument(doc.id)}
               activeOpacity={0.7}
             >
-              <View style={styles.documentIcon}>
-                <Icon size={24} color={colors.primary} variant="Bold" />
+              <View style={[styles.docIconBox, { backgroundColor: tc.primary + '12' }]}>
+                <Icon size={24} color={tc.primary} variant="Bold" />
               </View>
-              <View style={styles.documentContent}>
-                <Text style={styles.documentTitle}>{doc.label}</Text>
-                <Text style={styles.documentDescription}>{doc.description}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.docTitle, { color: tc.textPrimary }]}>{doc.label}</Text>
+                <Text style={[styles.docDesc, { color: tc.textSecondary }]}>{doc.description}</Text>
               </View>
-              <ArrowLeft size={18} color={colors.gray400} style={{ transform: [{ rotate: '180deg' }] }} />
+              <ArrowLeft size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
           );
         })}
       </View>
 
-      <View style={styles.requirementsCard}>
-        <Text style={styles.requirementsTitle}>Document Requirements</Text>
-        <Text style={styles.requirementItem}>• Must be a valid, unexpired document</Text>
-        <Text style={styles.requirementItem}>• All corners must be visible</Text>
-        <Text style={styles.requirementItem}>• Text must be clearly readable</Text>
-        <Text style={styles.requirementItem}>• No glare or blur</Text>
+      <View style={[styles.tipsCard, { backgroundColor: subtleBg }]}>
+        <Text style={[styles.tipsTitle, { color: tc.textPrimary }]}>Document Requirements</Text>
+        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>- Must be a valid, unexpired document</Text>
+        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>- All corners must be visible</Text>
+        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>- Text must be clearly readable</Text>
+        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>- No glare or blur</Text>
       </View>
     </>
   );
@@ -385,33 +493,33 @@ export default function VerificationScreen() {
   const renderDocumentCapture = () => (
     <>
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>Capture Your Document</Text>
-        <Text style={styles.stepDescription}>
+        <Text style={[styles.stepTitle, { color: tc.textPrimary }]}>Capture Your Document</Text>
+        <Text style={[styles.stepDesc, { color: tc.textSecondary }]}>
           Take a clear photo of your {DOCUMENT_TYPES.find(d => d.id === selectedDocument)?.label}
         </Text>
       </View>
 
-      <View style={styles.captureArea}>
-        <View style={styles.captureFrame}>
-          <Camera size={48} color={colors.gray300} variant="Bulk" />
-          <Text style={styles.captureText}>Position your document within the frame</Text>
+      <View style={{ marginBottom: spacing.lg }}>
+        <View style={[styles.captureFrame, { backgroundColor: subtleBg, borderColor: cardBorder }]}>
+          <Camera size={48} color={tc.textTertiary} variant="Bulk" />
+          <Text style={[styles.captureHintText, { color: tc.textTertiary }]}>Position your document within the frame</Text>
         </View>
       </View>
 
       <TouchableOpacity
-        style={styles.captureButton}
+        style={[styles.primaryButton, { backgroundColor: tc.primary, flexDirection: 'row', marginBottom: spacing.lg }]}
         onPress={handleDocumentCapture}
         activeOpacity={0.8}
       >
-        <Camera size={24} color={colors.white} variant="Bold" />
-        <Text style={styles.captureButtonText}>Take Photo</Text>
+        <Camera size={24} color={tc.white} variant="Bold" />
+        <Text style={[styles.primaryButtonText, { color: tc.white, marginLeft: spacing.sm }]}>Take Photo</Text>
       </TouchableOpacity>
 
-      <View style={styles.captureTips}>
-        <Text style={styles.captureTipsTitle}>Tips for a good photo:</Text>
-        <Text style={styles.captureTip}>• Use good lighting</Text>
-        <Text style={styles.captureTip}>• Hold your phone steady</Text>
-        <Text style={styles.captureTip}>• Avoid shadows and glare</Text>
+      <View style={[styles.tipsCard, { backgroundColor: subtleBg }]}>
+        <Text style={[styles.tipsTitle, { color: tc.textPrimary }]}>Tips for a good photo:</Text>
+        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>- Use good lighting</Text>
+        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>- Hold your phone steady</Text>
+        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>- Avoid shadows and glare</Text>
       </View>
     </>
   );
@@ -419,33 +527,33 @@ export default function VerificationScreen() {
   const renderSelfie = () => (
     <>
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>Take a Selfie</Text>
-        <Text style={styles.stepDescription}>
+        <Text style={[styles.stepTitle, { color: tc.textPrimary }]}>Take a Selfie</Text>
+        <Text style={[styles.stepDesc, { color: tc.textSecondary }]}>
           We'll match your selfie with your ID photo to verify it's really you
         </Text>
       </View>
 
-      <View style={styles.captureArea}>
-        <View style={styles.selfieFrame}>
-          <User size={48} color={colors.gray300} variant="Bulk" />
-          <Text style={styles.captureText}>Position your face in the circle</Text>
+      <View style={{ marginBottom: spacing.lg }}>
+        <View style={[styles.selfieFrame, { backgroundColor: subtleBg, borderColor: cardBorder }]}>
+          <User size={48} color={tc.textTertiary} variant="Bulk" />
+          <Text style={[styles.captureHintText, { color: tc.textTertiary }]}>Position your face in the circle</Text>
         </View>
       </View>
 
       <TouchableOpacity
-        style={styles.captureButton}
+        style={[styles.primaryButton, { backgroundColor: tc.primary, flexDirection: 'row', marginBottom: spacing.lg }]}
         onPress={handleSelfieCapture}
         activeOpacity={0.8}
       >
-        <Camera size={24} color={colors.white} variant="Bold" />
-        <Text style={styles.captureButtonText}>Take Selfie</Text>
+        <Camera size={24} color={tc.white} variant="Bold" />
+        <Text style={[styles.primaryButtonText, { color: tc.white, marginLeft: spacing.sm }]}>Take Selfie</Text>
       </TouchableOpacity>
 
-      <View style={styles.captureTips}>
-        <Text style={styles.captureTipsTitle}>Selfie tips:</Text>
-        <Text style={styles.captureTip}>• Look directly at the camera</Text>
-        <Text style={styles.captureTip}>• Remove glasses and hats</Text>
-        <Text style={styles.captureTip}>• Ensure your face is well-lit</Text>
+      <View style={[styles.tipsCard, { backgroundColor: subtleBg }]}>
+        <Text style={[styles.tipsTitle, { color: tc.textPrimary }]}>Selfie tips:</Text>
+        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>- Look directly at the camera</Text>
+        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>- Remove glasses and hats</Text>
+        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>- Ensure your face is well-lit</Text>
       </View>
     </>
   );
@@ -453,96 +561,96 @@ export default function VerificationScreen() {
   const renderReview = () => (
     <>
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>Review & Submit</Text>
-        <Text style={styles.stepDescription}>
+        <Text style={[styles.stepTitle, { color: tc.textPrimary }]}>Review & Submit</Text>
+        <Text style={[styles.stepDesc, { color: tc.textSecondary }]}>
           Please review your information before submitting
         </Text>
       </View>
 
-      <View style={styles.reviewCard}>
+      <View style={[styles.reviewCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
         <View style={styles.reviewItem}>
-          <Text style={styles.reviewLabel}>Document Type</Text>
-          <Text style={styles.reviewValue}>
+          <Text style={[styles.reviewLabel, { color: tc.textSecondary }]}>Document Type</Text>
+          <Text style={[styles.reviewValue, { color: tc.textPrimary }]}>
             {DOCUMENT_TYPES.find(d => d.id === selectedDocument)?.label}
           </Text>
         </View>
-        <View style={styles.reviewDivider} />
+        <View style={[styles.reviewDivider, { backgroundColor: cardBorder }]} />
         <View style={styles.reviewItem}>
-          <Text style={styles.reviewLabel}>Document Photo</Text>
+          <Text style={[styles.reviewLabel, { color: tc.textSecondary }]}>Document Photo</Text>
           <View style={styles.reviewCheck}>
-            <TickCircle size={16} color={colors.success} variant="Bold" />
-            <Text style={styles.reviewCheckText}>Captured</Text>
+            <TickCircle size={16} color="#16A34A" variant="Bold" />
+            <Text style={[styles.reviewCheckText, { color: '#16A34A' }]}>Captured</Text>
           </View>
         </View>
-        <View style={styles.reviewDivider} />
+        <View style={[styles.reviewDivider, { backgroundColor: cardBorder }]} />
         <View style={styles.reviewItem}>
-          <Text style={styles.reviewLabel}>Selfie</Text>
+          <Text style={[styles.reviewLabel, { color: tc.textSecondary }]}>Selfie</Text>
           <View style={styles.reviewCheck}>
-            <TickCircle size={16} color={colors.success} variant="Bold" />
-            <Text style={styles.reviewCheckText}>Captured</Text>
+            <TickCircle size={16} color="#16A34A" variant="Bold" />
+            <Text style={[styles.reviewCheckText, { color: '#16A34A' }]}>Captured</Text>
           </View>
         </View>
       </View>
 
-      <View style={styles.consentCard}>
-        <Text style={styles.consentText}>
+      <View style={[styles.tipsCard, { backgroundColor: subtleBg, marginBottom: spacing.lg }]}>
+        <Text style={[styles.tipItem, { color: tc.textSecondary, lineHeight: 18, fontSize: typography.fontSize.xs }]}>
           By submitting, you confirm that the information provided is accurate and you consent 
           to our verification process. Your data will be handled according to our Privacy Policy.
         </Text>
       </View>
 
       <TouchableOpacity
-        style={styles.submitButton}
+        style={[styles.primaryButton, { backgroundColor: tc.primary }]}
         onPress={handleSubmitVerification}
         disabled={isLoading}
         activeOpacity={0.8}
       >
         {isLoading ? (
-          <ActivityIndicator color={colors.white} />
+          <ActivityIndicator color={tc.white} />
         ) : (
-          <Text style={styles.submitButtonText}>Submit for Verification</Text>
+          <Text style={[styles.primaryButtonText, { color: tc.white }]}>Submit for Verification</Text>
         )}
       </TouchableOpacity>
     </>
   );
 
   const renderSubmitted = () => (
-    <View style={styles.submittedSection}>
-      <View style={styles.submittedIcon}>
-        <TickCircle size={64} color={colors.success} variant="Bold" />
+    <View style={styles.centeredSection}>
+      <View style={{ marginBottom: spacing.lg }}>
+        <TickCircle size={64} color="#16A34A" variant="Bold" />
       </View>
-      <Text style={styles.submittedTitle}>Submitted Successfully!</Text>
-      <Text style={styles.submittedText}>
+      <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Submitted Successfully!</Text>
+      <Text style={[styles.sectionText, { color: tc.textSecondary, marginBottom: spacing.xl }]}>
         Your verification request has been submitted. We'll review your documents and 
         notify you within 1-2 business days.
       </Text>
       
       <TouchableOpacity
-        style={styles.doneButton}
+        style={[styles.primaryButton, { backgroundColor: tc.primary, width: '100%' }]}
         onPress={() => router.back()}
         activeOpacity={0.8}
       >
-        <Text style={styles.doneButtonText}>Done</Text>
+        <Text style={[styles.primaryButtonText, { color: tc.white }]}>Done</Text>
       </TouchableOpacity>
     </View>
   );
 
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: cardBorder }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Verification</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Trusted Traveler</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView 
-        style={styles.content}
-        contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + spacing.xl }]}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + spacing.xl }}
         showsVerticalScrollIndicator={false}
       >
         {step === 'intro' && renderIntro()}
@@ -559,9 +667,9 @@ export default function VerificationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -571,9 +679,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -584,27 +690,20 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
   },
   headerSpacer: {
     width: 40,
   },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: spacing.lg,
-  },
+  // Status card
   statusCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.lg,
     borderWidth: 1,
   },
-  statusIcon: {
+  statusIconBox: {
     width: 44,
     height: 44,
     borderRadius: 12,
@@ -617,310 +716,167 @@ const styles = StyleSheet.create({
   },
   statusLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   statusValue: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
     marginTop: 2,
   },
-  verifiedSection: {
+  // Centered section (verified/pending/rejected/unverified hero)
+  centeredSection: {
     alignItems: 'center',
     paddingVertical: spacing.xl,
   },
-  verifiedBadge: {
-    marginBottom: spacing.md,
-  },
-  verifiedTitle: {
+  sectionTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.success,
     marginBottom: spacing.sm,
+    textAlign: 'center',
   },
-  verifiedText: {
+  sectionText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
   },
-  verifiedDate: {
+  dateText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray400,
     marginTop: spacing.md,
   },
-  pendingSection: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl,
-  },
-  pendingIcon: {
-    marginBottom: spacing.md,
-  },
-  pendingTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.warning,
-    marginBottom: spacing.sm,
-  },
-  pendingText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  pendingDate: {
-    fontSize: typography.fontSize.sm,
-    color: colors.gray400,
-    marginTop: spacing.md,
-  },
-  rejectedSection: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl,
-  },
-  rejectedIcon: {
-    marginBottom: spacing.md,
-  },
-  rejectedTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.error,
-    marginBottom: spacing.sm,
-  },
-  rejectedText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: spacing.lg,
-  },
-  retryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  retryButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
-  },
-  introSection: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  introIcon: {
+  introIconCircle: {
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: colors.primary + '15',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  introTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  introText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  benefitsSection: {
-    marginBottom: spacing.xl,
-  },
-  benefitsTitle: {
+  // Benefits
+  benefitsSectionTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
     marginBottom: spacing.md,
   },
-  benefitItem: {
+  benefitRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.bgElevated,
     borderRadius: 20,
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
   },
-  benefitIcon: {
+  benefitIconBox: {
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: colors.primary + '10',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
   },
-  benefitContent: {
-    flex: 1,
-  },
-  benefitTitle: {
+  benefitItemTitle: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
-  benefitDescription: {
+  benefitItemDesc: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginTop: 2,
   },
-  startButton: {
-    backgroundColor: colors.primary,
+  // Primary button (reused for all CTAs)
+  primaryButton: {
     borderRadius: borderRadius.lg,
     height: 52,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  startButtonText: {
+  primaryButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
   },
   timeEstimate: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     textAlign: 'center',
   },
+  // Step screens
   stepHeader: {
     marginBottom: spacing.lg,
   },
   stepTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
-  stepDescription: {
+  stepDesc: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     lineHeight: 22,
-  },
-  documentList: {
-    marginBottom: spacing.lg,
   },
   documentCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
   },
-  documentIcon: {
+  docIconBox: {
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: colors.primary + '10',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
   },
-  documentContent: {
-    flex: 1,
-  },
-  documentTitle: {
+  docTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
-  documentDescription: {
+  docDesc: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     marginTop: 2,
   },
-  requirementsCard: {
-    backgroundColor: colors.gray50,
+  // Tips / requirements card
+  tipsCard: {
     borderRadius: borderRadius.xl,
     padding: spacing.md,
   },
-  requirementsTitle: {
+  tipsTitle: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  requirementItem: {
+  tipItem: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     lineHeight: 22,
   },
-  captureArea: {
-    marginBottom: spacing.lg,
-  },
+  // Capture frames
   captureFrame: {
     height: 240,
-    backgroundColor: colors.gray100,
     borderRadius: borderRadius.xl,
     borderWidth: 2,
-    borderColor: colors.borderSubtle,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
   },
   selfieFrame: {
     height: 280,
-    backgroundColor: colors.gray100,
+    width: 280,
     borderRadius: 140,
     borderWidth: 2,
-    borderColor: colors.borderSubtle,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
-    width: 280,
   },
-  captureText: {
+  captureHintText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray400,
     marginTop: spacing.md,
     textAlign: 'center',
   },
-  captureButton: {
-    flexDirection: 'row',
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.lg,
-    height: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  captureButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
-    marginLeft: spacing.sm,
-  },
-  captureTips: {
-    backgroundColor: colors.gray50,
-    borderRadius: 20,
-    padding: spacing.md,
-  },
-  captureTipsTitle: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  captureTip: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: 22,
-  },
+  // Review
   reviewCard: {
-    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
   },
   reviewItem: {
     flexDirection: 'row',
@@ -930,12 +886,10 @@ const styles = StyleSheet.create({
   },
   reviewLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   reviewValue: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   reviewCheck: {
     flexDirection: 'row',
@@ -943,67 +897,151 @@ const styles = StyleSheet.create({
   },
   reviewCheckText: {
     fontSize: typography.fontSize.sm,
-    color: colors.success,
     marginLeft: 4,
   },
   reviewDivider: {
     height: 1,
-    backgroundColor: colors.gray100,
   },
-  consentCard: {
-    backgroundColor: colors.gray50,
+  // Verified hero card
+  verifiedHeroCard: {
     borderRadius: 20,
-    padding: spacing.md,
+    padding: spacing.lg,
     marginBottom: spacing.lg,
+    borderWidth: 1,
+    alignItems: 'center',
   },
-  consentText: {
-    fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
-    lineHeight: 18,
+  pendingHeroCard: {
+    borderRadius: 20,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    alignItems: 'center',
   },
-  submitButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.lg,
-    height: 52,
+  verifiedBadgeCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: spacing.md,
   },
-  submitButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
-  },
-  submittedSection: {
-    alignItems: 'center',
-    paddingTop: spacing.xl,
-  },
-  submittedIcon: {
-    marginBottom: spacing.lg,
-  },
-  submittedTitle: {
+  verifiedHeroTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  submittedText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
+    marginBottom: spacing.xs,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: spacing.xl,
   },
-  doneButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.lg,
-    height: 52,
+  verifiedHeroSubtitle: {
+    fontSize: typography.fontSize.sm,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  verifiedDatePill: {
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 20,
+  },
+  verifiedDateText: {
+    fontSize: typography.fontSize.xs,
+  },
+  // Perks list
+  perksSectionTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    marginBottom: spacing.md,
+  },
+  perkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+  },
+  perkIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    width: '100%',
+    marginRight: spacing.md,
   },
-  doneButtonText: {
-    fontSize: typography.fontSize.base,
+  perkTitle: {
+    fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
+  },
+  perkDesc: {
+    fontSize: typography.fontSize.xs,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  // Unified verified card
+  unifiedVerifiedCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  unifiedHeroSection: {
+    alignItems: 'center',
+  },
+  unifiedBadgeCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  unifiedHeroTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  unifiedHeroSubtitle: {
+    fontSize: typography.fontSize.sm,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  unifiedDatePill: {
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 20,
+  },
+  unifiedDateText: {
+    fontSize: typography.fontSize.xs,
+  },
+  unifiedDivider: {
+    height: 1,
+    marginVertical: spacing.md,
+  },
+  unifiedPerksTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.bold,
+    marginBottom: spacing.md,
+  },
+  unifiedPerkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  unifiedPerkIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+  unifiedPerkTitle: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  unifiedPerkDesc: {
+    fontSize: 11,
+    marginTop: 1,
+    lineHeight: 14,
   },
 });

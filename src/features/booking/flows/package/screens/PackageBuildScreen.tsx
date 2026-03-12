@@ -31,6 +31,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { usePackageStore, PackageCategory } from '../../../stores/usePackageStore';
 
 // Import existing components
@@ -56,8 +57,14 @@ import FlightSelectionSheet from '../sheets/FlightSelectionSheet';
 // Import styles
 import { styles } from './PackageBuildScreen.styles';
 
-// Import mock data
-import { generateMockFlights, generateMockHotels, generateMockCars, generateMockExperiences } from '../data/mockData';
+// Import provider manager for real API calls
+import { providerManagerService } from '@/services/provider-manager.service';
+import {
+  FlightSearchParams as ProviderFlightParams,
+  HotelSearchParams as ProviderHotelParams,
+  CarSearchParams as ProviderCarParams,
+  ExperienceSearchParams as ProviderExperienceParams,
+} from '@/types/unified';
 
 interface PackageBuildScreenProps {
   onContinue: () => void;
@@ -71,6 +78,7 @@ export default function PackageBuildScreen({
   onClose,
 }: PackageBuildScreenProps) {
   const insets = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
   const {
     tripSetup,
     activeCategory,
@@ -172,32 +180,169 @@ export default function PackageBuildScreen({
   }, [selections]);
 
   const loadCategoryResults = async (category: PackageCategory) => {
-    // Skip if already loaded
     if (category === 'flight' && flightResults.length > 0) return;
     if (category === 'hotel' && hotelResults.length > 0) return;
     if (category === 'car' && carResults.length > 0) return;
     if (category === 'experience' && experienceResults.length > 0) return;
 
     setSearching(category, true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    switch (category) {
-      case 'flight':
-        setFlightResults(generateMockFlights(tripSetup));
-        break;
-      case 'hotel':
-        setHotelResults(generateMockHotels(tripSetup));
-        break;
-      case 'car':
-        setCarResults(generateMockCars(tripSetup));
-        break;
-      case 'experience':
-        setExperienceResults(generateMockExperiences(tripSetup));
-        break;
+
+    try {
+      const depDate = tripSetup.departureDate instanceof Date
+        ? tripSetup.departureDate.toISOString().split('T')[0]
+        : tripSetup.departureDate
+          ? new Date(tripSetup.departureDate).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0];
+
+      const retDate = tripSetup.returnDate instanceof Date
+        ? tripSetup.returnDate.toISOString().split('T')[0]
+        : tripSetup.returnDate
+          ? new Date(tripSetup.returnDate).toISOString().split('T')[0]
+          : new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
+
+      switch (category) {
+        case 'flight': {
+          const params: ProviderFlightParams = {
+            origin: { type: 'airport', value: tripSetup.origin?.code || 'JFK' },
+            destination: { type: 'airport', value: tripSetup.destination?.code || 'LAX' },
+            departureDate: depDate,
+            returnDate: retDate,
+            passengers: {
+              adults: tripSetup.travelers.adults,
+              children: tripSetup.travelers.children,
+              infants: tripSetup.travelers.infants,
+            },
+            cabinClass: 'economy',
+            tripType: 'round_trip',
+          };
+          const result = await providerManagerService.searchFlights(params);
+          const mapped = result.results.map((f: any) => ({
+            id: f.id,
+            segments: f.outbound?.segments?.map((s: any) => ({
+              airline: s.carrier || { name: 'Airline', code: 'XX' },
+              flightNumber: s.flightNumber || '',
+              origin: { code: f.outbound?.departure?.airport || tripSetup.origin?.code || 'JFK' },
+              destination: { code: f.outbound?.arrival?.airport || tripSetup.destination?.code || 'LAX' },
+              departureTime: s.departure?.time ? new Date(s.departure.time) : new Date(),
+              arrivalTime: s.arrival?.time ? new Date(s.arrival.time) : new Date(),
+              duration: s.duration || 0,
+            })) || [],
+            stops: f.totalStops || 0,
+            totalDuration: f.totalDurationMinutes || 0,
+            price: f.price || { amount: 0, currency: 'USD', formatted: '$0' },
+            seatsAvailable: 10,
+          }));
+          setFlightResults(mapped as any[]);
+          break;
+        }
+        case 'hotel': {
+          const params: ProviderHotelParams = {
+            destination: { type: 'city', value: tripSetup.destination?.name || tripSetup.destination?.code || 'New York' },
+            checkIn: depDate,
+            checkOut: retDate,
+            rooms: [{ adults: tripSetup.travelers.adults, children: tripSetup.travelers.children }],
+          };
+          const result = await providerManagerService.searchHotels(params);
+          const mapped = result.results.map((h: any) => ({
+            id: h.id,
+            name: h.name,
+            starRating: h.starRating || 4,
+            userRating: h.rating?.score || 4.5,
+            reviewCount: h.rating?.reviewCount || 100,
+            location: h.location || {},
+            images: h.images || [],
+            amenities: h.amenities || [],
+            pricePerNight: h.price || { amount: 100, currency: 'USD', formatted: '$100' },
+            lowestPrice: h.price || { amount: 100, currency: 'USD', formatted: '$100' },
+            propertyType: h.propertyType || 'hotel',
+            rooms: h.rooms || [],
+            policies: h.policies || {},
+          }));
+          setHotelResults(mapped as any[]);
+          break;
+        }
+        case 'car': {
+          const params: ProviderCarParams = {
+            pickupLocation: { type: 'city', value: tripSetup.destination?.name || tripSetup.destination?.code || 'New York' },
+            pickupDateTime: new Date(depDate).toISOString(),
+            dropoffDateTime: new Date(retDate).toISOString(),
+            driverAge: 30,
+          };
+          const result = await providerManagerService.searchCars(params);
+          const nights = Math.max(1, Math.ceil((new Date(retDate).getTime() - new Date(depDate).getTime()) / 86400000));
+          const mapped = result.results.map((c: any) => ({
+            id: c.id,
+            name: `${c.vehicle?.make || ''} ${c.vehicle?.model || ''}`.trim() || 'Car',
+            category: c.vehicle?.category || 'compact',
+            make: c.vehicle?.make || 'Unknown',
+            model: c.vehicle?.model || 'Car',
+            year: c.vehicle?.modelYear || 2024,
+            images: c.vehicle?.image ? [c.vehicle.image] : [],
+            features: [],
+            specs: {
+              seats: c.vehicle?.seats || 5,
+              doors: c.vehicle?.doors || 4,
+              luggage: c.vehicle?.bags || { large: 2, small: 1 },
+              transmission: c.vehicle?.transmission || 'automatic',
+              fuelType: c.vehicle?.fuelType || 'petrol',
+              fuelPolicy: 'full_to_full',
+              airConditioning: c.vehicle?.airConditioning ?? true,
+              mileage: c.rateDetails?.mileage?.type || 'unlimited',
+            },
+            rental: {
+              company: {
+                id: c.supplier?.code?.toLowerCase() || 'hertz',
+                name: c.supplier?.name || 'Hertz',
+                logo: c.supplier?.logo || '',
+                rating: c.supplier?.rating?.score || 4.5,
+                reviewCount: c.supplier?.rating?.reviewCount || 1000,
+                locations: 50,
+              },
+              pricePerDay: c.price || { amount: 50, currency: 'USD', formatted: '$50' },
+              totalPrice: c.totalPrice || { amount: 50 * nights, currency: 'USD', formatted: `$${50 * nights}` },
+              deposit: 200,
+              currency: c.price?.currency || 'USD',
+              insurance: [],
+              extras: [],
+              policies: { minAge: 21, licenseRequirements: 'Valid driver license' },
+            },
+            available: true,
+            popularChoice: false,
+          }));
+          setCarResults(mapped as any[]);
+          break;
+        }
+        case 'experience': {
+          const params: ProviderExperienceParams = {
+            destination: { type: 'city', value: tripSetup.destination?.name || tripSetup.destination?.code || 'New York' },
+            dates: { startDate: depDate, flexibleDates: false },
+            participants: { adults: tripSetup.travelers.adults, children: tripSetup.travelers.children },
+          };
+          const result = await providerManagerService.searchExperiences(params);
+          const mapped = result.results.map((e: any) => ({
+            id: e.id,
+            title: e.title,
+            description: e.description || '',
+            shortDescription: e.shortDescription || '',
+            category: e.category || 'tours',
+            images: e.images?.map((img: any) => img.url || img) || [],
+            duration: e.duration?.value ? e.duration.value * (e.duration.unit === 'hours' ? 60 : 1) : 120,
+            price: e.price || { amount: 50, currency: 'USD', formatted: '$50' },
+            rating: e.rating?.score || 4.5,
+            reviewCount: e.rating?.reviewCount || 100,
+            bestSeller: false,
+            featured: false,
+            instantConfirmation: true,
+            mobileTicket: true,
+          }));
+          setExperienceResults(mapped as any[]);
+          break;
+        }
+      }
+    } catch (error) {
+      console.error(`Package ${category} search error:`, error);
     }
-    
+
     setSearching(category, false);
   };
 
@@ -222,6 +367,11 @@ export default function PackageBuildScreen({
 
   // Convert mock flights to FlightCardData format
   const flightCardData: FlightCardData[] = useMemo(() => {
+    const amt = (p: any): number => {
+      if (typeof p === 'number') return p;
+      if (p && typeof p === 'object' && typeof p.amount === 'number') return p.amount;
+      return 0;
+    };
     return flightResults.map((flight: any) => ({
       id: flight.id,
       airlineName: flight.segments?.[0]?.airline?.name || 'Airline',
@@ -233,7 +383,7 @@ export default function PackageBuildScreen({
       arrivalTime: flight.segments?.[0]?.arrivalTime || new Date(),
       duration: flight.totalDuration || 180,
       stops: flight.stops || 0,
-      price: flight.price?.amount || 0,
+      price: amt(flight.price),
       seatsAvailable: flight.seatsAvailable,
     }));
   }, [flightResults, tripSetup]);
@@ -288,10 +438,10 @@ export default function PackageBuildScreen({
     return (
       <View style={styles.resultsContainer}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.resultsTitle}>
+          <Text style={[styles.resultsTitle, { color: tc.textPrimary }]}>
             {needsOutbound ? 'Select Outbound Flight' : needsReturn ? 'Select Return Flight' : 'Flights Selected'}
           </Text>
-          <Text style={styles.resultsSubtitle}>
+          <Text style={[styles.resultsSubtitle, { color: tc.textSecondary }]}>
             {tripSetup.origin?.code} → {tripSetup.destination?.code}
           </Text>
         </View>
@@ -317,10 +467,10 @@ export default function PackageBuildScreen({
             onPress={() => handleViewAllFlights(currentType)}
             activeOpacity={0.7}
           >
-            <Text style={styles.viewAllText}>
+            <Text style={[styles.viewAllText, { color: tc.primary }]}>
               View All {flightCardData.length} Flights
             </Text>
-            <ArrowRight2 size={18} color={colors.primary} />
+            <ArrowRight2 size={18} color={tc.primary} />
           </TouchableOpacity>
         )}
       </View>
@@ -329,6 +479,12 @@ export default function PackageBuildScreen({
 
   // Convert hotel results to HotelCardData format
   const hotelCardData: HotelCardData[] = useMemo(() => {
+    const str = (v: any): string => {
+      if (!v) return '';
+      if (typeof v === 'string') return v;
+      if (typeof v === 'object') return v.formatted || v.name || v.city || '';
+      return String(v);
+    };
     return hotelResults.map((hotel: any) => ({
       id: hotel.id,
       name: hotel.name,
@@ -336,13 +492,13 @@ export default function PackageBuildScreen({
       userRating: hotel.userRating || 4.5,
       reviewCount: hotel.reviewCount,
       location: {
-        city: hotel.location?.city,
-        neighborhood: hotel.location?.neighborhood,
-        address: hotel.location?.address || 'City Center',
+        city: str(hotel.location?.address?.city || hotel.location?.city),
+        neighborhood: str(hotel.location?.neighborhood),
+        address: str(hotel.location?.address),
       },
-      pricePerNight: hotel.pricePerNight?.amount || 0,
+      pricePerNight: typeof hotel.pricePerNight === 'number' ? hotel.pricePerNight : (hotel.pricePerNight?.amount || 0),
       images: hotel.images?.map((img: any) => img.url || img) || [],
-      amenities: hotel.amenities?.map((a: any) => a.name || a) || ['WiFi', 'Pool'],
+      amenities: hotel.amenities?.map((a: any) => typeof a === 'string' ? a : (a.name || a)) || ['WiFi', 'Pool'],
     }));
   }, [hotelResults]);
 
@@ -360,8 +516,8 @@ export default function PackageBuildScreen({
     return (
       <View style={styles.resultsContainer}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.resultsTitle}>Select Hotel</Text>
-          <Text style={styles.resultsSubtitle}>{hotelCardData.length} hotels available</Text>
+          <Text style={[styles.resultsTitle, { color: tc.textPrimary }]}>Select Hotel</Text>
+          <Text style={[styles.resultsSubtitle, { color: tc.textSecondary }]}>{hotelCardData.length} hotels available</Text>
         </View>
         
         {/* Hotel Cards */}
@@ -384,10 +540,10 @@ export default function PackageBuildScreen({
             onPress={() => {/* TODO: Open hotel selection sheet */}}
             activeOpacity={0.7}
           >
-            <Text style={styles.viewAllText}>
+            <Text style={[styles.viewAllText, { color: tc.primary }]}>
               View All {hotelCardData.length} Hotels
             </Text>
-            <ArrowRight2 size={18} color={colors.primary} />
+            <ArrowRight2 size={18} color={tc.primary} />
           </TouchableOpacity>
         )}
       </View>
@@ -402,7 +558,7 @@ export default function PackageBuildScreen({
       make: car.make,
       model: car.model,
       category: car.category,
-      pricePerDay: car.rental?.pricePerDay?.amount || car.rental?.pricePerDay || 0,
+      pricePerDay: typeof car.rental?.pricePerDay === 'number' ? car.rental.pricePerDay : (car.rental?.pricePerDay?.amount || 0),
       images: car.images || [],
       specs: {
         seats: car.specs?.seats || 5,
@@ -433,8 +589,8 @@ export default function PackageBuildScreen({
     return (
       <View style={styles.resultsContainer}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.resultsTitle}>Select Car</Text>
-          <Text style={styles.resultsSubtitle}>{carCardData.length} cars available</Text>
+          <Text style={[styles.resultsTitle, { color: tc.textPrimary }]}>Select Car</Text>
+          <Text style={[styles.resultsSubtitle, { color: tc.textSecondary }]}>{carCardData.length} cars available</Text>
         </View>
         
         {/* Car Cards */}
@@ -457,10 +613,10 @@ export default function PackageBuildScreen({
             onPress={() => {/* TODO: Open car selection sheet */}}
             activeOpacity={0.7}
           >
-            <Text style={styles.viewAllText}>
+            <Text style={[styles.viewAllText, { color: tc.primary }]}>
               View All {carCardData.length} Cars
             </Text>
-            <ArrowRight2 size={18} color={colors.primary} />
+            <ArrowRight2 size={18} color={tc.primary} />
           </TouchableOpacity>
         )}
       </View>
@@ -476,7 +632,7 @@ export default function PackageBuildScreen({
       images: exp.images || ['https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=400'],
       category: exp.category,
       duration: exp.duration || 180,
-      price: exp.price?.amount || 0,
+      price: typeof exp.price === 'number' ? exp.price : (exp.price?.amount || 0),
       rating: exp.rating || 4.5,
       reviewCount: exp.reviewCount || 100,
       bestSeller: exp.bestSeller,
@@ -493,8 +649,8 @@ export default function PackageBuildScreen({
     return (
       <View style={styles.resultsContainer}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.resultsTitle}>Select Experiences</Text>
-          <Text style={styles.resultsSubtitle}>Add activities to your package</Text>
+          <Text style={[styles.resultsTitle, { color: tc.textPrimary }]}>Select Experiences</Text>
+          <Text style={[styles.resultsSubtitle, { color: tc.textSecondary }]}>Add activities to your package</Text>
         </View>
         
         {/* Experience Cards */}
@@ -516,10 +672,10 @@ export default function PackageBuildScreen({
             onPress={() => {/* TODO: Open experience selection sheet */}}
             activeOpacity={0.7}
           >
-            <Text style={styles.viewAllText}>
+            <Text style={[styles.viewAllText, { color: tc.primary }]}>
               View All {experienceCardData.length} Experiences
             </Text>
-            <ArrowRight2 size={18} color={colors.primary} />
+            <ArrowRight2 size={18} color={tc.primary} />
           </TouchableOpacity>
         )}
       </View>
@@ -543,24 +699,24 @@ export default function PackageBuildScreen({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <StatusBar barStyle="dark-content" />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity style={styles.backButton} onPress={onBack} activeOpacity={0.7}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Build Package</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Build Package</Text>
+          <Text style={[styles.headerSubtitle, { color: tc.textSecondary }]}>
             {tripSetup.destination?.name || 'Your Trip'}
           </Text>
         </View>
         
         <TouchableOpacity style={styles.closeButton} onPress={onClose} activeOpacity={0.7}>
-          <CloseCircle size={24} color={colors.textSecondary} variant="Bold" />
+          <CloseCircle size={24} color={tc.textSecondary} variant="Bold" />
         </TouchableOpacity>
       </View>
       
@@ -571,7 +727,7 @@ export default function PackageBuildScreen({
       />
       
       {/* Sticky Filters Section */}
-      <View style={styles.stickyFiltersContainer}>
+      <View style={[styles.stickyFiltersContainer, { backgroundColor: tc.background, borderBottomColor: tc.borderSubtle }]}>
         {activeCategory === 'flight' && !isSearching.flight && (
           <FilterChips
             filters={FLIGHT_FILTERS}
@@ -654,6 +810,7 @@ function LoadingState({ message }: { message: string }) {
     <View style={styles.loadingContainer}>
       <ActivityIndicator size="large" color={colors.primary} />
       <Text style={styles.loadingText}>{message}</Text>
+      {/* Note: LoadingState is outside component scope, uses static colors */}
     </View>
   );
 }

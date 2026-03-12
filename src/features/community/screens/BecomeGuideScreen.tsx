@@ -9,7 +9,7 @@
  * Step 5: Confirmation
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -33,11 +34,15 @@ import {
   ShieldTick,
   TickCircle,
   DocumentUpload,
+  Clock,
+  ProfileTick,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
+import { partnerService } from '@/services/community/partner.service';
 import {
   ExpertiseArea,
   EXPERTISE_OPTIONS,
@@ -52,11 +57,15 @@ const LANGUAGES = [
 
 const TOTAL_STEPS = 5;
 
+type AppStatus = 'loading' | 'not_applied' | 'pending' | 'verified' | 'declined';
+
 export default function BecomeGuideScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: themeColors, isDark } = useTheme();
+  const { profile } = useAuth();
 
+  const [appStatus, setAppStatus] = useState<AppStatus>('loading');
   const [step, setStep] = useState(1);
 
   // Form state
@@ -68,6 +77,42 @@ export default function BecomeGuideScreen() {
   const [bio, setBio] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationDone, setVerificationDone] = useState(false);
+
+  // Check application status on mount
+  const checkApplicationStatus = useCallback(async () => {
+    if (!profile?.id) {
+      setAppStatus('not_applied');
+      return;
+    }
+    try {
+      const status = await partnerService.getApplicationStatus(profile.id);
+      if (!status) {
+        setAppStatus('not_applied');
+        return;
+      }
+      const appSt = status.status;
+      const diditSt = status.didit_verification_status;
+
+      if (appSt === 'approved' || diditSt === 'approved') {
+        setAppStatus('verified');
+      } else if (appSt === 'rejected' || appSt === 'declined' || diditSt === 'declined') {
+        setAppStatus('declined');
+      } else if (['submitted', 'under_review', 'identity_verification', 'in_progress'].includes(appSt)) {
+        setAppStatus('pending');
+      } else if (appSt === 'draft') {
+        setAppStatus('not_applied');
+      } else {
+        setAppStatus('not_applied');
+      }
+    } catch (error) {
+      console.error('Error checking application status:', error);
+      setAppStatus('not_applied');
+    }
+  }, [profile?.id]);
+
+  useEffect(() => {
+    checkApplicationStatus();
+  }, [checkApplicationStatus]);
 
   const toggleLanguage = (lang: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -363,6 +408,142 @@ export default function BecomeGuideScreen() {
     </View>
   );
 
+  // --- Status-based views ---
+
+  if (appStatus === 'loading') {
+    return (
+      <View style={[styles.screen, { backgroundColor: themeColors.background }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: themeColors.bgElevated }]} onPress={() => router.back()}>
+            <ArrowLeft size={20} color={themeColors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>Become a Local Guide</Text>
+          <View style={{ width: 60 }} />
+        </View>
+        <View style={styles.statusCenterContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (appStatus === 'verified') {
+    return (
+      <View style={[styles.screen, { backgroundColor: themeColors.background }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: themeColors.bgElevated }]} onPress={() => router.back()}>
+            <ArrowLeft size={20} color={themeColors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>Local Guide</Text>
+          <View style={{ width: 60 }} />
+        </View>
+        <ScrollView contentContainerStyle={styles.statusScrollContent}>
+          <View style={[styles.statusCard, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle }]}>
+            <View style={[styles.statusIconCircle, { backgroundColor: '#E8F5E9' }]}>
+              <ProfileTick size={40} color="#34A076" variant="Bold" />
+            </View>
+            <Text style={[styles.statusTitle, { color: themeColors.textPrimary }]}>Verified Local Guide</Text>
+            <Text style={[styles.statusSubtitle, { color: themeColors.textSecondary }]}>
+              Your identity has been verified and you're an active Local Guide. Travelers can find you in the Community section.
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.statusActionButton, { backgroundColor: colors.primary }]}
+            onPress={() => router.push('/community/guide/guide-new')}
+          >
+            <Text style={styles.statusActionButtonText}>View My Guide Profile</Text>
+            <ArrowRight2 size={18} color={colors.white} />
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  if (appStatus === 'pending') {
+    return (
+      <View style={[styles.screen, { backgroundColor: themeColors.background }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: themeColors.bgElevated }]} onPress={() => router.back()}>
+            <ArrowLeft size={20} color={themeColors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>Application Status</Text>
+          <View style={{ width: 60 }} />
+        </View>
+        <ScrollView contentContainerStyle={styles.statusScrollContent}>
+          <View style={[styles.statusCard, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle }]}>
+            <View style={[styles.statusIconCircle, { backgroundColor: '#FFF8E1' }]}>
+              <Clock size={40} color="#F59E0B" variant="Bold" />
+            </View>
+            <Text style={[styles.statusTitle, { color: themeColors.textPrimary }]}>Application Under Review</Text>
+            <Text style={[styles.statusSubtitle, { color: themeColors.textSecondary }]}>
+              Your Local Guide application has been submitted and is currently being reviewed. This typically takes 1-3 business days.
+            </Text>
+          </View>
+
+          <View style={[styles.statusStepsCard, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle }]}>
+            <Text style={[styles.statusStepsTitle, { color: themeColors.textPrimary }]}>Review Progress</Text>
+            {[
+              { label: 'Application Submitted', done: true },
+              { label: 'Identity Verification', done: true },
+              { label: 'Background Review', done: false },
+              { label: 'Approval', done: false },
+            ].map((item, index) => (
+              <View key={index} style={styles.statusStepRow}>
+                <View style={[
+                  styles.statusStepDot,
+                  { backgroundColor: item.done ? '#34A076' : isDark ? 'rgba(255,255,255,0.1)' : colors.gray200 },
+                ]}>
+                  {item.done && <TickCircle size={16} color={colors.white} variant="Bold" />}
+                </View>
+                <Text style={[
+                  styles.statusStepLabel,
+                  { color: item.done ? themeColors.textPrimary : themeColors.textTertiary },
+                ]}>
+                  {item.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  if (appStatus === 'declined') {
+    return (
+      <View style={[styles.screen, { backgroundColor: themeColors.background }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: themeColors.bgElevated }]} onPress={() => router.back()}>
+            <ArrowLeft size={20} color={themeColors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>Application Status</Text>
+          <View style={{ width: 60 }} />
+        </View>
+        <ScrollView contentContainerStyle={styles.statusScrollContent}>
+          <View style={[styles.statusCard, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle }]}>
+            <View style={[styles.statusIconCircle, { backgroundColor: '#FFEBEE' }]}>
+              <ShieldTick size={40} color="#EF4444" variant="Bold" />
+            </View>
+            <Text style={[styles.statusTitle, { color: themeColors.textPrimary }]}>Verification Declined</Text>
+            <Text style={[styles.statusSubtitle, { color: themeColors.textSecondary }]}>
+              Unfortunately, your identity verification was not successful. You can reapply with updated information.
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.statusActionButton, { backgroundColor: colors.primary }]}
+            onPress={() => setAppStatus('not_applied')}
+          >
+            <Text style={styles.statusActionButtonText}>Reapply</Text>
+            <ArrowRight2 size={18} color={colors.white} />
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // --- Default: not_applied — show the application form ---
   return (
     <KeyboardAvoidingView
       style={[styles.screen, { backgroundColor: themeColors.background }]}
@@ -370,11 +551,11 @@ export default function BecomeGuideScreen() {
     >
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
-          <ArrowLeft size={20} color={colors.textPrimary} />
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: themeColors.bgElevated }]} onPress={handleBack}>
+          <ArrowLeft size={20} color={themeColors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Become a Local Guide</Text>
-        <Text style={styles.stepIndicator}>Step {step}/{TOTAL_STEPS}</Text>
+        <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>Become a Local Guide</Text>
+        <Text style={[styles.stepIndicator, { color: themeColors.textSecondary }]}>Step {step}/{TOTAL_STEPS}</Text>
       </View>
 
       {renderProgressBar()}
@@ -830,5 +1011,83 @@ const styles = StyleSheet.create({
   },
   nextButtonTextDisabled: {
     color: colors.textTertiary,
+  },
+
+  // Status-based view styles
+  statusCenterContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusScrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  statusCard: {
+    borderRadius: 20,
+    padding: 28,
+    alignItems: 'center',
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  statusIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  statusTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  statusSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  statusActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 14,
+    paddingVertical: 16,
+  },
+  statusActionButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  statusStepsCard: {
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  statusStepsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  statusStepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 12,
+  },
+  statusStepDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusStepLabel: {
+    fontSize: 15,
+    fontWeight: '500',
   },
 });

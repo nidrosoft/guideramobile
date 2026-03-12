@@ -33,13 +33,16 @@ import {
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import { spacing, typography, borderRadius } from '@/styles';
 import { PostType, POST_TYPE_CONFIGS } from '../types/feed.types';
+import { postService } from '@/services/community/post.service';
 
 export default function CreatePostScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { profile } = useAuth();
   const { groupId, postType: initialType } = useLocalSearchParams<{ groupId: string; postType: string }>();
 
   const [content, setContent] = useState('');
@@ -72,13 +75,25 @@ export default function CreatePostScreen() {
   };
 
   const handlePost = async () => {
-    if (!canPost || isPosting) return;
+    if (!canPost || isPosting || !profile?.id) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsPosting(true);
-    // Simulate API call
-    await new Promise(r => setTimeout(r, 800));
-    setIsPosting(false);
-    router.back();
+    try {
+      await postService.createPost(profile.id, {
+        content: content.trim(),
+        communityId: groupId || undefined,
+        photos,
+        postType: postType,
+        tags: tags.filter(t => t.trim()),
+        locationName: locationName.trim() || undefined,
+      });
+      router.back();
+    } catch (err) {
+      console.warn('Create post error:', err);
+      Alert.alert('Error', 'Failed to create post. Please try again.');
+    } finally {
+      setIsPosting(false);
+    }
   };
 
   const handlePickImage = async () => {

@@ -24,6 +24,7 @@ import {
   InfoCircle,
 } from 'iconsax-react-native';
 import { colors, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 export type LocationVisibility = 'everyone' | 'buddies_only' | 'nobody';
 export type TravelerStatus = 'available' | 'busy' | 'invisible';
@@ -68,7 +69,7 @@ const VISIBILITY_OPTIONS: { id: LocationVisibility; label: string; description: 
 const STATUS_OPTIONS: { id: TravelerStatus; label: string; color: string }[] = [
   { id: 'available', label: 'Available', color: colors.success },
   { id: 'busy', label: 'Busy', color: colors.warning },
-  { id: 'invisible', label: 'Invisible', color: colors.gray400 },
+  { id: 'invisible', label: 'Invisible', color: colors.textTertiary },
 ];
 
 const AUTO_DISABLE_OPTIONS = [
@@ -85,6 +86,7 @@ export default function LocationSharingSettings({
   onSettingsChange,
   onClose,
 }: LocationSharingSettingsProps) {
+  const { colors: tc } = useTheme();
   const [localSettings, setLocalSettings] = useState<LocationSettings>(settings);
   
   const updateSettings = (updates: Partial<LocationSettings>) => {
@@ -113,7 +115,7 @@ export default function LocationSharingSettings({
             value={localSettings.sharingEnabled}
             onValueChange={(value) => updateSettings({ sharingEnabled: value })}
             trackColor={{ false: tc.borderSubtle, true: colors.primary + '50' }}
-            thumbColor={localSettings.sharingEnabled ? colors.primary : colors.gray400}
+            thumbColor={localSettings.sharingEnabled ? colors.primary : tc.textTertiary}
           />
         </View>
       </View>
@@ -209,7 +211,7 @@ export default function LocationSharingSettings({
                 value={localSettings.showOnlyWhenActive}
                 onValueChange={(value) => updateSettings({ showOnlyWhenActive: value })}
                 trackColor={{ false: tc.borderSubtle, true: colors.primary + '50' }}
-                thumbColor={localSettings.showOnlyWhenActive ? colors.primary : colors.gray400}
+                thumbColor={localSettings.showOnlyWhenActive ? colors.primary : tc.textTertiary}
               />
             </View>
             

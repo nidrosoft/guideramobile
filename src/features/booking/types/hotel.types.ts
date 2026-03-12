@@ -28,6 +28,8 @@ export interface Hotel {
   featured: boolean;
   verified: boolean;
   propertyType: PropertyType;
+  provider?: { code: string; name: string };
+  deepLink?: string;
 }
 
 export interface HotelImage {

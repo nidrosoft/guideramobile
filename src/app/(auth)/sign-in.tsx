@@ -84,9 +84,16 @@ export default function SignIn() {
       const fullPhone = `+${callingCode}${phoneNumber}`;
 
       // Create sign-in with phone number
-      const { supportedFirstFactors } = await signIn.create({
+      const result = await signIn.create({
         identifier: fullPhone,
       });
+
+      const { supportedFirstFactors, supportedSecondFactors } = result;
+
+      // Log full factor details for debugging
+      console.log('[SignIn] Full signIn status:', result.status);
+      console.log('[SignIn] supportedFirstFactors:', JSON.stringify(supportedFirstFactors));
+      console.log('[SignIn] supportedSecondFactors:', JSON.stringify(supportedSecondFactors));
 
       // Find the phone_code factor
       const phoneFactor = supportedFirstFactors?.find(
@@ -108,7 +115,19 @@ export default function SignIn() {
           },
         });
       } else {
-        setError('Phone sign-in not available. Try email or Google.');
+        // Check what factors ARE available and give specific guidance
+        const availableStrategies = supportedFirstFactors?.map((f: any) => f.strategy) || [];
+        console.log('[SignIn] Phone factor not found. Available strategies:', availableStrategies);
+        
+        if (availableStrategies.includes('oauth_google')) {
+          setError('This account uses Google sign-in. Please use the Google option below.');
+        } else if (availableStrategies.includes('email_code')) {
+          setError('Phone sign-in not available for this account. Try signing in with email.');
+        } else if (availableStrategies.includes('password')) {
+          setError('This account uses email & password. Try signing in with email.');
+        } else {
+          setError('Phone sign-in not available. Check that phone authentication is enabled in Clerk Dashboard → User & Authentication.');
+        }
       }
     } catch (err: any) {
       const errCode = err?.errors?.[0]?.code;

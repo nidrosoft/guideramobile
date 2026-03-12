@@ -16,6 +16,19 @@ import * as experiencesAdapter from '../_shared/providers/experiences.ts'
 import * as serpApiFlights from '../_shared/providers/serpapi-flights.ts'
 import * as serpApiHotels from '../_shared/providers/serpapi-hotels.ts'
 
+// Resolve a param that may be a string or {type, value} object into a plain string
+function resolveParam(val: unknown): string {
+  if (!val) return ''
+  if (typeof val === 'string') return val
+  if (typeof val === 'object' && val !== null) {
+    const obj = val as Record<string, unknown>
+    if (typeof obj.value === 'string') return obj.value
+    if (typeof obj.code === 'string') return obj.code
+    if (typeof obj.name === 'string') return obj.name
+  }
+  return String(val)
+}
+
 // Types
 interface ProviderManagerRequest {
   action: 'search' | 'get_offer' | 'book' | 'cancel' | 'health_check'
@@ -534,17 +547,23 @@ async function executeFlightSearch(
   startTime: number
 ): Promise<{ items: unknown[]; totalCount: number; responseTimeMs: number; priceRange?: { min: number; max: number } }> {
   
-  // Build search params for adapters
+  // Resolve origin/destination which may be strings or {type, value} objects
+  const originStr = resolveParam(params.origin || params.originCode)
+  const destinationStr = resolveParam(params.destination || params.destinationCode)
+
+  // Build passengers from either nested or flat format
+  const passengers = params.passengers as { adults?: number; children?: number; infants?: number } | undefined
+
   const searchParams = {
     segments: (params.segments as Array<{ origin: string; destination: string; departureDate: string }>) || [{
-      origin: (params.origin || params.originCode) as string,
-      destination: (params.destination || params.destinationCode) as string,
+      origin: originStr,
+      destination: destinationStr,
       departureDate: (params.departureDate || params.outboundDate) as string,
     }],
     travelers: (params.travelers as { adults: number; children?: number; infants?: number }) || {
-      adults: (params.adults as number) || 1,
-      children: (params.children as number) || 0,
-      infants: (params.infants as number) || 0,
+      adults: passengers?.adults || (params.adults as number) || 1,
+      children: passengers?.children || (params.children as number) || 0,
+      infants: passengers?.infants || (params.infants as number) || 0,
     },
     tripType: (params.tripType as string) || 'one_way',
     cabinClass: (params.cabinClass as string) || 'economy',
@@ -555,8 +574,8 @@ async function executeFlightSearch(
   // Add return segment for round trips
   if (params.returnDate) {
     searchParams.segments.push({
-      origin: (params.destination || params.destinationCode) as string,
-      destination: (params.origin || params.originCode) as string,
+      origin: destinationStr,
+      destination: originStr,
       departureDate: params.returnDate as string,
     })
     searchParams.tripType = 'round_trip'
@@ -645,14 +664,16 @@ async function executeHotelSearch(
   startTime: number
 ): Promise<{ items: unknown[]; totalCount: number; responseTimeMs: number; priceRange?: { min: number; max: number } }> {
   
-  // Build search params for adapters
+  // Resolve destination which may be a string or {type, value} object
+  const destValue = resolveParam(params.destination)
+  const destObj = (typeof params.destination === 'object' && params.destination !== null)
+    ? params.destination as { type?: string; value?: string }
+    : { type: 'city', value: destValue }
+
   const searchParams = {
-    destination: params.destination as { type: string; value: string } || {
-      type: 'city',
-      value: 'Paris',
-    },
-    checkInDate: (params.checkInDate || params.checkin) as string,
-    checkOutDate: (params.checkOutDate || params.checkout) as string,
+    destination: destObj.value ? destObj : { type: 'city', value: destValue || 'Paris' },
+    checkInDate: (params.checkInDate || params.checkIn || params.checkin) as string,
+    checkOutDate: (params.checkOutDate || params.checkOut || params.checkout) as string,
     rooms: (params.rooms as Array<{ adults: number; children?: number; childrenAges?: number[] }>) || [{
       adults: 2,
       children: 0,
@@ -719,13 +740,22 @@ async function executeCarSearch(
   startTime: number
 ): Promise<{ items: unknown[]; totalCount: number; responseTimeMs: number; priceRange?: { min: number; max: number } }> {
   
+  // Extract pickup/dropoff date and time from either separate fields or combined ISO datetime
+  const pickupDT = (params.pickupDateTime || params.pickupDate || params.pickup_date || params.startDate) as string
+  const dropoffDT = (params.dropoffDateTime || params.dropoffDate || params.dropoff_date || params.endDate) as string
+
+  const pickupDateStr = pickupDT ? pickupDT.split('T')[0] : ''
+  const pickupTimeStr = pickupDT?.includes('T') ? pickupDT.split('T')[1]?.substring(0, 5) : (params.pickupTime || params.pickup_time || '10:00') as string
+  const dropoffDateStr = dropoffDT ? dropoffDT.split('T')[0] : ''
+  const dropoffTimeStr = dropoffDT?.includes('T') ? dropoffDT.split('T')[1]?.substring(0, 5) : (params.dropoffTime || params.dropoff_time || '10:00') as string
+
   const searchParams = {
-    pickupLocation: (params.pickupLocation || params.pickup_location || params.origin || '') as string,
-    dropoffLocation: (params.dropoffLocation || params.dropoff_location || params.destination || '') as string,
-    pickupDate: (params.pickupDate || params.pickup_date || params.startDate) as string,
-    dropoffDate: (params.dropoffDate || params.dropoff_date || params.endDate) as string,
-    pickupTime: (params.pickupTime || params.pickup_time || '10:00') as string,
-    dropoffTime: (params.dropoffTime || params.dropoff_time || '10:00') as string,
+    pickupLocation: resolveParam(params.pickupLocation || params.pickup_location || params.origin),
+    dropoffLocation: resolveParam(params.dropoffLocation || params.dropoff_location || params.destination) || resolveParam(params.pickupLocation || params.pickup_location || params.origin),
+    pickupDate: pickupDateStr,
+    dropoffDate: dropoffDateStr,
+    pickupTime: pickupTimeStr,
+    dropoffTime: dropoffTimeStr,
     driverAge: (params.driverAge || params.driver_age || 30) as number,
     currency: (params.currency as string) || 'USD',
     limit: (params.limit as number) || 20,
@@ -734,13 +764,96 @@ async function executeCarSearch(
   console.log(`Executing car search with params:`, JSON.stringify(searchParams).substring(0, 200))
   
   try {
-    const results = await carsAdapter.searchCars(searchParams)
-    
-    console.log(`Car adapter returned ${results.length} cars`)
+    let results: any[] = []
+
+    // Primary: Booking.com car hire (RapidAPI)
+    try {
+      results = await carsAdapter.searchCars(searchParams)
+      console.log(`Car adapter returned ${results.length} cars`)
+    } catch (primaryErr: any) {
+      console.error('Primary car adapter failed:', primaryErr.message)
+
+      // Fallback: SerpAPI Google search for car rentals
+      const serpApiKey = Deno.env.get('SERPAPI_KEY')
+      if (serpApiKey) {
+        try {
+          const serpUrl = new URL('https://serpapi.com/search.json')
+          serpUrl.searchParams.set('engine', 'google')
+          serpUrl.searchParams.set('q', `car rental ${searchParams.pickupLocation} ${searchParams.pickupDate}`)
+          serpUrl.searchParams.set('api_key', serpApiKey)
+          serpUrl.searchParams.set('gl', 'us')
+          serpUrl.searchParams.set('hl', 'en')
+
+          const serpResp = await fetch(serpUrl.toString())
+          if (serpResp.ok) {
+            const serpData = await serpResp.json()
+
+            // Extract from knowledge graph, local results, or organic results
+            const localResults = serpData.local_results || []
+            const organicResults = serpData.organic_results || []
+            const combined = [...localResults, ...organicResults].slice(0, searchParams.limit || 20)
+
+            const totalDays = Math.max(1, Math.ceil((new Date(searchParams.dropoffDate).getTime() - new Date(searchParams.pickupDate).getTime()) / 86400000))
+
+            results = combined.map((item: any, idx: number) => {
+              const dailyRate = item.price ? parseFloat(String(item.price).replace(/[^0-9.]/g, '')) || 35 : 35 + idx * 5
+              return {
+                id: `serp-car-${idx}`,
+                type: 'car',
+                provider: { code: 'google', name: 'Google' },
+                vehicle: {
+                  name: item.title || `Rental Car ${idx + 1}`,
+                  category: 'economy',
+                  transmission: 'automatic',
+                  fuelType: 'gasoline',
+                  airConditioning: true,
+                  mileage: 'unlimited',
+                  seats: 5,
+                  doors: 4,
+                  imageUrl: item.thumbnail || '',
+                },
+                rental: {
+                  company: { id: `company-${idx}`, name: item.source || item.title || 'Rental Agency', rating: item.rating || 4.0 },
+                  pickupLocation: searchParams.pickupLocation,
+                  dropoffLocation: searchParams.dropoffLocation || searchParams.pickupLocation,
+                  pickupDate: searchParams.pickupDate,
+                  dropoffDate: searchParams.dropoffDate,
+                },
+                price: {
+                  amount: dailyRate * totalDays,
+                  currency: 'USD',
+                  formatted: `$${(dailyRate * totalDays).toFixed(0)}`,
+                  perDay: dailyRate,
+                  perDayFormatted: `$${dailyRate.toFixed(0)}/day`,
+                },
+                features: ['Air Conditioning', 'Automatic'],
+                policies: {
+                  fuelPolicy: 'full-to-full',
+                  mileagePolicy: 'unlimited',
+                  insuranceIncluded: false,
+                  freeCancellation: true,
+                },
+                deepLink: item.link || '',
+                retrievedAt: new Date().toISOString(),
+              }
+            })
+            console.log(`SerpAPI car fallback returned ${results.length} cars`)
+          }
+        } catch (serpErr: any) {
+          console.error('SerpAPI car fallback failed:', serpErr.message)
+        }
+      }
+
+      if (results.length === 0) {
+        // Both primary and fallback failed — return empty instead of failing the request
+        console.warn('Car search: all providers failed, returning empty results')
+        return { items: [], totalCount: 0, responseTimeMs: Date.now() - startTime }
+      }
+    }
     
     let priceRange: { min: number; max: number } | undefined
     if (results.length > 0) {
-      const prices = results.map(c => c.price.amount).filter(p => p > 0)
+      const prices = results.map((c: any) => c.price.amount).filter((p: number) => p > 0)
       if (prices.length > 0) {
         priceRange = {
           min: Math.min(...prices),
@@ -756,8 +869,13 @@ async function executeCarSearch(
       priceRange,
     }
   } catch (error) {
-    console.error('Car search error:', error)
-    throw error
+    console.error('Car search error (returning empty):', error)
+    // Return empty results instead of failing — package flow can continue without cars
+    return {
+      items: [],
+      totalCount: 0,
+      responseTimeMs: Date.now() - startTime,
+    }
   }
 }
 
@@ -777,15 +895,18 @@ async function executeExperienceSearch(
     destinationValue = dest.value || ''
   }
   
+  // Handle nested dates object from frontend
+  const datesObj = params.dates as { startDate?: string; endDate?: string; flexibleDates?: boolean } | undefined
+
   const searchParams = {
     destination: {
       type: 'city' as const,
       value: destinationValue,
     },
     dates: {
-      startDate: (params.startDate || params.date || new Date().toISOString().split('T')[0]) as string,
-      endDate: params.endDate as string | undefined,
-      flexibleDates: (params.flexibleDates as boolean) || false,
+      startDate: (datesObj?.startDate || params.startDate || params.date || new Date().toISOString().split('T')[0]) as string,
+      endDate: (datesObj?.endDate || params.endDate) as string | undefined,
+      flexibleDates: datesObj?.flexibleDates || (params.flexibleDates as boolean) || false,
     },
     participants: {
       adults: (params.adults as number) || (params.participants as { adults?: number })?.adults || 2,
@@ -799,13 +920,87 @@ async function executeExperienceSearch(
   console.log(`Executing experience search with params:`, JSON.stringify(searchParams).substring(0, 200))
   
   try {
-    const results = await experiencesAdapter.searchExperiences(searchParams)
-    
-    console.log(`Experience adapter returned ${results.length} experiences`)
+    let results: any[] = []
+
+    // Primary: Booking.com attractions (RapidAPI)
+    try {
+      results = await experiencesAdapter.searchExperiences(searchParams)
+      console.log(`Experience adapter returned ${results.length} experiences`)
+    } catch (primaryErr: any) {
+      console.error('Primary experience adapter failed:', primaryErr.message)
+
+      // Fallback: SerpAPI Google search for activities/things to do
+      const serpApiKey = Deno.env.get('SERPAPI_KEY')
+      if (serpApiKey) {
+        try {
+          const query = `things to do in ${searchParams.destination.value}`
+          const serpUrl = new URL('https://serpapi.com/search.json')
+          serpUrl.searchParams.set('engine', 'google')
+          serpUrl.searchParams.set('q', query)
+          serpUrl.searchParams.set('api_key', serpApiKey)
+          serpUrl.searchParams.set('gl', 'us')
+          serpUrl.searchParams.set('hl', 'en')
+          serpUrl.searchParams.set('num', '15')
+
+          const serpResp = await fetch(serpUrl.toString())
+          if (serpResp.ok) {
+            const serpData = await serpResp.json()
+            const topSights = serpData.top_sights?.sights || []
+            const localResults = serpData.local_results || []
+            const combined = [...topSights, ...localResults].slice(0, searchParams.limit || 15)
+
+            results = combined.map((item: any, idx: number) => ({
+              id: `serp-exp-${idx}`,
+              type: 'experience',
+              provider: { code: 'google', name: 'Google' },
+              title: item.title || item.name || 'Activity',
+              description: item.description || item.snippet || '',
+              shortDescription: (item.description || item.snippet || '').substring(0, 150),
+              category: 'tours',
+              location: {
+                city: searchParams.destination.value,
+                country: '',
+                address: item.address || '',
+              },
+              images: item.thumbnail ? [{ url: item.thumbnail }] : [],
+              heroImage: item.thumbnail || `https://images.unsplash.com/photo-1501555088652-021faa106b9b?w=800`,
+              duration: { value: 2, unit: 'hours', formatted: '2h' },
+              rating: {
+                score: item.rating || 4.5,
+                maxScore: 5,
+                reviewCount: item.reviews || 0,
+              },
+              price: {
+                amount: item.price ? parseFloat(String(item.price).replace(/[^0-9.]/g, '')) || 30 : 30,
+                currency: 'USD',
+                formatted: item.price || '$30',
+                perPerson: true,
+              },
+              highlights: [],
+              included: [],
+              notIncluded: [],
+              languages: ['English'],
+              instantConfirmation: true,
+              freeCancellation: true,
+              availability: { nextAvailable: searchParams.dates.startDate },
+              deepLink: item.link || item.place_id_search || '',
+              retrievedAt: new Date().toISOString(),
+            }))
+            console.log(`SerpAPI fallback returned ${results.length} experiences`)
+          }
+        } catch (serpErr: any) {
+          console.error('SerpAPI experience fallback failed:', serpErr.message)
+        }
+      }
+
+      if (results.length === 0) {
+        throw primaryErr
+      }
+    }
     
     let priceRange: { min: number; max: number } | undefined
     if (results.length > 0) {
-      const prices = results.map(e => e.price.amount).filter(p => p > 0)
+      const prices = results.map((e: any) => e.price.amount).filter((p: number) => p > 0)
       if (prices.length > 0) {
         priceRange = {
           min: Math.min(...prices),

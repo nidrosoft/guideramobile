@@ -25,6 +25,15 @@ export type FlightTimePreference = 'morning' | 'afternoon' | 'evening' | 'any';
 export type LocalTransport = 'public' | 'rental' | 'rideshare' | 'walking' | 'mix';
 export type Currency = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'AUD' | 'CAD';
 export type DietaryRestriction = 'Vegetarian' | 'Vegan' | 'Halal' | 'Kosher' | 'Gluten-Free' | 'Dairy-Free' | 'Nut Allergy' | 'Seafood Allergy';
+export type FoodAdventurousness = 'safe_choices' | 'somewhat_adventurous' | 'very_adventurous';
+export type SpiceTolerance = 'none' | 'mild' | 'medium' | 'hot' | 'very_hot';
+export type CuisinePreference = 'italian' | 'japanese' | 'chinese' | 'indian' | 'thai' | 'mexican' | 'french' | 'mediterranean' | 'korean' | 'middle_eastern' | 'african' | 'caribbean' | 'vietnamese' | 'greek' | 'spanish' | 'american' | 'turkish' | 'peruvian' | 'ethiopian' | 'brazilian';
+export type MedicalCondition = 'asthma' | 'diabetes' | 'heart_condition' | 'mobility_limited' | 'wheelchair_user' | 'anxiety' | 'pregnancy' | 'vision_impaired' | 'hearing_impaired' | 'chronic_pain' | 'epilepsy' | 'none';
+export type AccessibilityNeed = 'wheelchair_access' | 'elevator_required' | 'ground_floor' | 'visual_assistance' | 'hearing_assistance' | 'service_animal' | 'extra_legroom' | 'none';
+export type ActivityLevel = 'low' | 'moderate' | 'high' | 'extreme';
+export type CrowdComfort = 'avoids' | 'tolerates' | 'enjoys';
+export type PhotographyLevel = 'phone_only' | 'hobbyist' | 'professional';
+export type SustainabilityPreference = 'none' | 'moderate' | 'strong';
 
 export interface TravelPreferences {
   id: string;
@@ -68,6 +77,23 @@ export interface TravelPreferences {
   wheelchairAccessible: boolean;
   travelingWithPet: boolean;
   
+  // Food Preferences
+  foodAdventurousness: FoodAdventurousness;
+  cuisinePreferences: CuisinePreference[];
+  spiceTolerance: SpiceTolerance;
+  
+  // Health & Medical
+  medicalConditions: MedicalCondition[];
+  accessibilityNeeds: AccessibilityNeed[];
+  
+  // Lifestyle & Identity
+  activityLevel: ActivityLevel;
+  morningPerson: boolean;
+  crowdComfort: CrowdComfort;
+  photographyLevel: PhotographyLevel;
+  sustainabilityPreference: SustainabilityPreference;
+  childrenDefaultAges: number[];
+  
   // Metadata
   preferencesCompleted: boolean;
   createdAt: string;
@@ -102,6 +128,17 @@ interface TravelPreferencesRow {
   dietary_restrictions: string[];
   wheelchair_accessible: boolean;
   traveling_with_pet: boolean;
+  food_adventurousness: string;
+  cuisine_preferences: string[];
+  spice_tolerance: string;
+  medical_conditions: string[];
+  accessibility_needs: string[];
+  activity_level: string;
+  morning_person: boolean;
+  crowd_comfort: string;
+  photography_level: string;
+  sustainability_preference: string;
+  children_default_ages: number[];
   preferences_completed: boolean;
   created_at: string;
   updated_at: string;
@@ -133,6 +170,17 @@ export interface UpdateTravelPreferencesPayload {
   dietaryRestrictions?: DietaryRestriction[];
   wheelchairAccessible?: boolean;
   travelingWithPet?: boolean;
+  foodAdventurousness?: FoodAdventurousness;
+  cuisinePreferences?: CuisinePreference[];
+  spiceTolerance?: SpiceTolerance;
+  medicalConditions?: MedicalCondition[];
+  accessibilityNeeds?: AccessibilityNeed[];
+  activityLevel?: ActivityLevel;
+  morningPerson?: boolean;
+  crowdComfort?: CrowdComfort;
+  photographyLevel?: PhotographyLevel;
+  sustainabilityPreference?: SustainabilityPreference;
+  childrenDefaultAges?: number[];
   preferencesCompleted?: boolean;
 }
 
@@ -165,6 +213,17 @@ function transformRow(row: TravelPreferencesRow): TravelPreferences {
     dietaryRestrictions: row.dietary_restrictions as DietaryRestriction[],
     wheelchairAccessible: row.wheelchair_accessible,
     travelingWithPet: row.traveling_with_pet,
+    foodAdventurousness: (row.food_adventurousness || 'somewhat_adventurous') as FoodAdventurousness,
+    cuisinePreferences: (row.cuisine_preferences || []) as CuisinePreference[],
+    spiceTolerance: (row.spice_tolerance || 'medium') as SpiceTolerance,
+    medicalConditions: (row.medical_conditions || []) as MedicalCondition[],
+    accessibilityNeeds: (row.accessibility_needs || []) as AccessibilityNeed[],
+    activityLevel: (row.activity_level || 'moderate') as ActivityLevel,
+    morningPerson: row.morning_person ?? true,
+    crowdComfort: (row.crowd_comfort || 'tolerates') as CrowdComfort,
+    photographyLevel: (row.photography_level || 'phone_only') as PhotographyLevel,
+    sustainabilityPreference: (row.sustainability_preference || 'moderate') as SustainabilityPreference,
+    childrenDefaultAges: row.children_default_ages || [],
     preferencesCompleted: row.preferences_completed,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -199,6 +258,17 @@ function transformPayloadToRow(payload: UpdateTravelPreferencesPayload): Record<
   if (payload.dietaryRestrictions !== undefined) row.dietary_restrictions = payload.dietaryRestrictions;
   if (payload.wheelchairAccessible !== undefined) row.wheelchair_accessible = payload.wheelchairAccessible;
   if (payload.travelingWithPet !== undefined) row.traveling_with_pet = payload.travelingWithPet;
+  if (payload.foodAdventurousness !== undefined) row.food_adventurousness = payload.foodAdventurousness;
+  if (payload.cuisinePreferences !== undefined) row.cuisine_preferences = payload.cuisinePreferences;
+  if (payload.spiceTolerance !== undefined) row.spice_tolerance = payload.spiceTolerance;
+  if (payload.medicalConditions !== undefined) row.medical_conditions = payload.medicalConditions;
+  if (payload.accessibilityNeeds !== undefined) row.accessibility_needs = payload.accessibilityNeeds;
+  if (payload.activityLevel !== undefined) row.activity_level = payload.activityLevel;
+  if (payload.morningPerson !== undefined) row.morning_person = payload.morningPerson;
+  if (payload.crowdComfort !== undefined) row.crowd_comfort = payload.crowdComfort;
+  if (payload.photographyLevel !== undefined) row.photography_level = payload.photographyLevel;
+  if (payload.sustainabilityPreference !== undefined) row.sustainability_preference = payload.sustainabilityPreference;
+  if (payload.childrenDefaultAges !== undefined) row.children_default_ages = payload.childrenDefaultAges;
   if (payload.preferencesCompleted !== undefined) row.preferences_completed = payload.preferencesCompleted;
   
   return row;
@@ -230,6 +300,17 @@ export const DEFAULT_PREFERENCES: Omit<TravelPreferences, 'id' | 'userId' | 'cre
   dietaryRestrictions: [],
   wheelchairAccessible: false,
   travelingWithPet: false,
+  foodAdventurousness: 'somewhat_adventurous',
+  cuisinePreferences: [],
+  spiceTolerance: 'medium',
+  medicalConditions: [],
+  accessibilityNeeds: [],
+  activityLevel: 'moderate',
+  morningPerson: true,
+  crowdComfort: 'tolerates',
+  photographyLevel: 'phone_only',
+  sustainabilityPreference: 'moderate',
+  childrenDefaultAges: [],
   preferencesCompleted: false,
 };
 
@@ -357,6 +438,101 @@ export const PREFERENCE_OPTIONS = {
     'Dairy-Free',
     'Nut Allergy',
     'Seafood Allergy',
+  ],
+  foodAdventurousness: [
+    { id: 'safe_choices', label: 'Safe Choices', emoji: '🍞', description: 'Stick to familiar foods' },
+    { id: 'somewhat_adventurous', label: 'Somewhat Adventurous', emoji: '🍜', description: 'Open to trying local dishes' },
+    { id: 'very_adventurous', label: 'Very Adventurous', emoji: '🦗', description: 'Try everything, street food included' },
+  ],
+  spiceTolerances: [
+    { id: 'none', label: 'No Spice', emoji: '🥛' },
+    { id: 'mild', label: 'Mild', emoji: '🌶️' },
+    { id: 'medium', label: 'Medium', emoji: '🌶️🌶️' },
+    { id: 'hot', label: 'Hot', emoji: '🌶️🌶️🌶️' },
+    { id: 'very_hot', label: 'Bring It On', emoji: '🔥' },
+  ],
+  cuisinePreferences: [
+    { id: 'italian', label: 'Italian', emoji: '🍝' },
+    { id: 'japanese', label: 'Japanese', emoji: '🍣' },
+    { id: 'chinese', label: 'Chinese', emoji: '🥡' },
+    { id: 'indian', label: 'Indian', emoji: '🍛' },
+    { id: 'thai', label: 'Thai', emoji: '🍜' },
+    { id: 'mexican', label: 'Mexican', emoji: '🌮' },
+    { id: 'french', label: 'French', emoji: '🥐' },
+    { id: 'mediterranean', label: 'Mediterranean', emoji: '🫒' },
+    { id: 'korean', label: 'Korean', emoji: '🍱' },
+    { id: 'middle_eastern', label: 'Middle Eastern', emoji: '🧆' },
+    { id: 'african', label: 'African', emoji: '🍲' },
+    { id: 'caribbean', label: 'Caribbean', emoji: '🥥' },
+    { id: 'vietnamese', label: 'Vietnamese', emoji: '🍲' },
+    { id: 'greek', label: 'Greek', emoji: '🥙' },
+    { id: 'spanish', label: 'Spanish', emoji: '🥘' },
+    { id: 'american', label: 'American', emoji: '🍔' },
+    { id: 'turkish', label: 'Turkish', emoji: '🥙' },
+    { id: 'peruvian', label: 'Peruvian', emoji: '🐟' },
+    { id: 'ethiopian', label: 'Ethiopian', emoji: '🍛' },
+    { id: 'brazilian', label: 'Brazilian', emoji: '🥩' },
+  ],
+  medicalConditions: [
+    { id: 'asthma', label: 'Asthma', emoji: '🫁' },
+    { id: 'diabetes', label: 'Diabetes', emoji: '💉' },
+    { id: 'heart_condition', label: 'Heart Condition', emoji: '❤️' },
+    { id: 'mobility_limited', label: 'Limited Mobility', emoji: '🦯' },
+    { id: 'wheelchair_user', label: 'Wheelchair User', emoji: '♿' },
+    { id: 'anxiety', label: 'Anxiety / Mental Health', emoji: '🧠' },
+    { id: 'pregnancy', label: 'Pregnancy', emoji: '🤰' },
+    { id: 'vision_impaired', label: 'Vision Impaired', emoji: '👓' },
+    { id: 'hearing_impaired', label: 'Hearing Impaired', emoji: '🦻' },
+    { id: 'chronic_pain', label: 'Chronic Pain', emoji: '💊' },
+    { id: 'epilepsy', label: 'Epilepsy', emoji: '⚡' },
+    { id: 'none', label: 'None', emoji: '✅' },
+  ],
+  accessibilityNeeds: [
+    { id: 'wheelchair_access', label: 'Wheelchair Access', emoji: '♿' },
+    { id: 'elevator_required', label: 'Elevator Required', emoji: '🛗' },
+    { id: 'ground_floor', label: 'Ground Floor Only', emoji: '🏠' },
+    { id: 'visual_assistance', label: 'Visual Assistance', emoji: '👓' },
+    { id: 'hearing_assistance', label: 'Hearing Assistance', emoji: '🦻' },
+    { id: 'service_animal', label: 'Service Animal', emoji: '🐕‍🦺' },
+    { id: 'extra_legroom', label: 'Extra Legroom', emoji: '🦵' },
+    { id: 'none', label: 'None', emoji: '✅' },
+  ],
+  activityLevels: [
+    { id: 'low', label: 'Low', emoji: '🧘', description: 'Gentle pace, minimal walking' },
+    { id: 'moderate', label: 'Moderate', emoji: '🚶', description: '5-10km walking/day' },
+    { id: 'high', label: 'High', emoji: '🏃', description: 'Active, 10-20km/day' },
+    { id: 'extreme', label: 'Extreme', emoji: '🧗', description: 'Trekking, diving, climbing' },
+  ],
+  crowdComforts: [
+    { id: 'avoids', label: 'Avoids Crowds', emoji: '🏞️', description: 'Prefer quiet, off-the-beaten-path' },
+    { id: 'tolerates', label: 'Tolerates', emoji: '🏙️', description: 'Fine with some crowds' },
+    { id: 'enjoys', label: 'Enjoys Crowds', emoji: '🎉', description: 'Love the energy of busy places' },
+  ],
+  photographyLevels: [
+    { id: 'phone_only', label: 'Phone Only', emoji: '📱', description: 'Quick snaps for memories' },
+    { id: 'hobbyist', label: 'Hobbyist', emoji: '📷', description: 'Golden hour, composition matters' },
+    { id: 'professional', label: 'Professional', emoji: '📸', description: 'Photography drives the itinerary' },
+  ],
+  sustainabilityPreferences: [
+    { id: 'none', label: 'Not a Priority', emoji: '🌍', description: 'No specific eco preferences' },
+    { id: 'moderate', label: 'Moderate', emoji: '♻️', description: 'Prefer eco options when convenient' },
+    { id: 'strong', label: 'Strong', emoji: '🌱', description: 'Eco-tourism is essential' },
+  ],
+  hairTypes: [
+    { id: 'straight', label: 'Straight', emoji: '💇' },
+    { id: 'wavy', label: 'Wavy', emoji: '🌊' },
+    { id: 'curly', label: 'Curly', emoji: '🌀' },
+    { id: 'coily', label: 'Coily / Afro', emoji: '✨' },
+    { id: 'fine', label: 'Fine / Thin', emoji: '🪶' },
+    { id: 'thick', label: 'Thick', emoji: '🦁' },
+  ],
+  skinTones: [
+    { id: 'very_fair', label: 'Very Fair', emoji: '☁️', description: 'Burns easily, rarely tans' },
+    { id: 'fair', label: 'Fair', emoji: '🌤️', description: 'Burns moderately, tans gradually' },
+    { id: 'medium', label: 'Medium', emoji: '☀️', description: 'Burns minimally, tans well' },
+    { id: 'olive', label: 'Olive', emoji: '🫒', description: 'Rarely burns, tans easily' },
+    { id: 'brown', label: 'Brown', emoji: '🌰', description: 'Very rarely burns' },
+    { id: 'dark', label: 'Dark', emoji: '🌑', description: 'Almost never burns' },
   ],
 };
 
@@ -522,18 +698,51 @@ class PreferencesService {
   }
   
   /**
-   * Update dietary and accessibility preferences
+   * Update dietary, food, and accessibility preferences
    */
   async updateAccessibilityPreferences(
     userId: string,
     dietary: DietaryRestriction[],
     wheelchair: boolean,
-    pet: boolean
+    pet: boolean,
+    foodAdventurousness?: FoodAdventurousness,
+    cuisinePreferences?: CuisinePreference[],
+    spiceTolerance?: SpiceTolerance,
+    medicalConditions?: MedicalCondition[],
+    accessibilityNeeds?: AccessibilityNeed[],
   ): Promise<{ data: TravelPreferences | null; error: any }> {
-    return this.updatePreferences(userId, {
+    const updates: UpdateTravelPreferencesPayload = {
       dietaryRestrictions: dietary,
       wheelchairAccessible: wheelchair,
       travelingWithPet: pet,
+    };
+    if (foodAdventurousness !== undefined) updates.foodAdventurousness = foodAdventurousness;
+    if (cuisinePreferences !== undefined) updates.cuisinePreferences = cuisinePreferences;
+    if (spiceTolerance !== undefined) updates.spiceTolerance = spiceTolerance;
+    if (medicalConditions !== undefined) updates.medicalConditions = medicalConditions;
+    if (accessibilityNeeds !== undefined) updates.accessibilityNeeds = accessibilityNeeds;
+    return this.updatePreferences(userId, updates);
+  }
+  
+  /**
+   * Update lifestyle & identity preferences
+   */
+  async updateLifestylePreferences(
+    userId: string,
+    activityLevel: ActivityLevel,
+    morningPerson: boolean,
+    crowdComfort: CrowdComfort,
+    photographyLevel: PhotographyLevel,
+    sustainabilityPreference: SustainabilityPreference,
+    childrenDefaultAges: number[],
+  ): Promise<{ data: TravelPreferences | null; error: any }> {
+    return this.updatePreferences(userId, {
+      activityLevel,
+      morningPerson,
+      crowdComfort,
+      photographyLevel,
+      sustainabilityPreference,
+      childrenDefaultAges,
     });
   }
   

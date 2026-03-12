@@ -1,10 +1,8 @@
 /**
  * PREMIUM CAR CARD COMPONENT
- * 
- * A visually stunning, premium car rental card designed to disrupt the travel industry.
- * Features elegant car presentation, refined specs display, beautiful company badges,
- * and premium visual polish.
- * 
+ *
+ * Theme-aware car rental card — all colors from useTheme().
+ *
  * Used in:
  * - CarResultsScreen (standalone car booking)
  * - PackageBuildScreen (package flow)
@@ -14,21 +12,19 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import { 
-  People, 
-  Briefcase, 
-  Setting4, 
-  Star1, 
+import {
+  People,
+  Briefcase,
+  Setting4,
+  Star1,
   TickCircle,
   Wind,
   Car,
   Speedometer,
-  Shield,
 } from 'iconsax-react-native';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
-// Car display data interface
 export interface CarCardData {
   id: string;
   name: string;
@@ -62,20 +58,18 @@ interface CarCardProps {
   onPress: () => void;
 }
 
-// Get category color
-const getCategoryColor = (category: string): { bg: string; text: string } => {
-  const lowerCategory = category.toLowerCase();
-  if (lowerCategory.includes('suv')) return { bg: '#059669', text: '#ECFDF5' };
-  if (lowerCategory.includes('luxury')) return { bg: '#7C3AED', text: '#F5F3FF' };
-  if (lowerCategory.includes('sport')) return { bg: '#DC2626', text: '#FEF2F2' };
-  if (lowerCategory.includes('compact')) return { bg: '#0EA5E9', text: '#F0F9FF' };
-  if (lowerCategory.includes('economy')) return { bg: '#10B981', text: '#ECFDF5' };
-  return { bg: colors.primary, text: colors.white };
-};
-
-// Get make logo initials
-const getMakeInitials = (make: string): string => {
-  return make.substring(0, 2).toUpperCase();
+const getCategoryStyle = (category: string, primary: string): { bg: string; text: string } => {
+  const c = category.toLowerCase();
+  if (c.includes('suv')) return { bg: '#059669', text: '#FFFFFF' };
+  if (c.includes('luxury')) return { bg: '#7C3AED', text: '#FFFFFF' };
+  if (c.includes('convertible') || c.includes('sport')) return { bg: '#EC4899', text: '#FFFFFF' };
+  if (c.includes('compact')) return { bg: '#0EA5E9', text: '#FFFFFF' };
+  if (c.includes('economy')) return { bg: primary, text: '#FFFFFF' };
+  if (c.includes('full')) return { bg: '#6366F1', text: '#FFFFFF' };
+  if (c.includes('minivan')) return { bg: '#F59E0B', text: '#FFFFFF' };
+  if (c.includes('standard')) return { bg: '#8B5CF6', text: '#FFFFFF' };
+  if (c.includes('midsize')) return { bg: '#14B8A6', text: '#FFFFFF' };
+  return { bg: primary, text: '#FFFFFF' };
 };
 
 export default function CarCard({
@@ -86,153 +80,156 @@ export default function CarCard({
   compact = false,
   onPress,
 }: CarCardProps) {
-  const transmissionLabel = car.specs.transmission === 'automatic' ? 'Automatic' : 'Manual';
+  const { colors: tc } = useTheme();
   const totalPrice = car.pricePerDay * days;
-  const categoryColor = getCategoryColor(car.category);
-  const makeInitials = getMakeInitials(car.make);
+  const catColor = getCategoryStyle(car.category, tc.primary);
+  const initials = car.company.name.substring(0, 2).toUpperCase();
 
   return (
-    <Animated.View entering={FadeInDown.duration(400).delay(index * 100)}>
-      <TouchableOpacity 
+    <Animated.View entering={FadeInDown.duration(400).delay(index * 80)}>
+      <TouchableOpacity
         style={[
           styles.container,
+          { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
           compact && styles.containerCompact,
-          isSelected && styles.containerSelected,
-        ]} 
+          isSelected && { borderColor: tc.primary, borderWidth: 2 },
+        ]}
         onPress={onPress}
         activeOpacity={0.9}
       >
-        {/* Popular/Best Value Badge */}
+        {/* Popular / Best Value Badge */}
         {(car.popularChoice || car.bestValue || index === 0) && !compact && (
-          <LinearGradient
-            colors={car.bestValue ? ['#10B981', '#059669'] : [colors.primary, colors.primaryDark]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.popularBadge}
-          >
-            <Star1 size={10} color={colors.white} variant="Bold" />
+          <View style={[styles.popularBadge, { backgroundColor: car.bestValue ? '#059669' : tc.primary }]}>
+            <Star1 size={10} color="#FFFFFF" variant="Bold" />
             <Text style={styles.popularText}>
               {car.bestValue ? 'Best Value' : 'Popular Choice'}
             </Text>
-          </LinearGradient>
+          </View>
         )}
 
-        {/* Selected Badge */}
+        {/* Selected check */}
         {isSelected && (
-          <LinearGradient
-            colors={[colors.primary, colors.primaryDark]}
-            style={styles.selectedBadge}
-          >
-            <TickCircle size={16} color={colors.white} variant="Bold" />
-          </LinearGradient>
+          <View style={[styles.selectedBadge, { backgroundColor: tc.primary }]}>
+            <TickCircle size={16} color="#FFFFFF" variant="Bold" />
+          </View>
         )}
-        
-        {/* Car Image Section */}
-        <View style={[styles.imageSection, compact && styles.imageSectionCompact]}>
-          {/* Category Badge */}
-          <View style={[styles.categoryBadge, { backgroundColor: categoryColor.bg }]}>
-            <Text style={[styles.categoryText, { color: categoryColor.text }]}>
-              {car.category}
-            </Text>
+
+        {/* Image Section */}
+        <View
+          style={[
+            styles.imageSection,
+            { backgroundColor: `${tc.primary}08` },
+            compact && styles.imageSectionCompact,
+          ]}
+        >
+          <View style={[styles.categoryBadge, { backgroundColor: catColor.bg }]}>
+            <Text style={[styles.categoryText, { color: catColor.text }]}>{car.category}</Text>
           </View>
 
-          {/* Car Image */}
           <View style={styles.imageContainer}>
             {car.images?.[0] ? (
               <Image source={{ uri: car.images[0] }} style={styles.image} resizeMode="contain" />
             ) : (
-              <LinearGradient
-                colors={[colors.gray100, colors.gray50]}
-                style={styles.imagePlaceholder}
-              >
-                <Car size={compact ? 40 : 56} color={colors.gray400} variant="Bold" />
-                <Text style={styles.imagePlaceholderText}>{car.make} {car.model}</Text>
-              </LinearGradient>
+              <View style={styles.imagePlaceholder}>
+                <View style={[styles.placeholderIconCircle, { backgroundColor: `${tc.primary}15` }]}>
+                  <Car size={compact ? 32 : 44} color={tc.primary} variant="Bold" />
+                </View>
+                <Text style={[styles.placeholderLabel, { color: tc.textSecondary }]}>
+                  {car.name}
+                </Text>
+              </View>
             )}
           </View>
         </View>
-        
-        {/* Car Info Section */}
+
+        {/* Info Section */}
         <View style={[styles.infoSection, compact && styles.infoSectionCompact]}>
-          {/* Header: Name + Price */}
+          {/* Name + Price */}
           <View style={styles.headerRow}>
             <View style={styles.nameContainer}>
-              <Text style={[styles.carName, compact && styles.carNameCompact]} numberOfLines={1}>
+              <Text
+                style={[styles.carName, { color: tc.textPrimary }, compact && styles.carNameCompact]}
+                numberOfLines={1}
+              >
                 {car.name}
               </Text>
-              <Text style={styles.carSubtitle}>or similar {car.category.toLowerCase()}</Text>
+              <Text style={[styles.carSubtitle, { color: tc.textSecondary }]}>
+                or similar {car.category.toLowerCase()}
+              </Text>
             </View>
             <View style={styles.priceContainer}>
-              <View style={styles.priceValue}>
-                <Text style={[styles.priceCurrency, isSelected && styles.priceSelected]}>$</Text>
-                <Text style={[styles.price, isSelected && styles.priceSelected]}>
-                  {car.pricePerDay}
+              <View style={styles.priceRow}>
+                <Text style={[styles.priceCurrency, { color: isSelected ? tc.primary : tc.textPrimary }]}>$</Text>
+                <Text style={[styles.priceAmount, { color: isSelected ? tc.primary : tc.textPrimary }]}>
+                  {car.pricePerDay.toLocaleString('en-US')}
                 </Text>
               </View>
-              <Text style={styles.priceLabel}>per day</Text>
+              <Text style={[styles.priceLabel, { color: tc.textSecondary }]}>per day</Text>
             </View>
           </View>
-          
-          {/* Specs Row - Premium chips */}
+
+          {/* Specs chips */}
           <View style={styles.specsRow}>
-            <View style={styles.specChip}>
-              <People size={14} color={colors.primary} variant="Bold" />
-              <Text style={styles.specValue}>{car.specs.seats}</Text>
-              <Text style={styles.specLabel}>seats</Text>
+            <View style={[styles.specChip, { backgroundColor: `${tc.primary}10` }]}>
+              <People size={14} color={tc.primary} variant="Bold" />
+              <Text style={[styles.specValue, { color: tc.textPrimary }]}>{car.specs.seats}</Text>
+              <Text style={[styles.specLabel, { color: tc.textSecondary }]}>seats</Text>
             </View>
-            <View style={styles.specChip}>
-              <Briefcase size={14} color={colors.primary} variant="Bold" />
-              <Text style={styles.specValue}>{car.specs.luggage.large + car.specs.luggage.small}</Text>
-              <Text style={styles.specLabel}>bags</Text>
+            <View style={[styles.specChip, { backgroundColor: `${tc.primary}10` }]}>
+              <Briefcase size={14} color={tc.primary} variant="Bold" />
+              <Text style={[styles.specValue, { color: tc.textPrimary }]}>
+                {car.specs.luggage.large + car.specs.luggage.small}
+              </Text>
+              <Text style={[styles.specLabel, { color: tc.textSecondary }]}>bags</Text>
             </View>
-            <View style={styles.specChip}>
-              <Setting4 size={14} color={colors.primary} variant="Bold" />
-              <Text style={styles.specValue}>{car.specs.transmission === 'automatic' ? 'Auto' : 'Manual'}</Text>
+            <View style={[styles.specChip, { backgroundColor: `${tc.primary}10` }]}>
+              <Setting4 size={14} color={tc.primary} variant="Bold" />
+              <Text style={[styles.specValue, { color: tc.textPrimary }]}>
+                {car.specs.transmission === 'automatic' ? 'Auto' : 'Manual'}
+              </Text>
             </View>
             {car.specs.airConditioning && (
-              <View style={styles.specChip}>
-                <Wind size={14} color={colors.primary} variant="Bold" />
-                <Text style={styles.specValue}>A/C</Text>
+              <View style={[styles.specChip, { backgroundColor: `${tc.primary}10` }]}>
+                <Wind size={14} color={tc.primary} variant="Bold" />
+                <Text style={[styles.specValue, { color: tc.textPrimary }]}>A/C</Text>
               </View>
             )}
           </View>
-          
+
           {/* Divider */}
-          <View style={styles.divider} />
-          
-          {/* Bottom Row: Company + Features */}
+          <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
+
+          {/* Company + Features */}
           <View style={styles.bottomRow}>
-            {/* Company Info */}
             <View style={styles.companySection}>
-              <View style={styles.companyLogo}>
-                <Text style={styles.companyInitials}>{makeInitials}</Text>
-              </View>
-              <View style={styles.companyInfo}>
-                <Text style={styles.companyName}>{car.company.name}</Text>
+              {car.company.logo ? (
+                <Image
+                  source={{ uri: car.company.logo }}
+                  style={[styles.companyLogo, { backgroundColor: `${tc.primary}10` }]}
+                  resizeMode="contain"
+                />
+              ) : (
+                <View style={[styles.companyLogo, { backgroundColor: `${tc.primary}15` }]}>
+                  <Text style={[styles.companyInitials, { color: tc.primary }]}>{initials}</Text>
+                </View>
+              )}
+              <View>
+                <Text style={[styles.companyName, { color: tc.textPrimary }]}>{car.company.name}</Text>
                 <View style={styles.ratingRow}>
                   <Star1 size={12} color="#FFB800" variant="Bold" />
-                  <Text style={styles.rating}>{car.company.rating.toFixed(1)}</Text>
+                  <Text style={[styles.ratingText, { color: tc.textPrimary }]}>
+                    {car.company.rating.toFixed(1)}
+                  </Text>
                 </View>
               </View>
             </View>
-            
-            {/* Features & Total */}
+
             <View style={styles.featuresSection}>
               {car.specs.mileage === 'unlimited' && (
-                <View style={styles.unlimitedBadge}>
-                  <Speedometer size={12} color={colors.success} variant="Bold" />
-                  <Text style={styles.unlimitedText}>Unlimited km</Text>
+                <View style={[styles.unlimitedBadge, { backgroundColor: `${tc.success}12` }]}>
+                  <Speedometer size={12} color={tc.success} variant="Bold" />
+                  <Text style={[styles.unlimitedText, { color: tc.success }]}>Unlimited miles</Text>
                 </View>
-              )}
-              {days > 1 && (
-                <LinearGradient
-                  colors={[colors.success, '#059669']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.totalBadge}
-                >
-                  <Text style={styles.totalPrice}>${totalPrice} total</Text>
-                </LinearGradient>
               )}
             </View>
           </View>
@@ -243,53 +240,38 @@ export default function CarCard({
 }
 
 const styles = StyleSheet.create({
-  // Card Container - Premium with depth
   container: {
-    backgroundColor: colors.bgElevated,
-    borderRadius: 24, // Card container standard
+    borderRadius: borderRadius['2xl'],
     marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderWidth: 1.5,
     overflow: 'hidden',
-    // Premium shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
   },
   containerCompact: {
     marginBottom: spacing.sm,
-    // Keep 24px borderRadius even in compact mode for consistency
   },
-  containerSelected: {
-    borderColor: colors.primary,
-    borderWidth: 2,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.15,
-  },
-
-  // Popular Badge
   popularBadge: {
     position: 'absolute',
     top: spacing.md,
     left: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.sm + 2,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: borderRadius.full,
     gap: 4,
     zIndex: 10,
   },
   popularText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
+    color: '#FFFFFF',
     letterSpacing: 0.3,
   },
-
-  // Selected Badge
   selectedBadge: {
     position: 'absolute',
     top: spacing.md,
@@ -301,29 +283,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 10,
   },
-
-  // Image Section
   imageSection: {
-    height: 140,
-    backgroundColor: colors.gray50,
+    height: 160,
     position: 'relative',
   },
   imageSectionCompact: {
-    height: 100,
+    height: 110,
   },
   categoryBadge: {
     position: 'absolute',
     bottom: spacing.md,
     right: spacing.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 5,
+    borderRadius: borderRadius.sm,
     zIndex: 5,
   },
   categoryText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
     letterSpacing: 0.5,
+    textTransform: 'capitalize',
   },
   imageContainer: {
     flex: 1,
@@ -331,8 +311,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   image: {
-    width: '85%',
-    height: '85%',
+    width: '80%',
+    height: '80%',
   },
   imagePlaceholder: {
     width: '100%',
@@ -340,22 +320,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  imagePlaceholderText: {
+  placeholderIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.gray400,
     marginTop: spacing.xs,
   },
-
-  // Info Section
   infoSection: {
     padding: spacing.lg,
   },
   infoSectionCompact: {
     padding: spacing.md,
   },
-
-  // Header Row
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -369,7 +351,6 @@ const styles = StyleSheet.create({
   carName: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     letterSpacing: -0.3,
   },
   carNameCompact: {
@@ -377,37 +358,28 @@ const styles = StyleSheet.create({
   },
   carSubtitle: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginTop: 2,
   },
   priceContainer: {
     alignItems: 'flex-end',
   },
-  priceValue: {
+  priceRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
   },
   priceCurrency: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
   },
-  price: {
+  priceAmount: {
     fontSize: 28,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     letterSpacing: -0.5,
-  },
-  priceSelected: {
-    color: colors.primary,
   },
   priceLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
     marginTop: 2,
   },
-
-  // Specs Row
   specsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -417,30 +389,22 @@ const styles = StyleSheet.create({
   specChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${colors.primary}08`,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
-    borderRadius: 10,
+    borderRadius: borderRadius.md,
     gap: 4,
   },
   specValue: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   specLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
   },
-
-  // Divider
   divider: {
     height: 1,
-    backgroundColor: colors.gray100,
     marginBottom: spacing.md,
   },
-
-  // Bottom Row
   bottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -454,36 +418,27 @@ const styles = StyleSheet.create({
   companyLogo: {
     width: 36,
     height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.gray100,
+    borderRadius: borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
   },
   companyInitials: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray500,
-  },
-  companyInfo: {
-    gap: 2,
   },
   companyName: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
   },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  rating: {
+  ratingText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
-
-  // Features Section
   featuresSection: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -493,24 +448,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: `${colors.success}10`,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: borderRadius.sm,
   },
   unlimitedText: {
     fontSize: typography.fontSize.xs,
-    color: colors.success,
     fontWeight: typography.fontWeight.semibold,
-  },
-  totalBadge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  totalPrice: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.white,
   },
 });

@@ -34,7 +34,7 @@ const MAX_INTERESTS = 5;
 export default function InterestsPreferencesScreen() {
   const router = useRouter();
   const { colors: tc } = useTheme();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const insets = useSafeAreaInsets();
   const [preferences, setPreferences] = useState<TravelPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,10 +44,10 @@ export default function InterestsPreferencesScreen() {
   const [interests, setInterests] = useState<InterestCategory[]>([]);
 
   const fetchPreferences = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     try {
-      const { data } = await preferencesService.getPreferences(user.id);
+      const { data } = await preferencesService.getPreferences(profile.id);
       if (data) {
         setPreferences(data);
         setInterests(data.interests || []);
@@ -57,7 +57,7 @@ export default function InterestsPreferencesScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [profile?.id]);
 
   useEffect(() => {
     fetchPreferences();
@@ -69,13 +69,13 @@ export default function InterestsPreferencesScreen() {
   };
 
   const handleSave = async () => {
-    if (!user?.id || interests.length < MIN_INTERESTS) return;
+    if (!profile?.id || interests.length < MIN_INTERESTS) return;
     
     setIsSaving(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     try {
-      await preferencesService.updateInterests(user.id, interests);
+      await preferencesService.updateInterests(profile.id, interests);
       router.back();
     } catch (error) {
       console.error('Error saving preferences:', error);
@@ -106,29 +106,29 @@ export default function InterestsPreferencesScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <StatusBar style="dark" />
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: tc.bgPrimary }]}>
+        <StatusBar style="auto" />
+        <ActivityIndicator size="large" color={tc.primary} />
       </View>
     );
   }
   
   return (
-    <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.bgPrimary }]}>
+      <StatusBar style="auto" />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Interests</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Interests</Text>
         <TouchableOpacity 
           onPress={handleSave} 
-          style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
+          style={[styles.saveButton, { backgroundColor: canSave ? tc.primary : tc.borderSubtle }]}
           disabled={!canSave || isSaving}
         >
-          <Text style={[styles.saveButtonText, !canSave && styles.saveButtonTextDisabled]}>
+          <Text style={[styles.saveButtonText, { color: canSave ? '#FFFFFF' : tc.textTertiary }]}>
             {isSaving ? 'Saving...' : 'Save'}
           </Text>
         </TouchableOpacity>
@@ -142,11 +142,13 @@ export default function InterestsPreferencesScreen() {
         {/* Counter */}
         <View style={[
           styles.counterBadge,
-          interests.length >= MIN_INTERESTS && styles.counterBadgeValid,
+          { backgroundColor: tc.bgElevated },
+          interests.length >= MIN_INTERESTS && { backgroundColor: `${tc.success}20` },
         ]}>
           <Text style={[
             styles.counterText,
-            interests.length >= MIN_INTERESTS && styles.counterTextValid,
+            { color: tc.textSecondary },
+            interests.length >= MIN_INTERESTS && { color: tc.success },
           ]}>
             {interests.length} of {MAX_INTERESTS} selected
             {interests.length < MIN_INTERESTS && ` (min ${MIN_INTERESTS})`}
@@ -154,8 +156,8 @@ export default function InterestsPreferencesScreen() {
         </View>
 
         {/* Interests Grid */}
-        <Text style={styles.sectionTitle}>What do you love to do when traveling?</Text>
-        <Text style={styles.sectionSubtitle}>
+        <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>What do you love to do when traveling?</Text>
+        <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>
           Select {MIN_INTERESTS}-{MAX_INTERESTS} interests to personalize your recommendations
         </Text>
         
@@ -165,20 +167,22 @@ export default function InterestsPreferencesScreen() {
               key={interest.id}
               style={[
                 styles.interestCard,
-                interests.includes(interest.id as InterestCategory) && styles.interestCardSelected,
+                { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                interests.includes(interest.id as InterestCategory) && { backgroundColor: `${tc.primary}15`, borderColor: tc.primary },
               ]}
               onPress={() => toggleInterest(interest.id as InterestCategory)}
             >
               <Text style={styles.interestEmoji}>{interest.emoji}</Text>
               <Text style={[
                 styles.interestLabel,
-                interests.includes(interest.id as InterestCategory) && styles.interestLabelSelected,
+                { color: tc.textPrimary },
+                interests.includes(interest.id as InterestCategory) && { color: tc.primary },
               ]}>
                 {interest.label}
               </Text>
               {interests.includes(interest.id as InterestCategory) && (
-                <View style={styles.checkBadge}>
-                  <TickCircle size={14} color={colors.white} variant="Bold" />
+                <View style={[styles.checkBadge, { backgroundColor: tc.primary }]}>
+                  <TickCircle size={14} color="#FFFFFF" variant="Bold" />
                 </View>
               )}
             </TouchableOpacity>

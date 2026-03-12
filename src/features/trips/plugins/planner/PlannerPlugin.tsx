@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   Dimensions,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { ArrowLeft, CloseCircle } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
@@ -15,6 +16,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { Trip } from '@/features/trips/types/trip.types';
 import ActivityCard from './components/ActivityCard';
 import { DayItinerary, Activity, ActivityType } from './types/planner.types';
+import { plannerService, ItineraryDay } from '@/services/planner.service';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
@@ -24,125 +26,58 @@ interface PlannerPluginProps {
   trip: Trip;
 }
 
-// Mock data for demonstration
-const MOCK_ITINERARY: DayItinerary[] = [
-  {
-    dayNumber: 1,
-    date: 'Mon, Dec 15',
-    activities: [
-      {
-        id: '1',
-        type: ActivityType.FLIGHT,
-        title: 'Flight to Bali',
-        subtitle: 'LAX → DPS',
-        time: '10:00 AM',
-        duration: '14h 30m',
-      },
-      {
-        id: '2',
-        type: ActivityType.HOTEL,
-        title: 'Check-in',
-        subtitle: 'Seminyak Beach Resort',
-        time: '2:30 PM',
-        location: 'Seminyak, Bali',
-      },
-      {
-        id: '3',
-        type: ActivityType.RESTAURANT,
-        title: 'Dinner',
-        subtitle: 'La Lucciola',
-        time: '7:00 PM',
-        duration: '2h',
-        location: 'Seminyak Beach',
-      },
-    ],
-  },
-  {
-    dayNumber: 2,
-    date: 'Tue, Dec 16',
-    activities: [
-      {
-        id: '4',
-        type: ActivityType.COFFEE,
-        title: 'Breakfast',
-        subtitle: 'Revolver Espresso',
-        time: '8:00 AM',
-        duration: '1h',
-        location: 'Seminyak',
-      },
-      {
-        id: '5',
-        type: ActivityType.ATTRACTION,
-        title: 'Tanah Lot Temple',
-        subtitle: 'Sunset Temple Visit',
-        time: '3:00 PM',
-        duration: '3h',
-        location: 'Tabanan',
-      },
-      {
-        id: '6',
-        type: ActivityType.RESTAURANT,
-        title: 'Seafood Dinner',
-        subtitle: 'Jimbaran Bay',
-        time: '7:30 PM',
-        duration: '2h',
-        location: 'Jimbaran',
-      },
-    ],
-  },
-  {
-    dayNumber: 3,
-    date: 'Wed, Dec 17',
-    activities: [
-      {
-        id: '7',
-        type: ActivityType.ACTIVITY,
-        title: 'Surfing Lesson',
-        subtitle: 'Beginner Class',
-        time: '9:00 AM',
-        duration: '2h',
-        location: 'Kuta Beach',
-      },
-      {
-        id: '8',
-        type: ActivityType.SHOPPING,
-        title: 'Shopping',
-        subtitle: 'Seminyak Village',
-        time: '2:00 PM',
-        duration: '2h',
-        location: 'Seminyak',
-      },
-    ],
-  },
-  {
-    dayNumber: 4,
-    date: 'Thu, Dec 18',
-    activities: [
-      {
-        id: '9',
-        type: ActivityType.HOTEL,
-        title: 'Check-out',
-        subtitle: 'Seminyak Beach Resort',
-        time: '11:00 AM',
-        location: 'Seminyak',
-      },
-      {
-        id: '10',
-        type: ActivityType.FLIGHT,
-        title: 'Flight Home',
-        subtitle: 'DPS → LAX',
-        time: '3:00 PM',
-        duration: '16h',
-      },
-    ],
-  },
-];
+function mapToPluginActivity(act: any): Activity {
+  const typeMap: Record<string, ActivityType> = {
+    flight: ActivityType.FLIGHT,
+    hotel: ActivityType.HOTEL,
+    restaurant: ActivityType.RESTAURANT,
+    attraction: ActivityType.ATTRACTION,
+    activity: ActivityType.ACTIVITY,
+    shopping: ActivityType.SHOPPING,
+    coffee: ActivityType.COFFEE,
+    car: ActivityType.ACTIVITY,
+  };
+  const locName = typeof act.location === 'object' ? act.location?.name : act.location;
+  const t = act.startTime || '';
+  const [h = 0, m = 0] = t.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return {
+    id: act.id,
+    type: typeMap[act.type] || ActivityType.ACTIVITY,
+    title: act.title,
+    subtitle: act.subtitle || locName,
+    time: t ? `${h12}:${String(m).padStart(2, '0')} ${period}` : '',
+    duration: act.durationMinutes ? `${act.durationMinutes}m` : undefined,
+    location: locName,
+  };
+}
 
 export default function PlannerPlugin({ visible, onClose, trip }: PlannerPluginProps) {
   const { colors: tc } = useTheme();
   const [selectedDay, setSelectedDay] = useState(0);
+  const [days, setDays] = useState<ItineraryDay[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const currentDay = MOCK_ITINERARY[selectedDay];
+  useEffect(() => {
+    if (!visible || !trip?.id) return;
+    let mounted = true;
+    const load = async () => {
+      try {
+        setLoading(true);
+        const result = await plannerService.getDays(trip.id);
+        if (mounted) setDays(result);
+      } catch (err) {
+        console.error('Failed to load itinerary:', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, [visible, trip?.id]);
+
+  const currentDay = days[selectedDay];
 
   return (
     <Modal
@@ -187,9 +122,9 @@ export default function PlannerPlugin({ visible, onClose, trip }: PlannerPluginP
           style={styles.tabsContainer}
           contentContainerStyle={styles.tabsContent}
         >
-          {MOCK_ITINERARY.map((day, index) => (
+          {days.map((day, index) => (
             <TouchableOpacity
-              key={day.dayNumber}
+              key={day.id}
               style={[
                 styles.tab,
                 selectedDay === index && styles.tabActive,
@@ -218,19 +153,25 @@ export default function PlannerPlugin({ visible, onClose, trip }: PlannerPluginP
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.dayTitle}>Day {currentDay.dayNumber} Itinerary</Text>
-          
-          {currentDay.activities.map((activity, index) => (
-            <ActivityCard
-              key={activity.id}
-              activity={activity}
-              showAddButton={index < currentDay.activities.length - 1}
-              onAddPress={() => {
-                // TODO: Open add activity modal
-                console.log('Add activity between', activity.id);
-              }}
-            />
-          ))}
+          {loading ? (
+            <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: spacing.xl }} />
+          ) : !currentDay ? (
+            <Text style={[styles.dayTitle, { color: colors.gray600 }]}>No itinerary days yet</Text>
+          ) : (
+            <>
+              <Text style={styles.dayTitle}>Day {currentDay.dayNumber} Itinerary</Text>
+              {currentDay.activities.map((act, index) => (
+                <ActivityCard
+                  key={act.id}
+                  activity={mapToPluginActivity(act)}
+                  showAddButton={index < currentDay.activities.length - 1}
+                  onAddPress={() => {
+                    console.log('Add activity between', act.id);
+                  }}
+                />
+              ))}
+            </>
+          )}
         </ScrollView>
       </SafeAreaView>
     </Modal>

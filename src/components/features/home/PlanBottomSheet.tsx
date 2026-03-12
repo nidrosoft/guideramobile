@@ -1,11 +1,13 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, ScrollView } from 'react-native';
 import { useState, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
 import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { Flash, Airplane, Briefcase } from 'iconsax-react-native';
 import ImportTripFlow from '@/features/trip-import/components/ImportTripFlow';
 import { QuickTripFlow, AdvancedTripFlow } from '@/features/planning';
+import { useTripStore } from '@/features/trips/stores/trip.store';
 
 interface PlanBottomSheetProps {
   visible: boolean;
@@ -14,6 +16,8 @@ interface PlanBottomSheetProps {
 
 export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetProps) {
   const { colors } = useTheme();
+  const router = useRouter();
+  const { fetchTrips } = useTripStore();
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showImportFlow, setShowImportFlow] = useState(false);
   const [showQuickTripFlow, setShowQuickTripFlow] = useState(false);
@@ -190,8 +194,11 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
       onClose={() => setShowImportFlow(false)}
       onComplete={(tripData) => {
         setShowImportFlow(false);
-        // TODO: Handle trip creation
-        console.log('Trip imported:', tripData);
+        // Refresh trips from DB and navigate to Trips tab
+        fetchTrips();
+        setTimeout(() => {
+          router.push('/(tabs)/trips' as any);
+        }, 300);
       }}
     />
     

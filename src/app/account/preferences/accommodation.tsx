@@ -33,7 +33,7 @@ import {
 export default function AccommodationPreferencesScreen() {
   const router = useRouter();
   const { colors: tc } = useTheme();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const insets = useSafeAreaInsets();
   const [preferences, setPreferences] = useState<TravelPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,10 +46,10 @@ export default function AccommodationPreferencesScreen() {
   const [amenities, setAmenities] = useState<Amenity[]>(['wifi']);
 
   const fetchPreferences = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     try {
-      const { data } = await preferencesService.getPreferences(user.id);
+      const { data } = await preferencesService.getPreferences(profile.id);
       if (data) {
         setPreferences(data);
         setAccommodationType(data.accommodationType);
@@ -62,7 +62,7 @@ export default function AccommodationPreferencesScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [profile?.id]);
 
   useEffect(() => {
     fetchPreferences();
@@ -74,14 +74,14 @@ export default function AccommodationPreferencesScreen() {
   };
 
   const handleSave = async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     
     setIsSaving(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     try {
       await preferencesService.updateAccommodationPreferences(
-        user.id,
+        profile.id,
         accommodationType,
         starRating,
         locationPriority,
@@ -117,29 +117,29 @@ export default function AccommodationPreferencesScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <StatusBar style="dark" />
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: tc.bgPrimary }]}>
+        <StatusBar style="auto" />
+        <ActivityIndicator size="large" color={tc.primary} />
       </View>
     );
   }
   
   return (
-    <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.bgPrimary }]}>
+      <StatusBar style="auto" />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Accommodation</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Accommodation</Text>
         <TouchableOpacity 
           onPress={handleSave} 
-          style={[styles.saveButton, !hasChanges() && styles.saveButtonDisabled]}
+          style={[styles.saveButton, { backgroundColor: hasChanges() ? tc.primary : tc.borderSubtle }]}
           disabled={!hasChanges() || isSaving}
         >
-          <Text style={[styles.saveButtonText, !hasChanges() && styles.saveButtonTextDisabled]}>
+          <Text style={[styles.saveButtonText, { color: hasChanges() ? '#FFFFFF' : tc.textTertiary }]}>
             {isSaving ? 'Saving...' : 'Save'}
           </Text>
         </TouchableOpacity>
@@ -152,15 +152,16 @@ export default function AccommodationPreferencesScreen() {
       >
         {/* Accommodation Type */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Where do you like to stay?</Text>
-          <Text style={styles.sectionSubtitle}>Select your preferred accommodation type</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Where do you like to stay?</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Select your preferred accommodation type</Text>
           <View style={styles.typeGrid}>
             {PREFERENCE_OPTIONS.accommodationTypes.map(type => (
               <TouchableOpacity
                 key={type.id}
                 style={[
                   styles.typeCard,
-                  accommodationType === type.id && styles.typeCardSelected,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  accommodationType === type.id && { backgroundColor: `${tc.primary}15`, borderColor: tc.primary },
                 ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -170,7 +171,8 @@ export default function AccommodationPreferencesScreen() {
                 <Text style={styles.typeEmoji}>{type.emoji}</Text>
                 <Text style={[
                   styles.typeLabel,
-                  accommodationType === type.id && styles.typeLabelSelected,
+                  { color: tc.textPrimary },
+                  accommodationType === type.id && { color: tc.primary },
                 ]}>
                   {type.label}
                 </Text>
@@ -181,15 +183,16 @@ export default function AccommodationPreferencesScreen() {
 
         {/* Star Rating */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Minimum star rating</Text>
-          <Text style={styles.sectionSubtitle}>Your quality standard for accommodations</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Minimum star rating</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Your quality standard for accommodations</Text>
           <View style={styles.starsContainer}>
             {[3, 4, 5].map(rating => (
               <TouchableOpacity
                 key={rating}
                 style={[
                   styles.starCard,
-                  starRating === rating && styles.starCardSelected,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  starRating === rating && { backgroundColor: `${tc.warning}15`, borderColor: tc.warning },
                 ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -201,14 +204,15 @@ export default function AccommodationPreferencesScreen() {
                     <Star1 
                       key={i} 
                       size={18} 
-                      color={starRating === rating ? colors.warning : colors.gray400} 
+                      color={starRating === rating ? tc.warning : tc.textTertiary} 
                       variant="Bold" 
                     />
                   ))}
                 </View>
                 <Text style={[
                   styles.starLabel,
-                  starRating === rating && styles.starLabelSelected,
+                  { color: tc.textPrimary },
+                  starRating === rating && { color: tc.warning },
                 ]}>
                   {rating}+ Stars
                 </Text>
@@ -219,15 +223,16 @@ export default function AccommodationPreferencesScreen() {
 
         {/* Location Priority */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Location preference</Text>
-          <Text style={styles.sectionSubtitle}>Where should your accommodation be located?</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Location preference</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Where should your accommodation be located?</Text>
           <View style={styles.optionsContainer}>
             {PREFERENCE_OPTIONS.locationPriorities.map(option => (
               <TouchableOpacity
                 key={option.id}
                 style={[
                   styles.optionCard,
-                  locationPriority === option.id && styles.optionCardSelected,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  locationPriority === option.id && { backgroundColor: `${tc.primary}10`, borderColor: tc.primary },
                 ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -237,14 +242,15 @@ export default function AccommodationPreferencesScreen() {
                 <View style={styles.optionContent}>
                   <Text style={[
                     styles.optionLabel,
-                    locationPriority === option.id && styles.optionLabelSelected,
+                    { color: tc.textPrimary },
+                    locationPriority === option.id && { color: tc.primary },
                   ]}>
                     {option.label}
                   </Text>
-                  <Text style={styles.optionDescription}>{option.description}</Text>
+                  <Text style={[styles.optionDescription, { color: tc.textSecondary }]}>{option.description}</Text>
                 </View>
                 {locationPriority === option.id && (
-                  <TickCircle size={20} color={colors.primary} variant="Bold" />
+                  <TickCircle size={20} color={tc.primary} variant="Bold" />
                 )}
               </TouchableOpacity>
             ))}
@@ -253,22 +259,24 @@ export default function AccommodationPreferencesScreen() {
 
         {/* Amenities */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Must-have amenities</Text>
-          <Text style={styles.sectionSubtitle}>Select all that apply</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Must-have amenities</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Select all that apply</Text>
           <View style={styles.amenitiesGrid}>
             {PREFERENCE_OPTIONS.amenities.map(amenity => (
               <TouchableOpacity
                 key={amenity.id}
                 style={[
                   styles.amenityChip,
-                  amenities.includes(amenity.id as Amenity) && styles.amenityChipSelected,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                  amenities.includes(amenity.id as Amenity) && { backgroundColor: `${tc.primary}15`, borderColor: tc.primary },
                 ]}
                 onPress={() => toggleAmenity(amenity.id as Amenity)}
               >
                 <Text style={styles.amenityIcon}>{amenity.icon}</Text>
                 <Text style={[
                   styles.amenityLabel,
-                  amenities.includes(amenity.id as Amenity) && styles.amenityLabelSelected,
+                  { color: tc.textPrimary },
+                  amenities.includes(amenity.id as Amenity) && { color: tc.primary },
                 ]}>
                   {amenity.label}
                 </Text>
