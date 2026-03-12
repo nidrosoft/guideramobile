@@ -199,8 +199,7 @@ export default function JournalScreen() {
                   style={[styles.entryCard, { backgroundColor: colors.bgCard }]}
                   activeOpacity={0.7}
                   onPress={() => {
-                    // TODO: Navigate to entry detail
-                    console.log('Open entry', entry.id);
+                    router.push(`/journal/${tripId}/editor?entryId=${entry.id}&title=${encodeURIComponent(entry.title)}&layout=${entry.layout}`);
                   }}
                 >
                   {/* Entry Header */}

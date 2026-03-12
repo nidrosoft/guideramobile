@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import MapView, { Marker } from 'react-native-maps';
@@ -21,7 +22,12 @@ import {
   Microphone2,
   Location as LocationIcon,
   Trash,
+  Camera,
+  Stop,
 } from 'iconsax-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
+import { Audio } from 'expo-av';
 import { colors, spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { BlockType, BlockSize, ContentBlock, LayoutType } from '../types/journal.types';
@@ -118,85 +124,162 @@ export default function EntryEditorScreen() {
     setAddContentVisible(false);
   };
 
-  const handleAddImage = () => {
+  const handleAddImage = async () => {
     if (!selectedBlockId) return;
-    
-    // Mock image - in real app, use image picker
-    setBlocks(blocks.map(block =>
-      block.id === selectedBlockId
-        ? {
-            ...block,
-            content: {
-              type: BlockType.IMAGE,
-              data: { uri: 'https://picsum.photos/400/300?random=' + Date.now() },
-            },
-          }
-        : block
-    ));
     setAddContentVisible(false);
+
+    Alert.alert('Add Photo', 'Choose a source', [
+      {
+        text: 'Camera',
+        onPress: async () => {
+          const { status } = await ImagePicker.requestCameraPermissionsAsync();
+          if (status !== 'granted') { Alert.alert('Permission needed', 'Camera access is required.'); return; }
+          const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.8 });
+          if (!result.canceled && result.assets[0]) {
+            setBlocks(blocks.map(block =>
+              block.id === selectedBlockId
+                ? { ...block, content: { type: BlockType.IMAGE, data: { uri: result.assets[0].uri } } }
+                : block
+            ));
+          }
+        },
+      },
+      {
+        text: 'Photo Library',
+        onPress: async () => {
+          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (status !== 'granted') { Alert.alert('Permission needed', 'Photo library access is required.'); return; }
+          const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+          if (!result.canceled && result.assets[0]) {
+            setBlocks(blocks.map(block =>
+              block.id === selectedBlockId
+                ? { ...block, content: { type: BlockType.IMAGE, data: { uri: result.assets[0].uri } } }
+                : block
+            ));
+          }
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
-  const handleAddGallery = () => {
+  const handleAddGallery = async () => {
     if (!selectedBlockId) return;
-    
-    // Mock gallery - in real app, use image picker
-    setBlocks(blocks.map(block =>
-      block.id === selectedBlockId
-        ? {
-            ...block,
-            content: {
-              type: BlockType.GALLERY,
-              data: {
-                images: [
-                  { uri: 'https://picsum.photos/200/200?random=' + Date.now() },
-                  { uri: 'https://picsum.photos/200/200?random=' + (Date.now() + 1) },
-                ],
+    setAddContentVisible(false);
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') { Alert.alert('Permission needed', 'Photo library access is required.'); return; }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      selectionLimit: 6,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      const images = result.assets.map(a => ({ uri: a.uri }));
+      setBlocks(blocks.map(block =>
+        block.id === selectedBlockId
+          ? { ...block, content: { type: BlockType.GALLERY, data: { images } } }
+          : block
+      ));
+    }
+  };
+
+  const handleAddMap = async () => {
+    if (!selectedBlockId) return;
+    setAddContentVisible(false);
+
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permission needed', 'Location access is required to pin your position.'); return; }
+
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const [geo] = await Location.reverseGeocodeAsync({
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      });
+
+      const locationName = geo
+        ? [geo.name, geo.city, geo.country].filter(Boolean).join(', ')
+        : `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+
+      setBlocks(blocks.map(block =>
+        block.id === selectedBlockId
+          ? {
+              ...block,
+              content: {
+                type: BlockType.MAP,
+                data: {
+                  latitude: pos.coords.latitude,
+                  longitude: pos.coords.longitude,
+                  locationName,
+                },
               },
-            },
-          }
-        : block
-    ));
-    setAddContentVisible(false);
+            }
+          : block
+      ));
+      showSuccess(`Pinned: ${locationName}`);
+    } catch (err) {
+      console.error('Location error:', err);
+      Alert.alert('Location Error', 'Could not get your current location. Please try again.');
+    }
   };
 
-  const handleAddMap = () => {
+  const [isRecording, setIsRecording] = useState(false);
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const recordingStartRef = useRef<number>(0);
+
+  const handleAddAudio = async () => {
     if (!selectedBlockId) return;
-    
-    // Mock location - in real app, use location picker
-    setBlocks(blocks.map(block =>
-      block.id === selectedBlockId
-        ? {
-            ...block,
-            content: {
-              type: BlockType.MAP,
-              data: {
-                latitude: 35.6762,
-                longitude: 139.6503,
-                locationName: 'Tokyo, Japan',
-              },
-            },
-          }
-        : block
-    ));
     setAddContentVisible(false);
+
+    try {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permission needed', 'Microphone access is required for voice notes.'); return; }
+
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      );
+      recordingRef.current = recording;
+      recordingStartRef.current = Date.now();
+      setIsRecording(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      showSuccess('Recording... Tap stop when done');
+    } catch (err) {
+      console.error('Audio recording error:', err);
+      Alert.alert('Recording Error', 'Could not start recording. Please try again.');
+    }
   };
 
-  const handleAddAudio = () => {
-    if (!selectedBlockId) return;
-    
-    // Mock audio - in real app, use audio recorder
-    setBlocks(blocks.map(block =>
-      block.id === selectedBlockId
-        ? {
-            ...block,
-            content: {
-              type: BlockType.AUDIO,
-              data: { uri: 'audio.mp3', duration: 84 },
-            },
-          }
-        : block
-    ));
-    setAddContentVisible(false);
+  const handleStopRecording = async () => {
+    if (!recordingRef.current || !selectedBlockId) return;
+
+    try {
+      await recordingRef.current.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+
+      const uri = recordingRef.current.getURI();
+      const durationSec = Math.round((Date.now() - recordingStartRef.current) / 1000);
+      recordingRef.current = null;
+      setIsRecording(false);
+
+      if (uri) {
+        setBlocks(blocks.map(block =>
+          block.id === selectedBlockId
+            ? { ...block, content: { type: BlockType.AUDIO, data: { uri, duration: durationSec } } }
+            : block
+        ));
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showSuccess(`Voice note saved (${durationSec}s)`);
+      }
+    } catch (err) {
+      console.error('Stop recording error:', err);
+      setIsRecording(false);
+    }
   };
 
   const handleRemoveContent = (blockId: string) => {
@@ -243,9 +326,9 @@ export default function EntryEditorScreen() {
       await journalService.saveBlocks(entryId, blocksToSave);
 
       const wordCount = blocks
-        .filter(b => b.content?.type === BlockType.TEXT && b.content?.data?.text)
+        .filter(b => b.content?.type === BlockType.TEXT)
         .reduce((sum, b) => {
-          const text: string = b.content!.data.text;
+          const text: string = (b.content!.data as any).text || '';
           return sum + text.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
         }, 0);
 
@@ -411,6 +494,20 @@ export default function EntryEditorScreen() {
             ))}
           </View>
         </ScrollView>
+
+        {/* Stop Recording FAB */}
+        {isRecording && (
+          <TouchableOpacity
+            style={styles.stopRecordingFab}
+            onPress={handleStopRecording}
+            activeOpacity={0.8}
+          >
+            <View style={styles.stopRecordingInner}>
+              <View style={styles.stopIcon} />
+              <Text style={styles.stopRecordingText}>Stop Recording</Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Add Content Bottom Sheet */}
         {addContentVisible && (
@@ -690,5 +787,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.gray700,
     textAlign: 'center',
+  },
+  stopRecordingFab: {
+    position: 'absolute',
+    bottom: 40,
+    alignSelf: 'center',
+    zIndex: 100,
+  },
+  stopRecordingInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.error,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: 32,
+    gap: spacing.sm,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  stopIcon: {
+    width: 16,
+    height: 16,
+    borderRadius: 3,
+    backgroundColor: colors.white,
+  },
+  stopRecordingText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: '700',
+    color: colors.white,
   },
 });
