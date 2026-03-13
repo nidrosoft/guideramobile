@@ -27,7 +27,8 @@ import {
   LanguageSquare,
   Global,
 } from 'iconsax-react-native';
-import { spacing, typography, colors } from '@/styles';
+import { spacing, typography, colors, borderRadius } from '@/styles';
+import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
 import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import { languageService } from '@/services/language.service';
@@ -68,9 +69,7 @@ function PhraseCard({ phrase, themeColors, isDark, onToggleFav }: {
       onPress={() => setExpanded(!expanded)}
       style={[s.card, {
         backgroundColor: tc.bgCard,
-        borderColor: isCritical ? `${tc.error}40` : tc.borderSubtle,
-        borderLeftColor: isCritical ? tc.error : tc.borderSubtle,
-        borderLeftWidth: isCritical ? 3 : 1,
+        borderColor: isCritical ? `${tc.error}35` : tc.borderSubtle,
       }]}
     >
       <View style={s.cardHeader}>
@@ -256,6 +255,19 @@ export default function LanguageScreen() {
 
   const destCity = trip.destination?.city || trip.title || 'Destination';
 
+  if (!kit) {
+    return (
+      <PluginEmptyState
+        headerTitle="Language Kit"
+        icon={<LanguageSquare size={36} color={tc.info} variant="Bold" />}
+        iconColor={tc.info}
+        title="Lost in Translation? Us Too."
+        subtitle={`Your phrase kit for ${destCity} hasn't been created yet. Tap "Generate Smart Plan" on your trip card and we'll generate 120+ survival phrases for your destination.`}
+        ctaLabel="Go to Trip Card"
+      />
+    );
+  }
+
   return (
     <SafeAreaView style={[s.safeArea, { backgroundColor: tc.bgPrimary }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -266,137 +278,116 @@ export default function LanguageScreen() {
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[s.headerTitle, { color: tc.textPrimary }]}>Language Kit</Text>
-        {kit ? (
-          <View style={[s.penetrationBadge, { backgroundColor: `${penetrationColor(kit.englishPenetration, tc)}15` }]}>
-            <Text style={[s.penetrationText, { color: penetrationColor(kit.englishPenetration, tc) }]}>
-              {kit.englishPenetration}
-            </Text>
-          </View>
-        ) : (
-          <View style={s.headerPlaceholder} />
-        )}
+        <View style={[s.penetrationBadge, { backgroundColor: `${penetrationColor(kit.englishPenetration, tc)}15` }]}>
+          <Text style={[s.penetrationText, { color: penetrationColor(kit.englishPenetration, tc) }]}>
+            {kit.englishPenetration}
+          </Text>
+        </View>
       </View>
 
-      {/* No kit empty state */}
-      {!kit ? (
-        <View style={s.contentContainer}>
-          <EmptyState
-            icon={<LanguageSquare size={56} color={tc.textTertiary} variant="Bold" />}
-            title="Lost in Translation? Us Too."
-            subtitle={`Your phrase kit for ${destCity} hasn't been brewed yet! Tap "Generate Smart Plan" on your trip card and we'll whip up 120+ survival phrases so you can order food, find the bathroom, and charm the locals. This is a premium feature. 🗺️`}
-            tc={tc}
-            ctaLabel="Go to Trip Card"
-            onCtaPress={() => router.back()}
-          />
-        </View>
-      ) : (
-        <>
-          {/* Multi-language switcher */}
-          {kits.length > 1 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.kitSwitcher} contentContainerStyle={{ paddingHorizontal: spacing.lg }}>
-              {kits.map(k => (
-                <TouchableOpacity
-                  key={k.id}
-                  style={[s.kitTab, { backgroundColor: k.id === kit.id ? tc.primary : 'transparent', borderColor: k.id === kit.id ? tc.primary : tc.borderSubtle }]}
-                  onPress={() => handleSwitchKit(k)}
-                >
-                  <Text style={[s.kitTabText, { color: k.id === kit.id ? '#FFF' : tc.textSecondary }]}>
-                    {k.language}
+        <FlatList
+          data={filteredPhrases}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => (
+            <PhraseCard phrase={item} themeColors={tc} isDark={isDark} onToggleFav={handleToggleFav} />
+          )}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl * 2 }}
+          ListHeaderComponent={
+            <View style={{ marginHorizontal: -spacing.lg }}>
+              {/* Multi-language switcher */}
+              {kits.length > 1 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.kitSwitcher} contentContainerStyle={{ paddingHorizontal: spacing.lg }}>
+                  {kits.map(k => (
+                    <TouchableOpacity
+                      key={k.id}
+                      style={[s.kitTab, { backgroundColor: k.id === kit.id ? tc.primary : 'transparent', borderColor: k.id === kit.id ? tc.primary : tc.borderSubtle }]}
+                      onPress={() => handleSwitchKit(k)}
+                    >
+                      <Text style={[s.kitTabText, { color: k.id === kit.id ? '#FFF' : tc.textSecondary }]}>
+                        {k.language}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+
+              {/* Language context banner */}
+              {kit.languageContext?.gender_note ? (
+                <View style={[s.contextBanner, { backgroundColor: isDark ? '#1A2332' : '#EFF6FF', borderColor: `${tc.primary}30` }]}>
+                  <Global size={16} color={tc.primary} />
+                  <Text style={[s.contextBannerText, { color: tc.textSecondary }]} numberOfLines={2}>
+                    {kit.languageContext.gender_note.split('\n')[0]}
                   </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
+                </View>
+              ) : null}
 
-          {/* Language context banner */}
-          {kit.languageContext?.gender_note ? (
-            <View style={[s.contextBanner, { backgroundColor: isDark ? '#1A2332' : '#EFF6FF', borderColor: `${tc.primary}30` }]}>
-              <Global size={16} color={tc.primary} />
-              <Text style={[s.contextBannerText, { color: tc.textSecondary }]} numberOfLines={2}>
-                {kit.languageContext.gender_note.split('\n')[0]}
-              </Text>
-            </View>
-          ) : null}
-
-          {/* Search */}
-          <View style={[s.searchContainer, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
-            <SearchNormal1 size={18} color={tc.textTertiary} />
-            <TextInput
-              style={[s.searchInput, { color: tc.textPrimary }]}
-              placeholder="Search phrases..."
-              placeholderTextColor={tc.textTertiary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <CloseCircle size={18} color={tc.textTertiary} variant="Bold" />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Category tabs */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tabScroll} contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: 8 }}>
-            {hasFavorites && (
-              <TouchableOpacity
-                style={[s.catTab, { backgroundColor: activeCategory === 'favorites' ? tc.primary : 'transparent', borderColor: activeCategory === 'favorites' ? tc.primary : tc.borderSubtle }]}
-                onPress={() => setActiveCategory('favorites')}
-              >
-                <Text style={s.catTabIcon}>⭐</Text>
-                <Text style={[s.catTabText, { color: activeCategory === 'favorites' ? '#FFF' : tc.textSecondary }]}>Saved</Text>
-              </TouchableOpacity>
-            )}
-            {availableCategories.map(cat => (
-              <TouchableOpacity
-                key={cat.id}
-                style={[s.catTab, { backgroundColor: activeCategory === cat.id ? tc.primary : 'transparent', borderColor: activeCategory === cat.id ? tc.primary : tc.borderSubtle }]}
-                onPress={() => setActiveCategory(cat.id)}
-              >
-                <Text style={s.catTabIcon}>{cat.icon}</Text>
-                <Text style={[s.catTabText, { color: activeCategory === cat.id ? '#FFF' : tc.textSecondary }]}>{cat.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* Emergency numbers block */}
-          {activeCategory === 'emergency' && kit.emergencyNumbers && Object.keys(kit.emergencyNumbers).length > 0 && (
-            <View style={[s.emergencyBlock, { backgroundColor: `${tc.error}10`, borderColor: `${tc.error}30` }]}>
-              <Text style={[s.emergencyTitle, { color: tc.error }]}>Emergency Numbers</Text>
-              <View style={s.emergencyGrid}>
-                {Object.entries(kit.emergencyNumbers).filter(([, v]) => v).map(([key, val]) => (
-                  <View key={key} style={s.emergencyItem}>
-                    <Text style={[s.emergencyLabel, { color: tc.textSecondary }]}>{key.replace(/_/g, ' ')}</Text>
-                    <Text style={[s.emergencyNumber, { color: tc.error }]}>{val as string}</Text>
-                  </View>
-                ))}
+              {/* Search */}
+              <View style={[s.searchContainer, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+                <SearchNormal1 size={18} color={tc.textTertiary} />
+                <TextInput
+                  style={[s.searchInput, { color: tc.textPrimary }]}
+                  placeholder="Search phrases..."
+                  placeholderTextColor={tc.textTertiary}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <CloseCircle size={18} color={tc.textTertiary} variant="Bold" />
+                  </TouchableOpacity>
+                )}
               </View>
-            </View>
-          )}
 
-          {/* Phrase list */}
-          <FlatList
-            data={filteredPhrases}
-            keyExtractor={item => item.id}
-            renderItem={({ item }) => (
-              <PhraseCard phrase={item} themeColors={tc} isDark={isDark} onToggleFav={handleToggleFav} />
-            )}
-            contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl * 2 }}
-            ListEmptyComponent={
-              <EmptyState
-                icon={<SearchNormal1 size={40} color={tc.textTertiary} />}
-                title={searchQuery ? 'No matches' : 'No phrases in this category'}
-                subtitle={searchQuery ? 'Try a different search term' : 'Phrases will appear once the kit is generated.'}
-                tc={tc}
-              />
-            }
-          />
-        </>
-      )}
+              {/* Category tabs */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tabScroll} contentContainerStyle={s.tabScrollContent}>
+                {hasFavorites && (
+                  <TouchableOpacity
+                    style={[s.catTab, { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle }, activeCategory === 'favorites' && { backgroundColor: tc.textPrimary, borderColor: tc.textPrimary }]}
+                    onPress={() => setActiveCategory('favorites')}
+                  >
+                    <Text style={s.catTabIcon}>⭐</Text>
+                    <Text style={[s.catTabText, { color: tc.textSecondary }, activeCategory === 'favorites' && { color: tc.bgPrimary }]}>Saved</Text>
+                  </TouchableOpacity>
+                )}
+                {availableCategories.map(cat => (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[s.catTab, { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle }, activeCategory === cat.id && { backgroundColor: tc.textPrimary, borderColor: tc.textPrimary }]}
+                    onPress={() => setActiveCategory(cat.id)}
+                  >
+                    <Text style={s.catTabIcon}>{cat.icon}</Text>
+                    <Text style={[s.catTabText, { color: tc.textSecondary }, activeCategory === cat.id && { color: tc.bgPrimary }]}>{cat.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Emergency numbers block */}
+              {activeCategory === 'emergency' && kit.emergencyNumbers && Object.keys(kit.emergencyNumbers).length > 0 && (
+                <View style={[s.emergencyBlock, { backgroundColor: `${tc.error}10`, borderColor: `${tc.error}30` }]}>
+                  <Text style={[s.emergencyTitle, { color: tc.error }]}>Emergency Numbers</Text>
+                  <View style={s.emergencyGrid}>
+                    {Object.entries(kit.emergencyNumbers).filter(([, v]) => v).map(([key, val]) => (
+                      <View key={key} style={s.emergencyItem}>
+                        <Text style={[s.emergencyLabel, { color: tc.textSecondary }]}>{key.replace(/_/g, ' ')}</Text>
+                        <Text style={[s.emergencyNumber, { color: tc.error }]}>{val as string}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+          }
+          ListEmptyComponent={
+            <View style={s.emptyContainer}>
+              <SearchNormal1 size={40} color={tc.textTertiary} />
+              <Text style={[s.emptyTitle, { color: tc.textPrimary }]}>{searchQuery ? 'No matches' : 'No phrases in this category'}</Text>
+              <Text style={[s.emptySubtitle, { color: tc.textSecondary }]}>{searchQuery ? 'Try a different search term' : 'Phrases will appear once the kit is generated.'}</Text>
+            </View>
+          }
+        />
     </SafeAreaView>
   );
 }
-
-// ─── Styles ──────────────────────────────────────────────
 
 const s = StyleSheet.create({
   safeArea: { flex: 1 },
@@ -426,10 +417,11 @@ const s = StyleSheet.create({
   searchInput: { flex: 1, fontSize: typography.fontSize.base, padding: 0 },
 
   // Category tabs
-  tabScroll: { maxHeight: 44, marginTop: spacing.sm },
-  catTab: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, gap: 4 },
-  catTabIcon: { fontSize: 14 },
-  catTabText: { fontSize: typography.fontSize.xs, fontWeight: '600' },
+  tabScroll: { marginTop: spacing.sm, marginBottom: spacing.xs },
+  tabScrollContent: { paddingHorizontal: spacing.lg, gap: spacing.sm },
+  catTab: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full, borderWidth: 1 },
+  catTabIcon: { fontSize: 16 },
+  catTabText: { fontSize: typography.fontSize.sm, fontWeight: '600' },
 
   // Emergency block
   emergencyBlock: { marginHorizontal: spacing.lg, marginTop: spacing.sm, padding: spacing.md, borderRadius: 12, borderWidth: 1 },

@@ -16,6 +16,8 @@ import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import AddActivityBottomSheet from '../components/AddActivityBottomSheet';
 import { plannerService, ItineraryDay } from '@/services/planner.service';
+import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
+import { CalendarEdit } from 'iconsax-react-native';
 
 const TYPE_COLORS: Record<string, string> = {
   flight: colors.success,
@@ -177,18 +179,16 @@ export default function PlannerScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      {/* TODO: [PREMIUM] Empty state will show upgrade CTA once paywall is implemented */}
       {days.length === 0 ? (
-        <View style={styles.emptyStateContainer}>
-          <Airplane size={56} color={colors.textTertiary} variant="Bold" />
-          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Itinerary Yet — But Soon!</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            {`Your day-by-day itinerary for ${trip?.destination?.city || 'your trip'} is waiting to be crafted. Head to your trip card and tap "Generate Smart Plan" — we'll build a personalized schedule with activities, meals, and insider tips. This is a premium feature.`}
-          </Text>
-          <TouchableOpacity style={[styles.emptyCta, { backgroundColor: colors.primary }]} onPress={() => router.back()}>
-            <Text style={styles.emptyCtaText}>Go to Trip Card</Text>
-          </TouchableOpacity>
-        </View>
+        <PluginEmptyState
+          headerTitle="Trip Plan"
+          icon={<CalendarEdit size={36} color={colors.primary} variant="Bold" />}
+          iconColor={colors.primary}
+          title="No Itinerary Yet — But Soon!"
+          subtitle={`Your day-by-day itinerary for ${trip?.destination?.city || 'your trip'} is waiting to be crafted. Tap "Generate Smart Plan" on your trip card and we'll build a personalized schedule.`}
+          ctaLabel="Go to Trip Card"
+          hideHeader
+        />
       ) : (
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Dynamic Next Activity Card */}

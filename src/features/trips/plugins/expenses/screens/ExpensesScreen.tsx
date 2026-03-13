@@ -41,6 +41,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { expenseService } from '@/services/expense.service';
 import { expenseSummaryService, ExpenseSummary } from '@/services/expenseSummary.service';
 import { useAuth } from '@/context/AuthContext';
+import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -292,6 +293,38 @@ export default function ExpensesScreen() {
     if (stats.percentageUsed < 90) return colors.warning;
     return colors.error;
   };
+
+  if (expenses.length === 0) {
+    return (
+      <>
+        <PluginEmptyState
+          headerTitle="Expenses"
+          icon={<DollarCircle size={36} color={colors.success} variant="Bold" />}
+          iconColor={colors.success}
+          title="No Expenses Yet"
+          subtitle="Start tracking your spending by adding your first expense. Scan a receipt or add one manually — your trip budget starts here."
+          ctaLabel="Add Expense"
+          onCtaPress={() => setAddExpenseVisible(true)}
+          headerRight={
+            <TouchableOpacity
+              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: `${colors.primary}12`, alignItems: 'center', justifyContent: 'center' }}
+              onPress={() => setAddExpenseVisible(true)}
+            >
+              <Add size={24} color={colors.primary} variant="Bold" />
+            </TouchableOpacity>
+          }
+        />
+        <AddExpenseBottomSheet
+          visible={addExpenseVisible}
+          onClose={handleCloseExpenseSheet}
+          onAdd={handleAddExpense}
+          categories={CATEGORIES}
+          editingExpense={editingExpense}
+          defaultCurrency={budgetCurrency}
+        />
+      </>
+    );
+  }
 
   // Prepare chart data
   const pieChartData = stats.categoryTotals.map((cat, index) => ({

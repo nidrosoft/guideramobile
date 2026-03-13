@@ -66,10 +66,9 @@ const styles = StyleSheet.create({
   button: {
     height: 52,
     borderRadius: borderRadius.lg,
-    minWidth: 220,
+    alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
   },
   buttonText: {
     fontSize: typography.fontSize.base,

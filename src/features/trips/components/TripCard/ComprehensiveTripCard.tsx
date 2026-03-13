@@ -79,34 +79,88 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      // Fire all 6 modules in parallel — each is independent
-      const [itineraryResult, packingResult, dosDontsResult, safetyResult, languageResult, documentsResult] = await Promise.allSettled([
+      // Rate limit: max 5 generations per month per user
+      const { count } = await supabase
+        .from('trips')
+        .select('id', { count: 'exact', head: true })
+        .eq('modules_generated', true)
+        .gte('modules_generated_at', new Date(Date.now() - 30 * 86400000).toISOString());
+
+      if ((count ?? 0) >= 5) {
+        showError('You\'ve reached the limit of 5 Smart Plans per month. Please try again next month.');
+        setGenerating(false);
+        return;
+      }
+
+      // Helper: check if a settled result succeeded
+      const isOk = (r: PromiseSettledResult<any>) =>
+        r.status === 'fulfilled' && r.value?.success;
+
+      // Wave 1: lighter/faster modules (itinerary, dos-donts, documents)
+      const [itineraryResult, dosDontsResult, documentsResult] = await Promise.allSettled([
         plannerService.generateItinerary(trip.id),
-        packingService.generatePackingList(trip.id),
         safetyService.generateDosDonts(trip.id),
-        safetyService.generateSafetyProfile(trip.id),
-        languageService.generateLanguageKit(trip.id),
         documentService.generateDocuments(trip.id),
       ]);
 
-      const itineraryOk = itineraryResult.status === 'fulfilled' && itineraryResult.value?.success;
-      const packingOk = packingResult.status === 'fulfilled' && packingResult.value?.success;
-      const dosDontsOk = dosDontsResult.status === 'fulfilled' && dosDontsResult.value?.success;
-      const safetyOk = safetyResult.status === 'fulfilled' && safetyResult.value?.success;
-      const languageOk = languageResult.status === 'fulfilled' && languageResult.value?.success;
-      const documentsOk = documentsResult.status === 'fulfilled' && documentsResult.value?.success;
+      // Small delay to let AI API rate limits breathe before wave 2
+      await new Promise(r => setTimeout(r, 2000));
+
+      // Wave 2: heavier modules (packing, safety, language)
+      const [packingResult, safetyResult, languageResult] = await Promise.allSettled([
+        packingService.generatePackingList(trip.id),
+        safetyService.generateSafetyProfile(trip.id),
+        languageService.generateLanguageKit(trip.id),
+      ]);
+
+      // Collect initial results
+      let results = {
+        itinerary: itineraryResult,
+        packing: packingResult,
+        dosDonts: dosDontsResult,
+        safety: safetyResult,
+        language: languageResult,
+        documents: documentsResult,
+      };
+
+      // Retry failed modules once (with stagger to avoid rate limits)
+      const retryTargets: { key: keyof typeof results; fn: () => Promise<any> }[] = [];
+      if (!isOk(results.language)) retryTargets.push({ key: 'language', fn: () => languageService.generateLanguageKit(trip.id) });
+      if (!isOk(results.documents)) retryTargets.push({ key: 'documents', fn: () => documentService.generateDocuments(trip.id) });
+      if (!isOk(results.itinerary)) retryTargets.push({ key: 'itinerary', fn: () => plannerService.generateItinerary(trip.id) });
+      if (!isOk(results.safety)) retryTargets.push({ key: 'safety', fn: () => safetyService.generateSafetyProfile(trip.id) });
+      if (!isOk(results.packing)) retryTargets.push({ key: 'packing', fn: () => packingService.generatePackingList(trip.id) });
+      if (!isOk(results.dosDonts)) retryTargets.push({ key: 'dosDonts', fn: () => safetyService.generateDosDonts(trip.id) });
+
+      if (retryTargets.length > 0) {
+        console.log(`[SmartPlan] Retrying ${retryTargets.length} failed modules: ${retryTargets.map(t => t.key).join(', ')}`);
+        await new Promise(r => setTimeout(r, 3000));
+        const retryResults = await Promise.allSettled(retryTargets.map(t => t.fn()));
+        retryTargets.forEach((target, i) => {
+          if (isOk(retryResults[i])) {
+            results[target.key] = retryResults[i];
+          }
+        });
+      }
+
+      const itineraryOk = isOk(results.itinerary);
+      const packingOk = isOk(results.packing);
+      const dosDontsOk = isOk(results.dosDonts);
+      const safetyOk = isOk(results.safety);
+      const languageOk = isOk(results.language);
+      const documentsOk = isOk(results.documents);
 
       if (itineraryOk || packingOk || dosDontsOk || safetyOk || languageOk || documentsOk) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         const parts = [];
-        if (itineraryOk) parts.push(`${itineraryResult.value.daysGenerated} day itinerary`);
-        if (packingOk) parts.push(`${packingResult.value.itemsGenerated} packing items`);
-        if (dosDontsOk) parts.push(`${dosDontsResult.value.tipsGenerated} tips`);
-        if (safetyOk) parts.push(`safety score ${safetyResult.value.safetyScore}`);
-        if (languageOk) parts.push(`${languageResult.value.totalPhrases} phrases`);
-        if (documentsOk) parts.push(`${documentsResult.value.totalDocuments} documents`);
+        if (itineraryOk) parts.push(`${(results.itinerary as any).value.daysGenerated} day itinerary`);
+        if (packingOk) parts.push(`${(results.packing as any).value.itemsGenerated} packing items`);
+        if (dosDontsOk) parts.push(`${(results.dosDonts as any).value.tipsGenerated} tips`);
+        if (safetyOk) parts.push(`safety score ${(results.safety as any).value.safetyScore}`);
+        if (languageOk) parts.push(`${(results.language as any).value.totalPhrases} phrases`);
+        if (documentsOk) parts.push(`${(results.documents as any).value.totalDocuments} documents`);
 
-        // Mark trip as generated — enforce one-time generation
+        // Mark trip as generated
         await supabase.from('trips').update({
           modules_generated: true,
           modules_generated_at: new Date().toISOString(),
@@ -116,7 +170,7 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
         showSuccess(`Trip plan ready! ${parts.join(' + ')}`);
         router.push({ pathname: '/planner/[tripId]', params: { tripId: trip.id } } as any);
       } else {
-        const itErr = itineraryResult.status === 'rejected' ? itineraryResult.reason?.message : (itineraryResult as any).value?.error;
+        const itErr = results.itinerary.status === 'rejected' ? results.itinerary.reason?.message : (results.itinerary as any).value?.error;
         throw new Error(itErr || 'Generation failed');
       }
     } catch (err: any) {

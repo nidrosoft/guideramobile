@@ -6,17 +6,36 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  Image,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
   ActivityIndicator,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { CloseCircle, Calendar, Add, DocumentUpload, TickCircle } from 'iconsax-react-native';
-import { spacing, typography, borderRadius, colors } from '@/styles';
+import { CloseCircle, Calendar } from 'iconsax-react-native';
+import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import Slider from '@react-native-community/slider';
+
+const CLAIM_TYPES = [
+  { id: 'flight_delay', name: 'Flight Delay', emoji: '⏰', color: '#F59E0B' },
+  { id: 'flight_cancellation', name: 'Cancellation', emoji: '❌', color: '#EF4444' },
+  { id: 'overbooking', name: 'Overbooking', emoji: '🎫', color: '#8B5CF6' },
+  { id: 'denied_boarding', name: 'Denied Boarding', emoji: '🚫', color: '#DC2626' },
+  { id: 'missed_connection', name: 'Missed Connection', emoji: '🔗', color: '#F97316' },
+  { id: 'downgrade', name: 'Downgrade', emoji: '⬇️', color: '#A855F7' },
+  { id: 'lost_baggage', name: 'Lost Baggage', emoji: '🧳', color: '#EC4899' },
+  { id: 'damaged_baggage', name: 'Damaged Baggage', emoji: '💼', color: '#F97316' },
+  { id: 'hotel_issue', name: 'Hotel Issue', emoji: '🏨', color: '#06B6D4' },
+  { id: 'other', name: 'Other', emoji: '📋', color: '#6B7280' },
+];
+
+const CURRENCIES = [
+  { code: 'USD', symbol: '$' },
+  { code: 'EUR', symbol: '€' },
+  { code: 'GBP', symbol: '£' },
+  { code: 'CAD', symbol: 'C$' },
+  { code: 'AUD', symbol: 'A$' },
+];
 
 interface AddClaimBottomSheetProps {
   visible: boolean;
@@ -25,385 +44,349 @@ interface AddClaimBottomSheetProps {
 }
 
 export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddClaimBottomSheetProps) {
-  const { colors, isDark } = useTheme();
+  const { colors: tc } = useTheme();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  
-  // Step 1 - Claim Details
-  const [incident, setIncident] = useState('');
-  const [claimId, setClaimId] = useState('');
+
+  // Step 1 — Type & Flight Details
+  const [type, setType] = useState('flight_delay');
   const [provider, setProvider] = useState('');
-  const [estimatedClaim, setEstimatedClaim] = useState('');
+  const [flightNumber, setFlightNumber] = useState('');
+  const [bookingReference, setBookingReference] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [accuracy, setAccuracy] = useState(20);
-  
-  // Step 2 - Documents
-  const [photos, setPhotos] = useState<string[]>([]);
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [additionalDocument, setAdditionalDocument] = useState('');
 
-  if (!visible) return null;
+  // Step 2 — Details & Amount
+  const [description, setDescription] = useState('');
+  const [reason, setReason] = useState('');
+  const [estimatedAmount, setEstimatedAmount] = useState('');
+  const [currency, setCurrency] = useState('USD');
 
-  const handlePickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      allowsMultipleSelection: true,
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      setPhotos([...photos, ...result.assets.map(asset => asset.uri)]);
-    }
+  const resetForm = () => {
+    setCurrentStep(1);
+    setType('flight_delay');
+    setProvider('');
+    setFlightNumber('');
+    setBookingReference('');
+    setDate(new Date());
+    setDescription('');
+    setReason('');
+    setEstimatedAmount('');
+    setCurrency('USD');
+    setIsSubmitting(false);
   };
 
-  const handlePickDocument = async () => {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: '*/*',
-      copyToCacheDirectory: true,
-    });
-
-    if (!result.canceled) {
-      setDocuments([...documents, result.assets[0]]);
-    }
+  const handleClose = () => {
+    resetForm();
+    onClose();
   };
 
-  const handleNextStep = () => {
-    if (currentStep < 3) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handlePreviousStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
+  const canProceedStep1 = type && provider.trim();
+  const canSubmit = description.trim();
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
       await onSubmit({
-        incident,
-        claimId,
-        provider,
-        estimatedClaim,
+        type,
+        provider: provider.trim(),
+        flightNumber: flightNumber.trim() || undefined,
+        bookingReference: bookingReference.trim() || undefined,
         date,
-        accuracy,
-        photos,
-        documents,
-        additionalDocument,
+        estimatedAmount: estimatedAmount ? parseFloat(estimatedAmount) : 0,
+        currency,
+        description: description.trim(),
+        reason: reason.trim() || description.trim(),
       });
-      setIsSubmitting(false);
-      setShowSuccess(true);
-      setTimeout(() => handleClose(), 1500);
+      resetForm();
     } catch (err) {
       setIsSubmitting(false);
       console.error('Failed to submit claim:', err);
     }
   };
 
-  const handleClose = () => {
-    setCurrentStep(1);
-    setIncident('');
-    setClaimId('');
-    setProvider('');
-    setEstimatedClaim('');
-    setDate(new Date());
-    setAccuracy(20);
-    setPhotos([]);
-    setDocuments([]);
-    setAdditionalDocument('');
-    setShowSuccess(false);
-    onClose();
-  };
-
-  const progressPercentage = (currentStep / 3) * 100;
-
-  // Success Screen
-  if (showSuccess) {
-    return (
-      <BlurView intensity={20} style={styles.overlay}>
-        <View style={[styles.successContainer, { backgroundColor: colors.bgCard }]}>
-          <View style={styles.successIconContainer}>
-            <TickCircle size={64} color={colors.success} variant="Bold" />
-          </View>
-          <Text style={[styles.successTitle, { color: colors.textPrimary }]}>Successfully Submitted!</Text>
-          <Text style={[styles.successSubtitle, { color: colors.textSecondary }]}>
-            You successfully submit your compensation, it will go to active later and our team will check it for you ASAP!
-          </Text>
-          <TouchableOpacity style={styles.continueButton} onPress={handleClose}>
-            <Text style={styles.continueButtonText}>Continue</Text>
-          </TouchableOpacity>
-        </View>
-      </BlurView>
-    );
-  }
-
-  // Loading Screen
-  if (isSubmitting) {
-    return (
-      <BlurView intensity={20} style={styles.overlay}>
-        <View style={[styles.loadingContainer, { backgroundColor: colors.bgCard }]}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingPercentage, { color: colors.primary }]}>25%</Text>
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Submitting Compensation</Text>
-        </View>
-      </BlurView>
-    );
-  }
+  const selectedType = CLAIM_TYPES.find(t => t.id === type);
+  const progressPercentage = (currentStep / 2) * 100;
 
   return (
-    <BlurView intensity={20} style={styles.overlay}>
-      <View style={[styles.bottomSheet, { backgroundColor: colors.bgCard }]}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>New Compensation</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Step {currentStep} of 3</Text>
-          </View>
-          <TouchableOpacity onPress={handleClose}>
-            <CloseCircle size={28} color={colors.textTertiary} />
-          </TouchableOpacity>
-        </View>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={handleClose}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
+        <TouchableOpacity
+          style={styles.backdrop}
+          activeOpacity={1}
+          onPress={handleClose}
+        />
 
-        {/* Progress Bar */}
-        <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBarBackground, { backgroundColor: colors.bgSecondary }]}>
-            <View style={[styles.progressBarFill, { width: `${progressPercentage}%` }]} />
-          </View>
-        </View>
+        <View style={[styles.bottomSheet, { backgroundColor: tc.bgModal }]}>
+          {/* Handle Bar */}
+          <View style={[styles.handleBar, { backgroundColor: tc.borderMedium }]} />
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Step 1: Claim Details */}
-          {currentStep === 1 && (
-            <View style={styles.stepContainer}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Incident</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                placeholder="Enter your incident"
-                placeholderTextColor={colors.textTertiary}
-                value={incident}
-                onChangeText={setIncident}
-              />
-
-              <View style={styles.row}>
-                <View style={styles.halfInput}>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>ID</Text>
-                  <TextInput
-                    style={[styles.input, { backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                    placeholder="Enter ID"
-                    placeholderTextColor={colors.textTertiary}
-                    value={claimId}
-                    onChangeText={setClaimId}
-                  />
-                </View>
-
-                <View style={styles.halfInput}>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>Provider</Text>
-                  <TextInput
-                    style={[styles.input, { backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                    placeholder="Enter provider"
-                    placeholderTextColor={colors.textTertiary}
-                    value={provider}
-                    onChangeText={setProvider}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.row}>
-                <View style={styles.halfInput}>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>Estimated Claim</Text>
-                  <TextInput
-                    style={[styles.input, { backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                    placeholder="Enter estimated"
-                    placeholderTextColor={colors.textTertiary}
-                    value={estimatedClaim}
-                    onChangeText={setEstimatedClaim}
-                    keyboardType="numeric"
-                  />
-                </View>
-
-                <View style={styles.halfInput}>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>Date</Text>
-                  <TouchableOpacity
-                    style={[styles.dateInput, { backgroundColor: colors.bgSecondary, borderColor: colors.borderSubtle }]}
-                    onPress={() => setShowDatePicker(true)}
-                  >
-                    <Calendar size={20} color={colors.textSecondary} />
-                    <Text style={[styles.dateText, { color: colors.textPrimary }]}>
-                      {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Accuracy</Text>
-              <View style={styles.sliderContainer}>
-                <Slider
-                  style={styles.slider}
-                  minimumValue={0}
-                  maximumValue={100}
-                  value={accuracy}
-                  onValueChange={setAccuracy}
-                  minimumTrackTintColor={colors.primary}
-                  maximumTrackTintColor={colors.bgSecondary}
-                  thumbTintColor={colors.primary}
-                  step={1}
-                />
-                <Text style={[styles.accuracyText, { color: colors.textPrimary }]}>{Math.round(accuracy)}%</Text>
-              </View>
+          {/* Header */}
+          <View style={styles.header}>
+            <View>
+              <Text style={[styles.title, { color: tc.textPrimary }]}>New Claim</Text>
+              <Text style={[styles.subtitle, { color: tc.textSecondary }]}>Step {currentStep} of 2</Text>
             </View>
-          )}
+            <TouchableOpacity onPress={handleClose}>
+              <CloseCircle size={28} color={tc.textTertiary} />
+            </TouchableOpacity>
+          </View>
 
-          {/* Step 2: Upload Documents */}
-          {currentStep === 2 && (
-            <View style={styles.stepContainer}>
-              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Add Photos / Videos</Text>
-              
-              <View style={styles.photosGrid}>
-                {photos.map((photo, index) => (
-                  <Image key={index} source={{ uri: photo }} style={styles.photoThumbnail} />
-                ))}
-                <TouchableOpacity style={[styles.addPhotoButton, { backgroundColor: `${colors.primary}10` }]} onPress={handlePickImage}>
-                  <Add size={32} color={colors.primary} />
-                </TouchableOpacity>
-              </View>
+          {/* Progress Bar */}
+          <View style={styles.progressBarContainer}>
+            <View style={[styles.progressBarBg, { backgroundColor: tc.bgInput }]}>
+              <View style={[styles.progressBarFill, { width: `${progressPercentage}%`, backgroundColor: tc.primary }]} />
+            </View>
+          </View>
 
-              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Add Additional Document</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                placeholder="Additional document"
-                placeholderTextColor={colors.textTertiary}
-                value={additionalDocument}
-                onChangeText={setAdditionalDocument}
-              />
-
-              {documents.length > 0 && (
-                <View style={styles.documentsContainer}>
-                  {documents.map((doc, index) => (
-                    <View key={index} style={[styles.documentItem, { backgroundColor: colors.bgSecondary }]}>
-                      <DocumentUpload size={20} color={colors.primary} />
-                      <Text style={[styles.documentName, { color: colors.textPrimary }]}>{doc.name}</Text>
-                    </View>
+          <ScrollView
+            style={styles.content}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* ── Step 1: Type + Flight Info ── */}
+            {currentStep === 1 && (
+              <View style={styles.stepContainer}>
+                <Text style={[styles.label, { color: tc.textPrimary }]}>Claim Type</Text>
+                <View style={styles.typeGrid}>
+                  {CLAIM_TYPES.map(ct => (
+                    <TouchableOpacity
+                      key={ct.id}
+                      style={[
+                        styles.typeChip,
+                        { backgroundColor: tc.bgInput, borderColor: 'transparent' },
+                        type === ct.id && { borderColor: ct.color, backgroundColor: `${ct.color}15` },
+                      ]}
+                      onPress={() => setType(ct.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.typeEmoji}>{ct.emoji}</Text>
+                      <Text style={[
+                        styles.typeChipText,
+                        { color: tc.textSecondary },
+                        type === ct.id && { color: ct.color },
+                      ]}>{ct.name}</Text>
+                    </TouchableOpacity>
                   ))}
                 </View>
-              )}
-            </View>
-          )}
 
-          {/* Step 3: Summary */}
-          {currentStep === 3 && (
-            <View style={styles.stepContainer}>
-              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Summary</Text>
-              
-              <View style={[styles.summaryRow, { borderBottomColor: colors.borderSubtle }]}>
-                <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>Incident</Text>
-                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{incident || 'N/A'}</Text>
+                <Text style={[styles.label, { color: tc.textPrimary, marginTop: spacing.lg }]}>Airline / Provider</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: tc.bgInput, borderColor: tc.borderMedium, color: tc.textPrimary }]}
+                  placeholder="e.g. British Airways, Lufthansa"
+                  placeholderTextColor={tc.textTertiary}
+                  value={provider}
+                  onChangeText={setProvider}
+                />
+
+                <View style={styles.row}>
+                  <View style={styles.halfInput}>
+                    <Text style={[styles.label, { color: tc.textPrimary }]}>Flight Number</Text>
+                    <TextInput
+                      style={[styles.input, { backgroundColor: tc.bgInput, borderColor: tc.borderMedium, color: tc.textPrimary }]}
+                      placeholder="e.g. BA437"
+                      placeholderTextColor={tc.textTertiary}
+                      value={flightNumber}
+                      onChangeText={setFlightNumber}
+                      autoCapitalize="characters"
+                    />
+                  </View>
+                  <View style={styles.halfInput}>
+                    <Text style={[styles.label, { color: tc.textPrimary }]}>Booking Ref</Text>
+                    <TextInput
+                      style={[styles.input, { backgroundColor: tc.bgInput, borderColor: tc.borderMedium, color: tc.textPrimary }]}
+                      placeholder="e.g. ABC123"
+                      placeholderTextColor={tc.textTertiary}
+                      value={bookingReference}
+                      onChangeText={setBookingReference}
+                      autoCapitalize="characters"
+                    />
+                  </View>
+                </View>
+
+                <Text style={[styles.label, { color: tc.textPrimary }]}>Date of Incident</Text>
+                <TouchableOpacity
+                  style={[styles.dateInput, { backgroundColor: tc.bgInput, borderColor: tc.borderMedium }]}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Calendar size={20} color={tc.textSecondary} />
+                  <Text style={[styles.dateText, { color: tc.textPrimary }]}>
+                    {date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </Text>
+                </TouchableOpacity>
+
+                {showDatePicker && (
+                  <View style={[styles.datePickerInline, { backgroundColor: tc.bgInput, borderColor: tc.borderMedium }]}>
+                    <DateTimePicker
+                      value={date}
+                      mode="date"
+                      display="spinner"
+                      onChange={(event, selectedDate) => {
+                        if (selectedDate) setDate(selectedDate);
+                      }}
+                      textColor={tc.textPrimary}
+                      maximumDate={new Date()}
+                    />
+                    <TouchableOpacity
+                      style={[styles.datePickerDone, { backgroundColor: tc.primary }]}
+                      onPress={() => setShowDatePicker(false)}
+                    >
+                      <Text style={styles.datePickerDoneText}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
+            )}
 
-              <View style={[styles.summaryRow, { borderBottomColor: colors.borderSubtle }]}>
-                <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>ID</Text>
-                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{claimId || 'N/A'}</Text>
+            {/* ── Step 2: Description + Amount ── */}
+            {currentStep === 2 && (
+              <View style={styles.stepContainer}>
+                {/* Selected type badge */}
+                {selectedType && (
+                  <View style={[styles.selectedTypeBadge, { backgroundColor: `${selectedType.color}15` }]}>
+                    <Text style={styles.typeEmoji}>{selectedType.emoji}</Text>
+                    <Text style={[styles.selectedTypeText, { color: selectedType.color }]}>{selectedType.name}</Text>
+                    {flightNumber ? <Text style={[styles.selectedTypeFlight, { color: tc.textSecondary }]}> — {flightNumber}</Text> : null}
+                  </View>
+                )}
+
+                <Text style={[styles.label, { color: tc.textPrimary }]}>What happened?</Text>
+                <TextInput
+                  style={[styles.input, styles.multilineInput, { backgroundColor: tc.bgInput, borderColor: tc.borderMedium, color: tc.textPrimary }]}
+                  placeholder="Describe the incident — e.g. Flight was delayed 4 hours at departure, no communication from airline..."
+                  placeholderTextColor={tc.textTertiary}
+                  value={description}
+                  onChangeText={setDescription}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+
+                <Text style={[styles.label, { color: tc.textPrimary }]}>Reason Given by Airline (Optional)</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: tc.bgInput, borderColor: tc.borderMedium, color: tc.textPrimary }]}
+                  placeholder="e.g. Technical issue, weather, operational reasons"
+                  placeholderTextColor={tc.textTertiary}
+                  value={reason}
+                  onChangeText={setReason}
+                />
+
+                <Text style={[styles.label, { color: tc.textPrimary }]}>Estimated Compensation</Text>
+                <View style={styles.amountRow}>
+                  <View style={styles.currencyPicker}>
+                    {CURRENCIES.map(cur => (
+                      <TouchableOpacity
+                        key={cur.code}
+                        style={[
+                          styles.currencyChip,
+                          { backgroundColor: tc.bgInput, borderColor: tc.borderMedium },
+                          currency === cur.code && { backgroundColor: `${tc.primary}15`, borderColor: tc.primary },
+                        ]}
+                        onPress={() => setCurrency(cur.code)}
+                      >
+                        <Text style={[
+                          styles.currencyChipText,
+                          { color: tc.textSecondary },
+                          currency === cur.code && { color: tc.primary },
+                        ]}>{cur.code}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TextInput
+                    style={[styles.input, styles.amountInput, { backgroundColor: tc.bgInput, borderColor: tc.borderMedium, color: tc.textPrimary }]}
+                    placeholder="0.00"
+                    placeholderTextColor={tc.textTertiary}
+                    value={estimatedAmount}
+                    onChangeText={setEstimatedAmount}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+
+                <View style={[styles.infoBox, { backgroundColor: `${tc.info}10`, borderColor: `${tc.info}20` }]}>
+                  <Text style={[styles.infoText, { color: tc.textSecondary }]}>
+                    Not sure about the amount? Leave it empty — our AI will calculate your eligible compensation based on the applicable regulation (EU261, UK261, APPR, etc.) once the claim is analyzed.
+                  </Text>
+                </View>
               </View>
+            )}
+          </ScrollView>
 
-              <View style={[styles.summaryRow, { borderBottomColor: colors.borderSubtle }]}>
-                <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>Provider</Text>
-                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{provider || 'N/A'}</Text>
-              </View>
-
-              <View style={[styles.summaryRow, { borderBottomColor: colors.borderSubtle }]}>
-                <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>Estimated Claim</Text>
-                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>${estimatedClaim || '0'}</Text>
-              </View>
-
-              <View style={[styles.summaryRow, { borderBottomColor: colors.borderSubtle }]}>
-                <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>Accuracy</Text>
-                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{accuracy}%</Text>
-              </View>
-
-              <View style={[styles.summaryRow, { borderBottomColor: colors.borderSubtle }]}>
-                <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>Media & Document</Text>
-                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{photos.length + documents.length} Item</Text>
-              </View>
-
-              <View style={[styles.summaryRow, { borderBottomColor: colors.borderSubtle }]}>
-                <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>Date</Text>
-                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>
-                  {date.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </Text>
-              </View>
-            </View>
-          )}
-        </ScrollView>
-
-        {/* Footer Buttons */}
-        <View style={styles.footer}>
-          {currentStep > 1 && (
-            <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.bgSecondary }]} onPress={handlePreviousStep}>
-              <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>Back</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={[styles.nextButton, currentStep === 1 && styles.nextButtonFull]}
-            onPress={currentStep === 3 ? handleSubmit : handleNextStep}
-          >
-            <Text style={styles.nextButtonText}>
-              {currentStep === 3 ? 'Submit' : 'Next Step'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Date Picker Modal */}
-      {showDatePicker && (
-        <BlurView intensity={20} style={styles.datePickerOverlay}>
-          <View style={[styles.datePickerModal, { backgroundColor: colors.bgCard }]}>
-            <Text style={[styles.datePickerTitle, { color: colors.textPrimary }]}>Select Date</Text>
-            <DateTimePicker
-              value={date}
-              mode="date"
-              display="spinner"
-              onChange={(event, selectedDate) => {
-                if (selectedDate) setDate(selectedDate);
-              }}
-              textColor={colors.textPrimary}
-            />
+          {/* Footer Buttons */}
+          <View style={styles.footer}>
+            {currentStep > 1 && (
+              <TouchableOpacity
+                style={[styles.backButton, { backgroundColor: tc.bgInput }]}
+                onPress={() => setCurrentStep(1)}
+              >
+                <Text style={[styles.backButtonText, { color: tc.textSecondary }]}>Back</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
-              style={styles.datePickerButton}
-              onPress={() => setShowDatePicker(false)}
+              style={[
+                styles.nextButton,
+                { backgroundColor: tc.primary },
+                currentStep === 1 && styles.nextButtonFull,
+                currentStep === 1 && !canProceedStep1 && { opacity: 0.5 },
+                currentStep === 2 && !canSubmit && { opacity: 0.5 },
+              ]}
+              onPress={currentStep === 2 ? handleSubmit : () => setCurrentStep(2)}
+              disabled={
+                isSubmitting ||
+                (currentStep === 1 && !canProceedStep1) ||
+                (currentStep === 2 && !canSubmit)
+              }
             >
-              <Text style={styles.datePickerButtonText}>Done</Text>
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.nextButtonText}>
+                  {currentStep === 2 ? 'Submit Claim' : 'Next'}
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
-        </BlurView>
-      )}
-    </BlurView>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  container: {
+    flex: 1,
     justifyContent: 'flex-end',
-    zIndex: 1000,
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   bottomSheet: {
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingBottom: spacing.xl,
     maxHeight: '90%',
+  },
+  handleBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingBottom: spacing.md,
   },
   title: {
@@ -415,36 +398,38 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
   },
   progressBarContainer: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     marginBottom: spacing.lg,
   },
-  progressBarBackground: {
+  progressBarBg: {
     height: 6,
-    borderRadius: borderRadius.full,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.full,
+    borderRadius: 3,
   },
   content: {
     maxHeight: 500,
   },
   stepContainer: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
   },
   label: {
-    fontSize: typography.fontSize.sm,
+    fontSize: typography.fontSize.base,
     fontWeight: '600',
     marginBottom: spacing.sm,
     marginTop: spacing.md,
   },
   input: {
-    borderRadius: borderRadius.md,
+    borderRadius: 12,
     padding: spacing.md,
     fontSize: typography.fontSize.base,
     borderWidth: 1,
+  },
+  multilineInput: {
+    minHeight: 100,
   },
   row: {
     flexDirection: 'row',
@@ -453,90 +438,114 @@ const styles = StyleSheet.create({
   halfInput: {
     flex: 1,
   },
+  typeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  typeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  typeEmoji: {
+    fontSize: 16,
+    marginRight: spacing.xs,
+  },
+  typeChipText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: '500',
+  },
   dateInput: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    borderRadius: borderRadius.md,
+    borderRadius: 12,
     padding: spacing.md,
     borderWidth: 1,
   },
   dateText: {
     fontSize: typography.fontSize.base,
   },
-  sliderContainer: {
-    marginTop: spacing.md,
+  datePickerInline: {
+    marginTop: spacing.sm,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    paddingBottom: spacing.sm,
   },
-  slider: {
-    width: '100%',
-    height: 40,
+  datePickerDone: {
+    marginHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 10,
+    alignItems: 'center',
   },
-  accuracyText: {
-    fontSize: typography.fontSize.lg,
+  datePickerDoneText: {
+    fontSize: typography.fontSize.sm,
     fontWeight: '700',
-    textAlign: 'center',
+    color: '#FFFFFF',
   },
-  sectionTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: '600',
-    marginBottom: spacing.md,
-    marginTop: spacing.md,
-  },
-  photosGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  photoThumbnail: {
-    width: 100,
-    height: 100,
-    borderRadius: borderRadius.lg,
-  },
-  addPhotoButton: {
-    width: 100,
-    height: 100,
-    borderRadius: borderRadius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  documentsContainer: {
-    marginTop: spacing.md,
-  },
-  documentItem: {
+  selectedTypeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 20,
     marginBottom: spacing.sm,
   },
-  documentName: {
-    fontSize: typography.fontSize.sm,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-  },
-  summaryLabel: {
-    fontSize: typography.fontSize.sm,
-  },
-  summaryValue: {
+  selectedTypeText: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
+  },
+  selectedTypeFlight: {
+    fontSize: typography.fontSize.sm,
+  },
+  amountRow: {
+    gap: spacing.sm,
+  },
+  currencyPicker: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  currencyChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  currencyChipText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: '600',
+  },
+  amountInput: {
+    flex: 1,
+  },
+  infoBox: {
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  infoText: {
+    fontSize: typography.fontSize.sm,
+    lineHeight: 20,
   },
   footer: {
     flexDirection: 'row',
     gap: spacing.md,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingTop: spacing.lg,
   },
   backButton: {
     flex: 1,
     paddingVertical: spacing.md + 2,
-    borderRadius: borderRadius.full,
+    borderRadius: 16,
     alignItems: 'center',
   },
   backButtonText: {
@@ -546,95 +555,13 @@ const styles = StyleSheet.create({
   nextButton: {
     flex: 2,
     paddingVertical: spacing.md + 2,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primary,
+    borderRadius: 16,
     alignItems: 'center',
   },
   nextButtonFull: {
     flex: 1,
   },
   nextButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  loadingContainer: {
-    borderRadius: borderRadius.xl,
-    padding: spacing.xl * 2,
-    marginHorizontal: spacing.xl,
-    alignItems: 'center',
-  },
-  loadingPercentage: {
-    fontSize: typography.fontSize['3xl'],
-    fontWeight: '700',
-    marginTop: spacing.lg,
-  },
-  loadingText: {
-    fontSize: typography.fontSize.base,
-    marginTop: spacing.sm,
-  },
-  successContainer: {
-    borderRadius: borderRadius.xl,
-    padding: spacing.xl * 2,
-    marginHorizontal: spacing.xl,
-    alignItems: 'center',
-  },
-  successIconContainer: {
-    marginBottom: spacing.lg,
-  },
-  successTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: '700',
-    marginBottom: spacing.md,
-  },
-  successSubtitle: {
-    fontSize: typography.fontSize.sm,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-    lineHeight: 20,
-  },
-  continueButton: {
-    width: '100%',
-    paddingVertical: spacing.md + 2,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-  },
-  continueButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  datePickerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 2000,
-  },
-  datePickerModal: {
-    borderRadius: borderRadius.xl,
-    padding: spacing.xl,
-    marginHorizontal: spacing.xl,
-    width: '85%',
-  },
-  datePickerTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: '700',
-    marginBottom: spacing.lg,
-    textAlign: 'center',
-  },
-  datePickerButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md + 2,
-    borderRadius: borderRadius.full,
-    alignItems: 'center',
-    marginTop: spacing.lg,
-  },
-  datePickerButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: '700',
     color: '#FFFFFF',

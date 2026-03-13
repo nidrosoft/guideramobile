@@ -44,6 +44,8 @@ export interface MapContent {
 export interface AudioContent {
   uri: string;
   duration: number; // seconds
+  transcription?: string;
+  isTranscribing?: boolean;
 }
 
 export type BlockContent = 

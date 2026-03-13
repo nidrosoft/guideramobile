@@ -192,7 +192,7 @@ OUTPUT FORMAT (exact JSON structure):
 // ─── AI Callers ──────────────────────────────────────────
 
 async function callGemini(prompt: string): Promise<{ text: string; model: string }> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GOOGLE_AI_API_KEY}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -200,7 +200,7 @@ async function callGemini(prompt: string): Promise<{ text: string; model: string
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.4,
-        maxOutputTokens: 16384,
+        maxOutputTokens: 32768,
         responseMimeType: 'application/json',
       },
     }),
@@ -212,7 +212,7 @@ async function callGemini(prompt: string): Promise<{ text: string; model: string
   const data = await res.json();
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error('Gemini returned empty response');
-  return { text, model: 'gemini-2.5-flash' };
+  return { text, model: 'gemini-3-flash-preview' };
 }
 
 async function callClaude(prompt: string): Promise<{ text: string; model: string }> {
@@ -224,8 +224,8 @@ async function callClaude(prompt: string): Promise<{ text: string; model: string
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20241022',
-      max_tokens: 16384,
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 32768,
       temperature: 0.4,
       messages: [{ role: 'user', content: prompt }],
     }),

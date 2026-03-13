@@ -57,6 +57,7 @@ import {
   GROUP_META,
 } from '../types/document.types';
 import { documentService } from '@/services/document.service';
+import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -205,69 +206,14 @@ export default function DocumentsScreen() {
 
   if (!loading && !checklist) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: tc.bgPrimary }]}>
-        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        {/* Header */}
-        <View style={[styles.header, { borderBottomColor: tc.borderSubtle }]}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <ArrowLeft size={24} color={tc.textPrimary} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Documents</Text>
-          <View style={{ width: 24 }} />
-        </View>
-
-        {/* Empty State */}
-        <View style={styles.emptyContainer}>
-          <View style={[styles.emptyIconCircle, { backgroundColor: `${tc.info}12` }]}>
-            <DocumentText size={48} color={tc.info} variant="Bold" />
-          </View>
-          <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>
-            No Document Checklist Yet
-          </Text>
-          <Text style={[styles.emptySubtitle, { color: tc.textSecondary }]}>
-            Generate a personalized document checklist for your{'\n'}
-            {destCity} trip. We'll check passport validity,{'\n'}
-            visa requirements, insurance gaps, and more.
-          </Text>
-
-          <View style={[styles.emptyFeatures, { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle }]}>
-            {[
-              { icon: '🛂', text: 'Passport & visa validity checks' },
-              { icon: '🏥', text: 'Insurance gap analysis' },
-              { icon: '📱', text: 'Digital backup protocol' },
-              { icon: '🛃', text: 'Border entry intelligence' },
-              { icon: '✅', text: 'Interactive preparation checklist' },
-            ].map((f, i) => (
-              <View key={i} style={styles.emptyFeatureRow}>
-                <Text style={styles.emptyFeatureIcon}>{f.icon}</Text>
-                <Text style={[styles.emptyFeatureText, { color: tc.textSecondary }]}>{f.text}</Text>
-              </View>
-            ))}
-          </View>
-
-          <TouchableOpacity
-            style={[styles.generateBtn, { backgroundColor: tc.primary }]}
-            onPress={handleGenerate}
-            disabled={generating}
-            activeOpacity={0.8}
-          >
-            {generating ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <>
-                <DocumentText size={20} color="#fff" variant="Bold" />
-                <Text style={styles.generateBtnText}>Generate Document Checklist</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          {generating && (
-            <Text style={[styles.generatingHint, { color: tc.textTertiary }]}>
-              Analyzing requirements for {destCity}...
-            </Text>
-          )}
-        </View>
-      </SafeAreaView>
+      <PluginEmptyState
+        headerTitle="Documents"
+        icon={<DocumentText size={36} color={tc.info} variant="Bold" />}
+        iconColor={tc.info}
+        title="Paperwork? We Got You."
+        subtitle={`Your personalized document checklist for ${destCity} hasn't been created yet. Tap "Generate Smart Plan" on your trip card and we'll handle passport, visa, insurance, and more.`}
+        ctaLabel="Go to Trip Card"
+      />
     );
   }
 

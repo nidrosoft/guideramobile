@@ -28,6 +28,7 @@ import { JournalEntry, BlockType, LayoutType } from '../types/journal.types';
 import CreateEntryBottomSheet from '../components/CreateEntryBottomSheet';
 import { journalService } from '@/services/journal.service';
 import { useAuth } from '@/context/AuthContext';
+import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
 
 export default function JournalScreen() {
   const router = useRouter();
@@ -116,6 +117,35 @@ export default function JournalScreen() {
       router.push(`/journal/${tripId}/editor?title=${encodeURIComponent(title)}&layout=${layout}`);
     }
   };
+
+  if (entries.length === 0) {
+    return (
+      <>
+        <PluginEmptyState
+          headerTitle="Journal"
+          icon={<Book1 size={36} color={colors.primary} variant="Bold" />}
+          iconColor={colors.primary}
+          title="Your Story Starts Here"
+          subtitle="Capture your travel memories day by day — photos, voice notes, thoughts, and moments. Your trip story, beautifully preserved."
+          ctaLabel="Add New Entry"
+          onCtaPress={() => setCreateEntryVisible(true)}
+          headerRight={
+            <TouchableOpacity
+              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: `${colors.primary}12`, alignItems: 'center', justifyContent: 'center' }}
+              onPress={() => setCreateEntryVisible(true)}
+            >
+              <Add size={24} color={colors.primary} variant="Bold" />
+            </TouchableOpacity>
+          }
+        />
+        <CreateEntryBottomSheet
+          visible={createEntryVisible}
+          onClose={() => setCreateEntryVisible(false)}
+          onCreate={handleCreateEntry}
+        />
+      </>
+    );
+  }
 
   const getPreviewImage = (entry: JournalEntry) => {
     const imageBlock = entry.blocks.find(

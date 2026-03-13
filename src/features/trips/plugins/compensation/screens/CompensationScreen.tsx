@@ -23,6 +23,7 @@ import {
   Copy,
   ExportSquare,
   Shield,
+  ShieldTick,
   MagicStar,
   ArrowRight2,
 } from 'iconsax-react-native';
@@ -46,6 +47,7 @@ import { useToast } from '@/contexts/ToastContext';
 import AddClaimBottomSheet from '../components/AddClaimBottomSheet';
 import { compensationService } from '@/services/compensation.service';
 import { useAuth } from '@/context/AuthContext';
+import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
 
 type TabId = 'overview' | 'active' | 'resolved';
 const TABS: { id: TabId; label: string }[] = [
@@ -170,6 +172,52 @@ export default function CompensationScreen() {
 
   if (!trip) return <SafeAreaView style={[styles.ctr, { backgroundColor: colors.bgPrimary }]}><Text style={{ color: colors.textPrimary }}>Trip not found</Text></SafeAreaView>;
   if (loading) return <View style={[styles.ctr, { backgroundColor: colors.bgPrimary, justifyContent: 'center', alignItems: 'center' }]}><ActivityIndicator size="large" color={colors.primary} /></View>;
+
+  if (claims.length === 0 && rightsCards.length === 0) {
+    return (
+      <>
+        <PluginEmptyState
+          headerTitle="Compensation"
+          icon={<ShieldTick size={36} color="#8B5CF6" variant="Bold" />}
+          iconColor="#8B5CF6"
+          title="No Claims Yet"
+          subtitle="Flight delayed? Baggage lost? Add a compensation claim and our AI will analyze your rights, draft a claim letter, and guide you through the process."
+          ctaLabel="Add Claim"
+          onCtaPress={() => setAddClaimVisible(true)}
+          headerRight={
+            <TouchableOpacity
+              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: `${colors.primary}12`, alignItems: 'center', justifyContent: 'center' }}
+              onPress={() => setAddClaimVisible(true)}
+            >
+              <Add size={24} color={colors.primary} variant="Bold" />
+            </TouchableOpacity>
+          }
+        />
+        <AddClaimBottomSheet
+          visible={addClaimVisible}
+          onClose={() => setAddClaimVisible(false)}
+          onSubmit={async (claimData) => {
+            try {
+              const newClaim = await compensationService.createClaim(tripId, profile?.id ?? '', {
+                type: claimData.type,
+                provider: claimData.provider,
+                flightNumber: claimData.flightNumber,
+                bookingReference: claimData.bookingReference,
+                incidentDate: claimData.date instanceof Date ? claimData.date.toISOString() : claimData.date,
+                estimatedAmount: claimData.estimatedAmount,
+                currency: claimData.currency || 'USD',
+                description: claimData.description,
+                reason: claimData.reason,
+              });
+              setClaims(prev => [newClaim, ...prev]);
+              showSuccess('Claim added!');
+              setAddClaimVisible(false);
+            } catch (err) { console.error('Failed to create claim:', err); }
+          }}
+        />
+      </>
+    );
+  }
 
   const activeClaims = claims.filter(c => ACTIVE_STATUSES.includes(c.status));
   const resolvedClaims = claims.filter(c => RESOLVED_STATUSES.includes(c.status));

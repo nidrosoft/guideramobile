@@ -60,6 +60,18 @@ export default function ImportTripFlow({ visible, onClose, onComplete }: ImportF
     data: {},
   });
 
+  const completeAndReset = () => {
+    onComplete(flowState.data);
+    setTimeout(() => {
+      setFlowState({
+        currentStep: 'method-selection',
+        stepHistory: [],
+        method: null,
+        data: {},
+      });
+    }, 300);
+  };
+
   const handleNext = (data?: Partial<ImportFlowData>, method?: ImportMethod) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -103,8 +115,7 @@ export default function ImportTripFlow({ visible, onClose, onComplete }: ImportF
     } else if (currentStep === 'email-bookings') {
       nextStep = 'email-success';
     } else if (currentStep === 'email-success') {
-      // Complete the flow
-      onComplete(flowState.data);
+      completeAndReset();
       return;
     }
     // Link flow navigation
@@ -121,8 +132,7 @@ export default function ImportTripFlow({ visible, onClose, onComplete }: ImportF
     } else if (currentStep === 'link-trips') {
       nextStep = 'link-success';
     } else if (currentStep === 'link-success') {
-      // Complete the flow
-      onComplete(flowState.data);
+      completeAndReset();
       return;
     }
     // Manual flow navigation
@@ -147,8 +157,7 @@ export default function ImportTripFlow({ visible, onClose, onComplete }: ImportF
     } else if (currentStep === 'manual-result') {
       nextStep = 'manual-success';
     } else if (currentStep === 'manual-success') {
-      // Complete the flow
-      onComplete(flowState.data);
+      completeAndReset();
       return;
     }
     // Scan flow navigation
@@ -161,8 +170,7 @@ export default function ImportTripFlow({ visible, onClose, onComplete }: ImportF
     } else if (currentStep === 'scan-result') {
       nextStep = 'scan-success';
     } else if (currentStep === 'scan-success') {
-      // Complete the flow
-      onComplete(flowState.data);
+      completeAndReset();
       return;
     }
 
@@ -420,10 +428,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing['2xl'],
-    maxHeight: '90%',
+    maxHeight: '93%',
+    overflow: 'hidden',
   },
   bottomSheetShort: {
-    maxHeight: '90%',
+    maxHeight: '93%',
   },
   handleContainer: {
     alignItems: 'center',
@@ -479,6 +488,7 @@ const styles = StyleSheet.create({
   },
   stepContent: {
     flex: 1,
+    minHeight: 0,
   },
   placeholder: {
     fontSize: typography.fontSize.base,

@@ -602,6 +602,103 @@ async function monitorFlights(): Promise<JobResult> {
           processed++;
         }
 
+        // ── Compensation auto-trigger ──
+        // If delay >= 180 min or cancellation, auto-create a compensation claim and run AI analysis
+        const isCompensationEligibleDelay = delay && delay >= 180;
+        const isCancellation = status === 'cancelled';
+
+        if (isCompensationEligibleDelay || isCancellation) {
+          try {
+            // Check if a claim already exists for this flight + trip
+            const { data: existingClaim } = await supabase
+              .from('compensation_claims')
+              .select('id')
+              .eq('trip_id', booking.trip_id)
+              .eq('flight_number', flightNumber)
+              .limit(1)
+              .single();
+
+            if (!existingClaim) {
+              const disruptionType = isCancellation ? 'cancellation' : 'delay';
+              const claimType = isCancellation ? 'flight_cancellation' : 'flight_delay';
+              const airline = details?.airline?.name || details?.carrier || details?.provider || 'Unknown Airline';
+              const bookingRef = details?.bookingReference || details?.pnr || '';
+              const depAirport = details?.departure?.airport || details?.departure?.iata || '';
+              const arrAirport = details?.arrival?.airport || details?.arrival?.iata || '';
+              const depCountry = details?.departure?.country || '';
+              const arrCountry = details?.arrival?.country || '';
+
+              const description = isCancellation
+                ? `Flight ${flightNumber} (${depAirport} → ${arrAirport}) was cancelled.`
+                : `Flight ${flightNumber} (${depAirport} → ${arrAirport}) was delayed by ${delay} minutes.`;
+
+              // Create compensation claim
+              const { data: newClaim, error: claimErr } = await supabase
+                .from('compensation_claims')
+                .insert({
+                  trip_id: booking.trip_id,
+                  user_id: userId,
+                  type: claimType,
+                  status: 'potential',
+                  provider: airline,
+                  flight_number: flightNumber,
+                  booking_reference: bookingRef,
+                  incident_date: new Date(departureTime).toISOString(),
+                  estimated_amount: 0,
+                  currency: 'EUR',
+                  description,
+                  reason: isCancellation ? 'Flight cancelled by airline' : `Flight delayed by ${delay} minutes`,
+                  disruption_type: disruptionType,
+                  delay_minutes: delay || null,
+                  departure_country: depCountry,
+                  arrival_country: arrCountry,
+                })
+                .select('id')
+                .single();
+
+              if (claimErr) {
+                errors.push(`Compensation claim insert for ${flightNumber}: ${claimErr.message}`);
+              } else if (newClaim) {
+                // Trigger AI analysis asynchronously
+                supabase.functions.invoke('generate-compensation', {
+                  body: { claimId: newClaim.id },
+                }).catch((aiErr: any) => {
+                  console.error(`AI analysis failed for claim ${newClaim.id}:`, aiErr.message);
+                });
+
+                // Send compensation-specific notification
+                const amountHint = isCancellation ? 'up to €600' : (delay >= 180 ? 'up to €600' : '');
+                await supabase.from('alerts').insert({
+                  user_id: userId,
+                  alert_type_code: 'compensation_eligible',
+                  category_code: 'compensation',
+                  title: `💰 You may be owed compensation`,
+                  body: isCancellation
+                    ? `Your cancelled flight ${flightNumber} may qualify for ${amountHint} in compensation. Guidera is analyzing your rights now.`
+                    : `Your flight ${flightNumber} was delayed ${Math.floor(delay / 60)}h ${delay % 60}m. You may be owed ${amountHint}. Analyzing your claim now.`,
+                  context: {
+                    flightNumber,
+                    disruptionType,
+                    delay: delay || null,
+                    tripId: booking.trip_id,
+                    bookingId: booking.id,
+                    claimId: newClaim.id,
+                  },
+                  action_url: `/trip/${booking.trip_id}/compensation`,
+                  priority: 9,
+                  channels_requested: ['push', 'in_app'],
+                  trip_id: booking.trip_id,
+                  status: 'pending',
+                });
+
+                processed++;
+              }
+            }
+          } catch (compErr: any) {
+            errors.push(`Compensation trigger for ${flightNumber}: ${compErr.message}`);
+          }
+        }
+
         // Gate change
         if (newGate && details?.departure?.gate && newGate !== details.departure.gate) {
           await supabase.from('alerts').insert({

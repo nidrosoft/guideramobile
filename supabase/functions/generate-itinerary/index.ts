@@ -412,71 +412,62 @@ RULES:
 
 // ─── AI Providers ────────────────────────────────────────
 
-async function callMercury(prompt: string): Promise<string> {
-  const res = await fetch('https://api.inceptionlabs.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${INCEPTION_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'mercury-2',
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 16384,
-      temperature: 0.5,
-    }),
-  });
+const PROVIDER_TIMEOUT_MS = 70_000;
 
-  if (!res.ok) {
-    const err = await res.text().catch(() => '');
-    throw new Error(`Mercury API error ${res.status}: ${err}`);
+async function callGemini(prompt: string): Promise<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GOOGLE_AI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.5, maxOutputTokens: 32768, responseMimeType: 'application/json' },
+        }),
+      },
+    );
+    if (!res.ok) {
+      const err = await res.text().catch(() => '');
+      throw new Error(`Gemini API error ${res.status}: ${err}`);
+    }
+    const data = await res.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  } finally {
+    clearTimeout(timer);
   }
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || '';
 }
 
 async function callHaiku(prompt: string): Promise<string> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20241022',
-      max_tokens: 16384,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text().catch(() => '');
-    throw new Error(`Haiku API error ${res.status}: ${err}`);
-  }
-  const data = await res.json();
-  return data.content?.[0]?.text || '';
-}
-
-async function callGemini(prompt: string): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`,
-    {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      signal: controller.signal,
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.5, maxOutputTokens: 16384 },
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 32768,
+        messages: [{ role: 'user', content: prompt }],
       }),
-    },
-  );
-
-  if (!res.ok) {
-    const err = await res.text().catch(() => '');
-    throw new Error(`Gemini API error ${res.status}: ${err}`);
+    });
+    if (!res.ok) {
+      const err = await res.text().catch(() => '');
+      throw new Error(`Haiku API error ${res.status}: ${err}`);
+    }
+    const data = await res.json();
+    return data.content?.[0]?.text || '';
+  } finally {
+    clearTimeout(timer);
   }
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
 // ─── JSON Parser ─────────────────────────────────────────
@@ -724,9 +715,8 @@ serve(async (req: Request) => {
     console.log(`[generate-itinerary] Prompt built (${prompt.length} chars)`);
 
     // Step 3: Call AI
-    // Primary: Mercury 2 (diffusion LLM — fastest, 1000+ tok/s)
-    // Fallback 1: Gemini 2.5 Flash (reliable, good at large JSON)
-    // Fallback 2: Claude Haiku 4.5 (highest quality)
+    // Primary: Gemini 3 Flash (frontier-class, fast, structured output)
+    // Fallback: Claude Haiku 4.5 (highest quality)
     const durationDays = ctx.trip.start_date && ctx.trip.end_date
       ? Math.ceil((new Date(ctx.trip.end_date).getTime() - new Date(ctx.trip.start_date).getTime()) / 86400000)
       : 7;
@@ -735,13 +725,9 @@ serve(async (req: Request) => {
     let modelUsed: string;
 
     const providers: { name: string; call: (p: string) => Promise<string> }[] = [
-      { name: 'mercury-2', call: callMercury },
-      { name: 'gemini-2.5-flash', call: callGemini },
+      { name: 'gemini-3-flash-preview', call: callGemini },
       { name: 'claude-haiku-4-5', call: callHaiku },
     ];
-
-    // Skip Mercury if no API key configured
-    if (!INCEPTION_API_KEY) providers.shift();
 
     console.log(`[generate-itinerary] ${durationDays}-day trip, trying ${providers.map(p => p.name).join(' → ')}`);
 

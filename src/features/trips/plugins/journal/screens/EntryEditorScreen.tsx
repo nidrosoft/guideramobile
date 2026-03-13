@@ -27,8 +27,10 @@ import {
 } from 'iconsax-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
+import { Audio, AVPlaybackStatus } from 'expo-av';
 import { colors, spacing, typography } from '@/styles';
+import { supabase } from '@/lib/supabase/client';
 import { useTheme } from '@/context/ThemeContext';
 import { BlockType, BlockSize, ContentBlock, LayoutType } from '../types/journal.types';
 import { useToast } from '@/contexts/ToastContext';
@@ -55,7 +57,7 @@ const LAYOUT_TEMPLATES: Record<LayoutType, { size: BlockSize; position: number }
 
 export default function EntryEditorScreen() {
   const router = useRouter();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const params = useLocalSearchParams();
   const { showSuccess } = useToast();
   
@@ -282,7 +284,108 @@ export default function EntryEditorScreen() {
     }
   };
 
+  // ── Audio Playback ──────────────────────────
+  const [playingBlockId, setPlayingBlockId] = useState<string | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  const handlePlayPause = async (blockId: string, uri: string) => {
+    try {
+      // If already playing this block, toggle pause/resume
+      if (playingBlockId === blockId && soundRef.current) {
+        const status = await soundRef.current.getStatusAsync();
+        if (status.isLoaded && status.isPlaying) {
+          await soundRef.current.pauseAsync();
+          setPlayingBlockId(null);
+          return;
+        } else if (status.isLoaded) {
+          await soundRef.current.playAsync();
+          setPlayingBlockId(blockId);
+          return;
+        }
+      }
+
+      // Stop any existing playback
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
+      const { sound } = await Audio.Sound.createAsync(
+        { uri },
+        { shouldPlay: true },
+        (status: AVPlaybackStatus) => {
+          if (status.isLoaded && status.didJustFinish) {
+            setPlayingBlockId(null);
+            sound.unloadAsync();
+            soundRef.current = null;
+          }
+        },
+      );
+      soundRef.current = sound;
+      setPlayingBlockId(blockId);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (err) {
+      console.error('Playback error:', err);
+      Alert.alert('Playback Error', 'Could not play this voice note.');
+      setPlayingBlockId(null);
+    }
+  };
+
+  // Cleanup sound on unmount
+  useEffect(() => {
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+    };
+  }, []);
+
+  // ── Transcription ──────────────────────────
+  const [transcribingBlockId, setTranscribingBlockId] = useState<string | null>(null);
+
+  const handleTranscribe = async (blockId: string, uri: string) => {
+    setTranscribingBlockId(blockId);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: 'base64' as any,
+      });
+
+      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+        body: { audioBase64: base64, mimeType: 'audio/m4a' },
+      });
+
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+
+      const transcription = data.transcription || '';
+
+      // Update block with transcription
+      setBlocks(prev => prev.map(block =>
+        block.id === blockId && block.content?.type === BlockType.AUDIO
+          ? { ...block, content: { type: BlockType.AUDIO, data: { ...(block.content.data as any), transcription } } }
+          : block
+      ));
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showSuccess('Transcription complete!');
+    } catch (err: any) {
+      console.error('Transcription error:', err);
+      Alert.alert('Transcription Failed', err.message || 'Could not transcribe audio.');
+    } finally {
+      setTranscribingBlockId(null);
+    }
+  };
+
   const handleRemoveContent = (blockId: string) => {
+    // Stop playback if removing the playing block
+    if (playingBlockId === blockId && soundRef.current) {
+      soundRef.current.unloadAsync();
+      soundRef.current = null;
+      setPlayingBlockId(null);
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setBlocks(blocks.map(block =>
       block.id === blockId ? { ...block, content: null } : block
@@ -360,34 +463,34 @@ export default function EntryEditorScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: tc.bgPrimary }]}>
+        <ActivityIndicator size="large" color={tc.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
-      <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.container, { backgroundColor: tc.bgPrimary }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={tc.bgPrimary} />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: tc.bgPrimary }]}>
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ArrowLeft size={24} color={colors.gray900} variant="Linear" />
+        <View style={[styles.header, { backgroundColor: tc.bgPrimary, borderBottomColor: tc.borderSubtle }]}>
+          <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: tc.bgCard }]}>
+            <ArrowLeft size={24} color={tc.textPrimary} variant="Linear" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Entry</Text>
+          <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Edit Entry</Text>
           <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
-            <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save'}</Text>
+            <Text style={[styles.saveButtonText, { color: tc.primary }]}>{saving ? 'Saving...' : 'Save'}</Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Title Input */}
-          <View style={styles.titleSection}>
+          <View style={[styles.titleSection, { backgroundColor: tc.bgCard }]}>
             <TextInput
-              style={styles.titleInput}
+              style={[styles.titleInput, { color: tc.textPrimary }]}
               placeholder="Entry title..."
-              placeholderTextColor={colors.gray400}
+              placeholderTextColor={tc.textTertiary}
               value={entryTitle}
               onChangeText={setEntryTitle}
             />
@@ -400,12 +503,12 @@ export default function EntryEditorScreen() {
                 {!block.content ? (
                   // Empty block - show add button
                   <TouchableOpacity
-                    style={styles.emptyBlock}
+                    style={[styles.emptyBlock, { backgroundColor: tc.bgCard, borderColor: `${tc.primary}30` }]}
                     onPress={() => handleAddContent(block.id)}
                     activeOpacity={0.7}
                   >
-                    <Add size={32} color={colors.primary} variant="Bold" />
-                    <Text style={styles.emptyBlockText}>Add Content</Text>
+                    <Add size={32} color={tc.primary} variant="Bold" />
+                    <Text style={[styles.emptyBlockText, { color: tc.primary }]}>Add Content</Text>
                   </TouchableOpacity>
                 ) : (
                   // Filled block - show content
@@ -421,9 +524,9 @@ export default function EntryEditorScreen() {
                     {/* Text Block */}
                     {block.content.type === BlockType.TEXT && (
                       <TextInput
-                        style={styles.textBlockInput}
+                        style={[styles.textBlockInput, { backgroundColor: tc.bgCard, color: tc.textPrimary }]}
                         placeholder="Write your thoughts..."
-                        placeholderTextColor={colors.gray400}
+                        placeholderTextColor={tc.textTertiary}
                         value={block.content.data.text}
                         onChangeText={(text) => handleUpdateText(block.id, text)}
                         multiline
@@ -478,14 +581,45 @@ export default function EntryEditorScreen() {
 
                     {/* Audio Block */}
                     {block.content.type === BlockType.AUDIO && (
-                      <View style={styles.audioContent}>
-                        <View style={styles.audioPlayButton}>
-                          <Microphone2 size={28} color={colors.purple} variant="Bold" />
-                        </View>
-                        <Text style={styles.audioDuration}>
-                          {Math.floor(block.content.data.duration / 60)}:
-                          {(block.content.data.duration % 60).toString().padStart(2, '0')}
+                      <View style={[styles.audioContent, { backgroundColor: `${tc.primary}10` }]}>
+                        {/* Play/Pause */}
+                        <TouchableOpacity
+                          style={[styles.audioPlayButton, { backgroundColor: tc.primary }]}
+                          onPress={() => handlePlayPause(block.id, (block.content!.data as any).uri)}
+                          activeOpacity={0.7}
+                        >
+                          {playingBlockId === block.id ? (
+                            <Stop size={24} color="#FFF" variant="Bold" />
+                          ) : (
+                            <Microphone2 size={24} color="#FFF" variant="Bold" />
+                          )}
+                        </TouchableOpacity>
+                        <Text style={[styles.audioDuration, { color: tc.textPrimary }]}>
+                          {playingBlockId === block.id ? 'Playing...' : (
+                            `${Math.floor((block.content.data as any).duration / 60)}:${((block.content.data as any).duration % 60).toString().padStart(2, '0')}`
+                          )}
                         </Text>
+                        {/* Transcribe button */}
+                        <TouchableOpacity
+                          style={[styles.transcribeBtn, { backgroundColor: `${tc.primary}12`, borderColor: `${tc.primary}30` }]}
+                          onPress={() => handleTranscribe(block.id, (block.content!.data as any).uri)}
+                          disabled={transcribingBlockId === block.id}
+                          activeOpacity={0.7}
+                        >
+                          {transcribingBlockId === block.id ? (
+                            <ActivityIndicator size="small" color={tc.info || tc.primary} />
+                          ) : (
+                            <Text style={[styles.transcribeText, { color: tc.info || tc.primary }]}>
+                              {(block.content.data as any).transcription ? 'Re-transcribe' : 'Transcribe'}
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                        {/* Transcription text */}
+                        {(block.content.data as any).transcription && (
+                          <Text style={[styles.transcriptionText, { color: tc.textSecondary }]} numberOfLines={3}>
+                            {(block.content.data as any).transcription}
+                          </Text>
+                        )}
                       </View>
                     )}
                   </View>
@@ -517,44 +651,44 @@ export default function EntryEditorScreen() {
               activeOpacity={1}
               onPress={() => setAddContentVisible(false)}
             />
-            <View style={styles.sheetContent}>
-              <View style={styles.sheetHandle} />
-              <Text style={styles.sheetTitle}>Add Content</Text>
+            <View style={[styles.sheetContent, { backgroundColor: tc.bgCard }]}>
+              <View style={[styles.sheetHandle, { backgroundColor: tc.borderSubtle }]} />
+              <Text style={[styles.sheetTitle, { color: tc.textPrimary }]}>Add Content</Text>
               
               <View style={styles.contentOptions}>
                 <TouchableOpacity style={styles.contentOption} onPress={handleAddText}>
-                  <View style={[styles.contentOptionIcon, { backgroundColor: colors.infoBg }]}>
-                    <DocumentText size={28} color={colors.info} variant="Bold" />
+                  <View style={[styles.contentOptionIcon, { backgroundColor: `${tc.info || tc.primary}15` }]}>
+                    <DocumentText size={28} color={tc.info || tc.primary} variant="Bold" />
                   </View>
-                  <Text style={styles.contentOptionText}>Text</Text>
+                  <Text style={[styles.contentOptionText, { color: tc.textSecondary }]}>Text</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.contentOption} onPress={handleAddImage}>
-                  <View style={[styles.contentOptionIcon, { backgroundColor: colors.successBg }]}>
-                    <Gallery size={28} color={colors.success} variant="Bold" />
+                  <View style={[styles.contentOptionIcon, { backgroundColor: `${tc.success}15` }]}>
+                    <Gallery size={28} color={tc.success} variant="Bold" />
                   </View>
-                  <Text style={styles.contentOptionText}>Photo</Text>
+                  <Text style={[styles.contentOptionText, { color: tc.textSecondary }]}>Photo</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.contentOption} onPress={handleAddGallery}>
-                  <View style={[styles.contentOptionIcon, { backgroundColor: colors.successBg }]}>
-                    <Gallery size={28} color={colors.success} variant="Bold" />
+                  <View style={[styles.contentOptionIcon, { backgroundColor: `${tc.success}15` }]}>
+                    <Gallery size={28} color={tc.success} variant="Bold" />
                   </View>
-                  <Text style={styles.contentOptionText}>Gallery</Text>
+                  <Text style={[styles.contentOptionText, { color: tc.textSecondary }]}>Gallery</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.contentOption} onPress={handleAddMap}>
-                  <View style={[styles.contentOptionIcon, { backgroundColor: colors.errorBg }]}>
-                    <LocationIcon size={28} color={colors.error} variant="Bold" />
+                  <View style={[styles.contentOptionIcon, { backgroundColor: `${tc.error}15` }]}>
+                    <LocationIcon size={28} color={tc.error} variant="Bold" />
                   </View>
-                  <Text style={styles.contentOptionText}>Location</Text>
+                  <Text style={[styles.contentOptionText, { color: tc.textSecondary }]}>Location</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.contentOption} onPress={handleAddAudio}>
-                  <View style={[styles.contentOptionIcon, { backgroundColor: `${colors.purple}15` }]}>
-                    <Microphone2 size={28} color={colors.purple} variant="Bold" />
+                  <View style={[styles.contentOptionIcon, { backgroundColor: `${tc.purple}15` }]}>
+                    <Microphone2 size={28} color={tc.purple} variant="Bold" />
                   </View>
-                  <Text style={styles.contentOptionText}>Audio</Text>
+                  <Text style={[styles.contentOptionText, { color: tc.textSecondary }]}>Audio</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -716,23 +850,37 @@ const styles = StyleSheet.create({
   },
   audioContent: {
     flex: 1,
-    backgroundColor: `${colors.primary}15`,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: spacing.sm,
+    gap: 4,
   },
   audioPlayButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.primary,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.xs,
   },
   audioDuration: {
     fontSize: typography.fontSize.xs,
     fontWeight: '600',
-    color: colors.primary,
+  },
+  transcribeBtn: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  transcribeText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  transcriptionText: {
+    fontSize: typography.fontSize.xs,
+    paddingHorizontal: spacing.xs,
+    textAlign: 'center',
+    lineHeight: 16,
   },
   bottomSheet: {
     ...StyleSheet.absoluteFillObject,

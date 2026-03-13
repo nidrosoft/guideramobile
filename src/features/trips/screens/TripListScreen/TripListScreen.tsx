@@ -135,45 +135,60 @@ export default function TripListScreen() {
       </View>
       
       {/* Trip List */}
-      <FlatList
-        data={filteredTrips}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <ComprehensiveTripCard
-            trip={item}
-            onPress={() => handleTripPress(item.id)}
-          />
-        )}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <View style={[styles.emptyIconContainer, dynamicStyles.emptyIconContainer]}>
-              <Airplane size={64} color={colors.gray300} variant="Bulk" />
+      {isLoading && trips.length === 0 ? (
+        <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+          {[0, 1].map(i => (
+            <View key={i} style={[styles.skeletonCard, { backgroundColor: colors.gray100 }]}>
+              <View style={[styles.skeletonImage, { backgroundColor: colors.gray200 }]} />
+              <View style={styles.skeletonBody}>
+                <View style={[styles.skeletonLine, { width: '60%', backgroundColor: colors.gray200 }]} />
+                <View style={[styles.skeletonLine, { width: '40%', backgroundColor: colors.gray200 }]} />
+                <View style={[styles.skeletonLine, { width: '80%', backgroundColor: colors.gray200 }]} />
+              </View>
             </View>
-            <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>
-              {t('trips.empty.noTrips', { type: t(`trips.tabs.${activeTab}`).toLowerCase() })}
-            </Text>
-            <Text style={[styles.emptyText, dynamicStyles.emptyText]}>
-              {activeTab === TripState.DRAFT
-                ? t('trips.empty.startPlanning')
-                : activeTab === TripState.UPCOMING
-                ? t('trips.empty.createTrip')
-                : t('trips.empty.noTrips', { type: '' })}
-            </Text>
-            {(activeTab === TripState.DRAFT || activeTab === TripState.UPCOMING) && (
-              <TouchableOpacity
-                style={[styles.emptyButton, dynamicStyles.emptyButton]}
-                onPress={handleCreateTrip}
-                activeOpacity={0.7}
-              >
-                <Add size={20} color={colors.white} variant="Bold" />
-                <Text style={[styles.emptyButtonText, dynamicStyles.emptyButtonText]}>{t('trips.createTrip')}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        }
-      />
+          ))}
+        </ScrollView>
+      ) : (
+        <FlatList
+          data={filteredTrips}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <ComprehensiveTripCard
+              trip={item}
+              onPress={() => handleTripPress(item.id)}
+            />
+          )}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <View style={[styles.emptyIconContainer, dynamicStyles.emptyIconContainer]}>
+                <Airplane size={64} color={colors.gray300} variant="Bulk" />
+              </View>
+              <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>
+                {t('trips.empty.noTrips', { type: t(`trips.tabs.${activeTab}`).toLowerCase() })}
+              </Text>
+              <Text style={[styles.emptyText, dynamicStyles.emptyText]}>
+                {activeTab === TripState.DRAFT
+                  ? t('trips.empty.startPlanning')
+                  : activeTab === TripState.UPCOMING
+                  ? t('trips.empty.createTrip')
+                  : t('trips.empty.noTrips', { type: '' })}
+              </Text>
+              {(activeTab === TripState.DRAFT || activeTab === TripState.UPCOMING) && (
+                <TouchableOpacity
+                  style={[styles.emptyButton, dynamicStyles.emptyButton]}
+                  onPress={handleCreateTrip}
+                  activeOpacity={0.7}
+                >
+                  <Add size={20} color={colors.white} variant="Bold" />
+                  <Text style={[styles.emptyButtonText, dynamicStyles.emptyButtonText]}>{t('trips.createTrip')}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          }
+        />
+      )}
       </View>
       
       {/* Plan Bottom Sheet */}
@@ -275,5 +290,22 @@ const styles = StyleSheet.create({
   emptyButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
+  },
+  skeletonCard: {
+    borderRadius: 20,
+    marginBottom: spacing.lg,
+    overflow: 'hidden',
+  },
+  skeletonImage: {
+    height: 160,
+    width: '100%',
+  },
+  skeletonBody: {
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  skeletonLine: {
+    height: 14,
+    borderRadius: 7,
   },
 });

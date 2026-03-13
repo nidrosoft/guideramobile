@@ -196,34 +196,58 @@ QUALITY: Generate at least 120 phrases total. Emergency must have 15+. Do NOT fa
 
 // ─── AI Callers ─────────────────────────────────────────
 
+const PROVIDER_TIMEOUT_MS = 70_000; // 70s per provider — leaves room for fallback within 150s wall time
+
 async function callGemini(prompt: string): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 32768, responseMimeType: 'application/json' },
-    }),
-  });
-  if (!res.ok) throw new Error(`Gemini ${res.status}: ${await res.text()}`);
-  const j = await res.json();
-  return j.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GOOGLE_API_KEY}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 32768, responseMimeType: 'application/json' },
+      }),
+    });
+    if (!res.ok) throw new Error(`Gemini ${res.status}: ${await res.text()}`);
+    const j = await res.json();
+    return j.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function callHaiku(prompt: string): Promise<string> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20241022',
-      max_tokens: 32768,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
-  if (!res.ok) throw new Error(`Haiku ${res.status}: ${await res.text()}`);
-  const j = await res.json();
-  return j.content?.[0]?.text || '';
+  if (!ANTHROPIC_API_KEY) throw new Error('Anthropic API key not configured');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 32768,
+        temperature: 0.7,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    if (!res.ok) throw new Error(`Haiku ${res.status}: ${await res.text()}`);
+    const j = await res.json();
+    return j.content?.[0]?.text || '';
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // ─── JSON Parser ────────────────────────────────────────
@@ -326,22 +350,41 @@ serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
+    console.log(`[generate-language] Starting for trip ${tripId}`);
     const ctx = await buildContext(sb, tripId);
     const prompt = buildPrompt(ctx);
+    console.log(`[generate-language] Prompt built (${prompt.length} chars)`);
+
+    // Model chain: Gemini 3 Flash (primary) → Claude Haiku 4.5 (fallback)
+    const providers: { name: string; call: (p: string) => Promise<string> }[] = [
+      { name: 'gemini-3-flash-preview', call: callGemini },
+      { name: 'claude-haiku-4.5', call: callHaiku },
+    ];
 
     let text = '';
     let modelUsed = '';
-    try {
-      text = await callGemini(prompt);
-      modelUsed = 'gemini-2.5-flash';
-    } catch (e) {
-      console.error('Gemini failed, trying Haiku:', e);
-      text = await callHaiku(prompt);
-      modelUsed = 'claude-haiku-4.5';
+    let lastError = '';
+
+    for (const provider of providers) {
+      try {
+        const startMs = Date.now();
+        console.log(`[generate-language] Trying ${provider.name}...`);
+        text = await provider.call(prompt);
+        modelUsed = provider.name;
+        const elapsed = ((Date.now() - startMs) / 1000).toFixed(1);
+        console.log(`[generate-language] ${provider.name} succeeded in ${elapsed}s`);
+        break;
+      } catch (e: any) {
+        lastError = `${provider.name}: ${e.message}`;
+        console.warn(`[generate-language] ${provider.name} failed:`, e.message);
+      }
     }
+
+    if (!text) throw new Error(`All AI providers failed. ${lastError}`);
 
     const parsed = parseJSON(text);
     const result = await storeKit(sb, tripId, ctx.trip.user_id, parsed, modelUsed);
+    console.log(`[generate-language] Stored ${result.totalPhrases} phrases for ${result.language}`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -351,7 +394,7 @@ serve(async (req: Request) => {
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (err: any) {
-    console.error('generate-language error:', err);
+    console.error('[generate-language] Error:', err);
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

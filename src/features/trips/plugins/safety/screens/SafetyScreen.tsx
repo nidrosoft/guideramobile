@@ -90,10 +90,12 @@ function RiskBadge({ level, themeColors }: { level: string; themeColors: any }) 
 
 // ─── Empty State component ──────────────────────────────
 // TODO: [PREMIUM] Empty state will show upgrade CTA once paywall is implemented
-function EmptyState({ icon, title, subtitle, themeColors, ctaLabel, onCtaPress }: { icon: React.ReactNode; title: string; subtitle: string; themeColors: any; ctaLabel?: string; onCtaPress?: () => void }) {
+function EmptyState({ icon, iconColor, title, subtitle, themeColors, ctaLabel, onCtaPress }: { icon: React.ReactNode; iconColor?: string; title: string; subtitle: string; themeColors: any; ctaLabel?: string; onCtaPress?: () => void }) {
   return (
     <View style={s.emptyState}>
-      {icon}
+      <View style={[s.emptyIconCircle, { backgroundColor: `${iconColor || themeColors.textTertiary}15` }]}>
+        {icon}
+      </View>
       <Text style={[s.emptyTitle, { color: themeColors.textPrimary }]}>{title}</Text>
       <Text style={[s.emptySubtitle, { color: themeColors.textSecondary }]}>{subtitle}</Text>
       {ctaLabel && onCtaPress && (
@@ -248,9 +250,10 @@ export default function SafetyScreen() {
     if (!hasProfile) {
       return (
         <EmptyState
-          icon={<ShieldTick size={48} color={themeColors.textTertiary} variant="Bold" />}
+          icon={<ShieldTick size={36} color="#10B981" variant="Bold" />}
+          iconColor="#10B981"
           title="Your Shield Isn't Up Yet"
-          subtitle={`We haven't scanned ${destCity} for you yet! Generate your Smart Plan from the trip card and we'll build a full safety profile — threat intel, emergency contacts, and a before-you-go checklist. This is a premium feature.`}
+          subtitle={`We haven't scanned ${destCity} for you yet! Generate your Smart Plan from the trip card and we'll build a full safety profile — threat intel, emergency contacts, and a before-you-go checklist.`}
           themeColors={themeColors}
           ctaLabel="Go to Trip Card"
           onCtaPress={() => router.back()}
@@ -377,9 +380,10 @@ export default function SafetyScreen() {
     if (!hasProfile) {
       return (
         <EmptyState
-          icon={<SecurityUser size={48} color={themeColors.textTertiary} variant="Bold" />}
+          icon={<SecurityUser size={36} color="#3B82F6" variant="Bold" />}
+          iconColor="#3B82F6"
           title="Intel Report: Classified (For Now)"
-          subtitle={`Neighborhood maps, threat models, and digital safety tips for ${destCity} are waiting to be unlocked. Head to your trip card and tap "Generate Smart Plan" to brief yourself. This is a premium feature.`}
+          subtitle={`Neighborhood maps, threat models, and digital safety tips for ${destCity} are waiting to be unlocked. Tap "Generate Smart Plan" on your trip card to brief yourself.`}
           themeColors={themeColors}
           ctaLabel="Go to Trip Card"
           onCtaPress={() => router.back()}
@@ -588,9 +592,9 @@ export default function SafetyScreen() {
               <Text style={[s.healthValue, { color: themeColors.textPrimary }]}>{String(digital.atm_skimming_risk || 'unknown').replace(/_/g, ' ')}</Text>
             </View>
             {digital.cash_vs_card && (
-              <View style={s.healthRow}>
-                <Text style={[s.healthLabel, { color: themeColors.textTertiary }]}>Payment</Text>
-                <Text style={[s.healthValue, { color: themeColors.textPrimary }]}>{String(digital.cash_vs_card).replace(/_/g, ' ')}</Text>
+              <View style={{ marginTop: spacing.sm }}>
+                <Text style={[s.subsectionTitle, { color: themeColors.textTertiary }]}>Payment</Text>
+                <Text style={[s.bodyText, { color: themeColors.textSecondary }]}>{String(digital.cash_vs_card).replace(/_/g, ' ')}</Text>
               </View>
             )}
             {digital.sim_card_guidance && (
@@ -716,7 +720,8 @@ export default function SafetyScreen() {
         <Text style={[s.sectionTitle, { color: themeColors.textPrimary }]}>Emergency Contacts</Text>
         {contacts.length === 0 ? (
           <EmptyState
-            icon={<Call size={40} color={themeColors.textTertiary} variant="Bold" />}
+            icon={<Call size={36} color="#EF4444" variant="Bold" />}
+            iconColor="#EF4444"
             title="No Lifelines Yet"
             subtitle={`Police, ambulance, embassy — we'll have ${destCity}'s emergency numbers ready at a tap. Generate your Smart Plan first!`}
             themeColors={themeColors}
@@ -829,7 +834,8 @@ export default function SafetyScreen() {
     if (items.length === 0) {
       return (
         <EmptyState
-          icon={<TickCircle size={48} color={themeColors.textTertiary} variant="Bold" />}
+          icon={<TickCircle size={36} color="#F59E0B" variant="Bold" />}
+          iconColor="#F59E0B"
           title="Nothing to Check Off... Yet"
           subtitle={`Vaccinations, insurance, embassy registration — your before-you-go checklist for ${destCity} will appear once you generate your Smart Plan.`}
           themeColors={themeColors}
@@ -1024,15 +1030,15 @@ const s = StyleSheet.create({
   collapsibleHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 
   // Score breakdown
-  scoreRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  scoreRowLeft: { flex: 1 },
+  scoreRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
+  scoreRowLeft: { width: 130 },
   scoreLabel: { fontSize: typography.fontSize.sm, fontWeight: '500' },
   scoreWeight: { fontSize: typography.fontSize.xs },
-  scoreBarContainer: { flexDirection: 'row', alignItems: 'center', flex: 1, marginLeft: spacing.md },
+  scoreBarContainer: { flexDirection: 'row', alignItems: 'center', flex: 1, marginLeft: spacing.sm },
   scoreBarBg: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
   scoreBarFill: { height: 6, borderRadius: 3 },
-  scoreVal: { fontSize: typography.fontSize.sm, fontWeight: '700', marginLeft: spacing.sm, width: 28, textAlign: 'right' },
-  adjustmentText: { fontSize: typography.fontSize.xs, lineHeight: 16 },
+  scoreVal: { fontSize: typography.fontSize.sm, fontWeight: '700', marginLeft: spacing.sm, minWidth: 42, textAlign: 'right', flexShrink: 0 },
+  adjustmentText: { fontSize: typography.fontSize.xs, lineHeight: 18, marginTop: 2 },
 
   // Advisory
   advisoryRow: { marginBottom: spacing.xs },
@@ -1069,9 +1075,9 @@ const s = StyleSheet.create({
   neighborhoodName: { fontSize: typography.fontSize.sm, fontWeight: '600' },
 
   // Health
-  healthRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs, paddingVertical: 2 },
-  healthLabel: { fontSize: typography.fontSize.sm },
-  healthValue: { fontSize: typography.fontSize.sm, fontWeight: '600' },
+  healthRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.xs, paddingVertical: 2 },
+  healthLabel: { fontSize: typography.fontSize.sm, flexShrink: 0 },
+  healthValue: { fontSize: typography.fontSize.sm, fontWeight: '600', flex: 1, textAlign: 'right', marginLeft: spacing.sm },
   medicalFlag: { padding: spacing.sm, borderRadius: 10, marginBottom: spacing.sm },
   medicalFlagCondition: { fontSize: typography.fontSize.sm, fontWeight: '700', marginBottom: 2, textTransform: 'capitalize' },
 
@@ -1129,8 +1135,9 @@ const s = StyleSheet.create({
 
   // Empty State
   emptyState: { alignItems: 'center', paddingVertical: spacing.xl * 2, paddingHorizontal: spacing.lg },
+  emptyIconCircle: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
   emptyTitle: { fontSize: typography.fontSize.lg, fontWeight: '700', marginTop: spacing.md, textAlign: 'center' },
   emptySubtitle: { fontSize: typography.fontSize.sm, textAlign: 'center', marginTop: spacing.xs, paddingHorizontal: spacing.sm, lineHeight: 20 },
-  emptyCta: { marginTop: spacing.lg, paddingHorizontal: spacing.xl, paddingVertical: spacing.sm + 2, borderRadius: 20 },
-  emptyCtaText: { color: '#FFFFFF', fontSize: typography.fontSize.sm, fontWeight: '700' },
+  emptyCta: { marginTop: spacing.lg, width: '100%', paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  emptyCtaText: { color: '#FFFFFF', fontSize: typography.fontSize.base, fontWeight: '700' },
 });

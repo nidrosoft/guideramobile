@@ -115,15 +115,15 @@ export default function AddExpenseBottomSheet({
           onPress={onClose}
         />
         
-        <View style={styles.bottomSheet}>
+        <View style={[styles.bottomSheet, { backgroundColor: tc.bgModal }]}>
           {/* Handle Bar */}
-          <View style={styles.handleBar} />
+          <View style={[styles.handleBar, { backgroundColor: tc.borderMedium }]} />
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>{editingExpense ? 'Edit Expense' : 'Add Expense'}</Text>
+            <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{editingExpense ? 'Edit Expense' : 'Add Expense'}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <CloseCircle size={28} color={colors.gray400} variant="Linear" />
+              <CloseCircle size={28} color={tc.textTertiary} variant="Linear" />
             </TouchableOpacity>
           </View>
 
@@ -134,23 +134,23 @@ export default function AddExpenseBottomSheet({
           >
             {/* Amount + Currency */}
             <View style={styles.field}>
-              <Text style={styles.label}>Amount</Text>
+              <Text style={[styles.label, { color: tc.textPrimary }]}>Amount</Text>
               <View style={styles.amountRow}>
                 <TouchableOpacity
-                  style={styles.currencyToggle}
+                  style={[styles.currencyToggle, { backgroundColor: tc.bgInput, borderColor: tc.borderMedium }]}
                   onPress={() => setShowCurrencyPicker(!showCurrencyPicker)}
                 >
-                  <Text style={styles.currencyToggleText}>{selectedCurrency}</Text>
-                  <Text style={styles.currencyToggleArrow}>{showCurrencyPicker ? '▲' : '▼'}</Text>
+                  <Text style={[styles.currencyToggleText, { color: tc.textPrimary }]}>{selectedCurrency}</Text>
+                  <Text style={[styles.currencyToggleArrow, { color: tc.textTertiary }]}>{showCurrencyPicker ? '▲' : '▼'}</Text>
                 </TouchableOpacity>
-                <View style={[styles.amountInput, { flex: 1 }]}>
-                  <Text style={styles.currencySymbol}>
+                <View style={[styles.amountInput, { flex: 1, backgroundColor: tc.bgInput, borderColor: tc.borderMedium }]}>
+                  <Text style={[styles.currencySymbol, { color: tc.textPrimary }]}>
                     {COMMON_CURRENCIES.find(c => c.code === selectedCurrency)?.symbol || '$'}
                   </Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { color: tc.textPrimary }]}
                     placeholder="0.00"
-                    placeholderTextColor={colors.gray400}
+                    placeholderTextColor={tc.textTertiary}
                     value={amount}
                     onChangeText={setAmount}
                     keyboardType="decimal-pad"
@@ -166,13 +166,15 @@ export default function AddExpenseBottomSheet({
                         key={cur.code}
                         style={[
                           styles.currencyChip,
-                          selectedCurrency === cur.code && styles.currencyChipSelected,
+                          { backgroundColor: tc.bgInput, borderColor: tc.borderMedium },
+                          selectedCurrency === cur.code && { backgroundColor: `${tc.primary}15`, borderColor: tc.primary },
                         ]}
                         onPress={() => { setSelectedCurrency(cur.code); setShowCurrencyPicker(false); }}
                       >
                         <Text style={[
                           styles.currencyChipText,
-                          selectedCurrency === cur.code && styles.currencyChipTextSelected,
+                          { color: tc.textSecondary },
+                          selectedCurrency === cur.code && { color: tc.primary },
                         ]}>{cur.symbol} {cur.code}</Text>
                       </TouchableOpacity>
                     ))}
@@ -183,13 +185,14 @@ export default function AddExpenseBottomSheet({
 
             {/* Category */}
             <View style={styles.field}>
-              <Text style={styles.label}>Category</Text>
+              <Text style={[styles.label, { color: tc.textPrimary }]}>Category</Text>
               <View style={styles.categoryGrid}>
                 {categories.map(category => (
                   <TouchableOpacity
                     key={category.id}
                     style={[
                       styles.categoryChip,
+                      { backgroundColor: tc.bgInput, borderColor: 'transparent' },
                       selectedCategory === category.id && [
                         styles.categoryChipSelected,
                         { borderColor: category.color, backgroundColor: `${category.color}15` },
@@ -201,6 +204,7 @@ export default function AddExpenseBottomSheet({
                     <Text style={styles.categoryEmoji}>{category.emoji}</Text>
                     <Text style={[
                       styles.categoryChipText,
+                      { color: tc.textSecondary },
                       selectedCategory === category.id && { color: category.color },
                     ]}>
                       {category.name.split(' ')[0]}
@@ -212,11 +216,11 @@ export default function AddExpenseBottomSheet({
 
             {/* Merchant (Optional) */}
             <View style={styles.field}>
-              <Text style={styles.label}>Merchant (Optional)</Text>
+              <Text style={[styles.label, { color: tc.textPrimary }]}>Merchant (Optional)</Text>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, { backgroundColor: tc.bgInput, borderColor: tc.borderMedium, color: tc.textPrimary }]}
                 placeholder="e.g. Starbucks, Uber, Hotel Marrakech"
-                placeholderTextColor={colors.gray400}
+                placeholderTextColor={tc.textTertiary}
                 value={merchant}
                 onChangeText={setMerchant}
               />
@@ -224,11 +228,11 @@ export default function AddExpenseBottomSheet({
 
             {/* Description */}
             <View style={styles.field}>
-              <Text style={styles.label}>Description</Text>
+              <Text style={[styles.label, { color: tc.textPrimary }]}>Description</Text>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, { backgroundColor: tc.bgInput, borderColor: tc.borderMedium, color: tc.textPrimary }]}
                 placeholder="e.g. Lunch at restaurant"
-                placeholderTextColor={colors.gray400}
+                placeholderTextColor={tc.textTertiary}
                 value={description}
                 onChangeText={setDescription}
               />
@@ -236,16 +240,17 @@ export default function AddExpenseBottomSheet({
 
             {/* Payment Method */}
             <View style={styles.field}>
-              <Text style={styles.label}>Payment Method</Text>
+              <Text style={[styles.label, { color: tc.textPrimary }]}>Payment Method</Text>
               <View style={styles.categoryGrid}>
                 {paymentMethods.map(method => (
                   <TouchableOpacity
                     key={method.id}
                     style={[
                       styles.categoryChip,
+                      { backgroundColor: tc.bgInput, borderColor: 'transparent' },
                       selectedPaymentMethod === method.id && [
                         styles.categoryChipSelected,
-                        { borderColor: colors.primary, backgroundColor: `${colors.primary}15` },
+                        { borderColor: tc.primary, backgroundColor: `${tc.primary}15` },
                       ],
                     ]}
                     onPress={() => setSelectedPaymentMethod(method.id)}
@@ -254,7 +259,8 @@ export default function AddExpenseBottomSheet({
                     <Text style={styles.categoryEmoji}>{method.icon}</Text>
                     <Text style={[
                       styles.categoryChipText,
-                      selectedPaymentMethod === method.id && { color: colors.primary },
+                      { color: tc.textSecondary },
+                      selectedPaymentMethod === method.id && { color: tc.primary },
                     ]}>
                       {method.name}
                     </Text>
@@ -265,11 +271,11 @@ export default function AddExpenseBottomSheet({
 
             {/* Notes */}
             <View style={styles.field}>
-              <Text style={styles.label}>Notes (Optional)</Text>
+              <Text style={[styles.label, { color: tc.textPrimary }]}>Notes (Optional)</Text>
               <TextInput
-                style={[styles.textInput, styles.notesInput]}
+                style={[styles.textInput, styles.notesInput, { backgroundColor: tc.bgInput, borderColor: tc.borderMedium, color: tc.textPrimary }]}
                 placeholder="Add any additional notes..."
-                placeholderTextColor={colors.gray400}
+                placeholderTextColor={tc.textTertiary}
                 value={notes}
                 onChangeText={setNotes}
                 multiline
@@ -283,7 +289,8 @@ export default function AddExpenseBottomSheet({
           <TouchableOpacity
             style={[
               styles.addButton,
-              (!amount.trim() || !description.trim()) && styles.addButtonDisabled,
+              { backgroundColor: tc.primary, shadowColor: tc.primary },
+              (!amount.trim() || !description.trim()) && [styles.addButtonDisabled, { backgroundColor: tc.borderMedium }],
             ]}
             onPress={handleAdd}
             disabled={!amount.trim() || !description.trim()}
@@ -306,7 +313,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   bottomSheet: {
-    backgroundColor: colors.bgModal,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: spacing.xl,
@@ -315,7 +321,6 @@ const styles = StyleSheet.create({
   handleBar: {
     width: 40,
     height: 4,
-    backgroundColor: colors.gray300,
     borderRadius: 2,
     alignSelf: 'center',
     marginTop: spacing.md,
@@ -331,7 +336,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
-    color: colors.gray900,
   },
   closeButton: {
     width: 40,
@@ -349,7 +353,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray900,
     marginBottom: spacing.sm,
   },
   amountRow: {
@@ -360,22 +363,18 @@ const styles = StyleSheet.create({
   currencyToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray100,
     borderRadius: 12,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray200,
     gap: 4,
   },
   currencyToggleText: {
     fontSize: typography.fontSize.sm,
     fontWeight: '700',
-    color: colors.gray900,
   },
   currencyToggleArrow: {
     fontSize: 8,
-    color: colors.gray500,
   },
   currencyPickerContainer: {
     marginTop: spacing.sm,
@@ -387,35 +386,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: 16,
-    backgroundColor: colors.gray100,
     borderWidth: 1,
-    borderColor: colors.gray200,
-  },
-  currencyChipSelected: {
-    backgroundColor: `${colors.primary}15`,
-    borderColor: colors.primary,
   },
   currencyChipText: {
     fontSize: typography.fontSize.xs,
     fontWeight: '600',
-    color: colors.gray600,
-  },
-  currencyChipTextSelected: {
-    color: colors.primary,
   },
   amountInput: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray50,
     borderRadius: 12,
     paddingHorizontal: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray200,
   },
   currencySymbol: {
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
-    color: colors.gray900,
     marginRight: spacing.xs,
   },
   input: {
@@ -423,17 +409,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
-    color: colors.gray900,
   },
   textInput: {
-    backgroundColor: colors.gray50,
     borderRadius: 12,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: typography.fontSize.base,
-    color: colors.gray900,
     borderWidth: 1,
-    borderColor: colors.gray200,
   },
   notesInput: {
     minHeight: 80,
@@ -449,9 +431,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: 20,
-    backgroundColor: colors.gray100,
     borderWidth: 2,
-    borderColor: 'transparent',
   },
   categoryChipSelected: {
     borderWidth: 2,
@@ -463,22 +443,18 @@ const styles = StyleSheet.create({
   categoryChipText: {
     fontSize: typography.fontSize.sm,
     fontWeight: '500',
-    color: colors.gray700,
   },
   addButton: {
-    backgroundColor: colors.primary,
     marginHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   addButtonDisabled: {
-    backgroundColor: colors.gray300,
     shadowOpacity: 0,
   },
   addButtonText: {

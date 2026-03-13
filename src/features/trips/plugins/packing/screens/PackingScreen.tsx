@@ -32,6 +32,7 @@ import { PackingCategory, PackingItem } from '../types/packing.types';
 import AddItemBottomSheet from '../components/AddItemBottomSheet';
 import { packingService } from '@/services/packing.service';
 import { useAuth } from '@/context/AuthContext';
+import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
 
 const CATEGORY_INFO = [
   { id: PackingCategory.ESSENTIALS, name: 'Essentials', icon: 'bag', color: '#EF4444' },
@@ -200,18 +201,16 @@ export default function PackingScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* TODO: [PREMIUM] Empty state will show upgrade CTA once paywall is implemented */}
         {items.length === 0 ? (
-          <View style={styles.emptyStateContainer}>
-            <Bag2 size={56} color={colors.textTertiary} variant="Bold" />
-            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Suitcase Looking Empty</Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-              {`Your AI-curated packing list for ${trip?.destination?.city || 'your trip'} hasn't been created yet! Head back to your trip card and tap "Generate Smart Plan" — we'll pack your bags with ${trip?.destination?.city ? trip.destination.city + '-specific' : 'destination-specific'} essentials, weather-smart clothing, and those things you always forget. This is a premium feature.`}
-            </Text>
-            <TouchableOpacity style={[styles.emptyCta, { backgroundColor: colors.primary }]} onPress={() => router.back()}>
-              <Text style={styles.emptyCtaText}>Go to Trip Card</Text>
-            </TouchableOpacity>
-          </View>
+          <PluginEmptyState
+            headerTitle="Packing List"
+            icon={<Bag2 size={36} color="#F59E0B" variant="Bold" />}
+            iconColor="#F59E0B"
+            title="Suitcase Looking Empty"
+            subtitle={`Your AI-curated packing list for ${trip?.destination?.city || 'your trip'} hasn't been created yet. Tap "Generate Smart Plan" on your trip card and we'll pack your bags with weather-smart essentials.`}
+            ctaLabel="Go to Trip Card"
+            hideHeader
+          />
         ) : (
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Progress Card */}

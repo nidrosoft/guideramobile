@@ -34,6 +34,7 @@ import {
   CategoryInfo,
 } from '../types/dos-donts.types';
 import { safetyService } from '@/services/safety.service';
+import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
 
 // Category configuration with icons and colors
 const CATEGORIES: CategoryInfo[] = [
@@ -260,18 +261,16 @@ export default function DosDontsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* TODO: [PREMIUM] Empty state will show upgrade CTA once paywall is implemented */}
         {tips.length === 0 ? (
-          <View style={styles.emptyStateContainer}>
-            <Global size={56} color={colors.textTertiary} variant="Bold" />
-            <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>When in Rome... We Don't Know Yet</Text>
-            <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
-              {`Cultural do's & don'ts for ${trip.destination?.city || 'your destination'} haven't been generated yet! Head back to your trip card and tap "Generate Smart Plan" — we'll tell you what to do, what NOT to do, and why the locals will love you for it. This is a premium feature.`}
-            </Text>
-            <TouchableOpacity style={[styles.emptyCta, { backgroundColor: colors.primary }]} onPress={() => router.back()}>
-              <Text style={styles.emptyCtaText}>Go to Trip Card</Text>
-            </TouchableOpacity>
-          </View>
+          <PluginEmptyState
+            headerTitle="Do's & Don'ts"
+            icon={<Global size={36} color="#8B5CF6" variant="Bold" />}
+            iconColor="#8B5CF6"
+            title="When in Rome... We Don't Know Yet"
+            subtitle={`Cultural do's & don'ts for ${trip.destination?.city || 'your destination'} haven't been generated yet. Tap "Generate Smart Plan" on your trip card and we'll tell you what to do and what NOT to do.`}
+            ctaLabel="Go to Trip Card"
+            hideHeader
+          />
         ) : (
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Hero Card - AI: Update with destination-specific info */}

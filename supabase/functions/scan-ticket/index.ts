@@ -20,51 +20,56 @@ const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
 const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY') || '';
 
-// Primary: Claude Haiku 4.5 (Oct 2025) — fastest vision model with good accuracy
+// Primary: GPT-5.4 (March 2026) — best vision accuracy for document extraction
+const OPENAI_MODEL = 'gpt-5.4-2026-03-05';
+// Fallback 1: Gemini 3 Flash Preview — fast, supports structured output + vision
+const GEMINI_MODEL = 'gemini-3-flash-preview';
+// Fallback 2: Claude Haiku 4.5
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
-// Fallback 1: GPT-4o-mini — fast and cheap OpenAI model
-const OPENAI_MODEL = 'gpt-4o-mini';
-// Fallback 2: Gemini 2.0 Flash
-const GEMINI_MODEL = 'gemini-2.0-flash';
 
-const EXTRACTION_PROMPT = `You are a travel booking data extraction expert with perfect accuracy. Analyze this image of a travel document (boarding pass, flight ticket, hotel voucher, car rental confirmation, train ticket, or booking confirmation).
+const EXTRACTION_PROMPT = `You are a travel booking data extraction expert with PERFECT accuracy. Analyze this image of a travel document (boarding pass, flight ticket, hotel voucher, car rental confirmation, train ticket, or booking confirmation).
 
 Extract ALL available booking information and return it as valid JSON with this exact structure:
 
 {
   "type": "flight" | "hotel" | "car" | "train" | "cruise" | "other",
   "confidence": 0.0-1.0,
-  "title": "Human readable title, e.g. 'Japan Airlines JL951 Tokyo to Seoul'",
+  "title": "Human readable title, e.g. 'Costa Airways CZ1448 San Diego to Costa Rica'",
   "confirmationNumber": "booking reference or PNR",
   "provider": {
     "name": "airline/hotel chain/company name",
     "code": "IATA code if airline"
   },
   "origin": {
-    "name": "departure city or location name",
-    "code": "IATA airport code if applicable",
-    "terminal": "terminal number if shown"
+    "name": "departure city name — the FROM city, where the journey STARTS",
+    "code": "IATA airport code of the DEPARTURE airport",
+    "terminal": "terminal number if shown",
+    "country": "country of origin city"
   },
   "destination": {
-    "name": "arrival city or location name",
-    "code": "IATA airport code if applicable",
-    "terminal": "terminal number if shown"
+    "name": "arrival city or country — the TO destination, where the traveler is GOING",
+    "code": "IATA airport code of the ARRIVAL airport",
+    "terminal": "terminal number if shown",
+    "country": "country of destination"
   },
   "dates": {
-    "departure": "YYYY-MM-DDTHH:mm:ss or YYYY-MM-DD",
-    "arrival": "YYYY-MM-DDTHH:mm:ss or YYYY-MM-DD",
+    "departure": "YYYY-MM-DDTHH:mm:ss — outbound flight departure date and time",
+    "arrival": "YYYY-MM-DDTHH:mm:ss — outbound flight arrival date and time (may be +1 day)",
+    "returnDate": "YYYY-MM-DD — return/comeback date if this is a round-trip ticket. Look for RETURN label.",
     "checkIn": "for hotels: YYYY-MM-DD",
-    "checkOut": "for hotels: YYYY-MM-DD"
+    "checkOut": "for hotels: YYYY-MM-DD",
+    "tripDurationDays": null
   },
   "details": {
-    "flightNumber": "e.g. JL951",
-    "seatNumber": "e.g. 05C",
+    "flightNumber": "e.g. CZ1448",
+    "seatNumber": "e.g. 19A",
     "cabin": "Economy/Premium Economy/Business/First",
     "gate": "gate number",
     "boardingGroup": "group number",
-    "airline": "full airline name e.g. Japan Airlines",
-    "route": "e.g. TYO → ICN or Tokyo → Seoul",
-    "duration": "flight duration if shown, e.g. 2h 30m",
+    "airline": "full airline name e.g. Costa Airways",
+    "route": "e.g. SAN → SJO or San Diego → San Jose",
+    "duration": "flight duration if shown",
+    "isRoundTrip": true,
     "hotelName": "hotel name for hotels",
     "roomType": "room type for hotels",
     "carType": "car type for rentals",
@@ -87,19 +92,27 @@ Extract ALL available booking information and return it as valid JSON with this 
 
 CRITICAL ACCURACY RULES — READ CAREFULLY:
 1. Return ONLY valid JSON. No markdown, no backticks, no explanation.
-2. DATES ARE THE MOST IMPORTANT FIELD. A wrong date = missed flight. Read EVERY digit individually:
-   - Look at each character in the date one by one. "14" has a "1" then a "4". NOT "16".
-   - If the ticket says "14 SEP 2028", the output MUST be "2028-09-14". Never "2028-09-16".
-   - If the date appears multiple times on the ticket, cross-reference ALL instances to verify.
-   - Common misreads to avoid: 4≠6, 1≠7, 3≠8, 5≠6, 0≠8.
-3. For times: if "18:15" or "19:00" is shown, include it: "2028-09-14T18:15:00"
-4. NEVER guess. If you can't read something clearly, use null and lower the confidence.
-5. Extract the cabin class exactly: "Economy", "Premium Economy", "Business", "First".
-6. Extract the route as "ORIGIN_CODE → DESTINATION_CODE" format.
-7. If not a travel document: {"type": "unknown", "confidence": 0, "error": "Not a travel document"}`;
+2. DATES ARE THE MOST IMPORTANT FIELD. A wrong date = missed flight:
+   - Read EVERY digit character by character. "10" = one-zero, NOT "9" or "11".
+   - If the ticket says "JULY 10, 2026", output MUST be "2026-07-10". Never off by even 1 day.
+   - Cross-reference ALL date instances on the ticket to verify.
+   - Common misreads to avoid: 4≠6, 1≠7, 3≠8, 5≠6, 0≠8, 9≠10.
+3. ORIGIN vs DESTINATION — this is the SECOND MOST IMPORTANT field:
+   - "FROM" / "DEPARTURE" = ORIGIN. This is where the passenger DEPARTS from.
+   - "TO" / "DESTINATION" / "ARRIVAL" = DESTINATION. This is where they are GOING.
+   - Do NOT confuse the arrival airport city name with the origin. SAN = San Diego, SJO = San Jose.
+   - The origin.name should be the DEPARTURE city, not the arrival city.
+4. RETURN DATE: If the ticket shows a "RETURN" date, extract it as dates.returnDate.
+   - Round-trip tickets show both departure and return dates. Capture BOTH.
+   - Also set details.isRoundTrip = true and dates.tripDurationDays if shown.
+5. For times: include them as ISO format: "2026-07-10T10:20:00"
+   - If arrival shows "+1" (next day), add 1 day to the arrival date.
+6. NEVER guess. If you can't read something clearly, use null and lower the confidence.
+7. Extract the cabin class exactly: "Economy", "Premium Economy", "Business", "First".
+8. If not a travel document: {"type": "unknown", "confidence": 0, "error": "Not a travel document"}`;
 
 /**
- * PRIMARY: Call GPT-5.4 with vision (most accurate)
+ * PRIMARY: Call GPT-5.4 with vision (most accurate for document OCR)
  */
 async function extractWithGPT(imageBase64: string, mediaType: string): Promise<any> {
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -111,6 +124,7 @@ async function extractWithGPT(imageBase64: string, mediaType: string): Promise<a
     body: JSON.stringify({
       model: OPENAI_MODEL,
       max_tokens: 4096,
+      temperature: 0.1,
       messages: [{
         role: 'user',
         content: [
@@ -122,6 +136,7 @@ async function extractWithGPT(imageBase64: string, mediaType: string): Promise<a
             type: 'image_url',
             image_url: {
               url: `data:${mediaType};base64,${imageBase64}`,
+              detail: 'high',
             },
           },
         ],
@@ -144,7 +159,7 @@ async function extractWithGPT(imageBase64: string, mediaType: string): Promise<a
 }
 
 /**
- * FALLBACK 1: Call Claude Sonnet with vision
+ * FALLBACK 2: Call Claude Haiku 4.5 with vision
  */
 async function extractWithClaude(imageBase64: string, mediaType: string): Promise<any> {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -193,7 +208,7 @@ async function extractWithClaude(imageBase64: string, mediaType: string): Promis
 }
 
 /**
- * Fallback: Call Gemini 2.0 Flash with vision
+ * FALLBACK 1: Call Gemini 3 Flash Preview with vision
  */
 async function extractWithGemini(imageBase64: string, mediaType: string): Promise<any> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GOOGLE_AI_API_KEY}`;
@@ -216,6 +231,7 @@ async function extractWithGemini(imageBase64: string, mediaType: string): Promis
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 4096,
+        responseMimeType: 'application/json',
       },
     }),
   });
@@ -249,7 +265,10 @@ function normalizeExtraction(extracted: any): any {
     providerName: extracted.provider?.name,
     status: 'confirmed',
     startDate: extracted.dates?.departure || extracted.dates?.checkIn,
-    endDate: extracted.dates?.arrival || extracted.dates?.checkOut,
+    endDate: extracted.dates?.returnDate || extracted.dates?.checkOut || extracted.dates?.arrival,
+    returnDate: extracted.dates?.returnDate || null,
+    tripDurationDays: extracted.dates?.tripDurationDays || null,
+    isRoundTrip: extracted.details?.isRoundTrip || false,
     startLocation: {
       name: extracted.origin?.name,
       code: extracted.origin?.code,
@@ -290,22 +309,25 @@ serve(async (req: Request) => {
     let extracted: any;
     let modelUsed: string;
 
-    // Try Haiku 4.5 first (fastest), GPT-4o-mini second, Gemini third
+    // Try GPT-5.4 first (most accurate vision), Gemini 3 Flash second, Claude Haiku third
     try {
-      extracted = await extractWithClaude(imageBase64, mediaType);
-      modelUsed = HAIKU_MODEL;
-    } catch (haikuError: any) {
-      console.warn('Haiku failed, trying GPT-4o-mini:', haikuError.message);
+      extracted = await extractWithGPT(imageBase64, mediaType);
+      modelUsed = OPENAI_MODEL;
+      console.log(`[scan-ticket] GPT-5.4 succeeded, confidence: ${extracted.confidence}`);
+    } catch (gptError: any) {
+      console.warn('[scan-ticket] GPT-5.4 failed, trying Gemini 3 Flash:', gptError.message);
       try {
-        extracted = await extractWithGPT(imageBase64, mediaType);
-        modelUsed = OPENAI_MODEL;
-      } catch (gptError: any) {
-        console.warn('GPT-4o-mini failed, trying Gemini:', gptError.message);
+        extracted = await extractWithGemini(imageBase64, mediaType);
+        modelUsed = GEMINI_MODEL;
+        console.log(`[scan-ticket] Gemini 3 Flash succeeded, confidence: ${extracted.confidence}`);
+      } catch (geminiError: any) {
+        console.warn('[scan-ticket] Gemini 3 Flash failed, trying Claude Haiku:', geminiError.message);
         try {
-          extracted = await extractWithGemini(imageBase64, mediaType);
-          modelUsed = GEMINI_MODEL;
-        } catch (geminiError: any) {
-          throw new Error(`All models failed. Haiku: ${haikuError.message}. GPT: ${gptError.message}. Gemini: ${geminiError.message}`);
+          extracted = await extractWithClaude(imageBase64, mediaType);
+          modelUsed = HAIKU_MODEL;
+          console.log(`[scan-ticket] Claude Haiku succeeded, confidence: ${extracted.confidence}`);
+        } catch (haikuError: any) {
+          throw new Error(`All models failed. GPT-5.4: ${gptError.message}. Gemini: ${geminiError.message}. Haiku: ${haikuError.message}`);
         }
       }
     }
