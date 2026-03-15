@@ -25,9 +25,6 @@ import { Linking } from 'react-native';
 import { PlanTripSheet } from '@/components/features/search';
 import AIChatSheet from '@/components/features/ai/AIChatSheet';
 import type { TripPlanData } from '@/components/features/search/PlanTripSheet';
-import { QuickTripFlow, AdvancedTripFlow } from '@/features/planning';
-import { usePlanningStore } from '@/features/planning/stores/usePlanningStore';
-import { useAdvancedPlanningStore } from '@/features/planning/stores/useAdvancedPlanningStore';
 
 const { width } = Dimensions.get('window');
 const IMAGE_HEIGHT = width * 1.2;
@@ -77,12 +74,6 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
   // Plan Trip states
   const [showPlanSheet, setShowPlanSheet] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
-  const [showQuickTripFlow, setShowQuickTripFlow] = useState(false);
-  const [showAdvancedTripFlow, setShowAdvancedTripFlow] = useState(false);
-  
-  // Planning stores
-  const planningStore = usePlanningStore();
-  const advancedPlanningStore = useAdvancedPlanningStore();
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event: any) => {
@@ -160,42 +151,12 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
     guests: { adults: 1, children: 0, infants: 0 },
   };
 
-  const handleQuickTrip = (tripData: TripPlanData) => {
-    planningStore.reset();
-    if (tripData.destination) {
-      planningStore.setDestination({
-        id: id,
-        name: tripData.destination,
-        code: '',
-        country: data.location?.split(',')[0]?.trim() || '',
-        countryCode: '',
-        type: 'city',
-      });
-    }
-    if (tripData.startDate) planningStore.setStartDate(tripData.startDate);
-    if (tripData.endDate) planningStore.setEndDate(tripData.endDate);
-    setShowQuickTripFlow(true);
+  const handleQuickTrip = (_tripData: TripPlanData) => {
+    // Deprecated — Quick trip flow removed
   };
 
-  const handleAdvancedTrip = (tripData: TripPlanData) => {
-    advancedPlanningStore.reset();
-    if (tripData.destination) {
-      advancedPlanningStore.updateDestination(0, {
-        id: id,
-        name: tripData.destination,
-        code: '',
-        country: data.location?.split(',')[0]?.trim() || '',
-        countryCode: '',
-        type: 'city',
-      });
-    }
-    if (tripData.startDate) advancedPlanningStore.setDepartureDate(tripData.startDate);
-    if (tripData.endDate) advancedPlanningStore.setReturnDate(tripData.endDate);
-    if (tripData.guests) {
-      advancedPlanningStore.setAdults(tripData.guests.adults);
-      advancedPlanningStore.setInfants(tripData.guests.infants);
-    }
-    setShowAdvancedTripFlow(true);
+  const handleAdvancedTrip = (_tripData: TripPlanData) => {
+    // Deprecated — Advanced trip flow removed
   };
 
   return (
@@ -319,17 +280,6 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
         tripData={tripPlanData}
       />
 
-      {/* Quick Trip Flow */}
-      <QuickTripFlow
-        visible={showQuickTripFlow}
-        onClose={() => setShowQuickTripFlow(false)}
-      />
-
-      {/* Advanced Trip Flow */}
-      <AdvancedTripFlow
-        visible={showAdvancedTripFlow}
-        onClose={() => setShowAdvancedTripFlow(false)}
-      />
 
       {/* AI Chat Sheet - context-aware for this destination */}
       <AIChatSheet

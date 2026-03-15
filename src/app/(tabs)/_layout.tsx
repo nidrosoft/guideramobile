@@ -77,16 +77,39 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
   const handleScanAction = (action: ScanActionType) => {
     setShowScanSheet(false);
-    if (action === 'ask-ai') {
-      setTimeout(() => setShowAIChat(true), 300);
-      return;
+
+    // Each action routes to its proper screen
+    switch (action) {
+      case 'ask-ai':
+        setTimeout(() => setShowAIChat(true), 300);
+        return;
+
+      case 'receipt':
+        router.push({ pathname: '/expenses/scan-receipt' } as any);
+        return;
+
+      case 'scan-document':
+        // Route to the trip import scan flow (ticket/boarding pass scanner)
+        router.push({ pathname: '/expenses/scan-receipt', params: { mode: 'document' } } as any);
+        return;
+
+      case 'navigate':
+        // Combined navigator with top toggle tabs (City/Airport/Landmarks)
+        router.push({ pathname: '/(tabs)/ar', params: { action: 'city-navigator', navigateMode: 'true' } });
+        return;
+
+      case 'danger-alerts':
+      case 'menu-translator':
+      case 'landmark-scanner':
+      case 'city-navigator':
+      case 'airport-navigator':
+        // AR plugins — route to AR tab with the specific plugin
+        router.push({ pathname: '/(tabs)/ar', params: { action } });
+        return;
+
+      default:
+        router.push({ pathname: '/(tabs)/ar', params: { action } });
     }
-    if (action === 'receipt') {
-      // Open dedicated receipt scanner (works with or without an active trip)
-      router.push({ pathname: '/expenses/scan-receipt' });
-      return;
-    }
-    router.push({ pathname: '/(tabs)/ar', params: { action } });
   };
 
   const icons: Record<string, (color: string, focused: boolean) => React.ReactNode> = {
@@ -102,7 +125,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     index: t('tabs.explore'),
     trips: t('tabs.trips'),
     ar: '',
-    community: t('tabs.community'),
+    community: 'Connect',
     account: t('tabs.profile'),
   };
 

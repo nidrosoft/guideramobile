@@ -2,12 +2,15 @@
  * USE COMMUNITY MEMBERSHIP HOOK
  * 
  * Handles join/leave/request functionality for communities.
+ * Wired to real groupService for Supabase operations.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Alert } from 'react-native';
 import { CommunityPrivacy, MembershipStatus } from '../types/community.types';
+import { groupService } from '@/services/community/group.service';
+import { useAuth } from '@/context/AuthContext';
 
 interface MembershipState {
   status: MembershipStatus | 'none';
@@ -39,6 +42,9 @@ export function useCommunityMembership({
   initialStatus = 'none',
   isPremium = true,
 }: UseCommunityMembershipProps): UseCommunityMembershipReturn {
+  const { profile } = useAuth();
+  const userId = profile?.id;
+
   const [state, setState] = useState<MembershipState>({
     status: initialStatus,
     isLoading: false,
@@ -48,22 +54,19 @@ export function useCommunityMembership({
   const isPending = state.status === 'pending';
   
   const join = useCallback(async () => {
-    if (state.isLoading) return;
+    if (state.isLoading || !userId) return;
     
     setState(prev => ({ ...prev, isLoading: true }));
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const result = await groupService.joinGroup(userId, communityId);
       
-      if (privacy === 'public') {
-        // Instant join for public groups
+      if (result.status === 'joined') {
         setState({ status: 'active', isLoading: false });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         Alert.alert('Joined!', 'You are now a member of this group.');
-      } else {
-        // Request to join for private/invite-only groups
+      } else if (result.status === 'pending') {
         setState({ status: 'pending', isLoading: false });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         Alert.alert(
@@ -71,15 +74,15 @@ export function useCommunityMembership({
           'Your request to join has been sent. You\'ll be notified when it\'s approved.'
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       setState(prev => ({ ...prev, isLoading: false }));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Error', 'Failed to join group. Please try again.');
+      Alert.alert('Error', error?.message || 'Failed to join group. Please try again.');
     }
-  }, [communityId, privacy, state.isLoading]);
+  }, [communityId, userId, state.isLoading]);
   
   const leave = useCallback(async () => {
-    if (state.isLoading) return;
+    if (state.isLoading || !userId) return;
     
     Alert.alert(
       'Leave Group',
@@ -94,24 +97,22 @@ export function useCommunityMembership({
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             
             try {
-              // Simulate API call
-              await new Promise(resolve => setTimeout(resolve, 500));
-              
+              await groupService.leaveGroup(userId, communityId);
               setState({ status: 'none', isLoading: false });
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            } catch (error) {
+            } catch (error: any) {
               setState(prev => ({ ...prev, isLoading: false }));
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-              Alert.alert('Error', 'Failed to leave group. Please try again.');
+              Alert.alert('Error', error?.message || 'Failed to leave group. Please try again.');
             }
           },
         },
       ]
     );
-  }, [communityId, state.isLoading]);
+  }, [communityId, userId, state.isLoading]);
   
   const cancelRequest = useCallback(async () => {
-    if (state.isLoading) return;
+    if (state.isLoading || !userId) return;
     
     Alert.alert(
       'Cancel Request',
@@ -126,21 +127,19 @@ export function useCommunityMembership({
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             
             try {
-              // Simulate API call
-              await new Promise(resolve => setTimeout(resolve, 500));
-              
+              await groupService.leaveGroup(userId, communityId);
               setState({ status: 'none', isLoading: false });
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            } catch (error) {
+            } catch (error: any) {
               setState(prev => ({ ...prev, isLoading: false }));
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-              Alert.alert('Error', 'Failed to cancel request. Please try again.');
+              Alert.alert('Error', error?.message || 'Failed to cancel request. Please try again.');
             }
           },
         },
       ]
     );
-  }, [communityId, state.isLoading]);
+  }, [communityId, userId, state.isLoading]);
   
   const getButtonText = useCallback(() => {
     if (state.isLoading) return 'Loading...';

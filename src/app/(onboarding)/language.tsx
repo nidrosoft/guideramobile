@@ -6,8 +6,8 @@ export default function LanguageScreen() {
     <PreferenceScreen
       icon={LanguageSquare}
       title="What languages do you speak?"
-      description="Select your primary language"
-      inputType="select"
+      description="Select all languages you're comfortable with"
+      inputType="multiselect"
       options={[
         'English',
         'Spanish',
@@ -20,12 +20,15 @@ export default function LanguageScreen() {
         'Korean',
         'Arabic',
         'Hindi',
-        'Other',
+        'Swahili',
+        'Russian',
+        'Dutch',
       ]}
+      minSelections={1}
       currentStep={6}
       totalSteps={10}
       nextRoute="/(onboarding)/emergency-contact"
-      fieldName="language"
+      fieldName="languages"
     />
   );
 }

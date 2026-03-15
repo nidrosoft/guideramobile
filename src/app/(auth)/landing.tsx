@@ -60,6 +60,9 @@ export default function Landing() {
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
         // AuthGuard will handle navigation based on onboarding status
+      } else if ((signIn?.status as string) === 'needs_client_trust') {
+        // Clerk v3: New client trust — user needs additional verification
+        setError('For security, additional verification is needed. Please sign in with email or phone.');
       } else {
         // No session created — might need additional steps (MFA, etc.)
         console.log('[Landing SSO] No session created. signUp status:', signUp?.status, 'signIn status:', signIn?.status);
@@ -246,7 +249,7 @@ const styles = StyleSheet.create({
   ssoButton: {
     flex: 1,
     height: 56,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: colors.white,
@@ -285,7 +288,7 @@ const styles = StyleSheet.create({
   },
   signUpButton: {
     height: 56,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
     ...shadows.md,
   },
@@ -301,7 +304,7 @@ const styles = StyleSheet.create({
   },
   errorBadge: {
     fontSize: typography.fontSize.xs,
-    color: '#EF4444',
+    color: colors.error,
     textAlign: 'center',
     marginTop: spacing.xs,
   },

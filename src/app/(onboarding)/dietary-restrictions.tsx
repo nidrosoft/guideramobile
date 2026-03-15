@@ -6,8 +6,8 @@ export default function DietaryRestrictionsScreen() {
     <PreferenceScreen
       icon={Cup}
       title="Any dietary restrictions?"
-      description="We'll help you find suitable dining options"
-      inputType="select"
+      description="Select all that apply — we'll find suitable dining options"
+      inputType="multiselect"
       options={[
         'None',
         'Vegetarian',
@@ -17,8 +17,10 @@ export default function DietaryRestrictionsScreen() {
         'Gluten-free',
         'Dairy-free',
         'Nut allergies',
-        'Other allergies',
+        'Shellfish allergy',
+        'Lactose intolerant',
       ]}
+      minSelections={1}
       currentStep={9}
       totalSteps={10}
       nextRoute="/(onboarding)/accessibility-needs"

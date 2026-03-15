@@ -38,12 +38,13 @@ function fromDb(row: any): Expense {
 }
 
 class ExpenseService {
-  async getExpenses(tripId: string): Promise<Expense[]> {
+  async getExpenses(tripId: string, limit = 500): Promise<Expense[]> {
     const { data, error } = await supabase
       .from('expenses')
       .select('*')
       .eq('trip_id', tripId)
-      .order('date', { ascending: false });
+      .order('date', { ascending: false })
+      .limit(limit);
 
     if (error) throw new Error(error.message);
     return (data ?? []).map(fromDb);
@@ -183,12 +184,21 @@ class ExpenseService {
     if (error) throw new Error(error.message);
   }
 
-  async getAllUserExpenses(userId: string): Promise<Expense[]> {
+  async getAllUserExpenses(
+    userId: string,
+    options: { page?: number; pageSize?: number } = {},
+  ): Promise<{ expenses: Expense[]; hasMore: boolean }> {
+    const page = options.page ?? 0;
+    const pageSize = options.pageSize ?? 50;
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
+
     const { data, error } = await supabase
       .from('expenses')
       .select('*, trips!inner(title, destination)')
       .eq('user_id', userId)
-      .order('date', { ascending: false });
+      .order('date', { ascending: false })
+      .range(from, to + 1); // fetch one extra to detect hasMore
 
     if (error) {
       // Fallback without join if trips relation fails
@@ -196,16 +206,27 @@ class ExpenseService {
         .from('expenses')
         .select('*')
         .eq('user_id', userId)
-        .order('date', { ascending: false });
+        .order('date', { ascending: false })
+        .range(from, to + 1);
 
       if (fallbackError) throw new Error(fallbackError.message);
-      return (fallbackData ?? []).map(fromDb);
+      const rows = (fallbackData ?? []);
+      const hasMore = rows.length > pageSize;
+      return {
+        expenses: rows.slice(0, pageSize).map(fromDb),
+        hasMore,
+      };
     }
 
-    return (data ?? []).map((row: any) => ({
-      ...fromDb(row),
-      tripTitle: row.trips?.title || row.trips?.destination?.city || undefined,
-    }));
+    const rows = data ?? [];
+    const hasMore = rows.length > pageSize;
+    return {
+      expenses: rows.slice(0, pageSize).map((row: any) => ({
+        ...fromDb(row),
+        tripTitle: row.trips?.title || row.trips?.destination?.city || undefined,
+      })),
+      hasMore,
+    };
   }
 
   async getStats(tripId: string, budgetTotal?: number): Promise<ExpenseStats> {

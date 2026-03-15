@@ -35,6 +35,7 @@ import {
 } from '../types/dos-donts.types';
 import { safetyService } from '@/services/safety.service';
 import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
+import PluginErrorState from '@/features/trips/components/PluginErrorState';
 
 // Category configuration with icons and colors
 const CATEGORIES: CategoryInfo[] = [
@@ -77,16 +78,16 @@ export default function DosDontsScreen() {
   const [showDonts, setShowDonts] = useState(true);
   const [tips, setTips] = useState<SmartTip[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showInfoSheet, setShowInfoSheet] = useState(false);
   const [tipFeedback, setTipFeedback] = useState<Record<string, 'helpful' | 'not_helpful' | null>>({});
 
-  useEffect(() => {
-    let mounted = true;
-    const fetchTips = async () => {
-      try {
-        setLoading(true);
+  const fetchTips = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const mapTip = (ct: any, city: string): SmartTip => ({
+      const mapTip = (ct: any, city: string): SmartTip => ({
           id: ct.id,
           category: ct.category as CategoryType,
           context: ContextType.DESTINATION,
@@ -121,15 +122,17 @@ export default function DosDontsScreen() {
           }
         }
 
-        if (mounted) setTips(culturalTips.map(ct => mapTip(ct, city)));
-      } catch (err) {
-        console.error('Failed to load cultural tips:', err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
+      setTips(culturalTips.map(ct => mapTip(ct, city)));
+    } catch (err: any) {
+      console.error('Failed to load cultural tips:', err);
+      setError(err.message || 'Failed to load cultural tips');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchTips();
-    return () => { mounted = false; };
   }, [tripId, trip?.destination]);
 
   const currentTripPhase = TripPhase.PRE_TRIP;
@@ -188,6 +191,14 @@ export default function DosDontsScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.bgPrimary, justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+        <PluginErrorState message={error} onRetry={fetchTips} />
       </View>
     );
   }

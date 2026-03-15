@@ -5,7 +5,7 @@
  * Accessible from Discover "See All" on Trending Groups.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,6 +28,8 @@ import {
 import * as Haptics from 'expo-haptics';
 import { spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
+import { groupService } from '@/services/community/group.service';
 import { CommunityPreview } from '../types/community.types';
 import JoinButton from '../components/JoinButton';
 
@@ -40,178 +43,76 @@ const FILTER_CHIPS: { id: FilterType; label: string }[] = [
   { id: 'local', label: 'Local' },
 ];
 
-const ALL_GROUPS: CommunityPreview[] = [
-  {
-    id: 'grp-1',
-    name: 'Japan 2025 Travelers',
-    avatar: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200',
-    coverImage: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400',
-    memberCount: 12400,
-    isVerified: true,
-    type: 'destination',
-    privacy: 'public',
-    tags: ['Japan', '2025'],
-    isMember: false,
-  },
-  {
-    id: 'grp-2',
-    name: 'Solo Female Travelers',
-    avatar: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=200',
-    coverImage: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
-    memberCount: 45600,
-    isVerified: true,
-    type: 'interest',
-    privacy: 'public',
-    tags: ['Solo', 'Women'],
-    isMember: true,
-  },
-  {
-    id: 'grp-3',
-    name: 'Digital Nomads Worldwide',
-    avatar: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=200',
-    coverImage: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400',
-    memberCount: 28900,
-    isVerified: true,
-    type: 'interest',
-    privacy: 'public',
-    tags: ['Remote Work', 'Nomad'],
-    isMember: false,
-  },
-  {
-    id: 'grp-4',
-    name: 'Tokyo Foodies',
-    avatar: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=200',
-    coverImage: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400',
-    memberCount: 2800,
-    isVerified: false,
-    type: 'destination',
-    privacy: 'public',
-    tags: ['Tokyo', 'Food'],
-    isMember: false,
-  },
-  {
-    id: 'grp-5',
-    name: 'Bali Digital Nomads',
-    avatar: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=200',
-    coverImage: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400',
-    memberCount: 8900,
-    isVerified: true,
-    type: 'destination',
-    privacy: 'public',
-    tags: ['Bali', 'Nomad'],
-    isMember: false,
-  },
-  {
-    id: 'grp-6',
-    name: 'Europe Backpackers',
-    avatar: 'https://images.unsplash.com/photo-1473625247510-8ceb1760943f?w=200',
-    coverImage: 'https://images.unsplash.com/photo-1473625247510-8ceb1760943f?w=400',
-    memberCount: 34200,
-    isVerified: true,
-    type: 'destination',
-    privacy: 'public',
-    tags: ['Europe', 'Backpacking'],
-    isMember: true,
-  },
-  {
-    id: 'grp-7',
-    name: 'Travel Photography',
-    avatar: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200',
-    coverImage: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400',
-    memberCount: 19500,
-    isVerified: true,
-    type: 'interest',
-    privacy: 'public',
-    tags: ['Photography', 'Landscape'],
-    isMember: false,
-  },
-  {
-    id: 'grp-8',
-    name: 'Budget Travel Tips',
-    avatar: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=200',
-    coverImage: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
-    memberCount: 18700,
-    isVerified: true,
-    type: 'interest',
-    privacy: 'public',
-    tags: ['Budget', 'Tips'],
-    isMember: false,
-  },
-  {
-    id: 'grp-9',
-    name: 'Paris Local Guides',
-    avatar: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=200',
-    coverImage: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400',
-    memberCount: 4200,
-    isVerified: false,
-    type: 'local',
-    privacy: 'public',
-    tags: ['Paris', 'Local'],
-    isMember: false,
-  },
-  {
-    id: 'grp-10',
-    name: 'Southeast Asia Explorers',
-    avatar: 'https://images.unsplash.com/photo-1528181304800-259b08848526?w=200',
-    coverImage: 'https://images.unsplash.com/photo-1528181304800-259b08848526?w=400',
-    memberCount: 9120,
-    isVerified: true,
-    type: 'destination',
-    privacy: 'public',
-    tags: ['SEA', 'Thailand'],
-    isMember: false,
-  },
-  {
-    id: 'grp-11',
-    name: 'NYC Weekend Trips',
-    avatar: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=200',
-    coverImage: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=400',
-    memberCount: 6700,
-    isVerified: false,
-    type: 'trip',
-    privacy: 'public',
-    tags: ['NYC', 'Weekend'],
-    isMember: false,
-  },
-  {
-    id: 'grp-12',
-    name: 'Adventure Sports',
-    avatar: 'https://images.unsplash.com/photo-1551632811-561732d1e306?w=200',
-    coverImage: 'https://images.unsplash.com/photo-1551632811-561732d1e306?w=400',
-    memberCount: 15300,
-    isVerified: true,
-    type: 'interest',
-    privacy: 'public',
-    tags: ['Adventure', 'Sports'],
-    isMember: false,
-  },
-];
+/** Map a Group from service to CommunityPreview for the grid */
+function mapGroupToPreview(g: any, myGroupIds: Set<string>): CommunityPreview {
+  return {
+    id: g.id,
+    name: g.name,
+    avatar: g.groupPhotoUrl || g.coverPhotoUrl || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=200',
+    coverImage: g.coverPhotoUrl || g.groupPhotoUrl || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
+    memberCount: g.memberCount || 0,
+    isVerified: g.isVerified || false,
+    type: (g.category as any) || 'interest',
+    privacy: g.privacy || 'public',
+    tags: g.tags || [],
+    description: g.description,
+    isMember: myGroupIds.has(g.id),
+  };
+}
 
 export default function AllGroupsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { profile } = useAuth();
+  const userId = profile?.id;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [groups, setGroups] = useState<CommunityPreview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [myGroupIds, setMyGroupIds] = useState<Set<string>>(new Set());
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const filteredGroups = useMemo(() => {
-    let groups = ALL_GROUPS;
+  // Fetch user's joined groups for isMember flag
+  useEffect(() => {
+    if (!userId) return;
+    groupService.getUserGroups(userId)
+      .then(data => setMyGroupIds(new Set(data.map(d => d.group.id))))
+      .catch(() => {});
+  }, [userId]);
 
-    if (activeFilter !== 'all') {
-      groups = groups.filter(g => g.type === activeFilter);
+  // Fetch groups based on filter + search (debounced)
+  const fetchGroups = useCallback(async (filter: FilterType, search: string) => {
+    setLoading(true);
+    try {
+      const category = filter === 'all' ? undefined : filter;
+      const result = await groupService.discoverGroups({
+        category: category as any,
+        search: search.trim() || undefined,
+        limit: 30,
+      });
+      setGroups(result.map(g => mapGroupToPreview(g, myGroupIds)));
+    } catch (err) {
+      console.warn('Failed to fetch groups:', err);
+    } finally {
+      setLoading(false);
     }
+  }, [myGroupIds]);
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      groups = groups.filter(
-        g =>
-          g.name.toLowerCase().includes(q) ||
-          g.tags.some(tag => tag.toLowerCase().includes(q))
-      );
-    }
+  // Initial fetch + re-fetch on filter change
+  useEffect(() => {
+    fetchGroups(activeFilter, searchQuery);
+  }, [activeFilter, fetchGroups]);
 
-    return groups;
-  }, [activeFilter, searchQuery]);
+  // Debounced search
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      fetchGroups(activeFilter, text);
+    }, 400);
+  };
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -288,7 +189,7 @@ export default function AllGroupsScreen() {
             placeholder="Search by name, country, interest..."
             placeholderTextColor={tc.textTertiary}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearchChange}
           />
         </View>
       </View>
@@ -331,13 +232,13 @@ export default function AllGroupsScreen() {
       {/* Results count */}
       <View style={styles.resultsRow}>
         <Text style={[styles.resultsText, { color: tc.textSecondary }]}>
-          {filteredGroups.length} group{filteredGroups.length !== 1 ? 's' : ''} found
+          {loading ? 'Searching...' : `${groups.length} group${groups.length !== 1 ? 's' : ''} found`}
         </Text>
       </View>
 
       {/* Groups Grid */}
       <FlatList
-        data={filteredGroups}
+        data={groups}
         keyExtractor={item => item.id}
         numColumns={2}
         columnWrapperStyle={styles.gridRow}

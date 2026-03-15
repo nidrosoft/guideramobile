@@ -4,8 +4,8 @@
  */
 
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Animated, SafeAreaView } from 'react-native';
-import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'expo-router';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTripStore } from '../../stores/trip.store';
 import { TripState } from '../../types/trip.types';
@@ -28,11 +28,13 @@ const TAB_IDS = [
 
 export default function TripListScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ scrollToTripId?: string }>();
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TripState>(TripState.UPCOMING);
   const [showPlanSheet, setShowPlanSheet] = useState(false);
   const animatedValue = useState(new Animated.Value(0))[0];
+  const flatListRef = useRef<FlatList>(null);
   
   const { trips, fetchTrips, filterByState, isLoading } = useTripStore();
   
@@ -58,6 +60,31 @@ export default function TripListScreen() {
   useEffect(() => {
     fetchTrips();
   }, []);
+
+  // Auto-scroll to specific trip when navigated with scrollToTripId
+  useEffect(() => {
+    if (!params.scrollToTripId || isLoading || trips.length === 0) return;
+
+    const targetId = params.scrollToTripId;
+    // Find which tab the trip belongs to
+    const targetTrip = trips.find(t => t.id === targetId);
+    if (!targetTrip) return;
+
+    // Switch to the correct tab if needed
+    const tripTab = targetTrip.state as TripState;
+    if (tripTab !== activeTab) {
+      setActiveTab(tripTab);
+    }
+
+    // Scroll to the trip after a short delay (let tab switch + FlatList render)
+    setTimeout(() => {
+      const tabTrips = filterByState(tripTab);
+      const index = tabTrips.findIndex(t => t.id === targetId);
+      if (index >= 0 && flatListRef.current) {
+        flatListRef.current.scrollToIndex({ index, animated: true, viewPosition: 0.3 });
+      }
+    }, 400);
+  }, [params.scrollToTripId, isLoading, trips]);
   
   // Get trips for active tab
   const filteredTrips = filterByState(activeTab);
@@ -150,6 +177,7 @@ export default function TripListScreen() {
         </ScrollView>
       ) : (
         <FlatList
+          ref={flatListRef}
           data={filteredTrips}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
@@ -160,6 +188,12 @@ export default function TripListScreen() {
           )}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onScrollToIndexFailed={(info) => {
+            // Fallback: scroll to approximate offset if item not yet laid out
+            setTimeout(() => {
+              flatListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
+            }, 100);
+          }}
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <View style={[styles.emptyIconContainer, dynamicStyles.emptyIconContainer]}>

@@ -23,7 +23,7 @@ const CATEGORY_ICONS: Record<string, any> = {
   other: DocumentText,
 };
 
-export default function EmailBookingsStep({ onNext, data }: StepComponentProps) {
+export default function EmailBookingsStep({ onNext, onBack, data }: StepComponentProps) {
   const { colors: tc, isDark } = useTheme();
   const [selectedTripIds, setSelectedTripIds] = useState<string[]>([]);
   const [isImporting, setIsImporting] = useState(false);
@@ -36,14 +36,14 @@ export default function EmailBookingsStep({ onNext, data }: StepComponentProps) 
     return (
       <View style={styles.container}>
         <View style={styles.errorContainer}>
-          <Warning2 size={48} color={tc.error} variant="Bold" />
-          <Text style={[styles.title, { color: tc.textPrimary }]}>Scan Failed</Text>
+          <Warning2 size={48} color={tc.warning} variant="Bold" />
+          <Text style={[styles.title, { color: tc.textPrimary }]}>Couldn't Process Email</Text>
           <Text style={[styles.description, { color: tc.textSecondary }]}>
-            {data.scanError || 'Unable to scan your email. Please check your connection and try again.'}
+            {data.scanError || 'We had trouble reading your email. This can happen with some email formats. Please try forwarding the email again or use the scan option instead.'}
           </Text>
           <TouchableOpacity
             style={[styles.continueButton, { backgroundColor: tc.primary }]}
-            onPress={() => onNext()}
+            onPress={() => onBack()}
           >
             <Text style={[styles.continueButtonText, { color: tc.white }]}>Try Again</Text>
           </TouchableOpacity>
@@ -58,15 +58,15 @@ export default function EmailBookingsStep({ onNext, data }: StepComponentProps) 
       <View style={styles.container}>
         <View style={styles.errorContainer}>
           <DocumentText size={48} color={tc.textTertiary} variant="Bold" />
-          <Text style={[styles.title, { color: tc.textPrimary }]}>No Bookings Found</Text>
+          <Text style={[styles.title, { color: tc.textPrimary }]}>No Bookings Detected</Text>
           <Text style={[styles.description, { color: tc.textSecondary }]}>
-            We didn't find any travel bookings in your recent emails. Try entering your trip details manually instead.
+            We couldn't detect a travel booking in that email. Make sure you're forwarding a booking confirmation (not a marketing email or newsletter).{"\n\n"}You can also try scanning a ticket photo or entering details manually.
           </Text>
           <TouchableOpacity
             style={[styles.continueButton, { backgroundColor: tc.primary }]}
-            onPress={() => onNext()}
+            onPress={() => onBack()}
           >
-            <Text style={[styles.continueButtonText, { color: tc.white }]}>Done</Text>
+            <Text style={[styles.continueButtonText, { color: tc.white }]}>Try Again</Text>
           </TouchableOpacity>
         </View>
       </View>

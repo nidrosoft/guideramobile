@@ -15,7 +15,7 @@ export default function ScanSuccessStep({ data, onNext }: StepComponentProps) {
     <SuccessStep
       title="Trip Added Successfully!"
       message={`Your booking has been added to "${tripTitle}". Check your Trips tab to view it and plan your itinerary!`}
-      buttonText="View My Trips"
+      buttonText="View My Trip"
       onButtonPress={() => onNext(data)}
     />
   );

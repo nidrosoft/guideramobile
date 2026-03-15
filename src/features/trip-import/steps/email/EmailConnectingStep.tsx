@@ -1,79 +1,89 @@
 /**
  * EMAIL CONNECTING STEP
  * 
- * Step 5 in email import flow - Loading state while connecting to email.
- * Initiates the real scan via the trip import engine.
+ * Polls for forwarded booking emails.
+ * The user has forwarded their booking confirmation to their unique import address.
+ * This step waits for the email to arrive, be parsed by AI, and shows results.
  */
 
 import React, { useEffect, useState } from 'react';
 import { StepComponentProps } from '../../types/import-flow.types';
 import LoadingStep from '../../components/shared/LoadingStep';
-import { tripImportEngine } from '@/services/trip/trip-import-engine.service';
+import { emailImportService } from '@/services/emailImport.service';
 import { useAuth } from '@/context/AuthContext';
 
 export default function EmailConnectingStep({ onNext, data }: StepComponentProps) {
   const { profile } = useAuth();
-  const [message, setMessage] = useState('Securely connecting to your email account...');
+  const [message, setMessage] = useState('Waiting for your forwarded email...');
 
   useEffect(() => {
     let cancelled = false;
 
-    const startScan = async () => {
+    const pollForEmail = async () => {
+      if (!profile?.id) {
+        onNext({ scanError: 'Please sign in to continue.', scanStatus: 'failed' });
+        return;
+      }
+
       try {
-        // Set userId for the engine (Clerk auth, not Supabase auth)
-        if (profile?.id) {
-          tripImportEngine.setUserId(profile.id);
-        }
+        setMessage('Checking for your forwarded booking email...');
 
-        setMessage('Connecting to your email provider...');
+        const result = await emailImportService.waitForImport(
+          profile.id,
+          (imports) => {
+            if (cancelled) return;
+            const processing = imports.find(i => i.status === 'processing' || i.status === 'pending');
+            const parsed = imports.find(i => i.status === 'parsed');
 
-        const result = await tripImportEngine.startScan({
-          lookbackDays: 60,
-        });
+            if (parsed) {
+              setMessage('Booking found! Loading details...');
+            } else if (processing) {
+              setMessage('Email received! Analyzing your booking...');
+            } else {
+              setMessage('Waiting for your forwarded email...');
+            }
+          },
+          90000, // 90 second timeout
+          4000,  // poll every 4 seconds
+        );
 
         if (cancelled) return;
 
-        if (result.status === 'completed') {
-          // Scan completed immediately (fast response)
+        if (result && result.status === 'parsed' && result.parsedBooking) {
+          // Booking found — pass to bookings step
           onNext({
-            scanJobId: result.scanJobId,
             scanStatus: 'completed',
-            detectedTrips: result.trips,
-            scanProgressMessage: result.progressMessage,
+            importResult: result,
           });
-        } else if (result.status === 'failed') {
+        } else if (result && result.status === 'no_booking') {
           onNext({
-            scanJobId: result.scanJobId,
             scanStatus: 'failed',
-            scanError: result.error || 'Failed to connect to email',
+            scanError: 'We received your email but couldn\'t find any booking details in it. Make sure you\'re forwarding a booking confirmation (not a marketing email).',
           });
         } else {
-          // Scan is in progress — move to scanning step with job ID
           onNext({
-            scanJobId: result.scanJobId,
-            scanStatus: result.status,
-            scanProgress: result.progress,
-            scanProgressMessage: result.progressMessage || 'Scanning your inbox...',
+            scanStatus: 'failed',
+            scanError: 'We didn\'t receive your email yet. Please make sure you forwarded your booking confirmation to the correct address and try again.',
           });
         }
       } catch (error: any) {
         if (cancelled) return;
-        console.error('Email connect error:', error);
+        console.warn('[EmailImport] Polling error:', error);
         onNext({
-          scanError: error.message || 'Failed to connect. Please try again.',
+          scanError: 'Something went wrong while checking for your email. Please try again.',
           scanStatus: 'failed',
         });
       }
     };
 
-    startScan();
+    pollForEmail();
 
     return () => { cancelled = true; };
   }, []);
 
   return (
     <LoadingStep
-      title="Connecting..."
+      title="Checking for Email..."
       message={message}
     />
   );

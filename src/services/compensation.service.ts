@@ -161,12 +161,13 @@ class CompensationService {
 
   // ── Claims CRUD ─────────────────────────────────────────
 
-  async getClaims(tripId: string): Promise<Claim[]> {
+  async getClaims(tripId: string, limit = 200): Promise<Claim[]> {
     const { data, error } = await supabase
       .from('compensation_claims')
       .select('*')
       .eq('trip_id', tripId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
     if (error) throw new Error(error.message);
     return (data ?? []).map(claimFromDb);

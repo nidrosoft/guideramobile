@@ -14,6 +14,10 @@ import {
   TouchableOpacity,
   Animated,
   ActivityIndicator,
+  Share,
+  Alert,
+  ActionSheetIOS,
+  Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -144,7 +148,25 @@ export default function CommunityDetailScreen() {
           });
         }
 
-        setPosts(postsData.map(mapServicePostToFeedPost));
+        let feedPosts = postsData.map(mapServicePostToFeedPost);
+
+        // Enrich posts with user's reactions and saved state
+        if (profile?.id && feedPosts.length > 0) {
+          try {
+            const postIds = feedPosts.map(p => p.id);
+            const [reactionsMap, savedIds] = await Promise.all([
+              postService.getUserReactions(profile.id, postIds),
+              postService.getUserSavedPostIds(profile.id, postIds),
+            ]);
+            feedPosts = feedPosts.map(p => ({
+              ...p,
+              myReaction: (reactionsMap[p.id] as any) || null,
+              isSaved: savedIds.has(p.id),
+            }));
+          } catch { /* non-critical — posts still show without user state */ }
+        }
+
+        setPosts(feedPosts);
         setEvents(eventsData.map((e: any) => ({
           id: e.id,
           communityId: e.groupId || '',
@@ -193,7 +215,11 @@ export default function CommunityDetailScreen() {
 
   const handleShare = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, []);
+    Share.share({
+      message: `Check out ${group.name} on Guidera!`,
+      url: `https://guidera.app/community/${group.id}`,
+    }).catch(() => {});
+  }, [group.name, group.id]);
 
   const handleCreatePost = useCallback((type?: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -230,6 +256,86 @@ export default function CommunityDetailScreen() {
     router.push({ pathname: '/community/post-detail' as any, params: { postId, focusComment: 'true' } });
   }, [router]);
 
+  const handleSharePost = useCallback((postId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Share.share({
+      message: `Check out this post on Guidera!`,
+      url: `https://guidera.app/community/post/${postId}`,
+    }).catch(() => {});
+    // post_shares tracking is handled by DB triggers on saved_posts
+    // No explicit sharePost method needed — the Share sheet handles it
+  }, [profile?.id]);
+
+  const handleSavePost = useCallback((postId: string) => {
+    if (!profile?.id) return;
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    // Optimistic toggle
+    setPosts(prev => prev.map(p =>
+      p.id === postId ? { ...p, isSaved: !(p as any).isSaved } : p
+    ));
+    const wasSaved = (post as any).isSaved;
+    if (wasSaved) {
+      postService.unsavePost(postId, profile.id).catch(console.warn);
+    } else {
+      postService.savePost(postId, profile.id).catch(console.warn);
+    }
+  }, [profile?.id, posts]);
+
+  const handleMorePost = useCallback((postId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const post = posts.find(p => p.id === postId);
+    const isAuthor = post?.author.id === profile?.id;
+
+    const options = isAuthor
+      ? ['Delete Post', 'Cancel']
+      : ['Report Post', 'Cancel'];
+    const destructiveIndex = 0;
+    const cancelIndex = options.length - 1;
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, destructiveButtonIndex: destructiveIndex, cancelButtonIndex: cancelIndex },
+        (index) => {
+          if (index === 0 && isAuthor) {
+            Alert.alert('Delete Post', 'Are you sure?', [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Delete', style: 'destructive',
+                onPress: () => {
+                  postService.deletePost(postId).then(() => {
+                    setPosts(prev => prev.filter(p => p.id !== postId));
+                  }).catch(console.warn);
+                },
+              },
+            ]);
+          } else if (index === 0 && !isAuthor) {
+            router.push(`/community/report?type=post&id=${postId}` as any);
+          }
+        }
+      );
+    } else {
+      Alert.alert('Post Options', undefined, [
+        isAuthor
+          ? {
+              text: 'Delete Post', style: 'destructive',
+              onPress: () => {
+                postService.deletePost(postId).then(() => {
+                  setPosts(prev => prev.filter(p => p.id !== postId));
+                }).catch(console.warn);
+              },
+            }
+          : { text: 'Report Post', onPress: () => router.push(`/community/report?type=post&id=${postId}` as any) },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
+  }, [posts, profile?.id, router]);
+
+  const handleEventPress = useCallback((eventId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(`/community/event/${eventId}` as any);
+  }, [router]);
+
   const handleMemberPress = useCallback((memberId: string) => {
     router.push({ pathname: '/community/traveler-profile' as any, params: { userId: memberId } });
   }, [router]);
@@ -244,7 +350,7 @@ export default function CommunityDetailScreen() {
         </View>
       ) : (
         events.map(event => (
-          <EventCard key={event.id} event={event} variant="list" onPress={() => {}} />
+          <EventCard key={event.id} event={event} variant="list" onPress={() => handleEventPress(event.id)} />
         ))
       )}
     </ScrollView>
@@ -262,8 +368,9 @@ export default function CommunityDetailScreen() {
             onAuthorPress={handleAuthorPress}
             onReact={handleReact}
             onComment={handleComment}
-            onShare={(id) => {}}
-            onMore={(id) => {}}
+            onShare={handleSharePost}
+            onMore={handleMorePost}
+            onSave={handleSavePost}
           />
         );
       case 'members':

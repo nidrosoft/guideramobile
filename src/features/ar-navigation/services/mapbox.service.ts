@@ -1,161 +1,195 @@
 /**
  * MAPBOX SERVICE
- * 
- * Service for Mapbox API integration.
- * Handles maps, geocoding, directions, and indoor navigation.
- * 
- * 🔑 API KEY REQUIRED: Mapbox Access Token
- * 📚 Documentation: https://docs.mapbox.com/api/
- * 💰 Pricing: https://www.mapbox.com/pricing
- * 
- * TODO: Sign up for Mapbox account at https://account.mapbox.com/
- * TODO: Create access token with appropriate scopes
- * TODO: Add MAPBOX_API_KEY to environment variables
- * TODO: Install @rnmapbox/maps package for React Native
- * TODO: Configure Mapbox SDK for iOS and Android
+ *
+ * Fully implemented Mapbox API integration.
+ * Handles geocoding, directions, POI search, and static maps.
+ *
+ * Used by:
+ * - City Navigator plugin (directions + POIs)
+ * - Airport Navigator plugin (indoor directions)
+ * - Landmark Scanner (reverse geocoding)
+ *
+ * 🔑 Requires EXPO_PUBLIC_MAPBOX_TOKEN in .env
  */
 
+export interface MapboxPlace {
+  id: string;
+  name: string;
+  address: string;
+  category: string;
+  coordinates: { latitude: number; longitude: number };
+  distance?: number;
+}
+
+export interface MapboxRouteStep {
+  instruction: string;
+  distance: number;
+  duration: number;
+  maneuver: { type: string; modifier?: string; bearing_after?: number };
+}
+
+export interface MapboxRoute {
+  distance: number;
+  duration: number;
+  geometry: { type: string; coordinates: [number, number][] };
+  steps: MapboxRouteStep[];
+}
+
 export class MapboxService {
-  private apiKey: string;
+  private token: string;
   private baseUrl = 'https://api.mapbox.com';
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
+  constructor(token: string) {
+    this.token = token;
+  }
+
+  get isConfigured(): boolean {
+    return !!this.token && this.token.startsWith('pk.');
   }
 
   /**
-   * Convert address or place name to coordinates (Forward Geocoding)
-   * 
-   * TODO: Implement Mapbox Geocoding API
-   * - Endpoint: /geocoding/v5/mapbox.places/{query}.json
-   * - Use for searching locations in AR navigation
-   * - Returns coordinates, place name, and address details
-   * - Support autocomplete for search suggestions
-   * 
-   * @param query - Address or place name to search
-   * @returns Coordinates and place details
+   * Forward Geocoding — search for places by name
    */
-  async geocode(query: string) {
-    // TODO: Implement geocoding
-    // Example: https://api.mapbox.com/geocoding/v5/mapbox.places/Los%20Angeles.json?access_token=YOUR_TOKEN
-    return null;
+  async geocode(query: string, proximity?: { lat: number; lng: number }): Promise<MapboxPlace[]> {
+    if (!this.isConfigured) return [];
+    try {
+      let url = `${this.baseUrl}/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${this.token}&limit=5`;
+      if (proximity) url += `&proximity=${proximity.lng},${proximity.lat}`;
+
+      const res = await fetch(url);
+      if (!res.ok) return [];
+      const data = await res.json();
+
+      return (data.features || []).map((f: any) => ({
+        id: f.id,
+        name: f.text || f.place_name,
+        address: f.place_name || '',
+        category: f.properties?.category || f.place_type?.[0] || 'place',
+        coordinates: { longitude: f.center[0], latitude: f.center[1] },
+      }));
+    } catch (e) {
+      console.warn('Mapbox geocode error:', e);
+      return [];
+    }
   }
 
   /**
-   * Convert coordinates to address (Reverse Geocoding)
-   * 
-   * TODO: Implement Mapbox Reverse Geocoding
-   * - Get address from GPS coordinates
-   * - Useful for displaying current location name
-   * - Returns formatted address and place details
-   * 
-   * @param latitude - Latitude coordinate
-   * @param longitude - Longitude coordinate
-   * @returns Address and place information
+   * Reverse Geocoding — get address from coordinates
    */
-  async reverseGeocode(latitude: number, longitude: number) {
-    // TODO: Implement reverse geocoding
-    // Example: https://api.mapbox.com/geocoding/v5/mapbox.places/-73.989,40.733.json?access_token=YOUR_TOKEN
-    return null;
+  async reverseGeocode(latitude: number, longitude: number): Promise<{ name: string; address: string } | null> {
+    if (!this.isConfigured) return null;
+    try {
+      const res = await fetch(
+        `${this.baseUrl}/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${this.token}&limit=1`
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      const f = data.features?.[0];
+      if (!f) return null;
+      return { name: f.text || '', address: f.place_name || '' };
+    } catch (e) {
+      console.warn('Mapbox reverse geocode error:', e);
+      return null;
+    }
   }
 
   /**
-   * Get turn-by-turn directions between two points
-   * 
-   * TODO: Implement Mapbox Directions API
-   * - Endpoint: /directions/v5/mapbox/{profile}/{coordinates}
-   * - Profiles: driving, walking, cycling, driving-traffic
-   * - Returns route geometry, distance, duration, steps
-   * - Use for City Navigator and Airport Navigator plugins
-   * - Support waypoints for multi-stop routes
-   * 
-   * @param origin - [longitude, latitude] of start point
-   * @param destination - [longitude, latitude] of end point
-   * @returns Route with steps, distance, and duration
+   * Directions — turn-by-turn route between two points
+   * @param profile - 'walking' | 'driving' | 'cycling' | 'driving-traffic'
    */
-  async getDirections(origin: [number, number], destination: [number, number]) {
-    // TODO: Implement directions API
-    // Example: https://api.mapbox.com/directions/v5/mapbox/walking/-73.989,40.733;-73.991,40.731?access_token=YOUR_TOKEN
-    return null;
+  async getDirections(
+    origin: { lat: number; lng: number },
+    destination: { lat: number; lng: number },
+    profile: 'walking' | 'driving' | 'cycling' | 'driving-traffic' = 'walking'
+  ): Promise<MapboxRoute | null> {
+    if (!this.isConfigured) return null;
+    try {
+      const coords = `${origin.lng},${origin.lat};${destination.lng},${destination.lat}`;
+      const res = await fetch(
+        `${this.baseUrl}/directions/v5/mapbox/${profile}/${coords}?access_token=${this.token}&overview=full&geometries=geojson&steps=true`
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      const route = data.routes?.[0];
+      if (!route) return null;
+
+      return {
+        distance: route.distance,
+        duration: route.duration,
+        geometry: route.geometry,
+        steps: (route.legs?.[0]?.steps || []).map((s: any) => ({
+          instruction: s.maneuver?.instruction || '',
+          distance: s.distance || 0,
+          duration: s.duration || 0,
+          maneuver: {
+            type: s.maneuver?.type || '',
+            modifier: s.maneuver?.modifier,
+            bearing_after: s.maneuver?.bearing_after,
+          },
+        })),
+      };
+    } catch (e) {
+      console.warn('Mapbox directions error:', e);
+      return null;
+    }
   }
 
   /**
-   * Get indoor maps for airports and large venues
-   * 
-   * TODO: Implement Mapbox Indoor Mapping
-   * - Research Mapbox Indoor Mapping solutions
-   * - Alternative: Use Mapbox Studio to create custom indoor maps
-   * - Alternative: Integrate with airport-specific APIs (e.g., FlightStats)
-   * - Display floor plans and gate locations
-   * - Enable indoor navigation for Airport Navigator plugin
-   * 
-   * @param venueId - Unique identifier for the venue (e.g., airport code)
-   * @returns Indoor map data with floors, gates, amenities
-   */
-  async getIndoorMap(venueId: string) {
-    // TODO: Implement indoor mapping for airports
-    // Note: Mapbox doesn't have built-in indoor mapping
-    // Consider alternatives:
-    // 1. Custom GeoJSON data for airport layouts
-    // 2. Third-party indoor mapping services
-    // 3. Airport-specific APIs
-    return null;
-  }
-
-  /**
-   * Get nearby points of interest
-   * 
-   * TODO: Implement POI search using Mapbox Geocoding API
-   * - Search for restaurants, landmarks, hotels near a location
-   * - Filter by category (food, tourism, shopping, etc.)
-   * - Use for Danger Alerts plugin (find safe areas)
-   * - Integrate with Landmark Scanner for nearby attractions
-   * 
-   * @param latitude - Center point latitude
-   * @param longitude - Center point longitude
-   * @param category - POI category to filter
-   * @param radius - Search radius in meters
-   * @returns Array of nearby places
+   * Search nearby POIs using geocoding with category filter
    */
   async getNearbyPOIs(
-    latitude: number, 
-    longitude: number, 
-    category?: string, 
-    radius?: number
-  ) {
-    // TODO: Implement POI search
-    return null;
+    latitude: number,
+    longitude: number,
+    category?: string,
+    limit: number = 10
+  ): Promise<MapboxPlace[]> {
+    if (!this.isConfigured) return [];
+    try {
+      const query = category || 'restaurant,cafe,museum,park,hotel,bar';
+      let url = `${this.baseUrl}/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${this.token}&proximity=${longitude},${latitude}&limit=${limit}&types=poi`;
+
+      const res = await fetch(url);
+      if (!res.ok) return [];
+      const data = await res.json();
+
+      return (data.features || []).map((f: any) => ({
+        id: f.id,
+        name: f.text || f.place_name,
+        address: f.place_name || '',
+        category: f.properties?.category || 'place',
+        coordinates: { longitude: f.center[0], latitude: f.center[1] },
+        distance: f.properties?.distance,
+      }));
+    } catch (e) {
+      console.warn('Mapbox POI search error:', e);
+      return [];
+    }
   }
 
   /**
-   * Get static map image for display
-   * 
-   * TODO: Implement Mapbox Static Images API
-   * - Generate map images for landmark info sheets
-   * - Show location preview in bottom sheets
-   * - Customize with markers, overlays, styles
-   * 
-   * @param latitude - Map center latitude
-   * @param longitude - Map center longitude
-   * @param zoom - Zoom level (0-22)
-   * @param width - Image width in pixels
-   * @param height - Image height in pixels
-   * @returns URL to static map image
+   * Static map image URL
    */
-  async getStaticMapImage(
+  getStaticMapUrl(
     latitude: number,
     longitude: number,
     zoom: number = 15,
     width: number = 600,
-    height: number = 400
-  ): Promise<string> {
-    // TODO: Implement static map images
-    // Example: https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/-73.989,40.733,12,0/600x400?access_token=YOUR_TOKEN
-    return '';
+    height: number = 400,
+    style: string = 'streets-v12'
+  ): string {
+    if (!this.isConfigured) return '';
+    return `${this.baseUrl}/styles/v1/mapbox/${style}/static/${longitude},${latitude},${zoom},0/${width}x${height}@2x?access_token=${this.token}`;
+  }
+
+  /**
+   * Decode a GeoJSON route geometry into [lat, lng] coordinate pairs for rendering
+   */
+  static decodeRouteCoordinates(geometry: MapboxRoute['geometry']): { latitude: number; longitude: number }[] {
+    if (!geometry?.coordinates) return [];
+    return geometry.coordinates.map(([lng, lat]) => ({ latitude: lat, longitude: lng }));
   }
 }
 
-// TODO: Replace with actual API key from environment variables
-// Add MAPBOX_API_KEY to .env file
-// Get your token from: https://account.mapbox.com/access-tokens/
-export const mapboxService = new MapboxService(process.env.MAPBOX_API_KEY || '');
+// Singleton — reads token from env
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || '';
+export const mapboxService = new MapboxService(MAPBOX_TOKEN);

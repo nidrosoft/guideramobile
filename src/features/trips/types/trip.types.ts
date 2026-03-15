@@ -212,6 +212,7 @@ export interface TripShare {
 
 // API Response types
 export interface CreateTripData {
+  userId: string;
   destination: Location;
   startDate: Date;
   endDate: Date;

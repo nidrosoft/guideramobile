@@ -1,21 +1,40 @@
 /**
  * CITY MAP VIEW
- * 
- * Beautiful map view with custom POI markers and route display.
- * Uses react-native-maps for the map rendering.
+ *
+ * Map view with Mapbox (@rnmapbox/maps) when available (dev build),
+ * falls back to react-native-maps (Expo Go compatible).
+ * Features: 3D buildings, real route lines, POI markers.
  */
 
-import React, { useRef, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import MapView, { Marker, Polyline, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
+import React, { useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Gps } from 'iconsax-react-native';
 import { colors } from '@/styles';
-import { useTheme } from '@/context/ThemeContext';
 import { POI, Route, Coordinates, DangerZone } from '../types/cityNavigator.types';
-import { UserMarker } from './POIMarker';
 
-const { width, height } = Dimensions.get('window');
+// Try to load Mapbox — falls back to null if native module not linked (Expo Go)
+let MapboxGL: any = null;
+let MAPBOX_AVAILABLE = false;
+try {
+  MapboxGL = require('@rnmapbox/maps').default;
+  MAPBOX_AVAILABLE = true;
+} catch {
+  MAPBOX_AVAILABLE = false;
+}
+
+// Fallback: react-native-maps (always available in Expo Go)
+let RNMapView: any = null;
+let RNMarker: any = null;
+let RNPolyline: any = null;
+let PROVIDER_GOOGLE: any = null;
+try {
+  const RNMaps = require('react-native-maps');
+  RNMapView = RNMaps.default;
+  RNMarker = RNMaps.Marker;
+  RNPolyline = RNMaps.Polyline;
+  PROVIDER_GOOGLE = RNMaps.PROVIDER_GOOGLE;
+} catch { /* neither available */ }
 
 interface CityMapViewProps {
   userLocation: Coordinates | null;
@@ -29,44 +48,20 @@ interface CityMapViewProps {
   onCenterLocation?: () => void;
 }
 
-// Custom map style for a clean, modern look
-const MAP_STYLE = [
-  {
-    featureType: 'poi',
-    elementType: 'labels',
-    stylers: [{ visibility: 'off' }],
-  },
-  {
-    featureType: 'transit',
-    elementType: 'labels',
-    stylers: [{ visibility: 'off' }],
-  },
-  {
-    featureType: 'road',
-    elementType: 'labels.icon',
-    stylers: [{ visibility: 'off' }],
-  },
-  {
-    featureType: 'water',
-    elementType: 'geometry.fill',
-    stylers: [{ color: '#c9e4f0' }],
-  },
-  {
-    featureType: 'landscape.man_made',
-    elementType: 'geometry.fill',
-    stylers: [{ color: '#f5f5f5' }],
-  },
-  {
-    featureType: 'road',
-    elementType: 'geometry.fill',
-    stylers: [{ color: '#ffffff' }],
-  },
-  {
-    featureType: 'road',
-    elementType: 'geometry.stroke',
-    stylers: [{ color: '#e0e0e0' }],
-  },
-];
+const CATEGORY_COLORS: Record<string, string> = {
+  landmark: '#9333ea',
+  restaurant: '#ef4444',
+  cafe: '#f97316',
+  hotel: '#3b82f6',
+  museum: '#6366f1',
+  park: '#22c55e',
+  shopping: '#ec4899',
+  transport: '#1e3a5f',
+  attraction: '#eab308',
+  nightlife: '#8b5cf6',
+  health: '#14b8a6',
+  service: '#6b7280',
+};
 
 export default function CityMapView({
   userLocation,
@@ -77,198 +72,160 @@ export default function CityMapView({
   showDangerZones = false,
   onSelectPOI,
   onMapReady,
-  onCenterLocation,
 }: CityMapViewProps) {
-  const mapRef = useRef<MapView>(null);
+  const cameraRef = useRef<any>(null);
+  const rnMapRef = useRef<any>(null);
 
-  // Center on user location
   const handleCenterOnUser = useCallback(() => {
-    if (userLocation && mapRef.current) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      mapRef.current.animateToRegion({
+    if (!userLocation) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (MAPBOX_AVAILABLE && cameraRef.current) {
+      cameraRef.current.setCamera({
+        centerCoordinate: [userLocation.longitude, userLocation.latitude],
+        zoomLevel: 15,
+        pitch: 45,
+        animationDuration: 800,
+      });
+    } else if (rnMapRef.current) {
+      rnMapRef.current.animateToRegion({
         ...userLocation,
         latitudeDelta: 0.015,
         longitudeDelta: 0.015,
       }, 500);
-      console.log('📍 Map centered on user');
     }
   }, [userLocation]);
 
-  // Center map on user location when it changes
-  useEffect(() => {
-    if (userLocation && mapRef.current) {
-      mapRef.current.animateToRegion({
-        ...userLocation,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }, 1000);
-    }
-  }, [userLocation]);
+  // ─── Mapbox path ───
+  if (MAPBOX_AVAILABLE && MapboxGL) {
+    const centerCoords: [number, number] = userLocation
+      ? [userLocation.longitude, userLocation.latitude]
+      : [-117.0713, 32.7767];
 
-  // Fit map to show route when navigating
-  useEffect(() => {
-    if (route && mapRef.current) {
-      const coordinates = [route.origin, route.destination];
-      mapRef.current.fitToCoordinates(coordinates, {
-        edgePadding: { top: 100, right: 50, bottom: 300, left: 50 },
-        animated: true,
-      });
-    }
-  }, [route]);
+    const routeGeoJSON = route ? {
+      type: 'Feature' as const,
+      properties: {},
+      geometry: {
+        type: 'LineString' as const,
+        coordinates: route.polyline.map(c => [c.longitude, c.latitude]),
+      },
+    } : null;
+
+    return (
+      <View style={styles.container}>
+        <MapboxGL.MapView
+          style={styles.map}
+          styleURL={MapboxGL.StyleURL.Dark}
+          logoEnabled={false}
+          attributionEnabled={false}
+          compassEnabled={false}
+          scaleBarEnabled={false}
+          onDidFinishLoadingMap={() => onMapReady?.()}
+        >
+          <MapboxGL.Camera
+            ref={cameraRef}
+            centerCoordinate={centerCoords}
+            zoomLevel={14}
+            pitch={45}
+            animationMode="flyTo"
+            animationDuration={1000}
+          />
+          <MapboxGL.UserLocation visible showsUserHeadingIndicator animated />
+
+          {routeGeoJSON && (
+            <MapboxGL.ShapeSource id="route-source" shape={routeGeoJSON}>
+              <MapboxGL.LineLayer
+                id="route-line"
+                style={{ lineColor: colors.primary, lineWidth: 5, lineCap: 'round', lineJoin: 'round', lineOpacity: 0.9 }}
+              />
+            </MapboxGL.ShapeSource>
+          )}
+
+          {pois.map(poi => (
+            <MapboxGL.PointAnnotation
+              key={poi.id}
+              id={poi.id}
+              coordinate={[poi.coordinates.longitude, poi.coordinates.latitude]}
+              title={poi.name}
+              onSelected={() => onSelectPOI(poi)}
+            >
+              <View style={[styles.poiMarker, { backgroundColor: CATEGORY_COLORS[poi.category] || '#ef4444' }]}>
+                <Text style={styles.poiMarkerText}>{poi.name.charAt(0)}</Text>
+              </View>
+            </MapboxGL.PointAnnotation>
+          ))}
+
+          {route && (
+            <MapboxGL.PointAnnotation
+              id="destination"
+              coordinate={[route.destination.longitude, route.destination.latitude]}
+              title={route.destinationName}
+            >
+              <View style={styles.destinationMarker}>
+                <View style={styles.destinationPin} />
+              </View>
+            </MapboxGL.PointAnnotation>
+          )}
+        </MapboxGL.MapView>
+
+        <TouchableOpacity style={styles.gpsButton} onPress={handleCenterOnUser} activeOpacity={0.8}>
+          <Gps size={22} color={colors.primary} variant="Bold" />
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // ─── Fallback: react-native-maps ───
+  if (!RNMapView) {
+    return (
+      <View style={[styles.container, styles.fallback]}>
+        <Text style={styles.fallbackText}>Map not available</Text>
+      </View>
+    );
+  }
 
   const initialRegion = userLocation
-    ? {
-        ...userLocation,
-        latitudeDelta: 0.02, // Slightly larger to show more POIs
-        longitudeDelta: 0.02,
-      }
-    : {
-        latitude: 32.7767, // Default to San Diego area if no location
-        longitude: -117.0713,
-        latitudeDelta: 0.02,
-        longitudeDelta: 0.02,
-      };
-
-  // Log POIs for debugging
-  useEffect(() => {
-    console.log('🗺️ CityMapView - POIs count:', pois.length);
-    console.log('🗺️ CityMapView - User location:', userLocation);
-    if (pois.length > 0) {
-      console.log('🗺️ First POI:', pois[0].name, pois[0].coordinates);
-    }
-  }, [pois, userLocation]);
+    ? { ...userLocation, latitudeDelta: 0.02, longitudeDelta: 0.02 }
+    : { latitude: 32.7767, longitude: -117.0713, latitudeDelta: 0.02, longitudeDelta: 0.02 };
 
   return (
     <View style={styles.container}>
-      <MapView
-        ref={mapRef}
+      <RNMapView
+        ref={rnMapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
+        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         initialRegion={initialRegion}
-        customMapStyle={MAP_STYLE}
-        showsUserLocation={false}
+        showsUserLocation
         showsMyLocationButton={false}
-        showsCompass={false}
-        showsScale={false}
-        rotateEnabled={true}
-        pitchEnabled={true}
-        onMapReady={() => {
-          console.log('🗺️ Map is ready');
-          onMapReady?.();
-        }}
+        onMapReady={() => onMapReady?.()}
       >
-        {/* Danger Zones */}
-        {showDangerZones && dangerZones.map(zone => (
-          <Circle
-            key={zone.id}
-            center={zone.coordinates}
-            radius={zone.radius}
-            fillColor={getDangerColor(zone.level, 0.2)}
-            strokeColor={getDangerColor(zone.level, 0.6)}
-            strokeWidth={2}
-          />
-        ))}
-
-        {/* Route Polyline */}
         {route && (
-          <Polyline
+          <RNPolyline
             coordinates={route.polyline}
             strokeColor={colors.primary}
             strokeWidth={5}
-            lineDashPattern={[0]}
-            lineCap="round"
-            lineJoin="round"
           />
         )}
-
-        {/* User Location Marker */}
-        {userLocation && (
-          <Marker
-            coordinate={userLocation}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <UserMarker />
-          </Marker>
-        )}
-
-        {/* POI Markers */}
-        {pois.map(poi => (
-          <Marker
+        {pois.map((poi: POI) => (
+          <RNMarker
             key={poi.id}
             coordinate={poi.coordinates}
-            onPress={() => {
-              console.log('📍 POI tapped:', poi.name);
-              onSelectPOI(poi);
-            }}
             title={poi.name}
-            description={`${poi.category} • ${poi.rating ? poi.rating + '⭐' : ''}`}
-            pinColor={getCategoryPinColor(poi.category)}
+            pinColor={CATEGORY_COLORS[poi.category] || 'red'}
+            onPress={() => onSelectPOI(poi)}
           />
         ))}
+      </RNMapView>
 
-        {/* Destination Marker (when navigating) */}
-        {route && (
-          <Marker
-            coordinate={route.destination}
-            anchor={{ x: 0.5, y: 1 }}
-          >
-            <View style={styles.destinationMarker}>
-              <View style={styles.destinationPin} />
-              <View style={styles.destinationDot} />
-            </View>
-          </Marker>
-        )}
-      </MapView>
-      
-      {/* GPS Center Button */}
-      <TouchableOpacity 
-        style={styles.gpsButton}
-        onPress={handleCenterOnUser}
-        activeOpacity={0.8}
-      >
+      <TouchableOpacity style={styles.gpsButton} onPress={handleCenterOnUser} activeOpacity={0.8}>
         <Gps size={22} color={colors.primary} variant="Bold" />
       </TouchableOpacity>
     </View>
   );
 }
 
-// Helper to get danger zone color
-function getDangerColor(level: 'low' | 'medium' | 'high', opacity: number): string {
-  const baseColors = {
-    low: '245, 158, 11', // warning
-    medium: '249, 115, 22', // orange
-    high: '239, 68, 68', // error
-  };
-  return `rgba(${baseColors[level]}, ${opacity})`;
-}
-
-// Helper to get pin color based on category
-function getCategoryPinColor(category: string): string {
-  const categoryColors: Record<string, string> = {
-    landmark: 'purple',
-    restaurant: 'red',
-    cafe: 'orange',
-    hotel: 'blue',
-    museum: 'indigo',
-    park: 'green',
-    shopping: 'pink',
-    transport: 'navy',
-    attraction: 'gold',
-    nightlife: 'violet',
-    health: 'teal',
-    service: 'gray',
-  };
-  return categoryColors[category] || 'red';
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  map: {
-    width: width,
-    height: height,
-  },
+  container: { flex: 1 },
+  map: { flex: 1 },
   gpsButton: {
     position: 'absolute',
     top: 100,
@@ -276,7 +233,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.bgModal,
+    backgroundColor: 'rgba(24,24,27,0.9)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -285,24 +242,48 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
+  poiMarker: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  poiMarkerText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
   destinationMarker: {
     alignItems: 'center',
   },
   destinationPin: {
-    width: 30,
-    height: 30,
+    width: 28,
+    height: 28,
     backgroundColor: colors.primary,
-    borderRadius: 15,
-    borderBottomLeftRadius: 0,
-    transform: [{ rotate: '-45deg' }],
+    borderRadius: 14,
     borderWidth: 3,
-    borderColor: colors.white,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  destinationDot: {
-    width: 8,
-    height: 8,
-    backgroundColor: colors.primary,
-    borderRadius: 4,
-    marginTop: -4,
+  fallback: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+  },
+  fallbackText: {
+    color: '#888',
+    fontSize: 16,
   },
 });

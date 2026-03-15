@@ -1,18 +1,9 @@
-import PreferenceScreen from '@/components/features/onboarding/PreferenceScreen';
+// DEPRECATED: Orphaned screen — not part of active onboarding flow.
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 
 export default function Preferences4() {
-  return (
-    <PreferenceScreen
-      question="What's your typical budget?"
-      options={[
-        { id: 'budget', label: '💰 Budget-Friendly' },
-        { id: 'moderate', label: '💵 Moderate' },
-        { id: 'comfort', label: '💳 Comfort' },
-        { id: 'luxury', label: '💎 Luxury' },
-      ]}
-      currentStep={4}
-      totalSteps={4}
-      isLast
-    />
-  );
+  const router = useRouter();
+  useEffect(() => { router.replace('/(onboarding)/intro'); }, []);
+  return null;
 }

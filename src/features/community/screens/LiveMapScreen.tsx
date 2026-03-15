@@ -1,11 +1,12 @@
 /**
- * LIVE MAP SCREEN
+ * PULSE SCREEN
  * 
- * Shows nearby travelers and activities on a real-time map.
- * Users can see who's around and join/create meetup activities.
+ * Real-time meetup discovery map. Shows nearby activities and travelers.
+ * Users can browse, join, or create instant meetups.
+ * Inspired by NomadTable — list-first with map backing.
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,6 +16,9 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  ScrollView,
+  FlatList,
+  Dimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,6 +33,10 @@ import {
   People,
   Coffee,
   Map1,
+  Clock,
+  MessageText1,
+  ArrowUp2,
+  ArrowDown2,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
@@ -54,7 +62,8 @@ export default function LiveMapScreen() {
   const [loading, setLoading] = useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [showList, setShowList] = useState(true);
 
   const { activities, loading: loadingActivities, refetch } = useNearbyActivities(
     userId,
@@ -124,6 +133,32 @@ export default function LiveMapScreen() {
     } catch (error: any) {
       Alert.alert('Error', error.message);
     }
+  };
+
+  const FILTER_CHIPS = [
+    { id: 'all', label: 'All', emoji: '✨' },
+    { id: 'coffee', label: 'Coffee', emoji: '☕' },
+    { id: 'food', label: 'Food', emoji: '🍽️' },
+    { id: 'drinks', label: 'Drinks', emoji: '🍻' },
+    { id: 'sightseeing', label: 'Explore', emoji: '📸' },
+    { id: 'coworking', label: 'Cowork', emoji: '💻' },
+    { id: 'nightlife', label: 'Nightlife', emoji: '🌙' },
+    { id: 'sports', label: 'Sports', emoji: '⚽' },
+  ];
+
+  const filteredActivities = useMemo(() => {
+    if (activeFilter === 'all') return activities;
+    return activities.filter(a => a.type === activeFilter);
+  }, [activities, activeFilter]);
+
+  const getTimingLabel = (activity: Activity) => {
+    if (activity.timing === 'now') return 'Happening now';
+    if (activity.timing === 'today') return 'Today';
+    if (activity.timing === 'tomorrow') return 'Tomorrow';
+    if (activity.scheduledFor) {
+      return new Date(activity.scheduledFor).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return 'Soon';
   };
 
   const getActivityIcon = (type: string) => {
@@ -217,37 +252,144 @@ export default function LiveMapScreen() {
         <TouchableOpacity style={[styles.backButton, { backgroundColor: tc.bgElevated }]} onPress={handleBack}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: tc.textPrimary }]}>Live Map</Text>
+        <Text style={[styles.title, { color: tc.textPrimary }]}>Pulse</Text>
         <TouchableOpacity
           style={[styles.filterButton, { backgroundColor: tc.bgElevated }]}
-          onPress={() => setShowFilters(!showFilters)}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowList(!showList); }}
         >
-          <Filter size={24} color={tc.textPrimary} />
+          {showList ? <Map1 size={22} color={tc.textPrimary} /> : <Filter size={22} color={tc.textPrimary} />}
         </TouchableOpacity>
       </View>
 
-      {/* Stats Banner */}
-      <View style={[styles.statsBanner, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
-        <View style={styles.statItem}>
-          <People size={18} color={tc.primary} />
-          <Text style={[styles.statText, { color: tc.textPrimary }]}>
-            {activities.length} Activities Nearby
-          </Text>
-        </View>
+      {/* Filter Chips — below header */}
+      <View style={[styles.filterChipsRow, { top: insets.top + 60 }]}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChipsScroll}>
+          {FILTER_CHIPS.map(chip => {
+            const isActive = activeFilter === chip.id;
+            return (
+              <TouchableOpacity
+                key={chip.id}
+                style={[
+                  styles.filterChip,
+                  { backgroundColor: isActive ? tc.primary : tc.bgElevated, borderColor: isActive ? tc.primary : tc.borderSubtle },
+                ]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setActiveFilter(chip.id);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.filterChipEmoji}>{chip.emoji}</Text>
+                <Text style={[styles.filterChipText, { color: isActive ? '#FFFFFF' : tc.textSecondary }]}>
+                  {chip.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
-      {/* Floating Action Buttons */}
-      <View style={[styles.fabContainer, { bottom: insets.bottom + 100 }]}>
+      {/* FABs — recenter + create + toggle list */}
+      <View style={[styles.fabContainer, { bottom: showList ? (insets.bottom + 340) : (insets.bottom + 24) }]}>
+        <TouchableOpacity
+          style={[styles.fabSecondary, { backgroundColor: tc.bgElevated }]}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowList(!showList); }}
+        >
+          {showList ? <Map1 size={22} color={tc.primary} /> : <ArrowUp2 size={22} color={tc.primary} />}
+        </TouchableOpacity>
         <TouchableOpacity style={[styles.fabSecondary, { backgroundColor: tc.bgElevated }]} onPress={handleRecenter}>
-          <Map1 size={24} color={tc.primary} />
+          <LocationIcon size={22} color={tc.primary} variant="Bold" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.fabPrimary} onPress={handleCreateActivity}>
           <Add size={28} color={colors.white} />
         </TouchableOpacity>
       </View>
 
-      {/* Selected Activity Card */}
-      {selectedActivity && (
+      {/* Bottom Sheet — Activity List */}
+      {showList && (
+        <View style={[styles.bottomSheet, { backgroundColor: tc.background, paddingBottom: insets.bottom }]}>
+          {/* Handle */}
+          <View style={styles.sheetHandleRow}>
+            <View style={[styles.sheetHandle, { backgroundColor: tc.borderSubtle }]} />
+          </View>
+          <View style={styles.sheetHeader}>
+            <Text style={[styles.sheetTitle, { color: tc.textPrimary }]}>
+              {filteredActivities.length} {filteredActivities.length === 1 ? 'meetup' : 'meetups'} nearby
+            </Text>
+          </View>
+
+          {filteredActivities.length === 0 ? (
+            <View style={styles.sheetEmpty}>
+              <Text style={[styles.sheetEmptyText, { color: tc.textSecondary }]}>
+                No meetups right now. Tap + to start one!
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filteredActivities}
+              keyExtractor={item => item.id}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.sheetList}
+              renderItem={({ item: activity }) => (
+                <TouchableOpacity
+                  style={[styles.listCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setSelectedActivity(activity);
+                    setShowList(false);
+                    if (activity.latitude && activity.longitude && mapRef.current) {
+                      mapRef.current.animateToRegion({
+                        latitude: activity.latitude,
+                        longitude: activity.longitude,
+                        latitudeDelta: 0.008,
+                        longitudeDelta: 0.008,
+                      });
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.listCardIcon, { backgroundColor: tc.primary + '12' }]}>
+                    <Text style={{ fontSize: 22 }}>{getActivityIcon(activity.type)}</Text>
+                  </View>
+                  <View style={styles.listCardContent}>
+                    <Text style={[styles.listCardTitle, { color: tc.textPrimary }]} numberOfLines={1}>
+                      {activity.title}
+                    </Text>
+                    <View style={styles.listCardMeta}>
+                      <Clock size={13} color={tc.textTertiary} />
+                      <Text style={[styles.listCardMetaText, { color: tc.textSecondary }]}>
+                        {getTimingLabel(activity)}
+                      </Text>
+                      <Text style={[styles.listCardDot, { color: tc.textTertiary }]}>·</Text>
+                      <LocationIcon size={13} color={tc.textTertiary} />
+                      <Text style={[styles.listCardMetaText, { color: tc.textSecondary }]} numberOfLines={1}>
+                        {activity.locationName || 'Nearby'}
+                      </Text>
+                    </View>
+                    <View style={styles.listCardFooter}>
+                      <View style={styles.listCardAvatars}>
+                        {activity.participants?.slice(0, 3).map((p, i) => (
+                          <Image
+                            key={p.id || i}
+                            source={{ uri: p.user?.avatarUrl || `https://i.pravatar.cc/40?u=${p.userId}` }}
+                            style={[styles.listCardAvatar, { marginLeft: i > 0 ? -8 : 0, borderColor: tc.bgElevated }]}
+                          />
+                        ))}
+                      </View>
+                      <Text style={[styles.listCardGoingText, { color: tc.textTertiary }]}>
+                        {activity.participantCount} going{activity.maxParticipants ? ` · ${activity.maxParticipants - activity.participantCount} spots left` : ''}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          )}
+        </View>
+      )}
+
+      {/* Selected Activity Detail Card — shown when list is hidden and marker tapped */}
+      {!showList && selectedActivity && (
         <View style={[styles.activityCard, { bottom: insets.bottom + 20, backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
           <View style={styles.activityCardHeader}>
             <View style={[styles.activityTypeIcon, { backgroundColor: tc.primary + '15' }]}>
@@ -275,20 +417,14 @@ export default function LiveMapScreen() {
             <View style={styles.activityCardDetail}>
               <Text style={[styles.detailLabel, { color: tc.textSecondary }]}>When</Text>
               <Text style={[styles.detailValue, { color: tc.textPrimary }]}>
-                {selectedActivity.timing === 'now'
-                  ? 'Right now'
-                  : selectedActivity.timing === 'today'
-                  ? 'Today'
-                  : selectedActivity.scheduledFor?.toLocaleTimeString()}
+                {getTimingLabel(selectedActivity)}
               </Text>
             </View>
             <View style={styles.activityCardDetail}>
               <Text style={[styles.detailLabel, { color: tc.textSecondary }]}>Going</Text>
               <Text style={[styles.detailValue, { color: tc.textPrimary }]}>
                 {selectedActivity.participantCount}
-                {selectedActivity.maxParticipants
-                  ? `/${selectedActivity.maxParticipants}`
-                  : ''}
+                {selectedActivity.maxParticipants ? `/${selectedActivity.maxParticipants}` : ''}
               </Text>
             </View>
           </View>
@@ -296,7 +432,7 @@ export default function LiveMapScreen() {
           {selectedActivity.creator && (
             <View style={styles.creatorRow}>
               <Image
-                source={{ uri: selectedActivity.creator.avatarUrl || 'https://via.placeholder.com/32' }}
+                source={{ uri: selectedActivity.creator.avatarUrl || `https://i.pravatar.cc/32?u=${selectedActivity.createdBy}` }}
                 style={styles.creatorAvatar}
               />
               <Text style={[styles.creatorName, { color: tc.textSecondary }]}>
@@ -305,20 +441,32 @@ export default function LiveMapScreen() {
             </View>
           )}
 
-          <TouchableOpacity
-            style={[
-              styles.joinButton,
-              joiningActivity && styles.joinButtonDisabled,
-            ]}
-            onPress={handleJoinActivity}
-            disabled={joiningActivity}
-          >
-            {joiningActivity ? (
-              <ActivityIndicator size="small" color={colors.white} />
-            ) : (
-              <Text style={styles.joinButtonText}>Join Chat</Text>
-            )}
-          </TouchableOpacity>
+          <View style={styles.activityCardActions}>
+            <TouchableOpacity
+              style={[styles.chatButton, { borderColor: tc.borderSubtle }]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push(`/community/chat/${selectedActivity.id}` as any);
+              }}
+            >
+              <MessageText1 size={18} color={tc.textPrimary} />
+              <Text style={[styles.chatButtonText, { color: tc.textPrimary }]}>Chat</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.joinButton,
+                joiningActivity && styles.joinButtonDisabled,
+              ]}
+              onPress={handleJoinActivity}
+              disabled={joiningActivity}
+            >
+              {joiningActivity ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Text style={styles.joinButtonText}>Join</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </View>
@@ -581,7 +729,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   joinButton: {
-    marginTop: spacing.lg,
+    flex: 1,
     backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.lg,
@@ -594,5 +742,161 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
     color: colors.white,
+  },
+
+  // Filter Chips
+  filterChipsRow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  filterChipsScroll: {
+    paddingHorizontal: spacing.md,
+    gap: 8,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  filterChipEmoji: {
+    fontSize: 14,
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // Bottom Sheet
+  bottomSheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    maxHeight: 340,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  sheetHandleRow: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+  },
+  sheetHeader: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  sheetTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  sheetEmpty: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  sheetEmptyText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  sheetList: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+  },
+
+  // List Card
+  listCard: {
+    flexDirection: 'row',
+    padding: spacing.md,
+    borderRadius: 18,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+  },
+  listCardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  listCardContent: {
+    flex: 1,
+  },
+  listCardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  listCardMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
+  },
+  listCardMetaText: {
+    fontSize: 12,
+    flexShrink: 1,
+  },
+  listCardDot: {
+    fontSize: 12,
+  },
+  listCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  listCardAvatars: {
+    flexDirection: 'row',
+  },
+  listCardAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+  },
+  listCardGoingText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+
+  // Activity Detail Actions
+  activityCardActions: {
+    flexDirection: 'row',
+    marginTop: spacing.lg,
+    gap: spacing.sm,
+  },
+  chatButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    gap: spacing.xs,
+  },
+  chatButtonText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
 });

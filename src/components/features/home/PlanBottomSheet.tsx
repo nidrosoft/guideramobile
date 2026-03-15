@@ -1,12 +1,11 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { useState, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { Flash, Airplane, Briefcase } from 'iconsax-react-native';
+import { Global, Briefcase, SearchNormal1 } from 'iconsax-react-native';
 import ImportTripFlow from '@/features/trip-import/components/ImportTripFlow';
-import { QuickTripFlow, AdvancedTripFlow } from '@/features/planning';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 
 interface PlanBottomSheetProps {
@@ -20,8 +19,6 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
   const { fetchTrips } = useTripStore();
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showImportFlow, setShowImportFlow] = useState(false);
-  const [showQuickTripFlow, setShowQuickTripFlow] = useState(false);
-  const [showAdvancedTripFlow, setShowAdvancedTripFlow] = useState(false);
 
   // Reset selection when bottom sheet opens
   useEffect(() => {
@@ -35,19 +32,11 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedOption(option);
     
-    // Handle quick trip option
-    if (option === 'quick') {
+    // Handle preview option — navigates to home tab and opens the search overlay
+    if (option === 'preview') {
       setTimeout(() => {
         onClose();
-        setShowQuickTripFlow(true);
-      }, 300);
-    }
-    
-    // Handle advanced trip option
-    if (option === 'advanced') {
-      setTimeout(() => {
-        onClose();
-        setShowAdvancedTripFlow(true);
+        router.push({ pathname: '/(tabs)', params: { openSearch: 'true' } } as any);
       }, 300);
     }
     
@@ -92,70 +81,38 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
-            {/* Illustration */}
-            <View style={styles.imageContainer}>
-              <Image 
-                source={require('../../../../assets/images/plan.png')}
-                style={styles.illustration}
-                resizeMode="contain"
-              />
-            </View>
-
             {/* Title */}
             <Text style={[styles.title, { color: colors.textPrimary }]}>
-              Plan Your Own Adventure{'\n'}
-              <Text style={[styles.titleSecondary, { color: colors.primary }]}>Your Way!</Text>
+              Start Your Next{' '}
+              <Text style={[styles.titleAccent, { color: colors.primary }]}>Adventure</Text>
             </Text>
             
             {/* Description */}
             <Text style={[styles.description, { color: colors.textSecondary }]}>
-              Choose the trip creation style that suits your vibe. Whether you want to get going quickly or dive deep into the details, we've got you covered!
+              Explore a destination before you commit, or import a trip you've already booked.
             </Text>
 
-            {/* Planning Options */}
+            {/* Options */}
             <View style={styles.optionsContainer}>
-              {/* Quick Trip */}
+              {/* Trip Preview */}
               <TouchableOpacity 
                 style={[
                   styles.optionCard,
                   { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle },
-                  selectedOption === 'quick' && { backgroundColor: colors.primary + '10', borderColor: colors.primary, borderWidth: 2 }
+                  selectedOption === 'preview' && { backgroundColor: colors.primary + '10', borderColor: colors.primary, borderWidth: 2 }
                 ]}
-                onPress={() => handleSelectOption('quick')}
+                onPress={() => handleSelectOption('preview')}
                 activeOpacity={0.7}
               >
-                <View style={[styles.iconContainer, { backgroundColor: colors.bgCard }]}>
-                  <Flash size={20} color={selectedOption === 'quick' ? colors.primary : colors.textPrimary} variant="Bold" />
+                <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}12` }]}>
+                  <Global size={22} color={colors.primary} variant="Bold" />
                 </View>
                 <View style={styles.optionContent}>
-                  <Text style={[styles.optionTitle, { color: colors.textPrimary }, selectedOption === 'quick' && { color: colors.primary }]}>
-                    Quick Trip
+                  <Text style={[styles.optionTitle, { color: colors.textPrimary }, selectedOption === 'preview' && { color: colors.primary }]}>
+                    Explore a Destination
                   </Text>
                   <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>
-                    Answer a few quick questions and we'll create a custom trip plan in no time. Perfect for when you need to hit the road ASAP!
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Advanced Trip */}
-              <TouchableOpacity 
-                style={[
-                  styles.optionCard,
-                  { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle },
-                  selectedOption === 'advanced' && { backgroundColor: colors.primary + '10', borderColor: colors.primary, borderWidth: 2 }
-                ]}
-                onPress={() => handleSelectOption('advanced')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.iconContainer, { backgroundColor: colors.bgCard }]}>
-                  <Airplane size={20} color={selectedOption === 'advanced' ? colors.primary : colors.textPrimary} variant="Bold" />
-                </View>
-                <View style={styles.optionContent}>
-                  <Text style={[styles.optionTitle, { color: colors.textPrimary }, selectedOption === 'advanced' && { color: colors.primary }]}>
-                    Advanced Trip
-                  </Text>
-                  <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>
-                    Customize every detail of your journey with our advanced planner. Perfect for travelers who love a tailored experience!
+                    Get AI-powered insights, estimated costs, where to stay, and top experiences for any destination before you book.
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -170,15 +127,15 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
                 onPress={() => handleSelectOption('import')}
                 activeOpacity={0.7}
               >
-                <View style={[styles.iconContainer, { backgroundColor: colors.bgCard }]}>
-                  <Briefcase size={20} color={selectedOption === 'import' ? colors.primary : colors.textPrimary} variant="Bold" />
+                <View style={[styles.iconContainer, { backgroundColor: `${colors.info}12` }]}>
+                  <Briefcase size={22} color={colors.info} variant="Bold" />
                 </View>
                 <View style={styles.optionContent}>
                   <Text style={[styles.optionTitle, { color: colors.textPrimary }, selectedOption === 'import' && { color: colors.primary }]}>
-                    Import Trip
+                    Import a Trip
                   </Text>
                   <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>
-                    Already booked your trip elsewhere? Import it here, and let us enhance it with recommendations and local tips!
+                    Already booked? Scan a ticket, enter details manually, or link your booking account and we'll build your trip for you.
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -194,33 +151,15 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
       onClose={() => setShowImportFlow(false)}
       onComplete={(tripData) => {
         setShowImportFlow(false);
-        // Refresh trips from DB and navigate to Trips tab
+        // Refresh trips from DB and navigate to Trips tab with scrollTo
         fetchTrips();
+        const tripId = tripData?.importResult?.tripId || tripData?.importResult?.trips?.[0]?.id;
         setTimeout(() => {
-          router.push('/(tabs)/trips' as any);
+          router.push(tripId
+            ? { pathname: '/(tabs)/trips', params: { scrollToTripId: tripId } } as any
+            : '/(tabs)/trips' as any
+          );
         }, 300);
-      }}
-    />
-    
-    {/* Quick Trip Flow */}
-    <QuickTripFlow
-      visible={showQuickTripFlow}
-      onClose={() => setShowQuickTripFlow(false)}
-      onComplete={(planId) => {
-        setShowQuickTripFlow(false);
-        console.log('Quick trip created:', planId);
-        // TODO: Navigate to trip detail or trips list
-      }}
-    />
-    
-    {/* Advanced Trip Flow */}
-    <AdvancedTripFlow
-      visible={showAdvancedTripFlow}
-      onClose={() => setShowAdvancedTripFlow(false)}
-      onComplete={(planId) => {
-        setShowAdvancedTripFlow(false);
-        console.log('Advanced trip created:', planId);
-        // TODO: Navigate to trip detail or trips list
       }}
     />
   </>
@@ -270,15 +209,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-  imageContainer: {
-    alignItems: 'center',
-    marginTop: spacing.xs,
-    marginBottom: spacing.md,
-  },
-  illustration: {
-    width: 240,
-    height: 160,
-  },
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
@@ -286,8 +216,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
     lineHeight: typography.fontSize.xl * 1.3,
   },
-  titleSecondary: {
-    fontSize: typography.fontSize.xl,
+  titleAccent: {
     fontWeight: typography.fontWeight.bold,
   },
   description: {

@@ -6,10 +6,12 @@ import * as Haptics from 'expo-haptics';
 import { ShieldTick } from 'iconsax-react-native';
 import CloseIcon from '@/components/common/icons/CloseIcon';
 import { colors, typography, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useSignUp, useSignIn } from '@clerk/clerk-expo';
 
 export default function VerifyOTP() {
   const router = useRouter();
+  const { colors: tc, isDark } = useTheme();
   const params = useLocalSearchParams<{ phone: string; mode: 'signup' | 'signin' }>();
   const { isLoaded: isSignUpLoaded, signUp, setActive: setSignUpActive } = useSignUp();
   const { isLoaded: isSignInLoaded, signIn, setActive: setSignInActive } = useSignIn();
@@ -171,36 +173,36 @@ export default function VerifyOTP() {
   const isComplete = otp.every(digit => digit !== '');
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Close Button */}
       <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-        <CloseIcon size={24} color={colors.textPrimary} />
+        <CloseIcon size={24} color={tc.textPrimary} />
       </TouchableOpacity>
 
       <View style={styles.content}>
         {/* Security Icon */}
-        <View style={styles.iconContainer}>
-          <ShieldTick size={32} color={colors.textPrimary} variant="Outline" />
+        <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
+          <ShieldTick size={32} color={tc.textPrimary} variant="Outline" />
         </View>
 
         {/* Header */}
-        <Text style={styles.title}>Enter your verification code</Text>
+        <Text style={[styles.title, { color: tc.textPrimary }]}>Enter your verification code</Text>
         
         {/* Phone Number with Edit */}
         <View style={styles.phoneContainer}>
-          <Text style={styles.phoneText}>Sent to {phoneNumber}</Text>
-          <Text style={styles.editText}> · Edit</Text>
+          <Text style={[styles.phoneText, { color: tc.textSecondary }]}>Sent to {phoneNumber}</Text>
+          <Text style={[styles.editText, { color: tc.textPrimary }]}> · Edit</Text>
         </View>
 
         {/* OTP Input - Inline */}
         <View style={styles.otpContainer}>
           {otp.map((digit, index) => (
-            <View key={index} style={styles.otpInputWrapper}>
+            <View key={index} style={[styles.otpInputWrapper, { borderBottomColor: tc.borderMedium }]}>
               <TextInput
                 ref={(ref) => { inputRefs.current[index] = ref; }}
-                style={styles.otpInput}
+                style={[styles.otpInput, { color: tc.textPrimary }]}
                 value={digit}
                 onChangeText={(value) => handleOtpChange(value, index)}
                 onKeyPress={(e) => handleKeyPress(e, index)}
@@ -214,31 +216,35 @@ export default function VerifyOTP() {
           ))}
         </View>
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
 
         {/* Timer */}
         <View style={styles.timerContainer}>
-          <Text style={styles.timerText}>Didn't get a code?</Text>
+          <Text style={[styles.timerText, { color: tc.textSecondary }]}>Didn't get a code?</Text>
           {timer > 0 ? (
-            <Text style={styles.timerCount}> ⏱ {timer}s</Text>
+            <Text style={[styles.timerCount, { color: tc.error }]}> ⏱ {timer}s</Text>
           ) : (
             <TouchableOpacity onPress={handleResend}>
-              <Text style={styles.resendText}> Resend</Text>
+              <Text style={[styles.resendText, { color: tc.primary }]}> Resend</Text>
             </TouchableOpacity>
           )}
         </View>
 
         {/* Verify Button - Always Visible */}
         <TouchableOpacity
-          style={[styles.verifyButton, (!isComplete || isVerifying) && styles.verifyButtonDisabled]}
+          style={[
+            styles.verifyButton,
+            { backgroundColor: isDark ? tc.white : tc.black },
+            (!isComplete || isVerifying) && { backgroundColor: tc.bgElevated, borderWidth: 1, borderColor: tc.borderMedium },
+          ]}
           onPress={handleVerify}
           disabled={!isComplete || isVerifying}
           activeOpacity={0.8}
         >
           {isVerifying ? (
-            <ActivityIndicator color={colors.white} size="small" />
+            <ActivityIndicator color={isDark ? tc.black : tc.white} size="small" />
           ) : (
-            <Text style={[styles.verifyButtonText, !isComplete && styles.verifyButtonTextDisabled]}>
+            <Text style={[styles.verifyButtonText, { color: isDark ? tc.black : tc.white }, !isComplete && { color: tc.textTertiary }]}>
               →
             </Text>
           )}
@@ -251,7 +257,6 @@ export default function VerifyOTP() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   closeButton: {
     position: 'absolute',
@@ -271,9 +276,8 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 64,
     height: 64,
-    borderRadius: 32,
+    borderRadius: borderRadius.full,
     borderWidth: 2,
-    borderColor: colors.textPrimary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.xl,
@@ -281,7 +285,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.md,
   },
   phoneContainer: {
@@ -291,11 +294,9 @@ const styles = StyleSheet.create({
   },
   phoneText: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
   },
   editText: {
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
     fontWeight: typography.fontWeight.semibold,
   },
   otpContainer: {
@@ -307,13 +308,11 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: spacing.xs,
     borderBottomWidth: 2,
-    borderBottomColor: colors.gray300,
     paddingBottom: spacing.xs,
   },
   otpInput: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     textAlign: 'center',
     padding: 0,
   },
@@ -324,43 +323,29 @@ const styles = StyleSheet.create({
   },
   timerText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   timerCount: {
     fontSize: typography.fontSize.sm,
-    color: '#FF4458',
     fontWeight: typography.fontWeight.semibold,
   },
   resendText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary,
     fontWeight: typography.fontWeight.semibold,
   },
   errorText: {
     fontSize: typography.fontSize.sm,
-    color: '#EF4444',
     marginBottom: spacing.sm,
   },
   verifyButton: {
     width: 64,
     height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.black,
+    borderRadius: borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'flex-end',
     marginTop: spacing.xl,
   },
-  verifyButtonDisabled: {
-    backgroundColor: colors.bgElevated,
-    borderWidth: 1,
-    borderColor: colors.gray300,
-  },
   verifyButtonText: {
     fontSize: 28,
-    color: colors.white,
-  },
-  verifyButtonTextDisabled: {
-    color: colors.gray400,
   },
 });

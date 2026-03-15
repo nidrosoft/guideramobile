@@ -120,6 +120,17 @@ export default function TravelerProfileScreen() {
         isFollowing: false,
       };
 
+      // Check if current user follows this profile
+      if (authProfile?.id && authProfile.id !== targetId) {
+        const { data: followRow } = await supabase
+          .from('user_follows')
+          .select('id')
+          .eq('follower_id', authProfile.id)
+          .eq('following_id', targetId)
+          .maybeSingle();
+        travelerProfile.isFollowing = !!followRow;
+      }
+
       setProfile(travelerProfile);
       setIsFollowing(travelerProfile.isFollowing);
       setBuddyStatus(travelerProfile.buddyStatus);
@@ -148,9 +159,32 @@ export default function TravelerProfileScreen() {
     router.back();
   };
 
-  const handleFollow = () => {
+  const handleFollow = async () => {
+    const targetId = userId || profile?.id;
+    if (!authProfile?.id || !targetId) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsFollowing(!isFollowing);
+
+    // Optimistic toggle
+    const wasFollowing = isFollowing;
+    setIsFollowing(!wasFollowing);
+
+    try {
+      if (wasFollowing) {
+        await supabase
+          .from('user_follows')
+          .delete()
+          .eq('follower_id', authProfile.id)
+          .eq('following_id', targetId);
+      } else {
+        await supabase
+          .from('user_follows')
+          .insert({ follower_id: authProfile.id, following_id: targetId });
+      }
+    } catch (err) {
+      // Revert on error
+      setIsFollowing(wasFollowing);
+      console.warn('Follow toggle error:', err);
+    }
   };
 
   const handleBuddyRequest = async () => {

@@ -31,82 +31,6 @@ interface EventsTabContentProps {
   onLocationChange?: () => void;
 }
 
-// Mock events data
-const MOCK_EVENTS: EventPreview[] = [
-  {
-    id: 'evt-1',
-    communityId: 'group-1',
-    title: 'Sunset at Sacré-Cœur',
-    coverImage: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400',
-    type: 'meetup',
-    status: 'upcoming',
-    location: { city: 'Paris', country: 'France', isVirtual: false },
-    startDate: new Date(new Date().setHours(18, 30)),
-    attendeeCount: 23,
-    myRSVP: 'none',
-  },
-  {
-    id: 'evt-2',
-    communityId: 'group-2',
-    title: 'Wine & Cheese Night',
-    coverImage: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=400',
-    type: 'food_drink',
-    status: 'upcoming',
-    location: { city: 'Paris', country: 'France', isVirtual: false },
-    startDate: new Date(Date.now() + 1000 * 60 * 60 * 24),
-    attendeeCount: 15,
-    myRSVP: 'going',
-  },
-  {
-    id: 'evt-3',
-    communityId: 'group-1',
-    title: 'Morning Yoga in the Park',
-    coverImage: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400',
-    type: 'outdoor',
-    status: 'upcoming',
-    location: { city: 'Paris', country: 'France', isVirtual: false },
-    startDate: new Date(Date.now() + 1000 * 60 * 60 * 48),
-    attendeeCount: 8,
-    myRSVP: 'none',
-  },
-  {
-    id: 'evt-4',
-    communityId: 'group-3',
-    title: 'Virtual Travel Photography Workshop',
-    coverImage: 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=400',
-    type: 'workshop',
-    status: 'upcoming',
-    location: { city: 'Online', country: '', isVirtual: true },
-    startDate: new Date(Date.now() + 1000 * 60 * 60 * 72),
-    attendeeCount: 45,
-    myRSVP: 'maybe',
-  },
-  {
-    id: 'evt-5',
-    communityId: 'group-2',
-    title: 'Louvre Museum Tour',
-    coverImage: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=400',
-    type: 'cultural',
-    status: 'upcoming',
-    location: { city: 'Paris', country: 'France', isVirtual: false },
-    startDate: new Date(Date.now() + 1000 * 60 * 60 * 96),
-    attendeeCount: 12,
-    myRSVP: 'none',
-  },
-  {
-    id: 'evt-6',
-    communityId: 'group-1',
-    title: 'Montmartre Walking Tour',
-    coverImage: 'https://images.unsplash.com/photo-1550340499-a6c60fc8287c?w=400',
-    type: 'sightseeing',
-    status: 'upcoming',
-    location: { city: 'Paris', country: 'France', isVirtual: false },
-    startDate: new Date(Date.now() + 1000 * 60 * 60 * 168),
-    attendeeCount: 18,
-    myRSVP: 'none',
-  },
-];
-
 const DATE_FILTERS: { id: DateFilter; label: string }[] = [
   { id: 'today', label: 'Today' },
   { id: 'this_week', label: 'This Week' },
@@ -115,7 +39,7 @@ const DATE_FILTERS: { id: DateFilter; label: string }[] = [
 ];
 
 export default function EventsTabContent({
-  events = MOCK_EVENTS,
+  events = [],
   loading = false,
   onRefresh,
   onEventPress,
@@ -203,95 +127,104 @@ export default function EventsTabContent({
       .map(([key, value]) => value);
   }, [filteredEvents]);
   
+  const hasEvents = events.length > 0;
+
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: tc.textPrimary }]}>Events</Text>
-        <TouchableOpacity 
-          style={styles.locationButton}
-          onPress={onLocationChange}
-          activeOpacity={0.7}
-        >
-          <Location size={16} color={tc.primary} variant="Bold" />
-          <Text style={styles.locationText}>{currentLocation}</Text>
-        </TouchableOpacity>
-      </View>
-      
-      {/* Date Filters */}
-      <View style={styles.filtersContainer}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersScroll}
-        >
-          {DATE_FILTERS.map((filter) => (
-            <TouchableOpacity
-              key={filter.id}
-              style={[
-                styles.filterChip,
-                dateFilter === filter.id && styles.filterChipActive,
-              ]}
-              onPress={() => setDateFilter(filter.id)}
+      {hasEvents ? (
+        <>
+          {/* Header + Filters — only when we have events */}
+          <View style={styles.header}>
+            <Text style={[styles.title, { color: tc.textPrimary }]}>Events</Text>
+            <TouchableOpacity 
+              style={styles.locationButton}
+              onPress={onLocationChange}
               activeOpacity={0.7}
             >
-              <Text style={[
-                styles.filterText,
-                dateFilter === filter.id && styles.filterTextActive,
-              ]}>
-                {filter.label}
-              </Text>
+              <Location size={16} color={tc.primary} variant="Bold" />
+              <Text style={styles.locationText}>{currentLocation}</Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-        <TouchableOpacity style={styles.filterButton}>
-          <Filter size={20} color={tc.textSecondary} />
-        </TouchableOpacity>
-      </View>
-      
-      {/* Events List */}
-      <ScrollView
-        style={styles.eventsList}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-      >
-        {groupedEvents.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Calendar size={48} color={tc.textSecondary} />
-            <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No events found</Text>
-            <Text style={[styles.emptySubtitle, { color: tc.textSecondary }]}>
-              {dateFilter === 'today' 
-                ? 'No events scheduled for today'
-                : 'Try adjusting your filters'}
-            </Text>
           </View>
-        ) : (
-          groupedEvents.map((group, groupIndex) => (
-            <View key={groupIndex} style={styles.dateGroup}>
-              <View style={styles.dateHeader}>
-                <View style={styles.dateLine} />
-                <Text style={styles.dateLabel}>{group.label}</Text>
-                <View style={styles.dateLine} />
-              </View>
-              
-              {group.events.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  variant="list"
-                  onPress={() => onEventPress(event.id)}
-                />
+          
+          <View style={styles.filtersContainer}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filtersScroll}
+            >
+              {DATE_FILTERS.map((filter) => (
+                <TouchableOpacity
+                  key={filter.id}
+                  style={[
+                    styles.filterChip,
+                    dateFilter === filter.id && styles.filterChipActive,
+                  ]}
+                  onPress={() => setDateFilter(filter.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.filterText,
+                    dateFilter === filter.id && styles.filterTextActive,
+                  ]}>
+                    {filter.label}
+                  </Text>
+                </TouchableOpacity>
               ))}
-            </View>
-          ))
-        )}
-        
-        <View style={styles.bottomPadding} />
-      </ScrollView>
+            </ScrollView>
+          </View>
+          
+          {/* Events List */}
+          <ScrollView
+            style={styles.eventsList}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            }
+          >
+            {groupedEvents.length === 0 ? (
+              <View style={styles.filterEmptyState}>
+                <Text style={[styles.filterEmptyText, { color: tc.textSecondary }]}>
+                  No events for this time range. Try "All" to see everything.
+                </Text>
+              </View>
+            ) : (
+              groupedEvents.map((group, groupIndex) => (
+                <View key={groupIndex} style={styles.dateGroup}>
+                  <View style={styles.dateHeader}>
+                    <View style={styles.dateLine} />
+                    <Text style={styles.dateLabel}>{group.label}</Text>
+                    <View style={styles.dateLine} />
+                  </View>
+                  {group.events.map((event) => (
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      variant="list"
+                      onPress={() => onEventPress(event.id)}
+                    />
+                  ))}
+                </View>
+              ))
+            )}
+            <View style={styles.bottomPadding} />
+          </ScrollView>
+        </>
+      ) : (
+        /* Full-screen centered empty state — no header, no filters */
+        <View style={styles.emptyState}>
+          <View style={[styles.emptyIconCircle, { backgroundColor: '#F59E0B' + '12' }]}>
+            <Calendar size={36} color="#F59E0B" variant="Bold" />
+          </View>
+          <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>
+            No Events Yet
+          </Text>
+          <Text style={[styles.emptySubtitle, { color: tc.textSecondary }]}>
+            Meetups, food crawls, city walks, and virtual hangouts from the community will show up here.{'\n\n'}Tap the + button to host your first event. You'll need to be a verified traveler so others can trust who's organizing.
+          </Text>
+        </View>
+      )}
       
-      {/* Create Event FAB */}
+      {/* Create Event FAB — always visible */}
       {onCreateEvent && (
         <TouchableOpacity
           style={styles.fab}
@@ -395,21 +328,40 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   emptyState: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  filterEmptyState: {
+    alignItems: 'center',
     paddingVertical: spacing['3xl'],
+  },
+  filterEmptyText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  emptyIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.textPrimary,
-    marginTop: spacing.md,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
   },
   emptySubtitle: {
     fontSize: 14,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
     textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 280,
   },
   bottomPadding: {
     height: 100,

@@ -18,20 +18,34 @@
 
 ---
 
+## ⚠️ CRITICAL: Authentication Architecture
+
+> **Guidera uses [Clerk](https://clerk.com) for authentication — NOT Supabase Auth.**
+>
+> - The `auth.users` table is **NOT used** for app users.
+> - All user data lives in `public.profiles` with a `clerk_id` column linking to Clerk.
+> - **All foreign key constraints** for user references must point to `public.profiles(id)`, never `auth.users(id)`.
+> - **Edge functions** must NOT use `supabase.auth.getUser()`. Instead, look up profiles directly using the service role key.
+> - Edge functions should use `verify_jwt: false` (same pattern as all existing functions).
+> - Profile ID format: UUID. Clerk ID format: `user_XXXXX` (string stored in `profiles.clerk_id`).
+> - `trips.user_id` = `profiles.id` (UUID), not a Clerk ID.
+
+---
+
 ## 📋 Table of Contents
 
+- [Authentication](#%EF%B8%8F-critical-authentication-architecture)
 - [Overview](#-overview)
 - [Features](#-features)
 - [Technology Stack](#-technology-stack)
 - [Architecture](#-architecture)
+- [API Keys & Secrets](#-api-keys--secrets)
+- [Edge Functions](#-edge-functions)
+- [Trip Hub Plugins](#-trip-hub-plugins)
+- [Trip Invitation System](#-trip-invitation-system)
 - [Project Structure](#-project-structure)
-- [Booking Plugin Architecture](#-booking-plugin-architecture)
-- [Design System](#-design-system)
-- [API Integrations](#-api-integrations)
 - [Getting Started](#-getting-started)
 - [Development](#-development)
-- [Testing](#-testing)
-- [Documentation](#-documentation)
 
 ---
 
@@ -41,9 +55,11 @@ Guidera is a comprehensive AI-powered travel companion application that revoluti
 
 ### Key Differentiators
 
-- **AI-First Approach**: Claude 3.5 + GPT-4o hybrid for intelligent trip planning and recommendations
+- **AI-First Approach**: Gemini 3.0 Flash (primary) + Claude Haiku 4.5 (fallback) for intelligent trip planning
+- **Smart Plan Generation**: One-tap AI generates 6 modules (itinerary, packing, safety, language, documents, cultural tips)
+- **Trip Import**: Scan tickets, upload screenshots, import via email, or enter manually
+- **Trip Collaboration**: Invite up to 5 travelers per trip with email invitations via Resend
 - **Global Coverage**: Works in Africa, Europe, Asia, Americas, and Middle East
-- **Budget-Conscious**: Virtual interlining via Kiwi.com for finding cheapest flight combinations
 - **Safety-Focused**: Real-time travel advisories, emergency assistance, and cultural guidance
 - **Unified Booking**: Flights, hotels, cars, and experiences in one seamless flow
 
@@ -78,7 +94,7 @@ Guidera is a comprehensive AI-powered travel companion application that revoluti
 | **AR** | Augmented reality navigation and exploration |
 | **Saved** | Bookmarked destinations, hotels, and experiences |
 | **Inbox** | Notifications, booking confirmations, and alerts |
-| **Community** | Travel community, tips, and shared experiences |
+| **Connect** | Travel network — groups, events, guides, Pulse meetups, and buddy matching |
 
 ---
 
@@ -208,7 +224,7 @@ guidera/
 │   │   │   ├── ar.tsx                # AR tab
 │   │   │   ├── saved.tsx             # Saved tab
 │   │   │   ├── inbox.tsx             # Inbox tab
-│   │   │   └── community.tsx         # Community tab
+│   │   │   └── community.tsx         # Connect tab
 │   │   ├── booking/                  # Booking entry points
 │   │   ├── trip/                     # Trip management
 │   │   ├── safety/                   # Safety features
@@ -224,7 +240,7 @@ guidera/
 │   │   ├── planning/                 # Trip planning feature
 │   │   ├── trips/                    # Trip management
 │   │   ├── ar-navigation/            # AR navigation feature
-│   │   ├── community/                # Community feature
+│   │   ├── community/                # Connect feature (groups, events, guides, Pulse)
 │   │   └── trip-import/              # Trip import feature
 │   │
 │   ├── components/                   # Reusable UI components
@@ -429,35 +445,158 @@ xl: 24
 
 ---
 
-## 🔗 API Integrations
+## � API Keys & Secrets
 
-Guidera integrates with 13+ API categories for comprehensive travel functionality:
+### Supabase Edge Function Secrets
 
-### Primary API Stack
+These are set via `npx supabase secrets set KEY=value --project-ref pkydmdygctojtfzbqcud`:
 
-| Category | Primary Provider | Purpose |
-|----------|-----------------|---------|
-| **Booking (Unified)** | Amadeus | 1.5M+ hotels, 400+ airlines, cars, activities |
-| **Cheapest Flights** | Kiwi.com | Virtual interlining for budget travelers |
-| **Hotels** | Expedia EPS Rapid | Consumer-friendly hotel booking |
-| **Experiences** | Viator | 300k+ tours and activities |
-| **Safety** | Riskline | Travel advisories, crime data, health alerts |
-| **Weather** | Tomorrow.io | Forecasts, impact alerts |
-| **Translation** | Google Cloud | 130+ languages, OCR, speech |
-| **Currency** | CurrencyLayer | 168+ currencies, real-time rates |
-| **AI/LLM** | Claude 3.5 + GPT-4o | Trip planning, recommendations |
-| **Maps** | Google Maps + Mapbox | POI search + offline navigation |
-| **Payments** | Stripe | 135+ currencies, global coverage |
-| **Visa** | Travel Buddy AI | 200+ passports, visa requirements |
-| **Flight Tracking** | AeroDataBox | Real-time status, delays |
-| **Push Notifications** | Firebase Cloud Messaging | Free, unlimited |
-| **Image Storage** | Cloudflare Images | Cost-effective CDN |
+| Secret | Service | Purpose |
+|--------|---------|---------|
+| `SUPABASE_URL` | Supabase | Auto-set, project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase | Auto-set, admin access for edge functions |
+| `ANTHROPIC_API_KEY` | Anthropic | Claude Haiku 4.5 — fallback AI for all generation |
+| `GOOGLE_AI_API_KEY` | Google AI | Gemini 3.0 Flash — primary AI for all generation |
+| `INCEPTION_API_KEY` | Inception | Secondary AI provider |
+| `TOMORROW_IO_API_KEY` | Tomorrow.io | Weather forecasts for packing/itinerary |
+| `RESEND_API_KEY` | Resend | Email delivery for trip invitations |
+| `RESEND_WEBHOOK_SECRET` | Resend | Inbound email webhook verification |
+| `SERPAPI_KEY` | SerpAPI | Google Flights/Hotels search |
+| `RAPIDAPI_KEY` | RapidAPI | Kiwi flights, Booking.com, car rentals |
 
-### Estimated Monthly Cost (10K MAU)
+### Client-Side Environment Variables (`.env`)
 
-**$1,000 - $2,500/month** including all API services
+| Variable | Service | Purpose |
+|----------|---------|---------|
+| `EXPO_PUBLIC_SUPABASE_URL` | Supabase | Database + Edge Functions URL |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase | Client-side anonymous key |
+| `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk | Authentication provider |
+| `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` | Google Maps | Maps + AR navigation |
+| `EXPO_PUBLIC_SENTRY_DSN` | Sentry | Error tracking |
 
-See `docs/API_SERVICES_GUIDE.md` for detailed API documentation and implementation priorities.
+### External Service Accounts
+
+| Service | Domain | Purpose |
+|---------|--------|---------|
+| **Clerk** | clerk.com | Authentication (social login, OTP) |
+| **Supabase** | supabase.com | Database, storage, edge functions |
+| **Resend** | resend.com | Transactional email (domain: `guidera.one`) |
+| **Sentry** | sentry.io | Error tracking + performance |
+| **Firebase** | firebase.google.com | Push notifications (FCM) |
+
+---
+
+## ⚡ Edge Functions
+
+42 Supabase Edge Functions deployed at `https://pkydmdygctojtfzbqcud.supabase.co/functions/v1/`:
+
+### AI Generation (Smart Plan)
+
+| Function | AI Model | Purpose |
+|----------|----------|---------|
+| `generate-itinerary` | Gemini 2.5 Flash / Haiku | Day-by-day trip itinerary |
+| `generate-packing` | Gemini 2.5 Flash / Haiku | Smart packing list based on destination + weather |
+| `generate-safety` | Gemini 2.5 Flash / Haiku | Safety profile with score + emergency info |
+| `generate-language` | Gemini 2.5 Flash / Haiku | 120+ essential phrases with phonetics |
+| `generate-documents` | Gemini 2.5 Flash / Haiku | Passport/visa/insurance document checklist |
+| `generate-dos-donts` | Gemini 2.5 Flash / Haiku | Cultural tips and etiquette |
+| `generate-compensation` | Gemini 2.5 Flash / Haiku | Flight delay/cancellation claim analysis |
+| `generate-expense-summary` | Gemini 2.5 Flash | Post-trip expense analysis |
+
+### Trip Services
+
+| Function | Purpose |
+|----------|---------|
+| `scan-ticket` | OCR + AI to extract booking data from photos |
+| `scan-receipt` | Receipt scanning for expense tracking |
+| `process-email-import` | AI-powered email booking parser (Resend inbound → Gemini) |
+| `trip-import-engine` | Legacy import pipeline (ticket scanning, manual) |
+| `trip-snapshot` | AI destination preview (cost, stays, experiences) |
+| `send-trip-invite` | Trip invitation emails via Resend |
+| `departure-advisor` | Pre-departure travel advisory briefing |
+
+### Search & Discovery
+
+| Function | Purpose |
+|----------|---------|
+| `flight-search` | Flight search via SerpAPI/Amadeus |
+| `hotel-search` | Hotel search |
+| `event-discovery` | Local events at destination |
+| `local-experiences` | Local experiences + hidden gems |
+| `places` | Place search + details |
+| `weather` | Weather forecasts |
+
+### Other
+
+| Function | Purpose |
+|----------|---------|
+| `send-notification` | Push notifications via FCM |
+| `scheduled-jobs` | Cron: deal scanning, flight tracking, reminders |
+| `chat-assistant` | AI chat assistant |
+| `translation` | Real-time translation |
+| `transcribe-audio` | Voice note transcription |
+| `currency` | Currency conversion |
+
+---
+
+## 🧩 Trip Hub Plugins
+
+Each trip has a "Trip Hub" with 9 AI-powered plugin screens:
+
+| Plugin | Service File | Edge Function | DB Table |
+|--------|-------------|---------------|----------|
+| **Trip Planner** | `planner.service.ts` | `generate-itinerary` | `itinerary_days` + `itinerary_activities` |
+| **Packing List** | `packing.service.ts` | `generate-packing` | `packing_items` |
+| **Safety** | `safety.service.ts` | `generate-safety` | `safety_profiles` + `safety_alerts` |
+| **Language Kit** | `language.service.ts` | `generate-language` | `language_kits` + `language_phrases` |
+| **Documents** | `document.service.ts` | `generate-documents` | `document_checklists` + `document_items` |
+| **Do's & Don'ts** | `safety.service.ts` | `generate-dos-donts` | `cultural_tips` |
+| **Expenses** | `expense.service.ts` | `generate-expense-summary` | `expenses` |
+| **Journal** | `journal.service.ts` | — | `journal_entries` + `journal_blocks` |
+| **Compensation** | `compensation.service.ts` | `generate-compensation` | `compensation_claims` + `compensation_rights_cards` |
+
+All plugins have:
+- Error states with retry UI (`PluginErrorState` component)
+- Loading states
+- Empty states (`PluginEmptyState` component)
+- Theme-aware dark/light mode
+
+### Smart Plan Generation Flow
+
+When user taps "Generate Smart Plan" on a trip card:
+1. Rate limit check (max 10/month)
+2. Wave 1 (concurrent): Itinerary + Do's & Don'ts + Documents
+3. Wave 2 (concurrent): Packing + Safety + Language
+4. Failed modules retry up to 3x with exponential backoff (3s, 6s, 9s)
+5. Inline progress bar on the trip card shows module-by-module status
+6. Non-blocking — user can navigate away and return
+
+---
+
+## 📨 Trip Invitation System
+
+### Architecture
+
+- **Email provider**: Resend (`Guidera Team <team@guidera.one>`)
+- **Edge function**: `send-trip-invite`
+- **DB tables**: `trip_invitations` (invites) + `trip_members` (accepted travelers)
+- **Max invitees**: 5 per trip
+- **Expiry**: 30 days
+
+### Flow
+
+1. Trip owner enters names + emails in Invite Travelers sheet
+2. Edge function creates `trip_invitations` rows + sends personalized HTML emails
+3. Each email contains an invite code + accept button
+4. Invitee accepts → `trip_members` row created → trip appears in their Trips tab
+5. Trip detail screen shows travelers with status badges (Pending/Accepted/Declined)
+
+### Database
+
+```
+trip_invitations: id, trip_id, invited_by → profiles(id), invited_email, invited_name, token (unique), status, role
+trip_members: id, trip_id, user_id → profiles(id), role (owner/collaborator/viewer), joined_via, invitation_id
+```
 
 ---
 
@@ -465,9 +604,10 @@ See `docs/API_SERVICES_GUIDE.md` for detailed API documentation and implementati
 
 ### Prerequisites
 
-- **Node.js** 18+ 
+- **Node.js** 18+
 - **npm** or **yarn**
 - **Expo CLI**: `npm install -g expo-cli`
+- **Supabase CLI**: `npm install -g supabase`
 - **iOS**: Xcode 15+ (for iOS development)
 - **Android**: Android Studio (for Android development)
 
@@ -475,7 +615,7 @@ See `docs/API_SERVICES_GUIDE.md` for detailed API documentation and implementati
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/guidera.git
+git clone https://github.com/nidrosoft/guidera.git
 cd guidera
 
 # Install dependencies
@@ -488,18 +628,18 @@ cp .env.example .env
 
 ### Environment Variables
 
-Create a `.env` file with the following:
+Create a `.env` file:
 
 ```env
 # Supabase
-EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+EXPO_PUBLIC_SUPABASE_URL=https://pkydmdygctojtfzbqcud.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 
-# API Keys
-EXPO_PUBLIC_AMADEUS_API_KEY=your_amadeus_key
-EXPO_PUBLIC_AMADEUS_API_SECRET=your_amadeus_secret
+# Clerk Authentication
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_key
+
+# Google Maps
 EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_key
-EXPO_PUBLIC_OPENAI_API_KEY=your_openai_key
 
 # Sentry (Error Tracking)
 EXPO_PUBLIC_SENTRY_DSN=your_sentry_dsn
@@ -516,9 +656,6 @@ npm run ios
 
 # Run on Android Emulator
 npm run android
-
-# Run on web (limited support)
-npm run web
 ```
 
 ---

@@ -2,13 +2,7 @@
  * INVITE TRAVELERS BOTTOM SHEET
  * 
  * Allows users to invite others to join their trip via email.
- * Supports inviting multiple travelers at once.
- * 
- * AI TODO:
- * - Send email invitations with trip details
- * - Generate unique invitation links
- * - Track invitation status (pending, accepted, declined)
- * - Send push notifications when invitation is accepted
+ * Personalized invitation with sender name + trip details.
  */
 
 import React, { useState } from 'react';
@@ -20,30 +14,43 @@ import {
   TextInput,
   ScrollView,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
-import { Add, CloseCircle, Sms, TickCircle } from 'iconsax-react-native';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { Add, CloseCircle, Sms, TickCircle, User } from 'iconsax-react-native';
+import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
+import { invitationService } from '@/services/invitation.service';
 import * as Haptics from 'expo-haptics';
 
 interface InviteTravelersBottomSheetProps {
   visible: boolean;
   onClose: () => void;
+  tripId: string;
   tripName: string;
   tripDestination: string;
-  onInvite: (emails: string[]) => void;
+  onInvite?: (emails: string[]) => void;
 }
 
 export default function InviteTravelersBottomSheet({
   visible,
   onClose,
+  tripId,
   tripName,
   tripDestination,
   onInvite,
 }: InviteTravelersBottomSheetProps) {
   const { colors: tc } = useTheme();
+  const { profile } = useAuth();
+  const senderName = profile ? [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Someone' : 'Someone';
+
+  const MAX_INVITEES = 5;
+  const { showSuccess, showError } = useToast();
+  const [inviteeName, setInviteeName] = useState('');
   const [emails, setEmails] = useState<string[]>(['']);
   const [currentEmail, setCurrentEmail] = useState('');
+  const [sending, setSending] = useState(false);
 
   const handleAddEmail = () => {
     if (currentEmail.trim() && isValidEmail(currentEmail.trim())) {
@@ -68,172 +75,178 @@ export default function InviteTravelersBottomSheet({
     }
   };
 
-  const isValidEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  const handleSendInvites = () => {
-    const validEmails = emails.filter(email => email.trim() && isValidEmail(email.trim()));
-    
-    if (validEmails.length === 0) {
-      return;
+  const handleSendInvites = async () => {
+    const validEmails = emails.filter(e => e.trim() && isValidEmail(e.trim()));
+    if (validEmails.length === 0) return;
+
+    setSending(true);
+    try {
+      const invitees = validEmails.map(email => ({
+        email: email.trim(),
+        name: inviteeName.trim() || undefined,
+      }));
+
+      const result = await invitationService.sendInvites(tripId, invitees);
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showSuccess(`Invitation${result.sent > 1 ? 's' : ''} sent to ${result.sent} traveler${result.sent > 1 ? 's' : ''}!`);
+      onInvite?.(validEmails);
+
+      // Reset form
+      setEmails(['']);
+      setCurrentEmail('');
+      setInviteeName('');
+      onClose();
+    } catch (err: any) {
+      console.warn('[Invite] Failed to send:', err);
+      showError(err.message || 'Failed to send invitations. Please try again.');
+    } finally {
+      setSending(false);
     }
-
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onInvite(validEmails);
-    
-    // Reset form
-    setEmails(['']);
-    setCurrentEmail('');
-    onClose();
   };
 
-  const validEmailCount = emails.filter(email => email.trim() && isValidEmail(email.trim())).length;
+  const validEmailCount = emails.filter(e => e.trim() && isValidEmail(e.trim())).length;
   const canSend = validEmailCount > 0;
+  const displayInviteeName = inviteeName.trim() || 'your friend';
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-      statusBarTranslucent
-    >
-      <TouchableOpacity 
-        style={styles.overlay} 
-        activeOpacity={1} 
-        onPress={onClose}
-      >
-        <View style={[styles.bottomSheet, { backgroundColor: tc.bgPrimary }]} onStartShouldSetResponder={() => true}>
-          {/* Handle Bar */}
-          <View style={[styles.handleBar, { backgroundColor: tc.borderSubtle }]} />
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+      <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={onClose}>
+        <View style={[s.sheet, { backgroundColor: tc.bgPrimary }]} onStartShouldSetResponder={() => true}>
+          {/* Handle */}
+          <View style={s.handleRow}>
+            <View style={[s.handle, { backgroundColor: tc.borderSubtle }]} />
+          </View>
 
           {/* Header */}
-          <View style={[styles.header, { borderBottomColor: tc.borderSubtle }]}>
-            <View>
-              <Text style={[styles.title, { color: tc.textPrimary }]}>Invite Travelers</Text>
-              <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
-                Invite friends to join {tripName}
+          <View style={[s.header, { borderBottomColor: tc.borderSubtle }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.title, { color: tc.textPrimary }]}>Invite Travelers</Text>
+              <Text style={[s.subtitle, { color: tc.textSecondary }]}>
+                Invite friends to join your trip to {tripDestination}
               </Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity onPress={onClose} style={{ padding: spacing.xs }}>
               <CloseCircle size={28} color={tc.textTertiary} variant="Bold" />
             </TouchableOpacity>
           </View>
 
-          <ScrollView 
-            style={styles.content}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* Trip Info Card */}
-            <View style={[styles.tripInfoCard, { backgroundColor: `${tc.primary}10` }]}>
-              <Sms size={24} color={tc.primary} variant="Bold" />
-              <View style={styles.tripInfoText}>
-                <Text style={[styles.tripInfoTitle, { color: tc.textPrimary }]}>Email Invitation</Text>
-                <Text style={[styles.tripInfoDescription, { color: tc.textSecondary }]}>
-                  Invitees will receive an email to join your trip to {tripDestination}
+          <ScrollView style={s.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            {/* Info Card */}
+            <View style={[s.infoCard, { backgroundColor: tc.primary + '10' }]}>
+              <Sms size={22} color={tc.primary} variant="Bold" />
+              <View style={{ flex: 1, marginLeft: spacing.sm }}>
+                <Text style={[s.infoCardTitle, { color: tc.textPrimary }]}>Email Invitation</Text>
+                <Text style={[s.infoCardDesc, { color: tc.textSecondary }]}>
+                  They'll receive an email with a link to view and join the trip.
                 </Text>
               </View>
             </View>
 
+            {/* Invitee Name */}
+            <View style={s.fieldGroup}>
+              <Text style={[s.label, { color: tc.textPrimary }]}>Invitee Name</Text>
+              <View style={[s.inputWrap, { backgroundColor: tc.bgSunken || tc.bgElevated, borderColor: tc.borderSubtle }]}>
+                <User size={18} color={tc.textTertiary} variant="Linear" />
+                <TextInput
+                  style={[s.input, { color: tc.textPrimary }]}
+                  placeholder="John Doe"
+                  placeholderTextColor={tc.textTertiary}
+                  value={inviteeName}
+                  onChangeText={setInviteeName}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
+
             {/* Email Inputs */}
-            <View style={styles.emailsSection}>
-              <Text style={[styles.sectionLabel, { color: tc.textSecondary }]}>Email Addresses</Text>
-              
+            <View style={s.fieldGroup}>
+              <Text style={[s.label, { color: tc.textPrimary }]}>Email Address</Text>
               {emails.map((email, index) => (
-                <View key={index} style={styles.emailInputContainer}>
-                  <View style={[styles.emailInputWrapper, { backgroundColor: tc.bgInput, borderColor: tc.borderSubtle }]}>
+                <View key={index} style={s.emailRow}>
+                  <View style={[s.inputWrap, { flex: 1, backgroundColor: tc.bgSunken || tc.bgElevated, borderColor: tc.borderSubtle }]}>
                     <TextInput
-                      style={[styles.emailInput, { color: tc.textPrimary }]}
+                      style={[s.input, { color: tc.textPrimary }]}
                       placeholder="traveler@example.com"
                       placeholderTextColor={tc.textTertiary}
                       value={email}
-                      onChangeText={(text) => handleEmailChange(text, index)}
+                      onChangeText={(t) => handleEmailChange(t, index)}
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoCorrect={false}
                       returnKeyType={index === emails.length - 1 ? 'done' : 'next'}
                       onSubmitEditing={() => {
-                        if (index === emails.length - 1 && email.trim() && isValidEmail(email.trim())) {
-                          handleAddEmail();
-                        }
+                        if (index === emails.length - 1 && email.trim() && isValidEmail(email.trim())) handleAddEmail();
                       }}
                     />
                     {email.trim() && isValidEmail(email.trim()) && (
-                      <TickCircle size={20} color={tc.success} variant="Bold" />
+                      <TickCircle size={18} color={tc.success} variant="Bold" />
                     )}
                   </View>
-                  
                   {emails.length > 1 && (
-                    <TouchableOpacity
-                      onPress={() => handleRemoveEmail(index)}
-                      style={styles.removeButton}
-                    >
-                      <CloseCircle size={24} color={tc.textTertiary} variant="Bold" />
+                    <TouchableOpacity onPress={() => handleRemoveEmail(index)} style={{ padding: 4 }}>
+                      <CloseCircle size={22} color={tc.textTertiary} variant="Bold" />
                     </TouchableOpacity>
                   )}
                 </View>
               ))}
 
-              {/* Add Another Email Button */}
-              {currentEmail.trim() && isValidEmail(currentEmail.trim()) && (
-                <TouchableOpacity
-                  style={[styles.addEmailButton, { borderColor: tc.primary }]}
-                  onPress={handleAddEmail}
-                >
-                  <Add size={20} color={tc.primary} variant="Bold" />
-                  <Text style={[styles.addEmailButtonText, { color: tc.primary }]}>Add another email</Text>
+              {currentEmail.trim() && isValidEmail(currentEmail.trim()) && emails.length < MAX_INVITEES && (
+                <TouchableOpacity style={[s.addBtn, { borderColor: tc.primary }]} onPress={handleAddEmail}>
+                  <Add size={18} color={tc.primary} variant="Bold" />
+                  <Text style={[s.addBtnText, { color: tc.primary }]}>Add another email ({emails.length}/{MAX_INVITEES})</Text>
                 </TouchableOpacity>
+              )}
+              {emails.length >= MAX_INVITEES && (
+                <Text style={[s.limitText, { color: tc.textTertiary }]}>Maximum {MAX_INVITEES} invitees per trip</Text>
               )}
             </View>
 
-            {/* Preview Message */}
-            <View style={styles.previewSection}>
-              <Text style={[styles.sectionLabel, { color: tc.textSecondary }]}>Invitation Preview</Text>
-              <View style={[styles.previewCard, { backgroundColor: tc.bgInput, borderColor: tc.borderSubtle }]}>
-                <Text style={[styles.previewTitle, { color: tc.textPrimary }]}>
-                  You're invited to join {tripName}!
+            {/* Invitation Preview */}
+            <View style={s.fieldGroup}>
+              <Text style={[s.label, { color: tc.textPrimary }]}>Invitation Preview</Text>
+              <View style={[s.previewCard, { backgroundColor: tc.bgSunken || tc.bgElevated, borderColor: tc.borderSubtle }]}>
+                <Text style={[s.previewTitle, { color: tc.textPrimary }]}>
+                  Hey {displayInviteeName}! 👋
                 </Text>
-                <Text style={[styles.previewMessage, { color: tc.textSecondary }]}>
-                  You've been invited to join an upcoming trip to {tripDestination}. 
-                  Accept the invitation to view trip details, collaborate on planning, 
-                  and stay connected with your travel companions.
+                <Text style={[s.previewMsg, { color: tc.textSecondary }]}>
+                  {senderName} is inviting you to join their trip to {tripDestination}. 
+                  Accept the invitation to view trip details, collaborate on the itinerary, 
+                  and plan together.
                 </Text>
-                <View style={[styles.previewButton, { backgroundColor: tc.primary }]}>
-                  <Text style={styles.previewButtonText}>Accept Invitation</Text>
+                <View style={[s.previewAcceptBtn, { backgroundColor: tc.primary }]}>
+                  <Text style={s.previewAcceptText}>Accept Invitation</Text>
                 </View>
               </View>
             </View>
 
             {/* Info Note */}
-            <View style={[styles.infoNote, { backgroundColor: `${tc.warning}10` }]}>
-              <Text style={[styles.infoNoteText, { color: tc.textSecondary }]}>
-                💡 Invitees will be able to view trip details, add to the itinerary, 
-                and collaborate on planning once they accept.
+            <View style={[s.noteBox, { backgroundColor: tc.warning + '10' }]}>
+              <Text style={[s.noteText, { color: tc.textSecondary }]}>
+                💡 Invitees will be able to view trip details, add to the itinerary, and collaborate on planning once they accept.
               </Text>
             </View>
           </ScrollView>
 
           {/* Footer */}
-          <View style={[styles.footer, { borderTopColor: tc.borderSubtle }]}>
-            <TouchableOpacity
-              style={[styles.cancelButton, { borderColor: tc.borderSubtle }]}
-              onPress={onClose}
-            >
-              <Text style={[styles.cancelButtonText, { color: tc.textSecondary }]}>Cancel</Text>
+          <View style={[s.footer, { borderTopColor: tc.borderSubtle }]}>
+            <TouchableOpacity style={[s.cancelBtn, { borderColor: tc.borderSubtle }]} onPress={onClose}>
+              <Text style={[s.cancelText, { color: tc.textSecondary }]}>Cancel</Text>
             </TouchableOpacity>
-            
             <TouchableOpacity
-              style={[styles.sendButton, { backgroundColor: tc.primary }, !canSend && { backgroundColor: tc.borderMedium }]}
+              style={[s.sendBtn, { backgroundColor: tc.primary }, !canSend && { backgroundColor: tc.textTertiary + '40' }]}
               onPress={handleSendInvites}
               disabled={!canSend}
             >
-              <Sms size={20} color="#FFFFFF" variant="Bold" />
-              <Text style={styles.sendButtonText}>
-                Send {validEmailCount > 0 ? `(${validEmailCount})` : 'Invites'}
-              </Text>
+              {sending ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Sms size={18} color="#FFFFFF" variant="Bold" />
+              )}
+              <Text style={s.sendText}>{sending ? 'Sending...' : `Send Invite${validEmailCount > 1 ? `s (${validEmailCount})` : ''}`}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -242,214 +255,177 @@ export default function InviteTravelersBottomSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
-  bottomSheet: {
+  sheet: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.bgModal,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing['2xl'],
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 34,
     maxHeight: '90%',
   },
-  handleBar: {
+  handleRow: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  handle: {
     width: 40,
     height: 4,
-    backgroundColor: colors.gray300,
     borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.md,
+    marginBottom: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray100,
   },
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
-    color: colors.gray900,
-    marginBottom: spacing.xs,
+    marginBottom: 2,
   },
   subtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray600,
-  },
-  closeButton: {
-    padding: spacing.xs,
+    lineHeight: 20,
   },
   content: {
     flex: 1,
-    paddingHorizontal: spacing.lg,
   },
-  tripInfoCard: {
-    flexDirection: 'row',
-    backgroundColor: `${colors.primary}10`,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    marginTop: spacing.lg,
-    marginBottom: spacing.lg,
-  },
-  tripInfoText: {
-    flex: 1,
-    marginLeft: spacing.md,
-  },
-  tripInfoTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: '600',
-    color: colors.gray900,
-    marginBottom: spacing.xs,
-  },
-  tripInfoDescription: {
-    fontSize: typography.fontSize.sm,
-    color: colors.gray600,
-    lineHeight: 20,
-  },
-  emailsSection: {
-    marginBottom: spacing.lg,
-  },
-  sectionLabel: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: '600',
-    color: colors.gray700,
-    marginBottom: spacing.md,
-  },
-  emailInputContainer: {
+  infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: 14,
+    marginBottom: spacing.lg,
+  },
+  infoCardTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  infoCardDesc: {
+    fontSize: typography.fontSize.xs,
+    lineHeight: 18,
+  },
+  fieldGroup: {
+    marginBottom: spacing.lg,
+  },
+  label: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+  },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    borderWidth: 1,
     gap: spacing.sm,
   },
-  emailInputWrapper: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.gray50,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.gray200,
-  },
-  emailInput: {
+  input: {
     flex: 1,
     fontSize: typography.fontSize.base,
-    color: colors.gray900,
-    paddingVertical: spacing.sm,
   },
-  removeButton: {
-    padding: spacing.xs,
+  emailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
-  addEmailButton: {
+  addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.lg,
+    paddingVertical: 12,
+    borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: colors.primary,
     borderStyle: 'dashed',
   },
-  addEmailButtonText: {
+  addBtnText: {
     fontSize: typography.fontSize.sm,
     fontWeight: '600',
-    color: colors.primary,
   },
-  previewSection: {
-    marginBottom: spacing.lg,
+  limitText: {
+    fontSize: typography.fontSize.xs,
+    textAlign: 'center',
+    marginTop: spacing.xs,
   },
   previewCard: {
-    backgroundColor: colors.gray50,
     padding: spacing.lg,
-    borderRadius: borderRadius.lg,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.gray200,
   },
   previewTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: colors.gray900,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
-  previewMessage: {
+  previewMsg: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray700,
     lineHeight: 20,
     marginBottom: spacing.lg,
   },
-  previewButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.lg,
+  previewAcceptBtn: {
+    paddingVertical: 12,
+    borderRadius: 14,
     alignItems: 'center',
   },
-  previewButtonText: {
+  previewAcceptText: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.white,
+    color: '#FFFFFF',
   },
-  infoNote: {
-    backgroundColor: `${colors.warning}10`,
+  noteBox: {
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 14,
     marginBottom: spacing.lg,
   },
-  infoNoteText: {
+  noteText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray700,
     lineHeight: 20,
   },
   footer: {
     flexDirection: 'row',
     gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray100,
-  },
-  cancelButton: {
-    flex: 1,
     paddingVertical: spacing.md,
-    borderRadius: borderRadius.full,
-    borderWidth: 1.5,
-    borderColor: colors.gray300,
+    borderTopWidth: 1,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cancelButtonText: {
+  cancelText: {
     fontSize: typography.fontSize.base,
     fontWeight: '600',
-    color: colors.gray700,
   },
-  sendButton: {
+  sendBtn: {
     flex: 2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: 14,
   },
-  sendButtonDisabled: {
-    backgroundColor: colors.gray300,
-  },
-  sendButtonText: {
+  sendText: {
     fontSize: typography.fontSize.base,
     fontWeight: '700',
-    color: colors.white,
+    color: '#FFFFFF',
   },
 });

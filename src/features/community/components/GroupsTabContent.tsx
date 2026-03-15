@@ -3,11 +3,11 @@
  *
  * Facebook Groups-style layout:
  * - Top: "My Groups" (joined groups)
- * - Below: "Discover Groups" (trending, trip-based, etc.)
+ * - Below: "Discover Groups" (fetched from Supabase)
  * - "Create a Group" CTA (only for verified guides)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import { People, Add, SearchNormal1 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { groupService } from '@/services/community/group.service';
 import CommunityCard from './CommunityCard';
 import SectionHeader from './SectionHeader';
 import { CommunityPreview } from '../types/community.types';
@@ -49,148 +50,25 @@ interface GroupsTabContentProps {
   isVerifiedGuide?: boolean;
 }
 
-// Mock data for "My Groups" (joined groups)
-const MOCK_MY_GROUPS: Array<{
-  group: {
-    id: string;
-    name: string;
-    groupPhotoUrl?: string;
-    coverPhotoUrl?: string;
-    memberCount: number;
-    isVerified: boolean;
-    category?: string;
-    privacy: string;
-    tags: string[];
+/** Map a Group to CommunityPreview for CommunityCard */
+function mapGroupToPreview(g: any, myGroupIds: Set<string>): CommunityPreview {
+  return {
+    id: g.id,
+    name: g.name,
+    avatar: g.groupPhotoUrl || g.coverPhotoUrl || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=200',
+    coverImage: g.coverPhotoUrl || g.groupPhotoUrl || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
+    memberCount: g.memberCount || 0,
+    isVerified: g.isVerified || false,
+    type: (g.category as any) || 'interest',
+    privacy: g.privacy || 'public',
+    tags: g.tags || [],
+    description: g.description,
+    destination: g.destinationName
+      ? { city: g.destinationName, country: g.destinationCountry || '' }
+      : undefined,
+    isMember: myGroupIds.has(g.id),
   };
-  role: string;
-}> = [
-  {
-    group: {
-      id: 'my-grp-1',
-      name: 'Backpackers Europe 2025',
-      groupPhotoUrl: 'https://images.unsplash.com/photo-1473625247510-8ceb1760943f?w=200',
-      coverPhotoUrl: 'https://images.unsplash.com/photo-1473625247510-8ceb1760943f?w=400',
-      memberCount: 3450,
-      isVerified: true,
-      category: 'destination',
-      privacy: 'public',
-      tags: ['Europe', 'Backpacking', '2025'],
-    },
-    role: 'member',
-  },
-  {
-    group: {
-      id: 'my-grp-2',
-      name: 'Paris Foodies & Café Lovers',
-      groupPhotoUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=200',
-      coverPhotoUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400',
-      memberCount: 1280,
-      isVerified: false,
-      category: 'interest',
-      privacy: 'public',
-      tags: ['Paris', 'Food', 'Cafés'],
-    },
-    role: 'member',
-  },
-  {
-    group: {
-      id: 'my-grp-3',
-      name: 'Budget Travel Tips',
-      groupPhotoUrl: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=200',
-      coverPhotoUrl: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
-      memberCount: 18700,
-      isVerified: true,
-      category: 'interest',
-      privacy: 'public',
-      tags: ['Budget', 'Tips', 'Saving'],
-    },
-    role: 'member',
-  },
-  {
-    group: {
-      id: 'my-grp-4',
-      name: 'Adventure Photographers',
-      groupPhotoUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200',
-      coverPhotoUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400',
-      memberCount: 6340,
-      isVerified: true,
-      category: 'interest',
-      privacy: 'public',
-      tags: ['Photography', 'Adventure', 'Landscape'],
-    },
-    role: 'admin',
-  },
-  {
-    group: {
-      id: 'my-grp-5',
-      name: 'Southeast Asia Explorers',
-      groupPhotoUrl: 'https://images.unsplash.com/photo-1528181304800-259b08848526?w=200',
-      coverPhotoUrl: 'https://images.unsplash.com/photo-1528181304800-259b08848526?w=400',
-      memberCount: 9120,
-      isVerified: true,
-      category: 'destination',
-      privacy: 'public',
-      tags: ['SEA', 'Thailand', 'Vietnam'],
-    },
-    role: 'member',
-  },
-];
-
-// Mock data for "Discover Groups"
-const MOCK_SUGGESTED_GROUPS: CommunityPreview[] = [
-  {
-    id: 'grp-s1',
-    name: 'Japan 2025 Travelers',
-    avatar: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200',
-    coverImage: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400',
-    memberCount: 12400,
-    isVerified: true,
-    type: 'destination',
-    privacy: 'public',
-    tags: ['Japan', '2025', 'Travel'],
-    description: 'Plan trips, share tips, and connect with fellow travelers heading to Japan in 2025. From cherry blossoms to hidden gems.',
-    isMember: false,
-  },
-  {
-    id: 'grp-s2',
-    name: 'Solo Female Travelers',
-    avatar: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=200',
-    coverImage: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
-    memberCount: 45600,
-    isVerified: true,
-    type: 'interest',
-    privacy: 'public',
-    tags: ['Solo', 'Women', 'Safety'],
-    description: 'A supportive community for women exploring the world solo. Safety tips, destination reviews, and travel buddy matching.',
-    isMember: false,
-  },
-  {
-    id: 'grp-s3',
-    name: 'Digital Nomads Worldwide',
-    avatar: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=200',
-    coverImage: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400',
-    memberCount: 28900,
-    isVerified: true,
-    type: 'interest',
-    privacy: 'public',
-    tags: ['Remote Work', 'Nomad', 'Coworking'],
-    description: 'Remote workers sharing coworking spaces, visa advice, cost-of-living reports, and the best cities for digital nomads.',
-    isMember: false,
-  },
-  {
-    id: 'grp-s4',
-    name: 'Tokyo Foodies',
-    avatar: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=200',
-    coverImage: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400',
-    memberCount: 2800,
-    isVerified: false,
-    type: 'destination',
-    privacy: 'public',
-    tags: ['Tokyo', 'Food', 'Ramen'],
-    description: 'Discover the best ramen shops, sushi bars, and street food spots in Tokyo. Reviews and recommendations from locals and travelers.',
-    isMember: false,
-  },
-];
+}
 
 export default function GroupsTabContent({
   myGroups,
@@ -203,13 +81,34 @@ export default function GroupsTabContent({
 }: GroupsTabContentProps) {
   const { colors: tc, isDark } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
+  const [suggestedGroups, setSuggestedGroups] = useState<CommunityPreview[]>([]);
+  const [loadingSuggested, setLoadingSuggested] = useState(true);
 
-  // Use mock data as fallback when no real groups exist
-  const displayGroups = myGroups.length > 0 ? myGroups : MOCK_MY_GROUPS;
+  // Fetch suggested groups from Supabase
+  useEffect(() => {
+    const myGroupIds = new Set(myGroups.map(mg => mg.group.id));
+    setLoadingSuggested(true);
+    groupService.discoverGroups({ limit: 6 })
+      .then(groups => {
+        // Filter out groups the user already joined
+        const filtered = groups.filter(g => !myGroupIds.has(g.id));
+        setSuggestedGroups(filtered.map(g => mapGroupToPreview(g, myGroupIds)));
+      })
+      .catch(console.warn)
+      .finally(() => setLoadingSuggested(false));
+  }, [myGroups]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await onRefresh?.();
+    // Re-fetch suggested groups too
+    const myGroupIds = new Set(myGroups.map(mg => mg.group.id));
+    groupService.discoverGroups({ limit: 6 })
+      .then(groups => {
+        const filtered = groups.filter(g => !myGroupIds.has(g.id));
+        setSuggestedGroups(filtered.map(g => mapGroupToPreview(g, myGroupIds)));
+      })
+      .catch(console.warn);
     setRefreshing(false);
   };
 
@@ -222,7 +121,7 @@ export default function GroupsTabContent({
       );
     }
 
-    if (displayGroups.length === 0) {
+    if (myGroups.length === 0) {
       return (
         <View style={styles.emptyState}>
           <View style={[styles.emptyIconContainer, { backgroundColor: tc.primarySubtle }]}>
@@ -240,7 +139,7 @@ export default function GroupsTabContent({
 
     return (
       <View style={styles.myGroupsList}>
-        {displayGroups.map(({ group, role }) => (
+        {myGroups.map(({ group, role }) => (
           <TouchableOpacity
             key={group.id}
             style={[styles.groupCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
@@ -279,8 +178,27 @@ export default function GroupsTabContent({
     );
   };
 
+  const hasMyGroups = myGroups.length > 0;
+  const hasSuggested = suggestedGroups.length > 0;
+  const hasAnyContent = hasMyGroups || hasSuggested;
+  const isAllEmpty = !loadingMyGroups && !loadingSuggested && !hasAnyContent;
+
   return (
     <View style={[styles.outerContainer, { backgroundColor: tc.background }]}>
+    {isAllEmpty ? (
+      /* Full-screen centered empty state — no section headers */
+      <View style={styles.fullEmptyState}>
+        <View style={[styles.emptyIconContainer, { backgroundColor: tc.primarySubtle }]}>
+          <People size={36} color={tc.primary} variant="Bold" />
+        </View>
+        <Text style={[styles.fullEmptyTitle, { color: tc.textPrimary }]}>
+          No Groups Yet
+        </Text>
+        <Text style={[styles.fullEmptySubtitle, { color: tc.textSecondary }]}>
+          Groups are where travelers connect around destinations, interests, and upcoming trips. Join one to share tips, photos, and plan meetups — or create your own.{'\n\n'}Tap the + button to start a group. Verified travelers can host trusted communities.
+        </Text>
+      </View>
+    ) : (
     <ScrollView
       style={[styles.container, { backgroundColor: tc.background }]}
       showsVerticalScrollIndicator={false}
@@ -293,12 +211,16 @@ export default function GroupsTabContent({
       }
     >
       {/* My Groups */}
-      <SectionHeader
-        title="My Groups"
-        subtitle={displayGroups.length > 0 ? `${displayGroups.length} joined` : undefined}
-        onSeeAll={displayGroups.length > 3 ? onSeeAllMyGroups : undefined}
-      />
-      {renderMyGroups()}
+      {hasMyGroups && (
+        <>
+          <SectionHeader
+            title="My Groups"
+            subtitle={`${myGroups.length} joined`}
+            onSeeAll={myGroups.length > 3 ? onSeeAllMyGroups : undefined}
+          />
+          {renderMyGroups()}
+        </>
+      )}
 
       {/* Create Group CTA - only for verified guides */}
       {isVerifiedGuide && (
@@ -324,22 +246,27 @@ export default function GroupsTabContent({
         </TouchableOpacity>
       )}
 
-      {/* Suggested Groups */}
-      <SectionHeader title="Suggested Groups" />
-      <View style={styles.suggestedList}>
-        {MOCK_SUGGESTED_GROUPS.map((group) => (
-          <CommunityCard
-            key={group.id}
-            community={group}
-            variant="list"
-            onPress={() => onGroupPress(group.id)}
-            showJoinButton
-          />
-        ))}
-      </View>
+      {/* Suggested Groups — only show section when there are suggestions */}
+      {hasSuggested && (
+        <>
+          <SectionHeader title="Suggested Groups" />
+          <View style={styles.suggestedList}>
+            {suggestedGroups.map((group) => (
+              <CommunityCard
+                key={group.id}
+                community={group}
+                variant="list"
+                onPress={() => onGroupPress(group.id)}
+                showJoinButton
+              />
+            ))}
+          </View>
+        </>
+      )}
 
       <View style={styles.bottomPadding} />
     </ScrollView>
+    )}
 
     {/* Floating Action Button */}
     <TouchableOpacity
@@ -375,6 +302,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing['3xl'],
     paddingHorizontal: spacing.xl,
   },
+  fullEmptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+  },
   emptyIconContainer: {
     width: 64,
     height: 64,
@@ -388,9 +321,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: spacing.xs,
   },
+  fullEmptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
   emptySubtitle: {
     fontSize: 14,
     textAlign: 'center',
+  },
+  fullEmptySubtitle: {
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    maxWidth: 300,
   },
   createGroupCta: {
     flexDirection: 'row',

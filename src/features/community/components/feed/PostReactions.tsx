@@ -21,6 +21,7 @@ import {
   Flash,
   Message,
   Send2,
+  Archive,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/context/ThemeContext';
@@ -39,9 +40,11 @@ interface PostReactionsProps {
   reactionsCount: ReactionsCount;
   commentCount: number;
   myReaction: ReactionType | null;
+  isSaved?: boolean;
   onReact: (type: ReactionType) => void;
   onComment: () => void;
   onShare?: () => void;
+  onSave?: () => void;
   compact?: boolean;
 }
 
@@ -49,9 +52,11 @@ function PostReactions({
   reactionsCount,
   commentCount,
   myReaction,
+  isSaved = false,
   onReact,
   onComment,
   onShare,
+  onSave,
   compact = false,
 }: PostReactionsProps) {
   const { colors: tc } = useTheme();
@@ -206,6 +211,26 @@ function PostReactions({
           >
             <Send2 size={18} color={tc.textTertiary} variant="Linear" />
             <Text style={[styles.actionLabel, { color: tc.textTertiary }]}>Share</Text>
+          </TouchableOpacity>
+        )}
+
+        {onSave && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onSave();
+            }}
+            activeOpacity={0.7}
+          >
+            <Archive
+              size={18}
+              color={isSaved ? tc.primary : tc.textTertiary}
+              variant={isSaved ? 'Bold' : 'Linear'}
+            />
+            <Text style={[styles.actionLabel, { color: isSaved ? tc.primary : tc.textTertiary }]}>
+              {isSaved ? 'Saved' : 'Save'}
+            </Text>
           </TouchableOpacity>
         )}
       </View>

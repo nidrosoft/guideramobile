@@ -57,30 +57,29 @@ export default function OptionCard({
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    borderRadius: borderRadius['2xl'],
+    borderRadius: 20,
     padding: spacing.md,
-    gap: spacing.md,
-    borderWidth: 1.5,
-    marginBottom: spacing.sm,
+    gap: spacing.sm,
+    borderWidth: 1,
+    minHeight: 90,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.md,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
   },
   title: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   description: {
     fontSize: typography.fontSize.xs,
-    lineHeight: 16,
+    lineHeight: 18,
   },
 });

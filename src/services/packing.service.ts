@@ -64,13 +64,14 @@ class PackingService {
       .eq('added_by', 'system');
   }
 
-  async getItems(tripId: string): Promise<PackingItem[]> {
+  async getItems(tripId: string, limit = 500): Promise<PackingItem[]> {
     const { data, error } = await supabase
       .from('packing_items')
       .select('*')
       .eq('trip_id', tripId)
       .order('category')
-      .order('name');
+      .order('name')
+      .limit(limit);
 
     if (error) throw new Error(error.message);
     return (data ?? []).map(fromDb);

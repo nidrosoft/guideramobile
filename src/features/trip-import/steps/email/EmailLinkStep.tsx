@@ -2,107 +2,100 @@
  * EMAIL LINK STEP
  * 
  * Step 2 in email import flow.
- * Checks if user has a connected email account. If yes, skips ahead.
- * If no, shows permission screen to connect via Traxo OAuth.
+ * Shows the user's unique import email address.
+ * User forwards their booking confirmation to this address.
  */
 
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
-import { Sms, ShieldTick, TickCircle, Scan } from 'iconsax-react-native';
-import { spacing, typography, borderRadius } from '@/styles';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
+import { Sms, ShieldTick, TickCircle, Copy, ExportSquare } from 'iconsax-react-native';
+import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
+import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { StepComponentProps } from '../../types/import-flow.types';
-import { tripImportEngine } from '@/services/trip/trip-import-engine.service';
+import { emailImportService } from '@/services/emailImport.service';
 
-export default function EmailLinkStep({ onNext, onBack }: StepComponentProps) {
+export default function EmailLinkStep({ onNext }: StepComponentProps) {
   const { colors: tc } = useTheme();
   const { profile } = useAuth();
-  const [isChecking, setIsChecking] = useState(true);
-  const [isConnected, setIsConnected] = useState(false);
+  const { showSuccess } = useToast();
 
-  useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        if (profile?.id) tripImportEngine.setUserId(profile.id);
-        const status = await tripImportEngine.getConnectionStatus('traxo');
-        if (status.connected) {
-          setIsConnected(true);
-          // Already connected — skip ahead to scanning
-          onNext({ connectedEmail: status.accounts[0]?.provider_email });
-          return;
-        }
-      } catch (error) {
-        console.warn('Connection check failed:', error);
-      }
-      setIsChecking(false);
-    };
-    checkConnection();
-  }, []);
+  const importAddress = profile?.id
+    ? emailImportService.getImportAddress(profile.id)
+    : 'import@guidera.one';
 
-  const handleConnect = async () => {
-    try {
-      if (profile?.id) tripImportEngine.setUserId(profile.id);
-      const { authUrl } = await tripImportEngine.connectEmail('traxo');
-      // Open Traxo OAuth in the browser
-      await Linking.openURL(authUrl);
-      // After user completes OAuth, they'll return to the app
-      // For now, proceed to the next step which will attempt the scan
-      onNext();
-    } catch (error: any) {
-      console.error('Connect error:', error);
-      // If OAuth isn't set up yet, show a helpful message and proceed
-      onNext();
-    }
+  const handleCopy = async () => {
+    await Clipboard.setStringAsync(importAddress);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    showSuccess('Email address copied!');
   };
 
-  if (isChecking) {
-    return (
-      <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={tc.primary} />
-        <Text style={[styles.checkingText, { color: tc.textSecondary }]}>Checking connection...</Text>
-      </View>
-    );
-  }
+  const handleOpenMail = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Linking.openURL(`mailto:${importAddress}?subject=Booking%20Confirmation`);
+  };
+
+  const handleNext = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onNext({ connectedEmail: importAddress });
+  };
 
   return (
     <View style={styles.container}>
       {/* Icon */}
-      <View style={styles.illustrationContainer}>
+      <View style={styles.iconRow}>
         <View style={[styles.iconCircle, { backgroundColor: tc.primary + '12' }]}>
-          <Sms size={48} color={tc.primary} variant="Bold" />
+          <Sms size={40} color={tc.primary} variant="Bold" />
         </View>
       </View>
 
-      <Text style={[styles.title, { color: tc.textPrimary }]}>Connect Your Email</Text>
+      <Text style={[styles.title, { color: tc.textPrimary }]}>Forward Your Booking</Text>
       <Text style={[styles.description, { color: tc.textSecondary }]}>
-        Connect your email account so we can automatically find flights, hotels, and car rentals from your booking confirmations.
+        Forward your booking confirmation email to the address below. We'll automatically detect your flight, hotel, or car rental.
       </Text>
+
+      {/* Import Address Card */}
+      <View style={[styles.addressCard, { backgroundColor: tc.bgSunken || tc.bgElevated, borderColor: tc.borderSubtle }]}>
+        <Text style={[styles.addressLabel, { color: tc.textTertiary }]}>Your import address</Text>
+        <Text style={[styles.addressText, { color: tc.primary }]} numberOfLines={1} selectable>
+          {importAddress}
+        </Text>
+        <View style={styles.addressActions}>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: tc.primary }]} onPress={handleCopy} activeOpacity={0.8}>
+            <Copy size={16} color="#FFFFFF" variant="Bold" />
+            <Text style={styles.actionBtnText}>Copy</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: tc.info }]} onPress={handleOpenMail} activeOpacity={0.8}>
+            <ExportSquare size={16} color="#FFFFFF" variant="Bold" />
+            <Text style={styles.actionBtnText}>Open Mail</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* Features */}
       <View style={styles.featuresList}>
         {[
-          { icon: Scan, text: 'Scans last 60 days of emails' },
-          { icon: TickCircle, text: 'Detects bookings from 4,000+ providers' },
+          { icon: TickCircle, text: 'Works with any email provider (Gmail, Outlook, Yahoo, etc.)' },
+          { icon: TickCircle, text: 'Detects flights, hotels, car rentals & activities' },
           { icon: ShieldTick, text: 'Your data is encrypted and never shared' },
         ].map((item, i) => {
           const Icon = item.icon;
           return (
-            <View key={i} style={[styles.featureItem, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
-              <Icon size={18} color={tc.primary} variant="Bold" />
-              <Text style={[styles.featureText, { color: tc.textPrimary }]}>{item.text}</Text>
+            <View key={i} style={styles.featureItem}>
+              <Icon size={16} color={tc.success} variant="Bold" />
+              <Text style={[styles.featureText, { color: tc.textSecondary }]}>{item.text}</Text>
             </View>
           );
         })}
       </View>
 
-      {/* Buttons */}
-      <View style={styles.buttonsContainer}>
-        <TouchableOpacity
-          style={[styles.primaryButton, { backgroundColor: tc.primary }]}
-          onPress={handleConnect}
-        >
-          <Text style={[styles.primaryButtonText, { color: tc.white }]}>Connect Email Account</Text>
+      {/* Continue Button */}
+      <View style={styles.footer}>
+        <TouchableOpacity style={[styles.continueBtn, { backgroundColor: tc.primary }]} onPress={handleNext} activeOpacity={0.8}>
+          <Text style={styles.continueBtnText}>I've Forwarded My Email</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -110,71 +103,21 @@ export default function EmailLinkStep({ onNext, onBack }: StepComponentProps) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: spacing.lg,
-  },
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkingText: {
-    fontSize: typography.fontSize.sm,
-    marginTop: spacing.md,
-  },
-  illustrationContainer: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  iconCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  description: {
-    fontSize: typography.fontSize.sm,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: spacing.lg,
-    paddingHorizontal: spacing.md,
-  },
-  featuresList: {
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-  },
-  featureText: {
-    fontSize: typography.fontSize.sm,
-    flex: 1,
-  },
-  buttonsContainer: {
-    marginTop: 'auto',
-    paddingBottom: spacing.lg,
-  },
-  primaryButton: {
-    height: 52,
-    borderRadius: borderRadius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-  },
+  container: { flex: 1, paddingTop: spacing.md },
+  iconRow: { alignItems: 'center', marginBottom: spacing.lg },
+  iconCircle: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: typography.fontSize.xl, fontWeight: '700', textAlign: 'center', marginBottom: spacing.xs },
+  description: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, marginBottom: spacing.lg, paddingHorizontal: spacing.sm },
+  addressCard: { borderRadius: 16, padding: spacing.lg, borderWidth: 1, marginBottom: spacing.lg },
+  addressLabel: { fontSize: typography.fontSize.xs, fontWeight: '600', marginBottom: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 },
+  addressText: { fontSize: typography.fontSize.base, fontWeight: '700', marginBottom: spacing.md },
+  addressActions: { flexDirection: 'row', gap: spacing.sm },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12 },
+  actionBtnText: { fontSize: typography.fontSize.sm, fontWeight: '600', color: '#FFFFFF' },
+  featuresList: { gap: spacing.sm, marginBottom: spacing.lg },
+  featureItem: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingHorizontal: spacing.xs },
+  featureText: { fontSize: typography.fontSize.xs, lineHeight: 18, flex: 1 },
+  footer: { marginTop: 'auto', paddingBottom: spacing.md },
+  continueBtn: { height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  continueBtnText: { fontSize: typography.fontSize.base, fontWeight: '700', color: '#FFFFFF' },
 });

@@ -1,37 +1,14 @@
 /**
  * MENU TRANSLATION HOOK
- * 
- * Hook for menu translation functionality.
- * Handles OCR, translation, and state management.
+ *
+ * Wired to real Google Vision API (OCR) + Google Translate API.
+ * No mock data — captures image, extracts text, translates it.
  */
 
 import { useState, useEffect, useRef } from 'react';
 import { TranslationResult } from '../components/TranslationSheet';
-
-// Mock translation data for testing
-const MOCK_TRANSLATIONS: TranslationResult[] = [
-  {
-    originalText: 'ラーメン - ¥1200\n寿司盛り合わせ - ¥2500\n天ぷら定食 - ¥1500',
-    translatedText: 'Ramen - $12\nSushi Platter - $25\nTempura Set - $15',
-    sourceLanguage: 'ja',
-    targetLanguage: 'en',
-    confidence: 0.95,
-  },
-  {
-    originalText: 'Sortie\nToilettes\nEntrée',
-    translatedText: 'Exit\nRestroom\nEntrance',
-    sourceLanguage: 'fr',
-    targetLanguage: 'en',
-    confidence: 0.98,
-  },
-  {
-    originalText: 'Cerveza - €5\nVino Tinto - €8\nSangría - €7',
-    translatedText: 'Beer - $5\nRed Wine - $8\nSangria - $7',
-    sourceLanguage: 'es',
-    targetLanguage: 'en',
-    confidence: 0.92,
-  },
-];
+import { visionService } from '../../../services/vision.service';
+import { translationService } from '../../../services/translation.service';
 
 export type TranslationMode = 'scan' | 'live';
 
@@ -41,127 +18,111 @@ export function useMenuTranslation() {
   const [isLiveFrozen, setIsLiveFrozen] = useState(false);
   const [translation, setTranslation] = useState<TranslationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  
-  const liveTranslationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [targetLanguage, setTargetLanguage] = useState('en');
 
-  // Scan mode: Capture and translate menu
+  // Scan mode: Capture image → OCR → Translate
   const captureAndTranslate = async (imageUri?: string) => {
+    if (!imageUri) {
+      setError('No image captured. Point your camera at text and try again.');
+      return;
+    }
+
     setIsProcessing(true);
     setError(null);
 
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Step 1: OCR — extract text from image
+      if (!visionService.isConfigured) {
+        setError('Vision API not configured. Enable Cloud Vision API in Google Cloud Console.');
+        return;
+      }
 
-      // ============================================================
-      // TODO: IMPLEMENT REAL MENU TRANSLATION
-      // ============================================================
-      // 
-      // Steps to implement:
-      // 1. Take photo using camera ref (if no imageUri provided)
-      // 2. Extract text using Google Vision API OCR:
-      //    import { visionService } from '../../../services/vision.service';
-      //    const ocrResult = await visionService.detectText(imageUri);
-      // 
-      // 3. Translate extracted text:
-      //    import { translationService } from '../../../services/translation.service';
-      //    const translated = await translationService.translate(
-      //      ocrResult.text,
-      //      'en', // target language (get from user settings)
-      //      ocrResult.detectedLanguage
-      //    );
-      // 
-      // 4. Format result:
-      //    const result: TranslationResult = {
-      //      originalText: ocrResult.text,
-      //      translatedText: translated.text,
-      //      sourceLanguage: ocrResult.detectedLanguage,
-      //      targetLanguage: 'en',
-      //      confidence: ocrResult.confidence
-      //    };
-      // 
-      // ============================================================
+      const ocrResult = await visionService.detectText(imageUri);
+      if (!ocrResult || !ocrResult.fullText.trim()) {
+        setError('No text detected in image. Try pointing your camera at a menu or sign.');
+        return;
+      }
 
-      // For now, return mock translation
-      const randomTranslation = MOCK_TRANSLATIONS[
-        Math.floor(Math.random() * MOCK_TRANSLATIONS.length)
-      ];
-      setTranslation(randomTranslation);
-      
+      // Step 2: Detect source language
+      let sourceLanguage: string | undefined;
+      if (translationService.isConfigured) {
+        const detection = await translationService.detectLanguage(ocrResult.fullText.slice(0, 200));
+        sourceLanguage = detection?.language;
+      }
+
+      // Step 3: Translate
+      if (!translationService.isConfigured) {
+        // Show OCR result without translation
+        setTranslation({
+          originalText: ocrResult.fullText,
+          translatedText: ocrResult.fullText,
+          sourceLanguage: sourceLanguage || 'unknown',
+          targetLanguage,
+          confidence: 1,
+        });
+        setError('Translation API not configured. Showing extracted text only.');
+        return;
+      }
+
+      const translated = await translationService.translate(
+        ocrResult.fullText,
+        targetLanguage,
+        sourceLanguage
+      );
+
+      if (!translated) {
+        setError('Translation failed. The text was extracted but could not be translated.');
+        setTranslation({
+          originalText: ocrResult.fullText,
+          translatedText: ocrResult.fullText,
+          sourceLanguage: sourceLanguage || 'unknown',
+          targetLanguage,
+          confidence: 0,
+        });
+        return;
+      }
+
+      setTranslation({
+        originalText: ocrResult.fullText,
+        translatedText: translated.translatedText,
+        sourceLanguage: translated.detectedSourceLanguage || sourceLanguage || 'auto',
+        targetLanguage,
+        confidence: 0.95,
+      });
+
     } catch (err) {
-      setError('Failed to translate menu. Please try again.');
-      console.error('Translation error:', err);
+      setError('Failed to process image. Check your connection and try again.');
+      console.error('Menu translation error:', err);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Live mode: Start continuous translation
+  // Live mode is disabled without real-time OCR pipeline
   const startLiveTranslation = () => {
-    setIsLiveFrozen(false);
-    
-    // Mock live translation updates
-    liveTranslationInterval.current = setInterval(() => {
-      if (!isLiveFrozen) {
-        const randomTranslation = MOCK_TRANSLATIONS[
-          Math.floor(Math.random() * MOCK_TRANSLATIONS.length)
-        ];
-        setTranslation(randomTranslation);
-      }
-    }, 3000);
+    // Live translation requires continuous camera frames → OCR
+    // For now, live mode just prompts user to tap to scan
+    setError('Live mode: Tap the capture button to scan visible text.');
   };
 
-  // Stop live translation
   const stopLiveTranslation = () => {
-    if (liveTranslationInterval.current) {
-      clearInterval(liveTranslationInterval.current);
-      liveTranslationInterval.current = null;
-    }
+    // No interval to clean up — live mode is tap-to-scan
   };
 
-  // Toggle live translation freeze
   const toggleLiveFrozen = () => {
     setIsLiveFrozen(!isLiveFrozen);
   };
 
-  // Change mode
   const changeMode = (newMode: TranslationMode) => {
     setMode(newMode);
     setTranslation(null);
     setError(null);
-    
-    if (newMode === 'live') {
-      startLiveTranslation();
-    } else {
-      stopLiveTranslation();
-    }
   };
 
-  // Clear translation
   const clearTranslation = () => {
     setTranslation(null);
     setError(null);
   };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopLiveTranslation();
-    };
-  }, []);
-
-  // Start/stop live translation based on mode
-  useEffect(() => {
-    if (mode === 'live') {
-      startLiveTranslation();
-    } else {
-      stopLiveTranslation();
-    }
-    
-    return () => {
-      stopLiveTranslation();
-    };
-  }, [mode, isLiveFrozen]);
 
   return {
     mode,
@@ -169,6 +130,8 @@ export function useMenuTranslation() {
     isLiveFrozen,
     translation,
     error,
+    targetLanguage,
+    setTargetLanguage,
     captureAndTranslate,
     toggleLiveFrozen,
     changeMode,

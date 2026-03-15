@@ -15,15 +15,15 @@ import {
   LanguageSquare, 
   Map1, 
   Receipt1, 
-  Building,
   CloseCircle,
-  Airplane,
   Danger,
   MessageQuestion,
+  Routing2,
 } from 'iconsax-react-native';
 
 // Action types for the scan feature - maps to AR plugin IDs
 export type ScanActionType = 
+  | 'navigate'
   | 'landmark-scanner' 
   | 'menu-translator' 
   | 'airport-navigator'
@@ -45,68 +45,52 @@ interface ScanAction {
 
 const SCAN_ACTIONS: ScanAction[] = [
   {
-    id: 'landmark-scanner',
-    title: 'AR Explore',
-    description: 'Discover landmarks around you',
-    icon: <Building size={24} color="#7C3AED" variant="Bold" />,
-    color: '#7C3AED', // Purple
-    bgColor: '#7C3AED15', // Soft purple
+    id: 'navigate',
+    title: 'Navigate',
+    description: 'City, airport & landmark navigation',
+    icon: <Routing2 size={24} color="#7C3AED" variant="Bold" />,
+    color: '#7C3AED',
+    bgColor: '#7C3AED15',
   },
   {
     id: 'menu-translator',
     title: 'Translate Text',
     description: 'Point at signs or menus',
     icon: <LanguageSquare size={24} color="#EC4899" variant="Bold" />,
-    color: '#EC4899', // Pink
-    bgColor: '#EC489915', // Soft pink
-  },
-  {
-    id: 'airport-navigator',
-    title: 'Airport Navigator',
-    description: 'Navigate terminals & gates',
-    icon: <Airplane size={24} color="#F97316" variant="Bold" />,
-    color: '#F97316', // Orange
-    bgColor: '#F9731615', // Soft orange
+    color: '#EC4899',
+    bgColor: '#EC489915',
   },
   {
     id: 'danger-alerts',
     title: 'Safety Alerts',
     description: 'Get real-time danger warnings',
     icon: <Danger size={24} color="#EF4444" variant="Bold" />,
-    color: '#EF4444', // Red
-    bgColor: '#EF444415', // Soft red
-  },
-  {
-    id: 'city-navigator',
-    title: 'City Navigator',
-    description: 'Get walking directions',
-    icon: <Map1 size={24} color="#EAB308" variant="Bold" />,
-    color: '#EAB308', // Yellow
-    bgColor: '#EAB30815', // Soft yellow
+    color: '#EF4444',
+    bgColor: '#EF444415',
   },
   {
     id: 'receipt',
     title: 'Scan Receipt',
     description: 'Track your travel expenses',
     icon: <Receipt1 size={24} color="#22C55E" variant="Bold" />,
-    color: '#22C55E', // Green
-    bgColor: '#22C55E15', // Soft green
+    color: '#22C55E',
+    bgColor: '#22C55E15',
   },
   {
     id: 'scan-document',
     title: 'Scan Document',
     description: 'Import tickets or bookings',
     icon: <Scan size={24} color="#3B82F6" variant="Bold" />,
-    color: '#3B82F6', // Blue
-    bgColor: '#3B82F615', // Soft blue
+    color: '#3B82F6',
+    bgColor: '#3B82F615',
   },
   {
     id: 'ask-ai',
     title: 'Ask Guidera AI',
     description: 'Get instant travel answers',
     icon: <MessageQuestion size={24} color="#3FC39E" variant="Bold" />,
-    color: '#3FC39E', // Teal
-    bgColor: '#3FC39E15', // Soft teal
+    color: '#3FC39E',
+    bgColor: '#3FC39E15',
   },
 ];
 

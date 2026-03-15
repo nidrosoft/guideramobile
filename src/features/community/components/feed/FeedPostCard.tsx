@@ -48,6 +48,7 @@ interface FeedPostCardProps {
   onComment?: (postId: string) => void;
   onShare?: (postId: string) => void;
   onMore?: (postId: string) => void;
+  onSave?: (postId: string) => void;
 }
 
 function FeedPostCard({
@@ -58,6 +59,7 @@ function FeedPostCard({
   onComment,
   onShare,
   onMore,
+  onSave,
 }: FeedPostCardProps) {
   const { colors: tc } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -212,9 +214,11 @@ function FeedPostCard({
         reactionsCount={post.reactionsCount}
         commentCount={post.commentCount}
         myReaction={post.myReaction ?? null}
+        isSaved={(post as any).isSaved || false}
         onReact={(type) => onReact?.(post.id, type)}
         onComment={() => onComment?.(post.id)}
         onShare={() => onShare?.(post.id)}
+        onSave={onSave ? () => onSave(post.id) : undefined}
       />
     </Animated.View>
   );

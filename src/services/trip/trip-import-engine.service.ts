@@ -8,7 +8,8 @@
  * - All heavy lifting happens server-side (edge function)
  * - Client polls for progress on async operations
  * - Retry logic built in
- * - Provider-agnostic — works with Traxo, AwardWallet, or any future provider
+ * - Email import now uses forward-based approach (emailImport.service.ts)
+ * - This service is primarily used for ticket scanning (OCR)
  */
 
 import { supabase } from '@/lib/supabase/client';
@@ -17,7 +18,7 @@ import { supabase } from '@/lib/supabase/client';
 // TYPES
 // ============================================
 
-export type ImportProvider = 'traxo' | 'awardwallet';
+export type ImportProvider = 'traxo' | 'awardwallet' | 'email_forward';
 
 export type ScanStatus = 'pending' | 'connecting' | 'scanning' | 'parsing' | 'completed' | 'failed' | 'cancelled';
 
@@ -257,9 +258,10 @@ class TripImportEngineService {
   /**
    * Get OAuth URL to connect user's email via provider
    */
+  /** @deprecated Use emailImport.service.ts forward-based approach instead */
   async connectEmail(provider: ImportProvider = 'traxo'): Promise<{ authUrl: string; state: string }> {
-    // The redirect URI should point back to the app's deep link handler
-    const redirectUri = 'guidera://import/oauth-callback';
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://pkydmdygctojtfzbqcud.supabase.co';
+    const redirectUri = `${supabaseUrl}/functions/v1/trip-import-engine`;
 
     return this.callEngine('connect-email', {
       provider,
@@ -275,7 +277,8 @@ class TripImportEngineService {
     state: string,
     provider: ImportProvider = 'traxo'
   ): Promise<{ connected: boolean; accountId: string; email: string; memberName: string }> {
-    const redirectUri = 'guidera://import/oauth-callback';
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://pkydmdygctojtfzbqcud.supabase.co';
+    const redirectUri = `${supabaseUrl}/functions/v1/trip-import-engine`;
 
     return this.callEngine('oauth-callback', {
       provider,
@@ -313,7 +316,7 @@ class TripImportEngineService {
     lookbackDays?: number;
   }): Promise<ScanJobResult> {
     return this.callEngine('start-scan', {
-      provider: params?.provider || 'traxo',
+      provider: params?.provider || 'email_forward',
       accountId: params?.accountId,
       lookbackDays: params?.lookbackDays || 60,
     });

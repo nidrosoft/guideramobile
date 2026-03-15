@@ -44,7 +44,7 @@ export default function SplashScreen() {
         
         // Navigate to first walkthrough screen after 5 seconds total
         setTimeout(() => {
-          router.replace('/(onboarding)/welcome-1');
+          router.replace('/(auth)/landing');
         }, 3500); // 1.5s typing + 3.5s = 5s total
       }
     }, 150);

@@ -6,8 +6,8 @@
  */
 
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, SafeAreaView, RefreshControl } from 'react-native';
-import { useState, useMemo, useCallback } from 'react';
-import { useRouter } from 'expo-router';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
@@ -44,6 +44,14 @@ export default function Home() {
   // Search states
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  // Handle openSearch param (from PlanBottomSheet "Explore a Destination")
+  const { openSearch } = useLocalSearchParams<{ openSearch?: string }>();
+  useEffect(() => {
+    if (openSearch === 'true') {
+      setTimeout(() => setIsSearchFocused(true), 350);
+    }
+  }, [openSearch]);
   
   // Homepage data with pull-to-refresh
   const { isRefreshing, refresh } = useHomepageData();

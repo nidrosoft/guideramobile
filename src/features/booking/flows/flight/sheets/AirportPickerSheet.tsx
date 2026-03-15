@@ -21,7 +21,7 @@ import { SearchNormal1, Location, CloseCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { Airport } from '../../../types/flight.types';
-import { AIRPORTS } from '../../../data/mockFlights';
+import { AIRPORTS } from '../../../data/airports';
 
 interface AirportPickerSheetProps {
   visible: boolean;

@@ -109,9 +109,11 @@ interface TripStore {
   currentTrip: Trip | null;
   isLoading: boolean;
   error: string | null;
+  hasMore: boolean;
   
   // Actions
   fetchTrips: (userId?: string) => Promise<void>;
+  loadMoreTrips: (userId?: string) => Promise<void>;
   createTrip: (data: CreateTripData) => Promise<Trip>;
   updateTrip: (id: string, data: UpdateTripData) => Promise<void>;
   deleteTrip: (id: string) => Promise<void>;
@@ -138,34 +140,106 @@ export const useTripStore = create<TripStore>((set, get) => ({
   currentTrip: null,
   isLoading: false,
   error: null,
+  hasMore: false,
   
-  // Fetch all trips from Supabase
+  // Fetch trips from Supabase (owned + shared via trip_members) — paginated
   fetchTrips: async (userId?: string) => {
+    const PAGE_SIZE = 50;
     set({ isLoading: true, error: null });
+    try {
+      // 1. Fetch owned trips (limited)
+      let ownedQuery = supabase
+        .from('trips')
+        .select('*')
+        .is('deleted_at', null)
+        .order('start_date', { ascending: false })
+        .limit(PAGE_SIZE);
+
+      if (userId) {
+        ownedQuery = ownedQuery.eq('user_id', userId);
+      }
+
+      const { data: ownedTrips, error: ownedError } = await ownedQuery;
+
+      if (ownedError) {
+        console.warn('Failed to fetch owned trips:', ownedError.message);
+        set({ trips: [], isLoading: false, error: ownedError.message });
+        return;
+      }
+
+      // 2. Fetch shared trips via trip_members
+      let sharedTrips: any[] = [];
+      if (userId) {
+        const { data: memberRows } = await supabase
+          .from('trip_members')
+          .select('trip_id')
+          .eq('user_id', userId)
+          .limit(50);
+
+        if (memberRows && memberRows.length > 0) {
+          const memberTripIds = memberRows.map(r => r.trip_id);
+          const ownedIds = new Set((ownedTrips || []).map(t => t.id));
+          const newIds = memberTripIds.filter(id => !ownedIds.has(id));
+
+          if (newIds.length > 0) {
+            const { data: shared } = await supabase
+              .from('trips')
+              .select('*')
+              .in('id', newIds)
+              .is('deleted_at', null)
+              .order('start_date', { ascending: false });
+            sharedTrips = shared || [];
+          }
+        }
+      }
+
+      // 3. Combine and deduplicate
+      const allDbTrips = [...(ownedTrips || []), ...sharedTrips];
+      const realTrips = allDbTrips.map(dbTripToTrip);
+      const hasMore = (ownedTrips || []).length >= PAGE_SIZE;
+      set({ trips: realTrips, isLoading: false, hasMore });
+    } catch (error) {
+      console.warn('fetchTrips error:', error);
+      set({ trips: [], error: (error as Error).message, isLoading: false });
+    }
+  },
+
+  // Load more trips (pagination)
+  loadMoreTrips: async (userId?: string) => {
+    const PAGE_SIZE = 50;
+    const { trips, isLoading, hasMore } = get();
+    if (isLoading || !hasMore) return;
+
+    set({ isLoading: true });
     try {
       let query = supabase
         .from('trips')
         .select('*')
         .is('deleted_at', null)
-        .order('start_date', { ascending: false });
+        .order('start_date', { ascending: false })
+        .range(trips.length, trips.length + PAGE_SIZE - 1);
 
       if (userId) {
         query = query.eq('user_id', userId);
       }
 
-      const { data: dbTrips, error: dbError } = await query;
-
-      if (dbError) {
-        console.error('Failed to fetch trips:', dbError.message);
-        set({ trips: [], isLoading: false, error: dbError.message });
+      const { data: moreTrips, error } = await query;
+      if (error) {
+        set({ isLoading: false });
         return;
       }
 
-      const realTrips = (dbTrips || []).map(dbTripToTrip);
-      set({ trips: realTrips, isLoading: false });
+      const newTrips = (moreTrips || []).map(dbTripToTrip);
+      const existingIds = new Set(trips.map(t => t.id));
+      const deduped = newTrips.filter(t => !existingIds.has(t.id));
+      
+      set({
+        trips: [...trips, ...deduped],
+        isLoading: false,
+        hasMore: (moreTrips || []).length >= PAGE_SIZE,
+      });
     } catch (error) {
-      console.error('fetchTrips error:', error);
-      set({ trips: [], error: (error as Error).message, isLoading: false });
+      set({ isLoading: false });
     }
   },
   
@@ -173,33 +247,47 @@ export const useTripStore = create<TripStore>((set, get) => ({
   createTrip: async (data: CreateTripData) => {
     set({ isLoading: true, error: null });
     try {
-      // TODO: Replace with actual API call
-      const newTrip: Trip = {
-        id: Date.now().toString(),
-        userId: 'current-user-id', // TODO: Get from auth
-        state: TripState.DRAFT,
-        destination: data.destination,
-        startDate: data.startDate,
-        endDate: data.endDate,
+      const insertPayload: Record<string, any> = {
+        user_id: data.userId,
         title: data.title,
-        coverImage: data.coverImage || '',
-        budget: data.budget,
-        travelers: [],
-        bookings: [],
-        metadata: {
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          isShared: false,
-          shareCount: 0,
-          tags: [],
+        destination: {
+          name: data.destination.name,
+          city: data.destination.city,
+          country: data.destination.country,
+          ...(data.destination.coordinates ? {
+            latitude: data.destination.coordinates.latitude,
+            longitude: data.destination.coordinates.longitude,
+          } : {}),
         },
+        primary_destination_name: data.destination.city || data.destination.name,
+        primary_destination_country: data.destination.country,
+        start_date: data.startDate instanceof Date ? data.startDate.toISOString().split('T')[0] : data.startDate,
+        end_date: data.endDate instanceof Date ? data.endDate.toISOString().split('T')[0] : data.endDate,
+        state: 'draft',
+        cover_image_url: data.coverImage || null,
       };
-      
+
+      if (data.budget) {
+        insertPayload.budget_total = data.budget.amount;
+        insertPayload.budget_currency = data.budget.currency;
+        insertPayload.budget = { amount: data.budget.amount, currency: data.budget.currency };
+      }
+
+      const { data: dbTrip, error: dbError } = await supabase
+        .from('trips')
+        .insert(insertPayload)
+        .select()
+        .single();
+
+      if (dbError) throw new Error(dbError.message);
+
+      const newTrip = dbTripToTrip(dbTrip);
+
       set(state => ({
-        trips: [...state.trips, newTrip],
+        trips: [newTrip, ...state.trips],
         isLoading: false,
       }));
-      
+
       return newTrip;
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false });
@@ -211,13 +299,51 @@ export const useTripStore = create<TripStore>((set, get) => ({
   updateTrip: async (id: string, data: UpdateTripData) => {
     set({ isLoading: true, error: null });
     try {
-      // TODO: Replace with actual API call
+      const updatePayload: Record<string, any> = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (data.title !== undefined) updatePayload.title = data.title;
+      if (data.description !== undefined) updatePayload.description = data.description;
+      if (data.coverImage !== undefined) updatePayload.cover_image_url = data.coverImage;
+      if (data.startDate !== undefined) {
+        updatePayload.start_date = data.startDate instanceof Date ? data.startDate.toISOString().split('T')[0] : data.startDate;
+      }
+      if (data.endDate !== undefined) {
+        updatePayload.end_date = data.endDate instanceof Date ? data.endDate.toISOString().split('T')[0] : data.endDate;
+      }
+      if (data.destination) {
+        updatePayload.destination = {
+          name: data.destination.name,
+          city: data.destination.city,
+          country: data.destination.country,
+          ...(data.destination.coordinates ? {
+            latitude: data.destination.coordinates.latitude,
+            longitude: data.destination.coordinates.longitude,
+          } : {}),
+        };
+        updatePayload.primary_destination_name = data.destination.city || data.destination.name;
+        updatePayload.primary_destination_country = data.destination.country;
+      }
+      if (data.budget) {
+        updatePayload.budget_total = data.budget.amount;
+        updatePayload.budget_currency = data.budget.currency;
+        updatePayload.budget = { amount: data.budget.amount, currency: data.budget.currency };
+      }
+
+      const { data: dbTrip, error: dbError } = await supabase
+        .from('trips')
+        .update(updatePayload)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (dbError) throw new Error(dbError.message);
+
+      const updatedTrip = dbTripToTrip(dbTrip);
+
       set(state => ({
-        trips: state.trips.map(trip =>
-          trip.id === id
-            ? { ...trip, ...data, metadata: { ...trip.metadata, updatedAt: new Date() } }
-            : trip
-        ),
+        trips: state.trips.map(trip => trip.id === id ? updatedTrip : trip),
         isLoading: false,
       }));
     } catch (error) {
@@ -225,11 +351,17 @@ export const useTripStore = create<TripStore>((set, get) => ({
     }
   },
   
-  // Delete trip
+  // Delete trip (soft delete)
   deleteTrip: async (id: string) => {
     set({ isLoading: true, error: null });
     try {
-      // TODO: Replace with actual API call
+      const { error: dbError } = await supabase
+        .from('trips')
+        .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (dbError) throw new Error(dbError.message);
+
       set(state => ({
         trips: state.trips.filter(trip => trip.id !== id),
         currentTrip: state.currentTrip?.id === id ? null : state.currentTrip,
@@ -249,13 +381,22 @@ export const useTripStore = create<TripStore>((set, get) => ({
   publishTrip: async (id: string) => {
     set({ isLoading: true, error: null });
     try {
-      // TODO: Replace with actual API call
+      const { data: dbTrip, error: dbError } = await supabase
+        .from('trips')
+        .update({
+          state: 'upcoming',
+          published_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (dbError) throw new Error(dbError.message);
+
+      const updatedTrip = dbTripToTrip(dbTrip);
       set(state => ({
-        trips: state.trips.map(trip =>
-          trip.id === id
-            ? { ...trip, state: TripState.UPCOMING, metadata: { ...trip.metadata, updatedAt: new Date() } }
-            : trip
-        ),
+        trips: state.trips.map(trip => trip.id === id ? updatedTrip : trip),
         isLoading: false,
       }));
     } catch (error) {
@@ -267,13 +408,22 @@ export const useTripStore = create<TripStore>((set, get) => ({
   startTrip: async (id: string) => {
     set({ isLoading: true, error: null });
     try {
-      // TODO: Replace with actual API call
+      const { data: dbTrip, error: dbError } = await supabase
+        .from('trips')
+        .update({
+          state: 'ongoing',
+          started_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (dbError) throw new Error(dbError.message);
+
+      const updatedTrip = dbTripToTrip(dbTrip);
       set(state => ({
-        trips: state.trips.map(trip =>
-          trip.id === id
-            ? { ...trip, state: TripState.ONGOING, metadata: { ...trip.metadata, updatedAt: new Date() } }
-            : trip
-        ),
+        trips: state.trips.map(trip => trip.id === id ? updatedTrip : trip),
         isLoading: false,
       }));
     } catch (error) {
@@ -285,13 +435,22 @@ export const useTripStore = create<TripStore>((set, get) => ({
   completeTrip: async (id: string) => {
     set({ isLoading: true, error: null });
     try {
-      // TODO: Replace with actual API call
+      const { data: dbTrip, error: dbError } = await supabase
+        .from('trips')
+        .update({
+          state: 'past',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (dbError) throw new Error(dbError.message);
+
+      const updatedTrip = dbTripToTrip(dbTrip);
       set(state => ({
-        trips: state.trips.map(trip =>
-          trip.id === id
-            ? { ...trip, state: TripState.PAST, metadata: { ...trip.metadata, updatedAt: new Date() } }
-            : trip
-        ),
+        trips: state.trips.map(trip => trip.id === id ? updatedTrip : trip),
         isLoading: false,
       }));
     } catch (error) {
@@ -303,13 +462,22 @@ export const useTripStore = create<TripStore>((set, get) => ({
   cancelTrip: async (id: string) => {
     set({ isLoading: true, error: null });
     try {
-      // TODO: Replace with actual API call
+      const { data: dbTrip, error: dbError } = await supabase
+        .from('trips')
+        .update({
+          state: 'cancelled',
+          cancelled_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (dbError) throw new Error(dbError.message);
+
+      const updatedTrip = dbTripToTrip(dbTrip);
       set(state => ({
-        trips: state.trips.map(trip =>
-          trip.id === id
-            ? { ...trip, state: TripState.CANCELLED, metadata: { ...trip.metadata, updatedAt: new Date() } }
-            : trip
-        ),
+        trips: state.trips.map(trip => trip.id === id ? updatedTrip : trip),
         isLoading: false,
       }));
     } catch (error) {

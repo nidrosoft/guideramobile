@@ -5,8 +5,8 @@ export default function Onboarding() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to first walkthrough screen
-    router.replace('/(onboarding)/welcome-1');
+    // Redirect to intro screen (animated feature cards)
+    router.replace('/(onboarding)/intro');
   }, []);
 
   return null;

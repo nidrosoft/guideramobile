@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedScrollHandler, useSharedValue, useAnimatedStyle, interpolate, Extrapolate } from 'react-native-reanimated';
@@ -14,6 +14,8 @@ import InviteTravelersBottomSheet from '@/features/trips/components/InviteTravel
 import CircleButton from '@/components/atoms/CircleButton/CircleButton';
 import { useToast } from '@/contexts/ToastContext';
 import { Skeleton } from '@/components/common/SkeletonLoader';
+import { packingService } from '@/services/packing.service';
+import { invitationService, TripInvitation } from '@/services/invitation.service';
 
 const { width } = Dimensions.get('window');
 const IMAGE_HEIGHT = width * 1.2;
@@ -152,7 +154,19 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
   const isLoading = useTripStore(state => state.isLoading);
   const [selectedBooking, setSelectedBooking] = useState<{ id: string; type: BookingType; details: any; number: string; status: string } | null>(null);
   const [inviteSheetVisible, setInviteSheetVisible] = useState(false);
+  const [packingProgress, setPackingProgress] = useState({ total: 0, packed: 0, percentage: 0 });
+  const [invitations, setInvitations] = useState<TripInvitation[]>([]);
   const scrollOffset = useSharedValue(0);
+
+  const loadTripData = () => {
+    if (!tripId) return;
+    packingService.getProgress(tripId).then(setPackingProgress).catch(() => {});
+    invitationService.getTripInvitations(tripId).then(setInvitations).catch(() => {});
+  };
+
+  useEffect(() => {
+    loadTripData();
+  }, [tripId]);
 
   if (!trip) {
     return <TripDetailSkeleton isDark={isDark} colors={colors} insets={insets} onBack={() => router.back()} />;
@@ -282,7 +296,7 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
                 <Bag2 size={18} color={colors.warning} variant="Bold" />
               </View>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Packing List</Text>
-              <Text style={[styles.statValue, { color: colors.textPrimary }]}>45% / 100%</Text>
+              <Text style={[styles.statValue, { color: colors.textPrimary }]}>{packingProgress.total > 0 ? `${packingProgress.percentage}%` : 'No items'}</Text>
             </View>
           </View>
 
@@ -521,7 +535,9 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
 
           <View style={[styles.section, { backgroundColor: isDark ? '#1A1A1A' : colors.bgCard }]}>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Travelers ({trip.travelers.length})</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                Travelers ({trip.travelers.length + invitations.length})
+              </Text>
               <TouchableOpacity
                 style={[styles.inviteButtonContainer, { backgroundColor: `${colors.primary}15` }]}
                 onPress={() => setInviteSheetVisible(true)}
@@ -529,6 +545,8 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
                 <Text style={[styles.inviteButton, { color: colors.primary }]}>+ Invite</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Trip owner / existing travelers */}
             {trip.travelers.map(traveler => (
               <View key={traveler.id} style={[styles.travelerCard, { borderBottomColor: colors.borderSubtle }]}>
                 <View style={[styles.travelerAvatar, { backgroundColor: `${colors.primary}15` }]}>
@@ -539,10 +557,52 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
                   <Text style={[styles.travelerEmail, { color: colors.textSecondary }]}>{traveler.email}</Text>
                 </View>
                 {traveler.id === trip.userId && (
-                  <View style={[styles.ownerBadge, { backgroundColor: `${colors.primary}15` }]}><Text style={[styles.ownerText, { color: colors.primary }]}>You</Text></View>
+                  <View style={[styles.ownerBadge, { backgroundColor: `${colors.primary}15` }]}>
+                    <Text style={[styles.ownerText, { color: colors.primary }]}>Owner</Text>
+                  </View>
                 )}
               </View>
             ))}
+
+            {/* Invited travelers with status */}
+            {invitations.map(invite => {
+              const statusColors: Record<string, { bg: string; text: string; label: string }> = {
+                pending:  { bg: '#F59E0B15', text: '#F59E0B', label: 'Pending' },
+                accepted: { bg: `${colors.success}15`, text: colors.success, label: 'Accepted' },
+                declined: { bg: '#EF444415', text: '#EF4444', label: 'Declined' },
+                expired:  { bg: `${colors.textTertiary}15`, text: colors.textTertiary, label: 'Expired' },
+              };
+              const sc = statusColors[invite.status] || statusColors.pending;
+
+              return (
+                <View key={invite.id} style={[styles.travelerCard, { borderBottomColor: colors.borderSubtle }]}>
+                  <View style={[styles.travelerAvatar, {
+                    backgroundColor: invite.status === 'accepted' ? `${colors.success}15` : `${colors.warning}15`,
+                  }]}>
+                    <User size={20} color={invite.status === 'accepted' ? colors.success : colors.warning} variant="Bold" />
+                  </View>
+                  <View style={styles.travelerInfo}>
+                    <Text style={[styles.travelerName, { color: colors.textPrimary }]}>
+                      {invite.invitedName || invite.invitedEmail.split('@')[0]}
+                    </Text>
+                    <Text style={[styles.travelerEmail, { color: colors.textSecondary }]}>
+                      {invite.invitedEmail}
+                    </Text>
+                  </View>
+                  <View style={[styles.ownerBadge, { backgroundColor: sc.bg }]}>
+                    <Text style={[styles.ownerText, { color: sc.text }]}>{sc.label}</Text>
+                  </View>
+                </View>
+              );
+            })}
+
+            {trip.travelers.length === 0 && invitations.length === 0 && (
+              <View style={{ padding: spacing.lg, alignItems: 'center' }}>
+                <Text style={[styles.travelerEmail, { color: colors.textTertiary }]}>
+                  No travelers yet. Tap + Invite to add companions.
+                </Text>
+              </View>
+            )}
           </View>
           <View style={{ height: spacing.xl }} />
         </View>
@@ -569,14 +629,13 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
       {/* Invite Travelers Bottom Sheet */}
       <InviteTravelersBottomSheet
         visible={inviteSheetVisible}
-        onClose={() => setInviteSheetVisible(false)}
-        tripName={`${trip.destination.city} Trip`}
-        tripDestination={trip.destination.city}
-        onInvite={(emails) => {
-          // AI TODO: Send invitations to backend
-          // await sendTripInvitations(trip.id, emails);
-          showSuccess(`Invitation${emails.length > 1 ? 's' : ''} sent to ${emails.length} ${emails.length > 1 ? 'travelers' : 'traveler'}!`);
+        onClose={() => {
+          setInviteSheetVisible(false);
+          loadTripData();
         }}
+        tripId={tripId}
+        tripName={trip.title || `${trip.destination.city} Trip`}
+        tripDestination={trip.destination.city}
       />
     </View>
   );

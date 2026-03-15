@@ -29,6 +29,7 @@ import CreateEntryBottomSheet from '../components/CreateEntryBottomSheet';
 import { journalService } from '@/services/journal.service';
 import { useAuth } from '@/context/AuthContext';
 import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
+import PluginErrorState from '@/features/trips/components/PluginErrorState';
 
 export default function JournalScreen() {
   const router = useRouter();
@@ -40,23 +41,25 @@ export default function JournalScreen() {
   
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [createEntryVisible, setCreateEntryVisible] = useState(false);
 
+  const fetchEntries = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await journalService.getEntries(tripId);
+      setEntries(data);
+    } catch (err: any) {
+      console.error('Failed to load journal entries:', err);
+      setError(err.message || 'Failed to load journal entries');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let mounted = true;
-    const fetchEntries = async () => {
-      try {
-        setLoading(true);
-        const data = await journalService.getEntries(tripId);
-        if (mounted) setEntries(data);
-      } catch (err) {
-        console.error('Failed to load journal entries:', err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
     fetchEntries();
-    return () => { mounted = false; };
   }, [tripId]);
 
   if (!trip) {
@@ -71,6 +74,14 @@ export default function JournalScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.bgPrimary, justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+        <PluginErrorState message={error} onRetry={fetchEntries} />
       </View>
     );
   }

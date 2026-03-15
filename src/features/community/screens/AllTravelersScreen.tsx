@@ -5,7 +5,7 @@
  * Accessible from Discover "See All" on Travelers You Might Like.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,6 +29,8 @@ import {
 import * as Haptics from 'expo-haptics';
 import { spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
+import { buddyService } from '@/services/community/buddy.service';
 
 type FilterType = 'all' | 'high_match' | 'nearby' | 'verified' | 'online';
 
@@ -52,122 +55,47 @@ const FILTER_CHIPS: { id: FilterType; label: string }[] = [
   { id: 'online', label: 'Online' },
 ];
 
-const ALL_TRAVELERS: TravelerItem[] = [
-  {
-    id: 'user-1',
-    firstName: 'Priya',
-    lastName: 'Sharma',
-    avatar: 'https://i.pravatar.cc/150?img=25',
-    bio: 'Adventure seeker & photography enthusiast',
-    matchScore: 87,
-    travelStyles: ['adventure', 'photography'],
-    countriesVisited: 12,
-    rating: 4.8,
-    isVerified: true,
-    isOnline: true,
-  },
-  {
-    id: 'user-2',
-    firstName: 'Marcus',
-    lastName: 'Chen',
-    avatar: 'https://i.pravatar.cc/150?img=33',
-    bio: 'Foodie exploring one dish at a time',
-    matchScore: 82,
-    travelStyles: ['foodie', 'cultural'],
-    countriesVisited: 8,
-    rating: 4.6,
-    isVerified: false,
+/** Map BuddySuggestion to TravelerItem */
+function mapSuggestionToTraveler(s: any): TravelerItem {
+  return {
+    id: s.user.id,
+    firstName: s.user.firstName || '',
+    lastName: s.user.lastName || '',
+    avatar: s.user.avatarUrl || 'https://i.pravatar.cc/150?img=1',
+    bio: s.user.bio || '',
+    matchScore: s.matchScore || 0,
+    travelStyles: s.user.travelStyles || [],
+    countriesVisited: s.user.countryCount || 0,
+    rating: s.user.averageRating || 0,
+    isVerified: s.user.isVerified || false,
     isOnline: false,
-  },
-  {
-    id: 'user-3',
-    firstName: 'Emma',
-    lastName: 'Wilson',
-    avatar: 'https://i.pravatar.cc/150?img=9',
-    bio: 'Solo traveler, yoga instructor',
-    matchScore: 75,
-    travelStyles: ['solo', 'wellness'],
-    countriesVisited: 15,
-    rating: 4.9,
-    isVerified: true,
-    isOnline: true,
-  },
-  {
-    id: 'user-4',
-    firstName: 'Liam',
-    lastName: 'O\'Brien',
-    avatar: 'https://i.pravatar.cc/150?img=12',
-    bio: 'Backpacker on a budget adventure',
-    matchScore: 70,
-    travelStyles: ['backpacker', 'budget'],
-    countriesVisited: 22,
-    rating: 4.7,
-    isVerified: true,
-    isOnline: false,
-  },
-  {
-    id: 'user-5',
-    firstName: 'Yuki',
-    lastName: 'Tanaka',
-    avatar: 'https://i.pravatar.cc/150?img=3',
-    bio: 'Local guide in Tokyo, love sharing hidden gems',
-    matchScore: 91,
-    travelStyles: ['cultural', 'foodie'],
-    countriesVisited: 5,
-    rating: 5.0,
-    isVerified: true,
-    isOnline: true,
-  },
-  {
-    id: 'user-6',
-    firstName: 'Sofia',
-    lastName: 'Rodriguez',
-    avatar: 'https://i.pravatar.cc/150?img=45',
-    bio: 'Digital nomad living the dream',
-    matchScore: 68,
-    travelStyles: ['luxury', 'city'],
-    countriesVisited: 18,
-    rating: 4.5,
-    isVerified: false,
-    isOnline: false,
-  },
-  {
-    id: 'user-7',
-    firstName: 'Alex',
-    lastName: 'Kim',
-    avatar: 'https://i.pravatar.cc/150?img=51',
-    bio: 'Nature lover & mountain climber',
-    matchScore: 79,
-    travelStyles: ['adventure', 'nature'],
-    countriesVisited: 10,
-    rating: 4.8,
-    isVerified: true,
-    isOnline: true,
-  },
-  {
-    id: 'user-8',
-    firstName: 'Amara',
-    lastName: 'Okafor',
-    avatar: 'https://i.pravatar.cc/150?img=47',
-    bio: 'Beach enthusiast & sunset chaser',
-    matchScore: 73,
-    travelStyles: ['beach', 'relaxation'],
-    countriesVisited: 9,
-    rating: 4.4,
-    isVerified: false,
-    isOnline: false,
-  },
-];
+  };
+}
 
 export default function AllTravelersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { profile } = useAuth();
+  const userId = profile?.id;
+
+  const [allTravelers, setAllTravelers] = useState<TravelerItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
+  // Fetch buddy suggestions
+  useEffect(() => {
+    if (!userId) { setLoading(false); return; }
+    setLoading(true);
+    buddyService.getSuggestions(userId, 30)
+      .then(suggestions => setAllTravelers(suggestions.map(mapSuggestionToTraveler)))
+      .catch(err => console.warn('Failed to fetch travelers:', err))
+      .finally(() => setLoading(false));
+  }, [userId]);
+
   const filteredTravelers = useMemo(() => {
-    let travelers = ALL_TRAVELERS;
+    let travelers = allTravelers;
 
     switch (activeFilter) {
       case 'high_match':
@@ -192,7 +120,7 @@ export default function AllTravelersScreen() {
     }
 
     return travelers;
-  }, [activeFilter, searchQuery]);
+  }, [allTravelers, activeFilter, searchQuery]);
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

@@ -1,7 +1,8 @@
 /**
  * PLANNING FEATURE
  * 
- * AI-powered trip planning with Quick Trip and Advanced Trip flows.
+ * Planning types, config, and stores.
+ * Quick Trip and Advanced Trip flows have been deprecated.
  */
 
 // Types
@@ -13,10 +14,3 @@ export * from './config/planning.config';
 // Stores
 export { usePlanningStore } from './stores/usePlanningStore';
 export { useAdvancedPlanningStore } from './stores/useAdvancedPlanningStore';
-
-// Services
-export { generateMockAIContent } from './services/aiService';
-
-// Flows
-export { default as QuickTripFlow } from './flows/quick/QuickTripFlow';
-export { default as AdvancedTripFlow } from './flows/advanced/AdvancedTripFlow';

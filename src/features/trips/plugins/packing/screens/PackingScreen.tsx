@@ -33,6 +33,7 @@ import AddItemBottomSheet from '../components/AddItemBottomSheet';
 import { packingService } from '@/services/packing.service';
 import { useAuth } from '@/context/AuthContext';
 import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
+import PluginErrorState from '@/features/trips/components/PluginErrorState';
 
 const CATEGORY_INFO = [
   { id: PackingCategory.ESSENTIALS, name: 'Essentials', icon: 'bag', color: '#EF4444' },
@@ -55,26 +56,28 @@ export default function PackingScreen() {
   
   const [items, setItems] = useState<PackingItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<PackingCategory>>(
     new Set([PackingCategory.ESSENTIALS])
   );
   const [addItemVisible, setAddItemVisible] = useState(false);
 
+  const fetchItems = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await packingService.getItems(tripId);
+      setItems(data);
+    } catch (err: any) {
+      console.error('Failed to load packing items:', err);
+      setError(err.message || 'Failed to load packing list');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let mounted = true;
-    const fetchItems = async () => {
-      try {
-        setLoading(true);
-        const data = await packingService.getItems(tripId);
-        if (mounted) setItems(data);
-      } catch (err) {
-        console.error('Failed to load packing items:', err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
     fetchItems();
-    return () => { mounted = false; };
   }, [tripId]);
 
   if (!trip) {
@@ -89,6 +92,14 @@ export default function PackingScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.bgPrimary, justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+        <PluginErrorState message={error} onRetry={fetchItems} />
       </View>
     );
   }

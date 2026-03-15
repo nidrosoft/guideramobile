@@ -21,21 +21,29 @@ interface ThemeContextType {
 }
 
 const STORAGE_KEY = '@guidera_theme_mode';
+const MIGRATION_KEY = '@guidera_theme_user_chosen';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('dark');
+  const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
   const [isLoaded, setIsLoaded] = useState(false);
   const systemColorScheme = useColorScheme();
 
-  // Load saved theme preference
+  // Load saved theme preference (with migration for existing installs)
   useEffect(() => {
     const loadTheme = async () => {
       try {
+        const userChosen = await AsyncStorage.getItem(MIGRATION_KEY);
         const saved = await AsyncStorage.getItem(STORAGE_KEY);
-        if (saved && ['light', 'dark', 'system'].includes(saved)) {
+
+        if (userChosen === 'true' && saved && ['light', 'dark', 'system'].includes(saved)) {
+          // User explicitly chose a theme — respect it
           setThemeModeState(saved as ThemeMode);
+        } else {
+          // No explicit choice yet — default to system (follows device)
+          setThemeModeState('system');
+          await AsyncStorage.setItem(STORAGE_KEY, 'system');
         }
       } catch (error) {
         console.error('Error loading theme:', error);
@@ -56,11 +64,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Return the correct color set
   const activeColors = isDark ? darkColors : lightColors;
 
-  // Set theme mode and persist
+  // Set theme mode and persist (marks as user-chosen so migration doesn't reset it)
   const setThemeMode = useCallback(async (mode: ThemeMode) => {
     setThemeModeState(mode);
     try {
       await AsyncStorage.setItem(STORAGE_KEY, mode);
+      await AsyncStorage.setItem(MIGRATION_KEY, 'true');
     } catch (error) {
       console.error('Error saving theme:', error);
     }

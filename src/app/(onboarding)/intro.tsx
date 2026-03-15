@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Airplane, Location, Global, Briefcase } from 'iconsax-react-native';
 import { colors, typography, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import PrimaryButton from '@/components/common/buttons/PrimaryButton';
 
 // Typewriter component for titles
@@ -186,6 +187,7 @@ function AnimatedFeature({
 
 export default function Intro() {
   const router = useRouter();
+  const { colors: tc, isDark } = useTheme();
   const [currentFeatureIndex, setCurrentFeatureIndex] = useState(0);
   const [zoomFeatureIndex, setZoomFeatureIndex] = useState(-1);
   const [showButton, setShowButton] = useState(false);
@@ -196,38 +198,38 @@ export default function Intro() {
       icon: Airplane,
       title: 'Personalize your experience',
       description: 'Tell us about your travel preferences',
-      bgColor: '#FFEBEB',
-      iconBgColor: '#FFCCCC',
+      bgColor: 'rgba(255, 107, 107, 0.10)',
+      iconBgColor: 'rgba(255, 107, 107, 0.18)',
       iconColor: '#FF6B6B',
     },
     {
       icon: Location,
       title: 'Find the best destinations',
       description: 'Get AI-powered recommendations',
-      bgColor: '#E0F2FE',
-      iconBgColor: '#BAE6FD',
-      iconColor: '#0284C7',
+      bgColor: 'rgba(2, 132, 199, 0.10)',
+      iconBgColor: 'rgba(2, 132, 199, 0.18)',
+      iconColor: '#38BDF8',
     },
     {
       icon: Global,
       title: 'Discover local insights',
       description: 'Access cultural tips and safety info',
-      bgColor: '#FFEDD5',
-      iconBgColor: '#FED7AA',
-      iconColor: '#EA580C',
+      bgColor: 'rgba(234, 88, 12, 0.10)',
+      iconBgColor: 'rgba(234, 88, 12, 0.18)',
+      iconColor: '#FB923C',
     },
     {
       icon: Briefcase,
       title: 'Book seamlessly',
       description: 'All your travel needs in one place',
-      bgColor: '#DCFCE7',
-      iconBgColor: '#BBF7D0',
-      iconColor: '#16A34A',
+      bgColor: 'rgba(22, 163, 74, 0.10)',
+      iconBgColor: 'rgba(22, 163, 74, 0.18)',
+      iconColor: '#4ADE80',
     },
   ];
 
   useEffect(() => {
-    const timeouts: NodeJS.Timeout[] = [];
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
 
     // Feature appearance schedule (2 seconds apart)
     features.forEach((_, index) => {
@@ -279,13 +281,13 @@ export default function Intro() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Welcome to Guidera!</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { color: tc.textPrimary }]}>Welcome to Guidera!</Text>
+        <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
           Thank you for signing up. Let's set up your account to give you the best travel experience.
         </Text>
       </View>
@@ -312,12 +314,12 @@ export default function Intro() {
             { transform: [{ scale: buttonScale }] }
           ]}
         >
-          <Text style={styles.setupText}>Ready to personalize your journey?</Text>
+          <Text style={[styles.setupText, { color: tc.textSecondary }]}>Ready to personalize your journey?</Text>
           <PrimaryButton
             title="Let's Do It!"
             onPress={handleContinue}
           />
-          <Text style={styles.footerText}>Takes less than 2 minutes</Text>
+          <Text style={[styles.footerText, { color: tc.textTertiary }]}>Takes less than 2 minutes</Text>
         </Animated.View>
       )}
     </View>
@@ -327,7 +329,6 @@ export default function Intro() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
     paddingHorizontal: spacing.xl,
     paddingTop: 80,
     paddingBottom: spacing['2xl'],
@@ -339,13 +340,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize['4xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.md,
   },
   subtitle: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: typography.fontSize.base * typography.lineHeight.relaxed,
   },
@@ -373,12 +372,10 @@ const styles = StyleSheet.create({
   featureTitle: {
     fontSize: 15,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   featureDescription: {
     fontSize: 12,
-    color: colors.textSecondary,
     lineHeight: 16,
   },
   buttonContainer: {
@@ -387,13 +384,11 @@ const styles = StyleSheet.create({
   },
   setupText: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
     marginBottom: spacing.md,
     textAlign: 'center',
   },
   footerText: {
     fontSize: typography.fontSize.sm,
-    color: colors.textTertiary,
     marginTop: spacing.md,
     textAlign: 'center',
   },

@@ -8,27 +8,30 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { Calendar, InfoCircle } from 'iconsax-react-native';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { StepComponentProps } from '../../types/import-flow.types';
 
 export default function ManualHotelStep({ onNext }: StepComponentProps) {
-  const [confirmationCode, setConfirmationCode] = useState('');
+  const { colors: tc } = useTheme();
   const [hotelName, setHotelName] = useState('');
+  const [hotelCity, setHotelCity] = useState('');
   const [checkInDate, setCheckInDate] = useState('');
   const [checkOutDate, setCheckOutDate] = useState('');
+  const [confirmationCode, setConfirmationCode] = useState('');
 
-  const canContinue = confirmationCode.trim().length >= 6 && hotelName.trim();
+  const canContinue = hotelName.trim() && checkInDate.trim() && checkOutDate.trim();
 
   const handleContinue = () => {
     if (canContinue) {
       onNext({
-        confirmationCode,
         hotelName,
-        dates: checkInDate && checkOutDate ? {
+        hotelCity: hotelCity || undefined,
+        confirmationCode: confirmationCode || undefined,
+        dates: {
           start: new Date(checkInDate),
           end: new Date(checkOutDate),
-        } : undefined,
+        },
       });
     }
   };
@@ -40,33 +43,18 @@ export default function ManualHotelStep({ onNext }: StepComponentProps) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <Text style={styles.title}>Enter Hotel Details</Text>
-      <Text style={styles.description}>
-        Provide your hotel reservation information to fetch booking details
+        <Text style={[styles.title, { color: tc.textPrimary }]}>Hotel Details</Text>
+      <Text style={[styles.description, { color: tc.textSecondary }]}>
+        Enter your hotel information. Fields marked * are required.
       </Text>
-
-      {/* Confirmation Code */}
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Confirmation Number *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="HTL123456"
-          placeholderTextColor={colors.gray400}
-          value={confirmationCode}
-          onChangeText={setConfirmationCode}
-          autoCapitalize="characters"
-          autoCorrect={false}
-        />
-        <Text style={styles.hint}>Hotel booking confirmation number</Text>
-      </View>
 
       {/* Hotel Name */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Hotel Name *</Text>
+        <Text style={[styles.label, { color: tc.textPrimary }]}>Hotel Name *</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: tc.bgSunken || tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
           placeholder="Hilton Garden Inn"
-          placeholderTextColor={colors.gray400}
+          placeholderTextColor={tc.textTertiary}
           value={hotelName}
           onChangeText={setHotelName}
           autoCapitalize="words"
@@ -74,56 +62,83 @@ export default function ManualHotelStep({ onNext }: StepComponentProps) {
         />
       </View>
 
-      {/* Check-in Date */}
+      {/* City / Location */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Check-in Date (Optional)</Text>
-        <View style={styles.dateInput}>
-          <TextInput
-            style={styles.dateTextInput}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.gray400}
-            value={checkInDate}
-            onChangeText={setCheckInDate}
-            autoCorrect={false}
-          />
-          <Calendar size={20} color={colors.primary} variant="Bold" />
+        <Text style={[styles.label, { color: tc.textPrimary }]}>City / Location</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: tc.bgSunken || tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
+          placeholder="Tokyo, Japan"
+          placeholderTextColor={tc.textTertiary}
+          value={hotelCity}
+          onChangeText={setHotelCity}
+          autoCapitalize="words"
+          autoCorrect={false}
+        />
+      </View>
+
+      {/* Check-in + Check-out row */}
+      <View style={styles.row}>
+        <View style={[styles.inputGroup, { flex: 1 }]}>
+          <Text style={[styles.label, { color: tc.textPrimary }]}>Check-in *</Text>
+          <View style={[styles.dateInput, { backgroundColor: tc.bgSunken || tc.bgElevated, borderColor: tc.borderSubtle }]}>
+            <TextInput
+              style={[styles.dateTextInput, { color: tc.textPrimary }]}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={tc.textTertiary}
+              value={checkInDate}
+              onChangeText={setCheckInDate}
+              autoCorrect={false}
+            />
+            <Calendar size={18} color={tc.primary} variant="Bold" />
+          </View>
+        </View>
+        <View style={[styles.inputGroup, { flex: 1 }]}>
+          <Text style={[styles.label, { color: tc.textPrimary }]}>Check-out *</Text>
+          <View style={[styles.dateInput, { backgroundColor: tc.bgSunken || tc.bgElevated, borderColor: tc.borderSubtle }]}>
+            <TextInput
+              style={[styles.dateTextInput, { color: tc.textPrimary }]}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={tc.textTertiary}
+              value={checkOutDate}
+              onChangeText={setCheckOutDate}
+              autoCorrect={false}
+            />
+            <Calendar size={18} color={tc.primary} variant="Bold" />
+          </View>
         </View>
       </View>
 
-      {/* Check-out Date */}
+      {/* Confirmation Number (optional) */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Check-out Date (Optional)</Text>
-        <View style={styles.dateInput}>
-          <TextInput
-            style={styles.dateTextInput}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.gray400}
-            value={checkOutDate}
-            onChangeText={setCheckOutDate}
-            autoCorrect={false}
-          />
-          <Calendar size={20} color={colors.primary} variant="Bold" />
-        </View>
-        <Text style={styles.hint}>Helps verify your reservation</Text>
+        <Text style={[styles.label, { color: tc.textPrimary }]}>Booking Reference</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: tc.bgSunken || tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
+          placeholder="HTL123456 (optional)"
+          placeholderTextColor={tc.textTertiary}
+          value={confirmationCode}
+          onChangeText={setConfirmationCode}
+          autoCapitalize="characters"
+          autoCorrect={false}
+        />
       </View>
 
         {/* Info Box */}
-        <View style={styles.infoBox}>
-          <InfoCircle size={20} color={colors.primary} variant="Bold" />
-          <Text style={styles.infoText}>
-            Check your booking confirmation email for these details. Most hotels send this immediately after booking.
+        <View style={[styles.infoBox, { backgroundColor: tc.primary + '10' }]}>
+          <InfoCircle size={20} color={tc.primary} variant="Bold" />
+          <Text style={[styles.infoText, { color: tc.textSecondary }]}>
+            Check your booking confirmation email for these details.
           </Text>
         </View>
       </ScrollView>
 
       {/* Fixed Footer Button */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { borderTopColor: tc.borderSubtle }]}>
         <TouchableOpacity
-          style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}
+          style={[styles.continueButton, { backgroundColor: tc.primary }, !canContinue && { backgroundColor: tc.textTertiary + '40' }]}
           onPress={handleContinue}
           disabled={!canContinue}
         >
-          <Text style={styles.continueButtonText}>Fetch Hotel Details</Text>
+          <Text style={styles.continueButtonText}>Add Hotel</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -144,14 +159,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   description: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     lineHeight: 20,
     marginBottom: spacing.xl,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
   inputGroup: {
     marginBottom: spacing.lg,
@@ -159,42 +176,33 @@ const styles = StyleSheet.create({
   label: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
   input: {
-    backgroundColor: colors.gray50,
     borderRadius: 12,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: colors.gray200,
   },
   dateInput: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray50,
     borderRadius: 12,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray200,
   },
   dateTextInput: {
     flex: 1,
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
   },
   hint: {
     fontSize: typography.fontSize.xs,
-    color: colors.gray500,
     marginTop: spacing.xs,
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: `${colors.primary}10`,
     padding: spacing.md,
     borderRadius: 12,
     gap: spacing.sm,
@@ -202,27 +210,21 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     lineHeight: 20,
   },
   footer: {
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
   },
   continueButton: {
-    backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.full,
     alignItems: 'center',
   },
-  continueButtonDisabled: {
-    backgroundColor: colors.gray300,
-  },
   continueButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
 });

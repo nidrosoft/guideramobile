@@ -35,7 +35,7 @@ function DetailRow({ icon: IconCmp, iconColor, label, value, tc }: { icon: any; 
   );
 }
 
-export default function ScanResultStep({ onNext, data }: StepComponentProps) {
+export default function ScanResultStep({ onNext, onBack, data }: StepComponentProps) {
   const { colors: tc } = useTheme();
   const { profile } = useAuth();
   const [isImporting, setIsImporting] = useState(false);
@@ -47,12 +47,12 @@ export default function ScanResultStep({ onNext, data }: StepComponentProps) {
     return (
       <View style={s.container}>
         <View style={s.errorContainer}>
-          <Warning2 size={48} color={tc.error} variant="Bold" />
-          <Text style={[s.title, { color: tc.textPrimary }]}>Scan Failed</Text>
+          <Warning2 size={48} color={tc.warning} variant="Bold" />
+          <Text style={[s.title, { color: tc.textPrimary }]}>Couldn't Read This Ticket</Text>
           <Text style={[s.desc, { color: tc.textSecondary }]}>
-            {data.scanError || 'Could not extract booking information. Try again with a clearer image.'}
+            We had trouble extracting booking details from your image. This can happen if the image is blurry, too dark, or not a booking confirmation.{"\n\n"}Try taking a clearer photo or uploading a screenshot instead.
           </Text>
-          <TouchableOpacity style={[s.ctaBtn, { backgroundColor: tc.primary }]} onPress={() => onNext()}>
+          <TouchableOpacity style={[s.ctaBtn, { backgroundColor: tc.primary }]} onPress={() => onBack()}>
             <Text style={[s.ctaText, { color: '#FFF' }]}>Try Again</Text>
           </TouchableOpacity>
         </View>

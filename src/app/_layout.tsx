@@ -27,9 +27,20 @@ import { initSentry } from '@/services/sentry';
 import { initNotifications, requestNotificationPermissions } from '@/services/notifications';
 import '@/lib/i18n'; // Initialize i18n
 import { loadSavedLanguage } from '@/lib/i18n';
+// Mapbox SDK — only initialize if native module is available (dev build, not Expo Go)
+let MapboxGL: any = null;
+try {
+  MapboxGL = require('@rnmapbox/maps').default;
+} catch { /* @rnmapbox/maps not linked — running in Expo Go */ }
 
 // Clerk publishable key
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || '';
+
+// Initialize Mapbox SDK if available
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || '';
+if (MapboxGL && MAPBOX_TOKEN) {
+  MapboxGL.setAccessToken(MAPBOX_TOKEN);
+}
 
 // Initialize Sentry as early as possible
 initSentry();

@@ -5,6 +5,7 @@ import {
   DocumentGroup,
   DocumentGroupId,
   DOCUMENT_GROUP_ORDER,
+  GROUP_META,
 } from '@/features/trips/plugins/documents/types/document.types';
 
 // ─── Row Mappers ────────────────────────────────────────
@@ -148,10 +149,11 @@ class DocumentService {
     for (const groupId of DOCUMENT_GROUP_ORDER) {
       const groupItems = groupMap.get(groupId);
       if (!groupItems || groupItems.length === 0) continue;
+      const meta = GROUP_META[groupId];
       groups.push({
         groupId,
-        title: groupItems[0].groupTitle,
-        icon: groupItems[0].groupIcon,
+        title: groupItems[0].groupTitle || meta?.label || groupId,
+        icon: meta?.icon || '📄',
         items: groupItems,
         totalCount: groupItems.length,
         checkedCount: groupItems.filter(i => i.isChecked).length,

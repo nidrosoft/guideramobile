@@ -113,8 +113,6 @@ export default function FlightSearchLoadingScreen({
           returnDateStr = undefined;
         }
         
-        console.log('Loading screen - Flight search params:', { originCode, destCode, depDate, returnDateStr });
-        
         // Build segments array as required by FlightSearchParams
         const segments = [
           { origin: originCode, destination: destCode, departureDate: depDate }

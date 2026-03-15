@@ -8,53 +8,55 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Airplane, Building, Car, TicketStar } from 'iconsax-react-native';
-import { colors, spacing, typography } from '@/styles';
+import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { StepComponentProps } from '../../types/import-flow.types';
 import OptionCard from '../../components/shared/OptionCard';
 
 export default function ManualTypeStep({ onNext }: StepComponentProps) {
+  const { colors: tc } = useTheme();
+
   return (
     <ScrollView 
       style={styles.container}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.content}
     >
-      <Text style={styles.title}>What would you like to add?</Text>
-      <Text style={styles.description}>
-        Select the type of booking you want to enter manually
+      <Text style={[styles.title, { color: tc.textPrimary }]}>What would you like to add?</Text>
+      <Text style={[styles.description, { color: tc.textSecondary }]}>
+        Select the type of booking you want to enter manually.
       </Text>
 
       <View style={styles.options}>
         <OptionCard
-          icon={<Airplane size={28} color={colors.white} variant="Bold" />}
-          iconBackground="#4A90E2"
+          icon={<Airplane size={22} color={tc.primary} variant="Bold" />}
+          iconBackground={tc.primary + '12'}
           title="Flight"
-          description="Enter flight details like confirmation code, airline, and flight number"
+          description="Enter flight details like confirmation code, airline, and flight number."
           onPress={() => onNext({ manualType: 'flight' })}
         />
 
         <OptionCard
-          icon={<Building size={28} color={colors.white} variant="Bold" />}
-          iconBackground="#E94B3C"
+          icon={<Building size={22} color={tc.success} variant="Bold" />}
+          iconBackground={tc.success + '12'}
           title="Hotel"
-          description="Add hotel reservation with confirmation number and check-in details"
+          description="Add hotel reservation with confirmation number and check-in details."
           onPress={() => onNext({ manualType: 'hotel' })}
         />
 
         <OptionCard
-          icon={<Car size={28} color={colors.white} variant="Bold" />}
-          iconBackground="#F5A623"
+          icon={<Car size={22} color="#F59E0B" variant="Bold" />}
+          iconBackground={'#F59E0B12'}
           title="Car Rental"
-          description="Enter car rental confirmation and pickup information"
+          description="Enter car rental confirmation and pickup information."
           onPress={() => onNext({ manualType: 'car' })}
         />
 
         <OptionCard
-          icon={<TicketStar size={28} color={colors.white} variant="Bold" />}
-          iconBackground="#7B61FF"
+          icon={<TicketStar size={22} color={tc.purple || '#8B5CF6'} variant="Bold" />}
+          iconBackground={(tc.purple || '#8B5CF6') + '12'}
           title="Activity"
-          description="Add tours, experiences, or other activities to your trip"
+          description="Add tours, experiences, or other activities to your trip."
           onPress={() => onNext({ manualType: 'activity' })}
         />
       </View>
@@ -67,22 +69,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingTop: spacing.xl,
+    paddingTop: spacing.md,
     paddingBottom: spacing.xl,
   },
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   description: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     lineHeight: 20,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   options: {
-    gap: 0, // Gap handled by OptionCard marginBottom
+    gap: spacing.md,
   },
 });

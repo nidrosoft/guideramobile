@@ -167,7 +167,7 @@ export default function MyExpensesScreen() {
   const fetchExpenses = useCallback(async () => {
     if (!profile?.id) return;
     try {
-      const data = await expenseService.getAllUserExpenses(profile.id);
+      const { expenses: data } = await expenseService.getAllUserExpenses(profile.id, { pageSize: 200 });
       setExpenses(data as ExpenseWithTrip[]);
     } catch (err) {
       console.error('Failed to load expenses:', err);

@@ -30,6 +30,8 @@ import {
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase/client';
 
 type ReportType = 'user' | 'group' | 'message' | 'event';
 
@@ -83,6 +85,7 @@ export default function ReportScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc } = useTheme();
+  const { profile } = useAuth();
   const { type, id } = useLocalSearchParams<{ type: ReportType; id: string }>();
   
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
@@ -100,12 +103,40 @@ export default function ReportScreen() {
       Alert.alert('Required', 'Please select a reason for your report');
       return;
     }
+    if (!profile?.id) return;
     
     setIsSubmitting(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Map UI type to content_type column values
+      const contentTypeMap: Record<string, string> = {
+        user: 'profile',
+        group: 'group',
+        message: 'message',
+        event: 'event',
+        post: 'message',
+      };
+
+      await supabase.from('content_reports').insert({
+        reporter_id: profile.id,
+        content_type: contentTypeMap[type || 'message'] || 'message',
+        content_id: id,
+        report_type: selectedReason,
+        description: additionalInfo.trim() || null,
+        status: 'pending',
+      });
+
+      // Optionally block the user
+      if (blockUser && type === 'user' && id) {
+        try {
+          await supabase.from('user_blocks').insert({
+            blocker_id: profile.id,
+            blocked_id: id,
+          });
+        } catch { /* ignore block errors */ }
+      }
+
       setIsSubmitting(false);
       Alert.alert(
         'Report Submitted',
@@ -117,7 +148,11 @@ export default function ReportScreen() {
           },
         ]
       );
-    }, 1000);
+    } catch (err) {
+      setIsSubmitting(false);
+      console.warn('Report submission error:', err);
+      Alert.alert('Error', 'Failed to submit report. Please try again.');
+    }
   };
   
   const getTitle = () => {
@@ -132,7 +167,7 @@ export default function ReportScreen() {
   
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top }]}>

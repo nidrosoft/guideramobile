@@ -1,17 +1,32 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Sms } from 'iconsax-react-native';
 import CloseIcon from '@/components/common/icons/CloseIcon';
 import { colors, typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { useSignIn } from '@clerk/clerk-expo';
+import { useSignIn, useSSO } from '@clerk/clerk-expo';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
+
+WebBrowser.maybeCompleteAuthSession();
+
+const useWarmUpBrowser = () => {
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    void WebBrowser.warmUpAsync();
+    return () => { void WebBrowser.coolDownAsync(); };
+  }, []);
+};
 
 export default function EmailSignIn() {
+  useWarmUpBrowser();
   const router = useRouter();
+  const { colors: tc, isDark } = useTheme();
   const { signIn, setActive, isLoaded } = useSignIn();
+  const { startSSOFlow } = useSSO();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -55,6 +70,20 @@ export default function EmailSignIn() {
       if (signInAttempt.status === 'complete') {
         await setActive({ session: signInAttempt.createdSessionId });
         // AuthGuard will handle redirect based on onboarding status
+      } else if ((signInAttempt.status as string) === 'needs_client_trust') {
+        // Clerk v3: New client needs trust verification
+        // Attempt to prepare a second factor challenge
+        const factors = signInAttempt.supportedFirstFactors;
+        const emailFactor = factors?.find((f: any) => f.strategy === 'email_code');
+        if (emailFactor && 'emailAddressId' in emailFactor) {
+          await signIn.prepareFirstFactor({
+            strategy: 'email_code',
+            emailAddressId: emailFactor.emailAddressId,
+          });
+          setError('For security, we sent a verification code to your email. Please check and enter it.');
+        } else {
+          setError('Additional verification required from this device. Please try again.');
+        }
       } else {
         console.error(JSON.stringify(signInAttempt, null, 2));
         setError('Sign in incomplete. Please try again.');
@@ -71,28 +100,28 @@ export default function EmailSignIn() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: tc.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       <TouchableOpacity style={styles.closeButton} onPress={handleBack}>
-        <CloseIcon size={24} color={colors.textPrimary} />
+        <CloseIcon size={24} color={tc.textPrimary} />
       </TouchableOpacity>
 
       <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <Sms size={32} color={colors.textPrimary} variant="Outline" />
+        <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
+          <Sms size={32} color={tc.textPrimary} variant="Outline" />
         </View>
 
-        <Text style={styles.title}>Welcome back</Text>
+        <Text style={[styles.title, { color: tc.textPrimary }]}>Welcome back</Text>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Email</Text>
+          <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Email</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
             placeholder="you@example.com"
-            placeholderTextColor={colors.textTertiary}
+            placeholderTextColor={tc.textTertiary}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
@@ -106,11 +135,11 @@ export default function EmailSignIn() {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Password</Text>
+          <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Password</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
             placeholder="Enter your password"
-            placeholderTextColor={colors.textTertiary}
+            placeholderTextColor={tc.textTertiary}
             secureTextEntry
             value={password}
             onChangeText={(text) => {
@@ -124,42 +153,55 @@ export default function EmailSignIn() {
           style={styles.forgotPassword}
           onPress={() => router.push('/(auth)/forgot-password')}
         >
-          <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
+          <Text style={[styles.forgotPasswordText, { color: tc.primary }]}>Forgot your password?</Text>
         </TouchableOpacity>
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
 
         <TouchableOpacity
-          style={[styles.signInButton, (!isFormValid || isLoading) && styles.signInButtonDisabled]}
+          style={[styles.signInButton, { backgroundColor: tc.primary }, (!isFormValid || isLoading) && { backgroundColor: tc.gray300 }]}
           onPress={handleSignIn}
           disabled={!isFormValid || isLoading}
           activeOpacity={0.8}
         >
           {isLoading ? (
-            <ActivityIndicator color={colors.white} />
+            <ActivityIndicator color={tc.white} />
           ) : (
-            <Text style={styles.signInButtonText}>Sign In</Text>
+            <Text style={[styles.signInButtonText, { color: tc.white }]}>Sign In</Text>
           )}
         </TouchableOpacity>
 
         <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
+          <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
+          <Text style={[styles.dividerText, { color: tc.textSecondary }]}>or</Text>
+          <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
         </View>
 
         <TouchableOpacity
-          style={styles.googleButton}
-          onPress={() => console.log('Google signin')}
+          style={[styles.googleButton, { backgroundColor: tc.bgElevated, borderColor: tc.borderMedium }]}
+          onPress={async () => {
+            try {
+              const { createdSessionId, setActive: ssoSetActive } = await startSSOFlow({
+                strategy: 'oauth_google',
+                redirectUrl: AuthSession.makeRedirectUri(),
+              });
+              if (createdSessionId && ssoSetActive) {
+                await ssoSetActive({ session: createdSessionId });
+              }
+            } catch (err: any) {
+              const msg = err?.errors?.[0]?.longMessage || err?.message || 'Google sign in failed';
+              setError(msg);
+            }
+          }}
           activeOpacity={0.8}
         >
-          <Text style={styles.googleButtonText}>Sign in with Google</Text>
+          <Text style={[styles.googleButtonText, { color: tc.textPrimary }]}>Sign in with Google</Text>
         </TouchableOpacity>
 
         <View style={styles.signUpContainer}>
-          <Text style={styles.signUpText}>Don't have an account? </Text>
+          <Text style={[styles.signUpText, { color: tc.textSecondary }]}>Don't have an account? </Text>
           <TouchableOpacity onPress={() => router.push('/(auth)/email-signup' as any)}>
-            <Text style={styles.signUpLink}>Sign Up</Text>
+            <Text style={[styles.signUpLink, { color: tc.primary }]}>Sign Up</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -170,7 +212,6 @@ export default function EmailSignIn() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   closeButton: {
     position: 'absolute',
@@ -190,9 +231,8 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 64,
     height: 64,
-    borderRadius: 32,
+    borderRadius: borderRadius.full,
     borderWidth: 2,
-    borderColor: colors.textPrimary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
@@ -200,7 +240,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xl,
   },
   inputContainer: {
@@ -209,18 +248,14 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
   input: {
     height: 48,
     borderWidth: 1,
-    borderColor: colors.gray300,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
-    backgroundColor: colors.bgElevated,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
@@ -228,29 +263,22 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     fontSize: typography.fontSize.sm,
-    color: colors.primary,
     fontWeight: typography.fontWeight.medium,
   },
   errorText: {
     fontSize: typography.fontSize.sm,
-    color: '#EF4444',
     marginBottom: spacing.md,
   },
   signInButton: {
     height: 52,
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: spacing.md,
   },
-  signInButtonDisabled: {
-    backgroundColor: colors.gray300,
-  },
   signInButtonText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
   },
   divider: {
     flexDirection: 'row',
@@ -260,26 +288,21 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: colors.gray300,
   },
   dividerText: {
     marginHorizontal: spacing.md,
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   googleButton: {
     height: 56,
-    backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.gray300,
     justifyContent: 'center',
     alignItems: 'center',
   },
   googleButtonText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   signUpContainer: {
     flexDirection: 'row',
@@ -289,11 +312,9 @@ const styles = StyleSheet.create({
   },
   signUpText: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
   },
   signUpLink: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary,
   },
 });

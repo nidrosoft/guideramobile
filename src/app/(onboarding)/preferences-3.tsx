@@ -1,19 +1,9 @@
-import PreferenceScreen from '@/components/features/onboarding/PreferenceScreen';
+// DEPRECATED: Orphaned screen — not part of active onboarding flow.
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 
 export default function Preferences3() {
-  return (
-    <PreferenceScreen
-      question="How do you usually travel?"
-      options={[
-        { id: 'solo', label: '🚶 Solo Traveler' },
-        { id: 'couple', label: '💑 Couple' },
-        { id: 'family', label: '👨‍👩‍👧‍👦 Family' },
-        { id: 'friends', label: '👥 Friends' },
-        { id: 'group', label: '🚌 Group Tours' },
-      ]}
-      currentStep={3}
-      totalSteps={4}
-      nextRoute="/(onboarding)/preferences-4"
-    />
-  );
+  const router = useRouter();
+  useEffect(() => { router.replace('/(onboarding)/intro'); }, []);
+  return null;
 }

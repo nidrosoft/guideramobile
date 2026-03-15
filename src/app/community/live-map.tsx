@@ -1,7 +1,7 @@
 /**
- * Live Map Route
+ * Pulse (Meetup Discovery) Route
  */
 
-import LiveMapScreen from '@/features/community/screens/LiveMapScreen';
+import PulseScreen from '@/features/community/screens/PulseScreen';
 
-export default LiveMapScreen;
+export default PulseScreen;

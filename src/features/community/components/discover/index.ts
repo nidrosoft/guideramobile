@@ -9,3 +9,5 @@ export { default as TripGroupsSection } from './TripGroupsSection';
 export { default as TravelersSection } from './TravelersSection';
 export { default as EventsPreviewSection } from './EventsPreviewSection';
 export { default as DestinationsSection } from './DestinationsSection';
+export { default as NearbyActivitiesSection } from './NearbyActivitiesSection';
+export type { DestinationItem } from './DestinationsSection';

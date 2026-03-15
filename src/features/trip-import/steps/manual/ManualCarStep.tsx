@@ -8,26 +8,35 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { Calendar, InfoCircle } from 'iconsax-react-native';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { StepComponentProps } from '../../types/import-flow.types';
 
 export default function ManualCarStep({ onNext }: StepComponentProps) {
-  const [confirmationCode, setConfirmationCode] = useState('');
+  const { colors: tc } = useTheme();
   const [carCompany, setCarCompany] = useState('');
+  const [pickupLocation, setPickupLocation] = useState('');
   const [pickupDate, setPickupDate] = useState('');
+  const [returnDate, setReturnDate] = useState('');
+  const [confirmationCode, setConfirmationCode] = useState('');
 
-  const canContinue = confirmationCode.trim().length >= 6 && carCompany.trim();
+  const canContinue = carCompany.trim() && pickupDate.trim() && returnDate.trim();
 
   const handleContinue = () => {
     if (canContinue) {
       onNext({
-        confirmationCode,
         carCompany,
-        dates: pickupDate ? { start: new Date(pickupDate), end: new Date(pickupDate) } : undefined,
+        pickupLocation: pickupLocation || undefined,
+        confirmationCode: confirmationCode || undefined,
+        dates: {
+          start: new Date(pickupDate),
+          end: new Date(returnDate),
+        },
       });
     }
   };
+
+  const inputStyle = [styles.input, { backgroundColor: tc.bgSunken || tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary }];
 
   return (
     <View style={styles.container}>
@@ -36,32 +45,18 @@ export default function ManualCarStep({ onNext }: StepComponentProps) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-      <Text style={styles.title}>Enter Car Rental Details</Text>
-      <Text style={styles.description}>
-        Provide your car rental information to fetch booking details
+      <Text style={[styles.title, { color: tc.textPrimary }]}>Car Rental Details</Text>
+      <Text style={[styles.description, { color: tc.textSecondary }]}>
+        Enter your car rental information. Fields marked * are required.
       </Text>
 
-      {/* Confirmation Code */}
+      {/* Rental Company */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Confirmation Number *</Text>
+        <Text style={[styles.label, { color: tc.textPrimary }]}>Rental Company *</Text>
         <TextInput
-          style={styles.input}
-          placeholder="CAR123456"
-          placeholderTextColor={colors.gray400}
-          value={confirmationCode}
-          onChangeText={setConfirmationCode}
-          autoCapitalize="characters"
-          autoCorrect={false}
-        />
-      </View>
-
-      {/* Car Company */}
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Rental Company *</Text>
-        <TextInput
-          style={styles.input}
+          style={inputStyle}
           placeholder="Hertz, Enterprise, etc."
-          placeholderTextColor={colors.gray400}
+          placeholderTextColor={tc.textTertiary}
           value={carCompany}
           onChangeText={setCarCompany}
           autoCapitalize="words"
@@ -69,39 +64,83 @@ export default function ManualCarStep({ onNext }: StepComponentProps) {
         />
       </View>
 
-      {/* Pickup Date */}
+      {/* Pickup Location */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Pickup Date (Optional)</Text>
-        <View style={styles.dateInput}>
-          <TextInput
-            style={styles.dateTextInput}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.gray400}
-            value={pickupDate}
-            onChangeText={setPickupDate}
-            autoCorrect={false}
-          />
-          <Calendar size={20} color={colors.primary} variant="Bold" />
+        <Text style={[styles.label, { color: tc.textPrimary }]}>Pickup Location</Text>
+        <TextInput
+          style={inputStyle}
+          placeholder="LAX Airport, Tokyo Station, etc."
+          placeholderTextColor={tc.textTertiary}
+          value={pickupLocation}
+          onChangeText={setPickupLocation}
+          autoCapitalize="words"
+          autoCorrect={false}
+        />
+      </View>
+
+      {/* Pickup + Return dates */}
+      <View style={styles.row}>
+        <View style={[styles.inputGroup, { flex: 1 }]}>
+          <Text style={[styles.label, { color: tc.textPrimary }]}>Pickup Date *</Text>
+          <View style={[styles.dateInput, { backgroundColor: tc.bgSunken || tc.bgElevated, borderColor: tc.borderSubtle }]}>
+            <TextInput
+              style={[styles.dateTextInput, { color: tc.textPrimary }]}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={tc.textTertiary}
+              value={pickupDate}
+              onChangeText={setPickupDate}
+              autoCorrect={false}
+            />
+            <Calendar size={18} color={tc.primary} variant="Bold" />
+          </View>
+        </View>
+        <View style={[styles.inputGroup, { flex: 1 }]}>
+          <Text style={[styles.label, { color: tc.textPrimary }]}>Return Date *</Text>
+          <View style={[styles.dateInput, { backgroundColor: tc.bgSunken || tc.bgElevated, borderColor: tc.borderSubtle }]}>
+            <TextInput
+              style={[styles.dateTextInput, { color: tc.textPrimary }]}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={tc.textTertiary}
+              value={returnDate}
+              onChangeText={setReturnDate}
+              autoCorrect={false}
+            />
+            <Calendar size={18} color={tc.primary} variant="Bold" />
+          </View>
         </View>
       </View>
 
+      {/* Confirmation Number (optional) */}
+      <View style={styles.inputGroup}>
+        <Text style={[styles.label, { color: tc.textPrimary }]}>Booking Reference</Text>
+        <TextInput
+          style={inputStyle}
+          placeholder="CAR123456 (optional)"
+          placeholderTextColor={tc.textTertiary}
+          value={confirmationCode}
+          onChangeText={setConfirmationCode}
+          autoCapitalize="characters"
+          autoCorrect={false}
+        />
+      </View>
+
       {/* Info Box */}
-      <View style={styles.infoBox}>
-        <InfoCircle size={20} color={colors.primary} variant="Bold" />
-        <Text style={styles.infoText}>
+      <View style={[styles.infoBox, { backgroundColor: tc.primary + '10' }]}>
+        <InfoCircle size={20} color={tc.primary} variant="Bold" />
+        <Text style={[styles.infoText, { color: tc.textSecondary }]}>
           You can find these details in your rental confirmation email or on the company's website.
         </Text>
       </View>
       </ScrollView>
 
       {/* Fixed Footer Button */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { borderTopColor: tc.borderSubtle }]}>
         <TouchableOpacity
-          style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}
+          style={[styles.continueButton, { backgroundColor: tc.primary }, !canContinue && { backgroundColor: tc.textTertiary + '40' }]}
           onPress={handleContinue}
           disabled={!canContinue}
         >
-          <Text style={styles.continueButtonText}>Fetch Rental Details</Text>
+          <Text style={styles.continueButtonText}>Add Car Rental</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -122,14 +161,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   description: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     lineHeight: 20,
     marginBottom: spacing.xl,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
   inputGroup: {
     marginBottom: spacing.lg,
@@ -137,37 +178,29 @@ const styles = StyleSheet.create({
   label: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
   input: {
-    backgroundColor: colors.gray50,
     borderRadius: 12,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: colors.gray200,
   },
   dateInput: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray50,
     borderRadius: 12,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     borderWidth: 1,
-    borderColor: colors.gray200,
   },
   dateTextInput: {
     flex: 1,
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: `${colors.primary}10`,
     padding: spacing.md,
     borderRadius: 12,
     gap: spacing.sm,
@@ -175,27 +208,21 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     lineHeight: 20,
   },
   footer: {
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: colors.gray100,
   },
   continueButton: {
-    backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.full,
     alignItems: 'center',
   },
-  continueButtonDisabled: {
-    backgroundColor: colors.gray300,
-  },
   continueButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+    color: '#FFFFFF',
   },
 });

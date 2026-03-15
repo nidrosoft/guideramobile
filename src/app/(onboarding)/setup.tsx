@@ -6,20 +6,22 @@ import * as Haptics from 'expo-haptics';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { User, Location, Heart, Shield, Airplane } from 'iconsax-react-native';
 import { colors, typography, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useOnboardingStore } from '@/stores/useOnboardingStore';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
 
 const setupSteps = [
-  { id: 1, text: 'Setting up your account', icon: User, color: '#6366F1', bgColor: '#EEF2FF', duration: 1500 },
-  { id: 2, text: 'Finding destinations', icon: Location, color: '#EC4899', bgColor: '#FCE7F3', duration: 1500 },
-  { id: 3, text: 'Personalizing experience', icon: Heart, color: '#EF4444', bgColor: '#FEE2E2', duration: 1500 },
-  { id: 4, text: 'Configuring safety', icon: Shield, color: '#10B981', bgColor: '#D1FAE5', duration: 1500 },
-  { id: 5, text: 'Preparing your journey', icon: Airplane, color: '#F59E0B', bgColor: '#FEF3C7', duration: 1500 },
+  { id: 1, text: 'Setting up your account', icon: User, color: '#818CF8', bgColor: 'rgba(99, 102, 241, 0.12)', duration: 1500 },
+  { id: 2, text: 'Finding destinations', icon: Location, color: '#F472B6', bgColor: 'rgba(236, 72, 153, 0.12)', duration: 1500 },
+  { id: 3, text: 'Personalizing experience', icon: Heart, color: '#F87171', bgColor: 'rgba(239, 68, 68, 0.12)', duration: 1500 },
+  { id: 4, text: 'Configuring safety', icon: Shield, color: '#34D399', bgColor: 'rgba(16, 185, 129, 0.12)', duration: 1500 },
+  { id: 5, text: 'Preparing your journey', icon: Airplane, color: '#FBBF24', bgColor: 'rgba(245, 158, 11, 0.12)', duration: 1500 },
 ];
 
 export default function Setup() {
   const router = useRouter();
+  const { colors: tc, isDark } = useTheme();
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const confettiRef = useRef<any>(null);
@@ -43,15 +45,34 @@ export default function Setup() {
           preferences_completed: true,
           updated_at: new Date().toISOString(),
         };
-        if (onboardingData.travelStyle) {
-          travelPrefsRow.preferred_trip_styles = [onboardingData.travelStyle];
+
+        // Travel styles (multi-select array, min 3)
+        const styles = onboardingData.travelStyles.length > 0
+          ? onboardingData.travelStyles
+          : onboardingData.travelStyle ? [onboardingData.travelStyle] : [];
+        if (styles.length > 0) {
+          travelPrefsRow.preferred_trip_styles = styles;
         }
-        if (onboardingData.dietaryRestrictions && onboardingData.dietaryRestrictions !== 'None') {
-          travelPrefsRow.dietary_restrictions = [onboardingData.dietaryRestrictions];
+
+        // Dietary restrictions (multi-select array)
+        const dietary = onboardingData.dietaryRestrictionsList.length > 0
+          ? onboardingData.dietaryRestrictionsList.filter(d => d !== 'None')
+          : onboardingData.dietaryRestrictions && onboardingData.dietaryRestrictions !== 'None'
+            ? [onboardingData.dietaryRestrictions]
+            : [];
+        if (dietary.length > 0) {
+          travelPrefsRow.dietary_restrictions = dietary;
         }
-        if (onboardingData.accessibilityNeeds && onboardingData.accessibilityNeeds !== 'None') {
-          travelPrefsRow.accessibility_needs = [onboardingData.accessibilityNeeds];
-          if (onboardingData.accessibilityNeeds === 'Wheelchair accessible') {
+
+        // Accessibility needs (multi-select array)
+        const accessibility = onboardingData.accessibilityNeedsList.length > 0
+          ? onboardingData.accessibilityNeedsList.filter(a => a !== 'None')
+          : onboardingData.accessibilityNeeds && onboardingData.accessibilityNeeds !== 'None'
+            ? [onboardingData.accessibilityNeeds]
+            : [];
+        if (accessibility.length > 0) {
+          travelPrefsRow.accessibility_needs = accessibility;
+          if (accessibility.includes('Wheelchair accessible')) {
             travelPrefsRow.wheelchair_accessible = true;
           }
         }
@@ -101,8 +122,8 @@ export default function Setup() {
   }, [currentStep]);
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.bgPrimary }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Confetti */}
       <ConfettiCannon
@@ -117,8 +138,8 @@ export default function Setup() {
       <View style={styles.content}>
         {/* Logo */}
         <View style={styles.logoContainer}>
-          <Text style={styles.logo}>GUIDERA</Text>
-          <Text style={styles.subtitle}>Setting up your experience</Text>
+          <Text style={[styles.logo, { color: tc.textPrimary }]}>GUIDERA</Text>
+          <Text style={[styles.subtitle, { color: tc.textSecondary }]}>Setting up your experience</Text>
         </View>
 
         {/* Setup Steps */}
@@ -135,7 +156,7 @@ export default function Setup() {
                 </View>
                 
                 <View style={styles.stepContent}>
-                  <Text style={styles.stepText}>{step.text}</Text>
+                  <Text style={[styles.stepText, { color: tc.textPrimary }]}>{step.text}</Text>
                   {isActive && (
                     <View style={styles.loadingDots}>
                       <View style={[styles.loadingDot, styles.loadingDot1]} />
@@ -146,8 +167,8 @@ export default function Setup() {
                 </View>
                 
                 {isCompleted && (
-                  <View style={styles.checkmarkContainer}>
-                    <Text style={styles.checkmark}>✓</Text>
+                  <View style={[styles.checkmarkContainer, { backgroundColor: tc.success }]}>
+                    <Text style={[styles.checkmark, { color: tc.white }]}>✓</Text>
                   </View>
                 )}
               </View>
@@ -156,7 +177,7 @@ export default function Setup() {
         </View>
 
         {/* Bottom Message */}
-        <Text style={styles.bottomMessage}>
+        <Text style={[styles.bottomMessage, { color: tc.textSecondary }]}>
           This will only take a moment...
         </Text>
       </View>
@@ -167,7 +188,6 @@ export default function Setup() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bgElevated,
   },
   content: {
     flex: 1,
@@ -182,12 +202,10 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: typography.fontSize['4xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     letterSpacing: 2,
   },
   subtitle: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
     marginTop: spacing.sm,
   },
   stepsContainer: {
@@ -212,7 +230,6 @@ const styles = StyleSheet.create({
   stepText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   loadingDots: {
     flexDirection: 'row',
@@ -238,18 +255,15 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.success,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkmark: {
     fontSize: 16,
-    color: colors.white,
     fontWeight: typography.fontWeight.bold,
   },
   bottomMessage: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: spacing.xl,
   },

@@ -1,67 +1,24 @@
 /**
  * USE LANDMARK RECOGNITION HOOK
- * 
- * Hook for landmark recognition functionality.
- * Integrates with image recognition API.
+ *
+ * Wired to real Google Cloud Vision API via visionService.
+ * Also uses Mapbox reverse geocoding for location context.
+ * No mock data — returns real results or shows "no landmark detected".
  */
 
 import { useState } from 'react';
+import { visionService } from '../../../services/vision.service';
+import { mapboxService } from '../../../services/mapbox.service';
 
 interface Landmark {
   name: string;
   description: string;
   location: string;
-  yearBuilt?: number;
-  rating?: number;
+  confidence?: number;
+  coordinates?: { latitude: number; longitude: number } | null;
   imageUrl?: string;
   facts?: string[];
 }
-
-// Mock landmark data for testing
-const MOCK_LANDMARKS: Landmark[] = [
-  {
-    name: 'Statue of Liberty',
-    description: 'The Statue of Liberty is a colossal neoclassical sculpture on Liberty Island in New York Harbor. The copper statue, a gift from the people of France, was designed by French sculptor Frédéric Auguste Bartholdi and its metal framework was built by Gustave Eiffel.',
-    location: 'New York, USA',
-    yearBuilt: 1886,
-    rating: 4.8,
-    imageUrl: 'https://images.unsplash.com/photo-1569982175971-d92b01cf8694',
-    facts: [
-      'The statue is 305 feet tall from ground to torch',
-      'It was a gift from France to the United States',
-      'The statue\'s full name is "Liberty Enlightening the World"',
-      'Over 4 million people visit the statue each year',
-    ],
-  },
-  {
-    name: 'Eiffel Tower',
-    description: 'The Eiffel Tower is a wrought-iron lattice tower on the Champ de Mars in Paris, France. It is named after the engineer Gustave Eiffel, whose company designed and built the tower. Constructed from 1887 to 1889 as the centerpiece of the 1889 World\'s Fair.',
-    location: 'Paris, France',
-    yearBuilt: 1889,
-    rating: 4.9,
-    imageUrl: 'https://images.unsplash.com/photo-1511739001486-6bfe10ce785f',
-    facts: [
-      'The tower is 330 meters (1,083 ft) tall',
-      'It was the world\'s tallest structure until 1930',
-      'The tower is repainted every 7 years',
-      'It receives about 7 million visitors annually',
-    ],
-  },
-  {
-    name: 'Big Ben',
-    description: 'Big Ben is the nickname for the Great Bell of the Great Clock of Westminster, at the north end of the Palace of Westminster in London, England. The tower holding Big Ben was completed in 1859 and has become one of the most prominent symbols of the United Kingdom.',
-    location: 'London, UK',
-    yearBuilt: 1859,
-    rating: 4.7,
-    imageUrl: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad',
-    facts: [
-      'The tower is officially called Elizabeth Tower',
-      'Big Ben is actually the name of the bell, not the tower',
-      'The clock faces are 7 meters (23 ft) in diameter',
-      'The tower leans slightly to the northwest',
-    ],
-  },
-];
 
 export function useLandmarkRecognition() {
   const [isScanning, setIsScanning] = useState(false);
@@ -69,62 +26,59 @@ export function useLandmarkRecognition() {
   const [error, setError] = useState<string | null>(null);
 
   const scanLandmark = async (imageUri?: string) => {
+    if (!imageUri) {
+      setError('No image provided. Point your camera at a landmark and try again.');
+      return;
+    }
+
     setIsScanning(true);
     setError(null);
 
     try {
-      // Simulate API call delay (remove this when implementing real API)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (!visionService.isConfigured) {
+        setError('Vision API not configured. Enable Cloud Vision API in Google Cloud Console.');
+        return;
+      }
 
-      // ============================================================
-      // TODO: IMPLEMENT REAL LANDMARK RECOGNITION
-      // ============================================================
-      // 
-      // Steps to implement:
-      // 1. Take photo using camera ref:
-      //    const photo = await cameraRef.current?.takePictureAsync();
-      //    const imageUri = photo.uri;
-      // 
-      // 2. Convert image to base64:
-      //    import * as FileSystem from 'expo-file-system';
-      //    const base64 = await FileSystem.readAsStringAsync(imageUri, {
-      //      encoding: FileSystem.EncodingType.Base64
-      //    });
-      // 
-      // 3. Call Google Vision API:
-      //    import { visionService } from '../../../services/vision.service';
-      //    const result = await visionService.detectLandmarks(imageUri);
-      // 
-      // 4. Parse API response:
-      //    const landmark = {
-      //      name: result.landmarkAnnotations[0].description,
-      //      location: result.landmarkAnnotations[0].locations[0].latLng,
-      //      confidence: result.landmarkAnnotations[0].score
-      //    };
-      // 
-      // 5. Fetch additional details (optional):
-      //    - Use Wikipedia API for description and facts
-      //    - Use Google Places API for rating and photos
-      //    - Use Mapbox for location details
-      // 
-      // 6. Handle errors:
-      //    - No landmark detected
-      //    - API rate limit exceeded
-      //    - Network errors
-      //    - Invalid image format
-      // 
-      // ============================================================
-      
-      // For now, return a random mock landmark for testing UI
-      const randomLandmark = MOCK_LANDMARKS[Math.floor(Math.random() * MOCK_LANDMARKS.length)];
-      setLandmark(randomLandmark);
-      
-      // TODO: Remove mock data and uncomment this when API is ready:
-      // const result = await visionService.detectLandmarks(imageUri);
-      // setLandmark(result);
-      
+      // Call real Google Vision API
+      const results = await visionService.detectLandmarks(imageUri);
+
+      if (!results || results.length === 0) {
+        // Try object detection as fallback
+        const objects = await visionService.detectObjects(imageUri);
+        if (objects.length > 0) {
+          setLandmark({
+            name: objects[0].name,
+            description: `Detected: ${objects.map(o => o.name).join(', ')}`,
+            location: 'Current location',
+            confidence: objects[0].confidence,
+          });
+        } else {
+          setError('No landmark detected. Try pointing your camera directly at a landmark or building.');
+        }
+        return;
+      }
+
+      // Use the top result
+      const top = results[0];
+
+      // Get location name via Mapbox reverse geocoding
+      let locationName = 'Unknown location';
+      if (top.coordinates) {
+        const geo = await mapboxService.reverseGeocode(top.coordinates.latitude, top.coordinates.longitude);
+        if (geo) locationName = geo.address || geo.name;
+      }
+
+      setLandmark({
+        name: top.name,
+        description: `Identified with ${Math.round((top.confidence || 0) * 100)}% confidence`,
+        location: locationName,
+        confidence: top.confidence,
+        coordinates: top.coordinates,
+      });
+
     } catch (err) {
-      setError('Failed to recognize landmark. Please try again.');
+      setError('Failed to recognize landmark. Check your connection and try again.');
       console.error('Landmark recognition error:', err);
     } finally {
       setIsScanning(false);

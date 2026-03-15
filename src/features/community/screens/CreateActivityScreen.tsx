@@ -1,50 +1,39 @@
 /**
  * CREATE ACTIVITY SCREEN
- * 
- * Allows users to create a meetup activity proposal.
+ *
+ * Multi-step stepper flow for creating a Pulse meetup.
+ * Steps: Type → Details → Location → When → Who → Create
+ * Each step is a modular component in components/pulse/steps/
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
-  TextInput,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, Location, Clock, People } from 'iconsax-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { ArrowLeft, ArrowRight2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import * as ExpoLocation from 'expo-location';
+import { spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useActivityActions } from '@/hooks/useCommunity';
+import { StepType, StepDetails, StepLocation, StepWhen, StepWho } from '../components/pulse/steps';
 import type { ActivityType, ActivityTiming } from '@/services/community/types/community.types';
 
-const ACTIVITY_TYPES: { type: ActivityType; emoji: string; label: string }[] = [
-  { type: 'coffee', emoji: '☕', label: 'Coffee' },
-  { type: 'food', emoji: '🍽️', label: 'Food' },
-  { type: 'drinks', emoji: '🍻', label: 'Drinks' },
-  { type: 'sightseeing', emoji: '📸', label: 'Sightseeing' },
-  { type: 'walking_tour', emoji: '🚶', label: 'Walking Tour' },
-  { type: 'museum', emoji: '🏛️', label: 'Museum' },
-  { type: 'nightlife', emoji: '🌙', label: 'Nightlife' },
-  { type: 'sports', emoji: '⚽', label: 'Sports' },
-  { type: 'coworking', emoji: '💻', label: 'Coworking' },
-  { type: 'language_exchange', emoji: '🗣️', label: 'Language Exchange' },
-  { type: 'other', emoji: '📍', label: 'Other' },
-];
+const TOTAL_STEPS = 5;
 
-const TIMING_OPTIONS: { value: ActivityTiming; label: string; sublabel: string }[] = [
-  { value: 'now', label: 'Right Now', sublabel: 'Start immediately' },
-  { value: 'today', label: 'Today', sublabel: 'Later today' },
-  { value: 'tomorrow', label: 'Tomorrow', sublabel: 'Schedule for tomorrow' },
-];
 
 export default function CreateActivityScreen() {
   const router = useRouter();
@@ -53,39 +42,108 @@ export default function CreateActivityScreen() {
   const { profile } = useAuth();
   const userId = profile?.id;
   const { createActivity, loading } = useActivityActions(userId);
+  const params = useLocalSearchParams<{
+    editId?: string; editTitle?: string; editType?: string;
+    editDescription?: string; editLocationName?: string;
+    editLatitude?: string; editLongitude?: string;
+  }>();
+  const isEditing = !!params.editId;
 
-  const [activityType, setActivityType] = useState<ActivityType>('coffee');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [locationName, setLocationName] = useState('');
-  const [timing, setTiming] = useState<ActivityTiming>('now');
+  // Stepper state
+  const [step, setStep] = useState(isEditing ? 2 : 1);
+
+  // Form data — prefilled when editing
+  const [activityType, setActivityType] = useState<string>(params.editType || 'food_drink');
+  const [title, setTitle] = useState(params.editTitle || '');
+  const [description, setDescription] = useState(params.editDescription || '');
+  const [locationName, setLocationName] = useState(params.editLocationName || '');
+  const [locationCoords, setLocationCoords] = useState<{ latitude: number; longitude: number } | null>(
+    params.editLatitude && params.editLongitude
+      ? { latitude: parseFloat(params.editLatitude), longitude: parseFloat(params.editLongitude) }
+      : null
+  );
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedTime, setSelectedTime] = useState(new Date());
+  const [isFlexibleTime, setIsFlexibleTime] = useState(true);
+  const [visibility, setVisibility] = useState<'everyone' | 'selected'>('everyone');
   const [maxParticipants, setMaxParticipants] = useState<string>('');
 
-  const handleBack = () => router.back();
+  // Auto-detect location on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const loc = await ExpoLocation.getCurrentPositionAsync({ accuracy: ExpoLocation.Accuracy.Balanced });
+        setLocationCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+        const [geo] = await ExpoLocation.reverseGeocodeAsync(loc.coords);
+        if (geo) {
+          const parts = [geo.name, geo.city].filter(Boolean);
+          if (parts.length > 0) setLocationName(parts.join(', '));
+        }
+      } catch { /* non-critical */ }
+    })();
+  }, []);
+
+  const STEP_LABELS = ['Type', 'Details', 'Location', 'When', 'Who'];
+
+  const canAdvance = () => {
+    switch (step) {
+      case 1: return !!activityType;
+      case 2: return title.trim().length > 0;
+      case 3: return !!locationCoords;
+      case 4: return true;
+      case 5: return true;
+      default: return false;
+    }
+  };
+
+  const handleNext = () => {
+    if (step < TOTAL_STEPS) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setStep(step + 1);
+    } else {
+      handleCreate();
+    }
+  };
+
+  const handleBack = () => {
+    if (step > 1) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setStep(step - 1);
+    } else {
+      router.back();
+    }
+  };
 
   const handleCreate = async () => {
-    if (!title.trim()) {
-      Alert.alert('Error', 'Please enter a title for your activity');
-      return;
-    }
-    if (!locationName.trim()) {
-      Alert.alert('Error', 'Please enter a location');
-      return;
-    }
-
     try {
+      const now = new Date();
+      const isToday = selectedDate.toDateString() === now.toDateString();
+      const tmrw = new Date(now); tmrw.setDate(tmrw.getDate() + 1);
+      const isTomorrow = selectedDate.toDateString() === tmrw.toDateString();
+      let timing: ActivityTiming = 'specific';
+      if (isToday && isFlexibleTime) timing = 'today';
+      else if (isTomorrow && isFlexibleTime) timing = 'tomorrow';
+
+      const scheduledFor = new Date(selectedDate);
+      if (!isFlexibleTime) {
+        scheduledFor.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
+      }
+
       await createActivity({
-        type: activityType,
+        type: activityType as ActivityType,
         title: title.trim(),
         description: description.trim() || undefined,
         location: {
           name: locationName.trim(),
-          latitude: 0, // Would be set from location picker
-          longitude: 0,
+          latitude: locationCoords?.latitude || 0,
+          longitude: locationCoords?.longitude || 0,
         },
         timing,
+        scheduledFor: timing === 'specific' ? scheduledFor : undefined,
         maxParticipants: maxParticipants ? parseInt(maxParticipants, 10) : undefined,
-        visibility: 'everyone',
+        visibility,
       });
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -95,322 +153,187 @@ export default function CreateActivityScreen() {
     }
   };
 
+  const renderStep = () => {
+    switch (step) {
+      case 1:
+        return <StepType selected={activityType} onSelect={setActivityType} />;
+      case 2:
+        return (
+          <StepDetails
+            title={title}
+            onTitleChange={setTitle}
+            description={description}
+            onDescriptionChange={setDescription}
+          />
+        );
+      case 3:
+        return (
+          <StepLocation
+            coords={locationCoords}
+            locationName={locationName}
+            onLocationChange={(coords, name) => {
+              setLocationCoords(coords);
+              setLocationName(name);
+            }}
+          />
+        );
+      case 4:
+        return (
+          <StepWhen
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+            isFlexibleTime={isFlexibleTime}
+            onFlexibleToggle={setIsFlexibleTime}
+            selectedTime={selectedTime}
+            onTimeChange={setSelectedTime}
+          />
+        );
+      case 5:
+        return (
+          <StepWho
+            visibility={visibility}
+            onVisibilityChange={setVisibility}
+            maxParticipants={maxParticipants}
+            onMaxParticipantsChange={setMaxParticipants}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: tc.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={styles.container}>
+      <StatusBar style="light" />
 
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, borderBottomColor: tc.borderSubtle }]}>
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: tc.bgElevated }]} onPress={handleBack}>
+          <ArrowLeft size={22} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Activity</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>
+          {isEditing ? 'Edit Activity' : step === TOTAL_STEPS ? 'Almost Done' : `Step ${step} of ${TOTAL_STEPS}`}
+        </Text>
         <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Activity Type */}
-        <Text style={styles.sectionTitle}>What type of activity?</Text>
-        <View style={styles.typeGrid}>
-          {ACTIVITY_TYPES.map((item) => (
-            <TouchableOpacity
-              key={item.type}
-              style={[
-                styles.typeCard,
-                activityType === item.type && styles.typeCardActive,
-              ]}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setActivityType(item.type);
-              }}
-            >
-              <Text style={styles.typeEmoji}>{item.emoji}</Text>
-              <Text
-                style={[
-                  styles.typeLabel,
-                  activityType === item.type && styles.typeLabelActive,
-                ]}
-              >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+      {/* Progress Bar */}
+      <View style={[styles.progressContainer, { backgroundColor: tc.borderSubtle }]}>
+        <View style={[styles.progressFill, { width: `${(step / TOTAL_STEPS) * 100}%`, backgroundColor: tc.primary }]} />
+      </View>
 
-        {/* Title */}
-        <Text style={styles.sectionTitle}>Title</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g., Coffee and croissant by the Eiffel Tower"
-          placeholderTextColor={tc.textTertiary}
-          value={title}
-          onChangeText={setTitle}
-          maxLength={100}
-        />
+      {/* Step Content */}
+      <View style={styles.stepContent}>
+        {renderStep()}
+      </View>
 
-        {/* Description */}
-        <Text style={styles.sectionTitle}>Description (optional)</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          placeholder="Tell others what you have in mind..."
-          placeholderTextColor={tc.textTertiary}
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          numberOfLines={3}
-          maxLength={300}
-        />
-
-        {/* Location */}
-        <Text style={styles.sectionTitle}>Location</Text>
-        <View style={styles.inputWithIcon}>
-          <Location size={20} color={tc.textTertiary} />
-          <TextInput
-            style={styles.inputInner}
-            placeholder="Where will you meet?"
-            placeholderTextColor={tc.textTertiary}
-            value={locationName}
-            onChangeText={setLocationName}
-          />
-        </View>
-
-        {/* Timing */}
-        <Text style={styles.sectionTitle}>When?</Text>
-        <View style={styles.timingOptions}>
-          {TIMING_OPTIONS.map((option) => (
-            <TouchableOpacity
-              key={option.value}
-              style={[
-                styles.timingCard,
-                timing === option.value && styles.timingCardActive,
-              ]}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setTiming(option.value);
-              }}
-            >
-              <Clock
-                size={20}
-                color={timing === option.value ? colors.white : colors.textSecondary}
-              />
-              <View style={styles.timingInfo}>
-                <Text
-                  style={[
-                    styles.timingLabel,
-                    timing === option.value && styles.timingLabelActive,
-                  ]}
-                >
-                  {option.label}
-                </Text>
-                <Text
-                  style={[
-                    styles.timingSublabel,
-                    timing === option.value && styles.timingSublabelActive,
-                  ]}
-                >
-                  {option.sublabel}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Max Participants */}
-        <Text style={styles.sectionTitle}>Max participants (optional)</Text>
-        <View style={styles.inputWithIcon}>
-          <People size={20} color={tc.textTertiary} />
-          <TextInput
-            style={styles.inputInner}
-            placeholder="Leave empty for unlimited"
-            placeholderTextColor={tc.textTertiary}
-            value={maxParticipants}
-            onChangeText={setMaxParticipants}
-            keyboardType="number-pad"
-          />
-        </View>
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
-
-      {/* Create Button */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+      {/* Footer */}
+      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md, backgroundColor: tc.background, borderTopColor: tc.borderSubtle }]}>
         <TouchableOpacity
-          style={[styles.createButton, loading && styles.createButtonDisabled]}
-          onPress={handleCreate}
-          disabled={loading}
+          style={[
+            styles.nextBtn,
+            { backgroundColor: canAdvance() ? tc.primary : tc.borderSubtle },
+          ]}
+          onPress={handleNext}
+          disabled={!canAdvance() || loading}
+          activeOpacity={0.8}
         >
           {loading ? (
-            <ActivityIndicator size="small" color={colors.white} />
+            <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={styles.createButtonText}>Create Activity</Text>
+            <Text style={[styles.nextBtnText, { color: canAdvance() ? '#FFFFFF' : tc.textTertiary }]}>
+              {step === TOTAL_STEPS ? (isEditing ? 'Update Activity' : 'Add to Map!') : 'Next'}
+            </Text>
           )}
         </TouchableOpacity>
       </View>
     </View>
+    </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.background,
+    paddingBottom: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
   },
-  backButton: {
+  backBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.bgElevated,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '600',
   },
-  content: {
+  progressContainer: {
+    height: 3,
+  },
+  progressFill: {
+    height: 3,
+    borderRadius: 2,
+  },
+  stepContent: {
     flex: 1,
-  },
-  contentContainer: {
-    padding: spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-    marginTop: spacing.lg,
-  },
-  typeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  typeCard: {
-    width: '30%',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.lg,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  typeCardActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '10',
-  },
-  typeEmoji: {
-    fontSize: 24,
-    marginBottom: spacing.xs,
-  },
-  typeLabel: {
-    fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  typeLabelActive: {
-    color: colors.primary,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  input: {
-    backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  inputWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-  },
-  inputInner: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
-  },
-  timingOptions: {
-    gap: spacing.sm,
-  },
-  timingCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    gap: spacing.md,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  timingCardActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  timingInfo: {
-    flex: 1,
-  },
-  timingLabel: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  timingLabelActive: {
-    color: colors.white,
-  },
-  timingSublabel: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  timingSublabelActive: {
-    color: colors.white + 'CC',
+    overflow: 'hidden',
   },
   footer: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    backgroundColor: colors.background,
     borderTopWidth: 1,
-    borderTopColor: colors.borderSubtle,
   },
-  createButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.lg,
+  nextBtn: {
+    paddingVertical: 16,
+    borderRadius: 14,
     alignItems: 'center',
   },
-  createButtonDisabled: {
-    opacity: 0.7,
+  nextBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
   },
-  createButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.white,
+  // Step 3: Location
+  locationStep: {
+    padding: spacing.lg,
+  },
+  stepHeading: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  stepSubheading: {
+    fontSize: 14,
+    marginBottom: spacing.xl,
+  },
+  locationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    gap: spacing.md,
+  },
+  locationEmoji: {
+    fontSize: 28,
+  },
+  locationName: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  locationCoords: {
+    fontSize: 12,
+    marginTop: 2,
   },
 });

@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import { colors, typography, spacing, borderRadius, shadows } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useSSO } from '@clerk/clerk-expo';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
@@ -23,6 +24,7 @@ WebBrowser.maybeCompleteAuthSession();
 export default function SignUp() {
   useWarmUpBrowser();
   const router = useRouter();
+  const { colors: tc, isDark } = useTheme();
   const { startSSOFlow } = useSSO();
   const [error, setError] = useState('');
 
@@ -54,69 +56,69 @@ export default function SignUp() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Sign up to start your journey</Text>
+          <Text style={[styles.title, { color: tc.textPrimary }]}>Create Account</Text>
+          <Text style={[styles.subtitle, { color: tc.textSecondary }]}>Sign up to start your journey</Text>
         </View>
 
         {/* Social Sign Up Buttons */}
         <View style={styles.socialButtons}>
           <TouchableOpacity
-            style={[styles.socialButton, styles.appleButton]}
+            style={[styles.socialButton, { backgroundColor: isDark ? tc.white : tc.black }]}
             onPress={() => handleSocialSignUp('oauth_apple')}
           >
-            <Text style={styles.socialButtonText}>Continue with Apple</Text>
+            <Text style={[styles.socialButtonText, { color: isDark ? tc.black : tc.white }]}>Continue with Apple</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.socialButton, styles.googleButton]}
+            style={[styles.socialButton, { backgroundColor: tc.bgElevated, borderWidth: 1, borderColor: tc.borderMedium }]}
             onPress={() => handleSocialSignUp('oauth_google')}
           >
-            <Text style={[styles.socialButtonText, styles.googleButtonText]}>
+            <Text style={[styles.socialButtonText, { color: tc.textPrimary }]}>
               Continue with Google
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.socialButton, styles.facebookButton]}
+            style={[styles.socialButton, { backgroundColor: '#1877F2' }]}
             onPress={() => handleSocialSignUp('oauth_facebook')}
           >
-            <Text style={styles.socialButtonText}>Continue with Facebook</Text>
+            <Text style={[styles.socialButtonText, { color: tc.white }]}>Continue with Facebook</Text>
           </TouchableOpacity>
         </View>
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
 
         {/* Divider */}
         <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
+          <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
+          <Text style={[styles.dividerText, { color: tc.textSecondary }]}>or</Text>
+          <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
         </View>
 
         {/* Phone Number Button - Highlighted */}
         <View style={styles.phoneContainer}>
-          <View style={styles.quickBadge}>
-            <Text style={styles.quickBadgeText}>⚡ Quick & Easy</Text>
+          <View style={[styles.quickBadge, { backgroundColor: tc.primary }]}>
+            <Text style={[styles.quickBadgeText, { color: tc.white }]}>⚡ Quick & Easy</Text>
           </View>
           <TouchableOpacity
-            style={styles.phoneButton}
+            style={[styles.phoneButton, { backgroundColor: tc.primary }]}
             onPress={handlePhoneSignUp}
             activeOpacity={0.8}
           >
-            <Text style={styles.phoneButtonText}>Continue with Phone Number</Text>
+            <Text style={[styles.phoneButtonText, { color: tc.white }]}>Continue with Phone Number</Text>
           </TouchableOpacity>
         </View>
 
         {/* Sign In Link */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
+          <Text style={[styles.footerText, { color: tc.textSecondary }]}>Already have an account? </Text>
           <TouchableOpacity onPress={() => router.back()}>
-            <Text style={styles.footerLink}>Sign In</Text>
+            <Text style={[styles.footerLink, { color: tc.primary }]}>Sign In</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -127,7 +129,6 @@ export default function SignUp() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -141,16 +142,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize['4xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
   subtitle: {
     fontSize: typography.fontSize.lg,
-    color: colors.textSecondary,
   },
   errorText: {
     fontSize: typography.fontSize.sm,
-    color: '#EF4444',
     marginTop: spacing.sm,
   },
   socialButtons: {
@@ -159,29 +157,14 @@ const styles = StyleSheet.create({
   },
   socialButton: {
     height: 52,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
     ...shadows.sm,
   },
-  appleButton: {
-    backgroundColor: colors.black,
-  },
-  googleButton: {
-    backgroundColor: colors.bgElevated,
-    borderWidth: 1,
-    borderColor: colors.gray300,
-  },
-  facebookButton: {
-    backgroundColor: '#1877F2',
-  },
   socialButtonText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
-  },
-  googleButtonText: {
-    color: colors.textPrimary,
   },
   divider: {
     flexDirection: 'row',
@@ -191,12 +174,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: colors.gray300,
   },
   dividerText: {
     marginHorizontal: spacing.md,
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   phoneContainer: {
     position: 'relative',
@@ -206,7 +187,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -12,
     alignSelf: 'center',
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
@@ -216,12 +196,10 @@ const styles = StyleSheet.create({
   quickBadgeText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
   },
   phoneButton: {
     height: 56,
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
     ...shadows.lg,
@@ -229,7 +207,6 @@ const styles = StyleSheet.create({
   phoneButtonText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
   },
   footer: {
     flexDirection: 'row',
@@ -239,11 +216,9 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
   },
   footerLink: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary,
   },
 });

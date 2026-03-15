@@ -6,8 +6,8 @@ export default function TravelPreferencesScreen() {
     <PreferenceScreen
       icon={Airplane}
       title="What's your travel style?"
-      description="This helps us recommend the perfect destinations"
-      inputType="select"
+      description="Pick at least 3 that match your vibe"
+      inputType="multiselect"
       options={[
         'Adventure & Outdoor',
         'Relaxation & Beach',
@@ -16,12 +16,15 @@ export default function TravelPreferencesScreen() {
         'Nightlife & Entertainment',
         'Shopping & Luxury',
         'Nature & Wildlife',
-        'Mix of Everything',
+        'Wellness & Spa',
+        'Road Trips',
+        'Backpacking',
       ]}
+      minSelections={3}
       currentStep={8}
       totalSteps={10}
       nextRoute="/(onboarding)/dietary-restrictions"
-      fieldName="travelStyle"
+      fieldName="travelStyles"
     />
   );
 }

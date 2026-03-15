@@ -27,18 +27,9 @@ import {
 import StepIndicator from './StepIndicator';
 import MethodSelectionStep from '../steps/MethodSelectionStep';
 import EmailLinkStep from '../steps/email/EmailLinkStep';
-import EmailProviderStep from '../steps/email/EmailProviderStep';
-import EmailInputStep from '../steps/email/EmailInputStep';
 import EmailConnectingStep from '../steps/email/EmailConnectingStep';
-import EmailScanningStep from '../steps/email/EmailScanningStep';
 import EmailBookingsStep from '../steps/email/EmailBookingsStep';
 import EmailSuccessStep from '../steps/email/EmailSuccessStep';
-import LinkProviderStep from '../steps/link/LinkProviderStep';
-import LinkAuthStep from '../steps/link/LinkAuthStep';
-import LinkConnectingStep from '../steps/link/LinkConnectingStep';
-import LinkFetchingStep from '../steps/link/LinkFetchingStep';
-import LinkTripsStep from '../steps/link/LinkTripsStep';
-import LinkSuccessStep from '../steps/link/LinkSuccessStep';
 import ManualTypeStep from '../steps/manual/ManualTypeStep';
 import ManualFlightStep from '../steps/manual/ManualFlightStep';
 import ManualHotelStep from '../steps/manual/ManualHotelStep';
@@ -93,45 +84,16 @@ export default function ImportTripFlow({ visible, onClose, onComplete }: ImportF
     
     const currentStep = flowState.currentStep;
     
-    // Email flow navigation
+    // Email flow navigation (forward-based: show address → poll → results → success)
     if (currentStep === 'method-selection' && method === 'email') {
       nextStep = 'email-link';
     } else if (currentStep === 'email-link') {
-      nextStep = 'email-provider';
-    } else if (currentStep === 'email-provider') {
-      // If "Other Provider" selected, go to manual input
-      if (data?.emailProvider === 'other') {
-        nextStep = 'email-input';
-      } else {
-        // For Gmail/Outlook/Yahoo, skip to connecting
-        nextStep = 'email-connecting';
-      }
-    } else if (currentStep === 'email-input') {
-      nextStep = 'email-connecting';
+      nextStep = 'email-connecting';  // Skip provider selection — user forwards email directly
     } else if (currentStep === 'email-connecting') {
-      nextStep = 'email-scanning';
-    } else if (currentStep === 'email-scanning') {
-      nextStep = 'email-bookings';
+      nextStep = 'email-bookings';    // Show parsed results
     } else if (currentStep === 'email-bookings') {
       nextStep = 'email-success';
     } else if (currentStep === 'email-success') {
-      completeAndReset();
-      return;
-    }
-    // Link flow navigation
-    else if (currentStep === 'method-selection' && method === 'link') {
-      nextStep = 'link-provider';
-    } else if (currentStep === 'link-provider') {
-      nextStep = 'link-auth';
-    } else if (currentStep === 'link-auth') {
-      nextStep = 'link-connecting';
-    } else if (currentStep === 'link-connecting') {
-      nextStep = 'link-fetching';
-    } else if (currentStep === 'link-fetching') {
-      nextStep = 'link-trips';
-    } else if (currentStep === 'link-trips') {
-      nextStep = 'link-success';
-    } else if (currentStep === 'link-success') {
       completeAndReset();
       return;
     }
@@ -226,35 +188,15 @@ export default function ImportTripFlow({ visible, onClose, onComplete }: ImportF
       case 'method-selection':
         return <MethodSelectionStep {...stepProps} />;
       
-      // Email flow steps
+      // Email flow steps (forward-based)
       case 'email-link':
         return <EmailLinkStep {...stepProps} />;
-      case 'email-provider':
-        return <EmailProviderStep {...stepProps} />;
-      case 'email-input':
-        return <EmailInputStep {...stepProps} />;
       case 'email-connecting':
         return <EmailConnectingStep {...stepProps} />;
-      case 'email-scanning':
-        return <EmailScanningStep {...stepProps} />;
       case 'email-bookings':
         return <EmailBookingsStep {...stepProps} />;
       case 'email-success':
         return <EmailSuccessStep {...stepProps} />;
-      
-      // Link flow steps
-      case 'link-provider':
-        return <LinkProviderStep {...stepProps} />;
-      case 'link-auth':
-        return <LinkAuthStep {...stepProps} />;
-      case 'link-connecting':
-        return <LinkConnectingStep {...stepProps} />;
-      case 'link-fetching':
-        return <LinkFetchingStep {...stepProps} />;
-      case 'link-trips':
-        return <LinkTripsStep {...stepProps} />;
-      case 'link-success':
-        return <LinkSuccessStep {...stepProps} />;
       
       // Manual flow steps
       case 'manual-type':
@@ -290,21 +232,11 @@ export default function ImportTripFlow({ visible, onClose, onComplete }: ImportF
   const getStepNumber = () => {
     const stepMap: Record<ImportStep, number> = {
       'method-selection': 1,
-      // Email flow
+      // Email flow (forward-based: 4 steps)
       'email-link': 2,
-      'email-provider': 3,
-      'email-input': 4,
-      'email-connecting': 5,
-      'email-scanning': 6,
-      'email-bookings': 7,
-      'email-success': 8,
-      // Link flow
-      'link-provider': 2,
-      'link-auth': 3,
-      'link-connecting': 4,
-      'link-fetching': 5,
-      'link-trips': 6,
-      'link-success': 7,
+      'email-connecting': 3,
+      'email-bookings': 3,
+      'email-success': 4,
       // Manual flow
       'manual-type': 2,
       'manual-flight': 3,
@@ -323,8 +255,7 @@ export default function ImportTripFlow({ visible, onClose, onComplete }: ImportF
   };
 
   const getTotalSteps = () => {
-    if (flowState.method === 'email') return 8;
-    if (flowState.method === 'link') return 7;
+    if (flowState.method === 'email') return 4;
     if (flowState.method === 'manual') return 6;
     if (flowState.method === 'scan') return 5;
     return 1;
@@ -336,9 +267,6 @@ export default function ImportTripFlow({ visible, onClose, onComplete }: ImportF
     }
     if (flowState.method === 'email') {
       return 'Import via Email';
-    }
-    if (flowState.method === 'link') {
-      return 'Link Travel Account';
     }
     if (flowState.method === 'manual') {
       return 'Add Manually';

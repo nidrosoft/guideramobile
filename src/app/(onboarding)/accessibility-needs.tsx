@@ -6,8 +6,8 @@ export default function AccessibilityNeedsScreen() {
     <PreferenceScreen
       icon={Health}
       title="Any accessibility needs?"
-      description="We'll ensure your travel is comfortable and accessible"
-      inputType="select"
+      description="Select all that apply — we'll make your travel comfortable"
+      inputType="multiselect"
       options={[
         'None',
         'Wheelchair accessible',
@@ -15,8 +15,10 @@ export default function AccessibilityNeedsScreen() {
         'Visual assistance',
         'Mobility assistance',
         'Service animal',
-        'Other',
+        'Chronic pain management',
+        'Sensory sensitivities',
       ]}
+      minSelections={1}
       currentStep={10}
       totalSteps={10}
       nextRoute="/(onboarding)/setup"

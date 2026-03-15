@@ -547,6 +547,89 @@ serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // ========================================
+    // GET — Handle OAuth callback redirect from Traxo
+    // Traxo redirects here with ?code=xxx&state=xxx after user grants access
+    // ========================================
+    if (req.method === 'GET') {
+      const url = new URL(req.url);
+      const code = url.searchParams.get('code');
+      const state = url.searchParams.get('state');
+
+      if (!code || !state) {
+        return new Response('<html><body><h2>Missing OAuth parameters</h2><p>Please try again from the Guidera app.</p></body></html>', {
+          status: 400,
+          headers: { 'Content-Type': 'text/html' },
+        });
+      }
+
+      try {
+        const traxo = new TraxoAdapter(supabase);
+
+        // Find the pending OAuth job by state to get the userId
+        const { data: pendingJob } = await supabase
+          .from('email_scan_jobs')
+          .select('id, user_id')
+          .eq('scan_type', 'oauth_pending')
+          .eq('status', 'connecting')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const userId = pendingJob?.user_id;
+        const redirectUri = `${supabaseUrl}/functions/v1/trip-import-engine`;
+
+        // Exchange the code for tokens
+        const tokens = await traxo.exchangeCode(code, redirectUri);
+
+        // Get member info
+        const member = await traxo.getMember(tokens.access_token);
+
+        // Store the linked account
+        if (userId) {
+          await supabase.from('linked_travel_accounts').upsert({
+            user_id: userId,
+            provider: 'traxo',
+            provider_user_id: String(tokens.member_id || member.id),
+            provider_email: member.email || '',
+            provider_name: [member.first_name, member.last_name].filter(Boolean).join(' ') || 'Traxo User',
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
+            token_expires_at: new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString(),
+            status: 'active',
+            last_sync_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,provider' });
+
+          // Update the pending job
+          if (pendingJob) {
+            await supabase.from('email_scan_jobs').update({
+              status: 'completed',
+              email_address: member.email || 'connected',
+              scan_type: 'oauth_completed',
+            }).eq('id', pendingJob.id);
+          }
+        }
+
+        // Redirect user back to the app
+        const appDeepLink = `guidera://import/oauth-callback?success=true&email=${encodeURIComponent(member.email || '')}`;
+        return new Response(null, {
+          status: 302,
+          headers: { 'Location': appDeepLink },
+        });
+      } catch (oauthErr: any) {
+        console.error('OAuth callback error:', oauthErr);
+        const errorLink = `guidera://import/oauth-callback?success=false&error=${encodeURIComponent(oauthErr?.message || 'OAuth failed')}`;
+        return new Response(null, {
+          status: 302,
+          headers: { 'Location': errorLink },
+        });
+      }
+    }
+
+    // ========================================
+    // POST — Normal API actions
+    // ========================================
+
     // Parse body first to get userId (we use Clerk auth, not Supabase auth)
     const body = await req.json();
     const { action, provider = 'traxo', userId: bodyUserId, ...params } = body;

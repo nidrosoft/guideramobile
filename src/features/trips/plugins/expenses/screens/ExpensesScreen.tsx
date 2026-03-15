@@ -42,6 +42,7 @@ import { expenseService } from '@/services/expense.service';
 import { expenseSummaryService, ExpenseSummary } from '@/services/expenseSummary.service';
 import { useAuth } from '@/context/AuthContext';
 import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
+import PluginErrorState from '@/features/trips/components/PluginErrorState';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -72,6 +73,7 @@ export default function ExpensesScreen() {
   const [budget, setBudget] = useState(0);
   const [budgetCurrency, setBudgetCurrency] = useState('USD');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'summary'>('overview');
   const [addExpenseVisible, setAddExpenseVisible] = useState(false);
   const [budgetSetupVisible, setBudgetSetupVisible] = useState(false);
@@ -80,28 +82,27 @@ export default function ExpensesScreen() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
+  const fetchExpenses = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [expensesData, budgetData] = await Promise.all([
+        expenseService.getExpenses(tripId),
+        expenseService.getTripBudget(tripId),
+      ]);
+      setExpenses(expensesData);
+      if (budgetData.total > 0) setBudget(budgetData.total);
+      if (budgetData.currency) setBudgetCurrency(budgetData.currency);
+    } catch (err: any) {
+      console.error('Failed to load expenses:', err);
+      setError(err.message || 'Failed to load expenses');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let mounted = true;
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [expensesData, budgetData] = await Promise.all([
-          expenseService.getExpenses(tripId),
-          expenseService.getTripBudget(tripId),
-        ]);
-        if (mounted) {
-          setExpenses(expensesData);
-          if (budgetData.total > 0) setBudget(budgetData.total);
-          if (budgetData.currency) setBudgetCurrency(budgetData.currency);
-        }
-      } catch (err) {
-        console.error('Failed to load expenses:', err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-    fetchData();
-    return () => { mounted = false; };
+    fetchExpenses();
   }, [tripId]);
 
   // Calculate statistics (must be above early returns to satisfy Rules of Hooks)
@@ -169,6 +170,14 @@ export default function ExpensesScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.bgPrimary, justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+        <PluginErrorState message={error} onRetry={fetchExpenses} />
       </View>
     );
   }

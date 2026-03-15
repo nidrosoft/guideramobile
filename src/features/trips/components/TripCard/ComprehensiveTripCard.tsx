@@ -3,8 +3,8 @@
  * Rich trip card showing all bookings and details at a glance
  */
 
-import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { useState, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Modal, TouchableWithoutFeedback } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Skeleton } from '@/components/common/SkeletonLoader';
 import SmartPlanBottomSheet from '../SmartPlanBottomSheet';
@@ -32,6 +32,13 @@ import {
   MagicStar,
   ArrowRight2,
   TickCircle,
+  CalendarEdit,
+  InfoCircle,
+  Bag2,
+  SecuritySafe,
+  LanguageSquare,
+  DocumentText,
+  CloseCircle,
 } from 'iconsax-react-native';
 
 interface ComprehensiveTripCardProps {
@@ -72,93 +79,161 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(trip._db?.modulesGenerated || false);
 
+  // ── Inline generation progress ──────────────────────────
+  type ModuleStatus = 'waiting' | 'generating' | 'done' | 'failed';
+  interface ModuleEntry { key: string; status: ModuleStatus; detail?: string }
+
+  const TOTAL_MODULES = 6;
+  const MODULE_MESSAGES: Record<string, string> = {
+    itinerary: 'Crafting your day-by-day itinerary…',
+    dosDonts:  'Learning local customs to keep you safe…',
+    documents: 'Checking your passport, visa & documents…',
+    packing:   'Building a smart packing list for you…',
+    safety:    'Analyzing safety guidelines for your trip…',
+    language:  'Preparing essential phrases you\'ll need…',
+  };
+
+  const [modules, setModules] = useState<ModuleEntry[]>([]);
+  const [cancelSheetVisible, setCancelSheetVisible] = useState(false);
+  const modulesRef = useRef<ModuleEntry[]>([]);
+  const abortRef = useRef(false);
+
+  const updateModule = (key: string, status: ModuleStatus, detail?: string) => {
+    modulesRef.current = modulesRef.current.map(m =>
+      m.key === key ? { ...m, status, detail } : m
+    );
+    setModules([...modulesRef.current]);
+  };
+
+  const doneCount = modules.filter(m => m.status === 'done').length;
+  const currentModule = modules.find(m => m.status === 'generating');
+  const progress = TOTAL_MODULES > 0 ? (doneCount + modules.filter(m => m.status === 'failed').length) / TOTAL_MODULES : 0;
+
+  const runModule = async (
+    key: string,
+    fn: () => Promise<any>,
+  ): Promise<{ success: boolean; value?: any }> => {
+    updateModule(key, 'generating');
+    try {
+      const result = await fn();
+      if (result?.success) {
+        const detail = getModuleDetail(key, result);
+        updateModule(key, 'done', detail);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        return { success: true, value: result };
+      }
+      updateModule(key, 'failed');
+      return { success: false };
+    } catch (err) {
+      console.warn(`[SmartPlan] ${key} failed:`, err);
+      updateModule(key, 'failed');
+      return { success: false };
+    }
+  };
+
+  const getModuleDetail = (key: string, result: any): string => {
+    switch (key) {
+      case 'itinerary': return `${result.daysGenerated || 0} day plan`;
+      case 'packing':   return `${result.itemsGenerated || 0} items`;
+      case 'dosDonts':  return `${result.tipsGenerated || 0} tips`;
+      case 'safety':    return `Score ${result.safetyScore || 0}`;
+      case 'language':  return `${result.totalPhrases || 0} phrases`;
+      case 'documents': return `${result.totalDocuments || 0} docs`;
+      default: return 'Done';
+    }
+  };
+
   const handleGenerate = useCallback(async () => {
-    if (generated) return;
+    if (generating || generated) return;
     setSmartPlanSheetVisible(false);
     setGenerating(true);
+    abortRef.current = false;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+    // Reset progress
+    const fresh: ModuleEntry[] = [
+      { key: 'itinerary', status: 'waiting' },
+      { key: 'dosDonts',  status: 'waiting' },
+      { key: 'documents', status: 'waiting' },
+      { key: 'packing',   status: 'waiting' },
+      { key: 'safety',    status: 'waiting' },
+      { key: 'language',  status: 'waiting' },
+    ];
+    modulesRef.current = fresh;
+    setModules(fresh);
+
     try {
-      // Rate limit: max 5 generations per month per user
+      // Rate limit: max 10 generations per month per user
       const { count } = await supabase
         .from('trips')
         .select('id', { count: 'exact', head: true })
         .eq('modules_generated', true)
         .gte('modules_generated_at', new Date(Date.now() - 30 * 86400000).toISOString());
 
-      if ((count ?? 0) >= 5) {
-        showError('You\'ve reached the limit of 5 Smart Plans per month. Please try again next month.');
+      if ((count ?? 0) >= 10) {
+        showError('You\'ve reached the limit of 10 Smart Plans per month. Please try again next month.');
         setGenerating(false);
         return;
       }
 
-      // Helper: check if a settled result succeeded
-      const isOk = (r: PromiseSettledResult<any>) =>
-        r.status === 'fulfilled' && r.value?.success;
+      if (abortRef.current) return;
 
-      // Wave 1: lighter/faster modules (itinerary, dos-donts, documents)
-      const [itineraryResult, dosDontsResult, documentsResult] = await Promise.allSettled([
-        plannerService.generateItinerary(trip.id),
-        safetyService.generateDosDonts(trip.id),
-        documentService.generateDocuments(trip.id),
+      // Wave 1: lighter/faster modules (concurrent, status updates as each resolves)
+      await Promise.all([
+        runModule('itinerary', () => plannerService.generateItinerary(trip.id)),
+        runModule('dosDonts',  () => safetyService.generateDosDonts(trip.id)),
+        runModule('documents', () => documentService.generateDocuments(trip.id)),
       ]);
 
-      // Small delay to let AI API rate limits breathe before wave 2
-      await new Promise(r => setTimeout(r, 2000));
+      if (abortRef.current) return;
 
-      // Wave 2: heavier modules (packing, safety, language)
-      const [packingResult, safetyResult, languageResult] = await Promise.allSettled([
-        packingService.generatePackingList(trip.id),
-        safetyService.generateSafetyProfile(trip.id),
-        languageService.generateLanguageKit(trip.id),
+      // Small delay to let AI API rate limits breathe
+      await new Promise(r => setTimeout(r, 1500));
+
+      if (abortRef.current) return;
+
+      // Wave 2: heavier modules
+      await Promise.all([
+        runModule('packing',  () => packingService.generatePackingList(trip.id)),
+        runModule('safety',   () => safetyService.generateSafetyProfile(trip.id)),
+        runModule('language',  () => languageService.generateLanguageKit(trip.id)),
       ]);
 
-      // Collect initial results
-      let results = {
-        itinerary: itineraryResult,
-        packing: packingResult,
-        dosDonts: dosDontsResult,
-        safety: safetyResult,
-        language: languageResult,
-        documents: documentsResult,
+      if (abortRef.current) return;
+
+      // Retry failed modules up to 3 times with exponential backoff
+      const retryFns: Record<string, () => Promise<any>> = {
+        itinerary: () => plannerService.generateItinerary(trip.id),
+        dosDonts:  () => safetyService.generateDosDonts(trip.id),
+        documents: () => documentService.generateDocuments(trip.id),
+        packing:   () => packingService.generatePackingList(trip.id),
+        safety:    () => safetyService.generateSafetyProfile(trip.id),
+        language:  () => languageService.generateLanguageKit(trip.id),
       };
 
-      // Retry failed modules once (with stagger to avoid rate limits)
-      const retryTargets: { key: keyof typeof results; fn: () => Promise<any> }[] = [];
-      if (!isOk(results.language)) retryTargets.push({ key: 'language', fn: () => languageService.generateLanguageKit(trip.id) });
-      if (!isOk(results.documents)) retryTargets.push({ key: 'documents', fn: () => documentService.generateDocuments(trip.id) });
-      if (!isOk(results.itinerary)) retryTargets.push({ key: 'itinerary', fn: () => plannerService.generateItinerary(trip.id) });
-      if (!isOk(results.safety)) retryTargets.push({ key: 'safety', fn: () => safetyService.generateSafetyProfile(trip.id) });
-      if (!isOk(results.packing)) retryTargets.push({ key: 'packing', fn: () => packingService.generatePackingList(trip.id) });
-      if (!isOk(results.dosDonts)) retryTargets.push({ key: 'dosDonts', fn: () => safetyService.generateDosDonts(trip.id) });
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const failedKeys = modulesRef.current
+          .filter(m => m.status === 'failed')
+          .map(m => m.key);
 
-      if (retryTargets.length > 0) {
-        console.log(`[SmartPlan] Retrying ${retryTargets.length} failed modules: ${retryTargets.map(t => t.key).join(', ')}`);
-        await new Promise(r => setTimeout(r, 3000));
-        const retryResults = await Promise.allSettled(retryTargets.map(t => t.fn()));
-        retryTargets.forEach((target, i) => {
-          if (isOk(retryResults[i])) {
-            results[target.key] = retryResults[i];
-          }
-        });
+        if (failedKeys.length === 0 || abortRef.current) break;
+
+        const backoffMs = attempt * 3000; // 3s, 6s, 9s
+        console.log(`[SmartPlan] Retry attempt ${attempt}/3 for ${failedKeys.length} modules (backoff ${backoffMs}ms): ${failedKeys.join(', ')}`);
+        await new Promise(r => setTimeout(r, backoffMs));
+
+        for (const key of failedKeys) {
+          if (abortRef.current) break;
+          if (retryFns[key]) await runModule(key, retryFns[key]);
+        }
       }
 
-      const itineraryOk = isOk(results.itinerary);
-      const packingOk = isOk(results.packing);
-      const dosDontsOk = isOk(results.dosDonts);
-      const safetyOk = isOk(results.safety);
-      const languageOk = isOk(results.language);
-      const documentsOk = isOk(results.documents);
+      if (abortRef.current) return;
 
-      if (itineraryOk || packingOk || dosDontsOk || safetyOk || languageOk || documentsOk) {
+      const finalDone = modulesRef.current.filter(m => m.status === 'done').length;
+
+      if (finalDone > 0) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        const parts = [];
-        if (itineraryOk) parts.push(`${(results.itinerary as any).value.daysGenerated} day itinerary`);
-        if (packingOk) parts.push(`${(results.packing as any).value.itemsGenerated} packing items`);
-        if (dosDontsOk) parts.push(`${(results.dosDonts as any).value.tipsGenerated} tips`);
-        if (safetyOk) parts.push(`safety score ${(results.safety as any).value.safetyScore}`);
-        if (languageOk) parts.push(`${(results.language as any).value.totalPhrases} phrases`);
-        if (documentsOk) parts.push(`${(results.documents as any).value.totalDocuments} documents`);
 
         // Mark trip as generated
         await supabase.from('trips').update({
@@ -167,20 +242,32 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
         }).eq('id', trip.id);
         setGenerated(true);
 
-        showSuccess(`Trip plan ready! ${parts.join(' + ')}`);
+        const summary = modulesRef.current
+          .filter(m => m.status === 'done' && m.detail)
+          .map(m => m.detail)
+          .join(' + ');
+        showSuccess(`Trip plan ready! ${summary}`);
         router.push({ pathname: '/planner/[tripId]', params: { tripId: trip.id } } as any);
       } else {
-        const itErr = results.itinerary.status === 'rejected' ? results.itinerary.reason?.message : (results.itinerary as any).value?.error;
-        throw new Error(itErr || 'Generation failed');
+        throw new Error('All modules failed to generate');
       }
     } catch (err: any) {
+      if (abortRef.current) return;
       console.error('Smart plan generation failed:', err);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       showError(err.message || 'Failed to generate trip plan. Please try again.');
     } finally {
       setGenerating(false);
     }
-  }, [trip.id, generated, router, showSuccess, showError]);
+  }, [trip.id, generated, generating, router, showSuccess, showError]);
+
+  const handleCancelGeneration = () => {
+    abortRef.current = true;
+    setCancelSheetVisible(false);
+    setGenerating(false);
+    setModules([]);
+    modulesRef.current = [];
+  };
 
   const coverImageUri = trip.coverImage && trip.coverImage.length > 0 && !trip.coverImage.includes('source.unsplash.com')
     ? trip.coverImage
@@ -371,22 +458,38 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
         <TouchableOpacity
           style={[
             styles.smartPlanButton,
-            generated
+            generating
+              ? { backgroundColor: colors.primary + '08', borderColor: colors.primary + '20' }
+              : generated
               ? { backgroundColor: colors.success + '10', borderColor: colors.success + '25' }
               : { backgroundColor: colors.primary + '10', borderColor: colors.primary + '25' },
           ]}
-          activeOpacity={generated ? 1 : 0.7}
-          onPress={() => !generating && !generated && setSmartPlanSheetVisible(true)}
-          disabled={generating || generated}
+          activeOpacity={generating ? 0.9 : generated ? 1 : 0.7}
+          onPress={() => {
+            if (generating) { setCancelSheetVisible(true); }
+            else if (!generated) { setSmartPlanSheetVisible(true); }
+          }}
+          disabled={generated}
         >
           {generating ? (
-            <>
-              <ActivityIndicator size="small" color={colors.primary} />
-              <View style={styles.smartPlanContent}>
-                <Text style={[styles.smartPlanTitle, { color: colors.primary }]}>Generating Your Plan...</Text>
-                <Text style={[styles.smartPlanDesc, { color: colors.textSecondary }]}>AI is crafting your personalized itinerary</Text>
+            <View style={{ flex: 1 }}>
+              {/* Row: icon + text */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.smartPlanTitle, { color: colors.primary }]}>
+                    Building your trip plan… ({doneCount}/{TOTAL_MODULES})
+                  </Text>
+                  <Text style={[styles.smartPlanDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {currentModule ? MODULE_MESSAGES[currentModule.key] || 'Generating…' : 'Finishing up…'}
+                  </Text>
+                </View>
               </View>
-            </>
+              {/* Progress bar */}
+              <View style={[styles.progressBarBg, { backgroundColor: colors.primary + '15', marginTop: 10 }]}>
+                <View style={[styles.progressBarFill, { backgroundColor: colors.primary, width: `${Math.round(progress * 100)}%` }]} />
+              </View>
+            </View>
           ) : generated ? (
             <>
               <TickCircle size={20} color={colors.success} variant="Bold" />
@@ -416,6 +519,43 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
         onGenerate={handleGenerate}
         destinationName={trip.destination?.city}
       />
+
+      {/* Cancel Generation Confirmation Sheet */}
+      <Modal visible={cancelSheetVisible} animationType="slide" transparent onRequestClose={() => setCancelSheetVisible(false)}>
+        <View style={cancelStyles.overlay}>
+          <TouchableWithoutFeedback onPress={() => setCancelSheetVisible(false)}>
+            <View style={cancelStyles.backdrop} />
+          </TouchableWithoutFeedback>
+          <View style={[cancelStyles.sheet, { backgroundColor: colors.bgPrimary }]}>
+            <View style={cancelStyles.handleRow}>
+              <View style={[cancelStyles.handle, { backgroundColor: colors.borderSubtle }]} />
+            </View>
+            <View style={cancelStyles.content}>
+              <View style={[cancelStyles.iconCircle, { backgroundColor: '#EF444415' }]}>
+                <CloseCircle size={32} color="#EF4444" variant="Bold" />
+              </View>
+              <Text style={[cancelStyles.title, { color: colors.textPrimary }]}>Cancel Generation?</Text>
+              <Text style={[cancelStyles.desc, { color: colors.textSecondary }]}>
+                Your trip plan is still being generated ({doneCount}/{TOTAL_MODULES} modules done). Are you sure you want to stop?
+              </Text>
+              <TouchableOpacity
+                style={[cancelStyles.confirmBtn, { backgroundColor: colors.primary }]}
+                onPress={() => setCancelSheetVisible(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={cancelStyles.confirmText}>Keep Generating</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={cancelStyles.keepBtn}
+                onPress={handleCancelGeneration}
+                activeOpacity={0.6}
+              >
+                <Text style={[cancelStyles.keepText, { color: '#EF4444' }]}>Yes, Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -674,5 +814,85 @@ const styles = StyleSheet.create({
   smartPlanDesc: {
     fontSize: typography.fontSize.xs,
     marginTop: 1,
+  },
+  progressBarBg: {
+    height: 5,
+    borderRadius: 3,
+    overflow: 'hidden' as const,
+  },
+  progressBarFill: {
+    height: '100%' as any,
+    borderRadius: 3,
+  },
+});
+
+const cancelStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  sheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 34,
+  },
+  handleRow: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+  },
+  content: {
+    alignItems: 'center',
+    paddingHorizontal: 28,
+    paddingTop: spacing.md,
+  },
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  desc: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  confirmBtn: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginBottom: 10,
+  },
+  confirmText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  keepBtn: {
+    paddingVertical: 10,
+  },
+  keepText: {
+    fontSize: 15,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });

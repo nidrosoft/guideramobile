@@ -5,7 +5,7 @@
  * Manages camera/map view switching and plugin rendering.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { ARViewMode, ARPluginId } from '../types/ar-plugin.types';
 import ARCamera from './ARCamera';
@@ -23,6 +23,13 @@ export default function ARContainer({ onClose, initialPlugin }: ARContainerProps
     (initialPlugin as ARPluginId) || null
   );
   const [sidePanelVisible, setSidePanelVisible] = useState(true);
+
+  // Sync activePlugin when initialPlugin prop changes (e.g., Navigate tab switching)
+  useEffect(() => {
+    if (initialPlugin) {
+      setActivePlugin(initialPlugin as ARPluginId);
+    }
+  }, [initialPlugin]);
 
   const handlePluginSelect = (pluginId: ARPluginId) => {
     setActivePlugin(pluginId);
@@ -46,8 +53,8 @@ export default function ARContainer({ onClose, initialPlugin }: ARContainerProps
         <ARMapView activePlugin={activePlugin} onClose={onClose} />
       )}
 
-      {/* Plugin Selector (Left Sidebar) - Conditionally visible */}
-      {sidePanelVisible && (
+      {/* Plugin Selector (Left Sidebar) - Hidden when any plugin is active */}
+      {sidePanelVisible && !activePlugin && (
         <ARPluginSelector
           activePlugin={activePlugin}
           onPluginSelect={handlePluginSelect}

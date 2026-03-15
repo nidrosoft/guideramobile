@@ -7,6 +7,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Verify, Location, Crown } from 'iconsax-react-native';
+import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { BuddyMatch } from '../types/buddy.types';
@@ -14,10 +15,11 @@ import { BuddyMatch } from '../types/buddy.types';
 interface BuddyMatchCardProps {
   buddy: BuddyMatch;
   onPress: () => void;
+  onConnect?: (userId: string) => void;
   isPremium: boolean;
 }
 
-export default function BuddyMatchCard({ buddy, onPress, isPremium }: BuddyMatchCardProps) {
+export default function BuddyMatchCard({ buddy, onPress, onConnect, isPremium }: BuddyMatchCardProps) {
   const { colors: tc } = useTheme();
   const getMatchColor = (score: number) => {
     if (score >= 80) return colors.success;
@@ -84,7 +86,13 @@ export default function BuddyMatchCard({ buddy, onPress, isPremium }: BuddyMatch
             <Text style={styles.pendingText}>Pending</Text>
           </View>
         ) : (
-          <TouchableOpacity style={styles.connectButton}>
+          <TouchableOpacity
+            style={styles.connectButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onConnect?.(buddy.userId);
+            }}
+          >
             <Text style={styles.connectText}>Connect</Text>
           </TouchableOpacity>
         )}

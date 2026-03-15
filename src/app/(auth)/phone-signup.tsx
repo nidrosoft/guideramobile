@@ -1,19 +1,34 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import CountryPicker, { Country, CountryCode } from 'react-native-country-picker-modal';
 import PhoneIcon from '@/components/common/icons/PhoneIcon';
 import CloseIcon from '@/components/common/icons/CloseIcon';
 import { colors, typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { useSignUp } from '@clerk/clerk-expo';
+import { useSignUp, useSSO } from '@clerk/clerk-expo';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
+
+WebBrowser.maybeCompleteAuthSession();
+
+const useWarmUpBrowser = () => {
+  React.useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    void WebBrowser.warmUpAsync();
+    return () => { void WebBrowser.coolDownAsync(); };
+  }, []);
+};
 
 export default function PhoneSignUp() {
+  useWarmUpBrowser();
   const router = useRouter();
+  const { colors: tc, isDark } = useTheme();
   const params = useLocalSearchParams<{ phone?: string; callingCode?: string }>();
   const { isLoaded, signUp } = useSignUp();
+  const { startSSOFlow } = useSSO();
   const [countryCode, setCountryCode] = useState<CountryCode>('US');
   const [callingCode, setCallingCode] = useState(params.callingCode || '1');
   const [phoneNumber, setPhoneNumber] = useState(params.phone || '');
@@ -67,30 +82,30 @@ export default function PhoneSignUp() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: tc.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Close Button */}
       <TouchableOpacity style={styles.closeButton} onPress={handleBack}>
-        <CloseIcon size={24} color={colors.textPrimary} />
+        <CloseIcon size={24} color={tc.textPrimary} />
       </TouchableOpacity>
 
       <View style={styles.content}>
         {/* Phone Icon */}
-        <View style={styles.iconContainer}>
-          <PhoneIcon size={32} color={colors.textPrimary} />
+        <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
+          <PhoneIcon size={32} color={tc.textPrimary} />
         </View>
 
         {/* Header */}
-        <Text style={styles.title}>Sign up with your phone number</Text>
+        <Text style={[styles.title, { color: tc.textPrimary }]}>Sign up with your phone number</Text>
 
         {/* Phone Input - Inline */}
-        <View style={styles.phoneInputContainer}>
+        <View style={[styles.phoneInputContainer, { borderBottomColor: tc.borderMedium }]}>
           {/* Country Code */}
           <TouchableOpacity 
-            style={styles.countryCodeButton}
+            style={[styles.countryCodeButton, { borderRightColor: tc.borderMedium }]}
             onPress={() => setShowCountryPicker(true)}
           >
             <CountryPicker
@@ -103,15 +118,15 @@ export default function PhoneSignUp() {
               visible={showCountryPicker}
               onClose={() => setShowCountryPicker(false)}
             />
-            <Text style={styles.countryCodeText}>+{callingCode}</Text>
-            <Text style={styles.dropdownIcon}>▼</Text>
+            <Text style={[styles.countryCodeText, { color: tc.textPrimary }]}>+{callingCode}</Text>
+            <Text style={[styles.dropdownIcon, { color: tc.textSecondary }]}>▼</Text>
           </TouchableOpacity>
 
           {/* Phone Number */}
           <TextInput
-            style={styles.phoneInput}
+            style={[styles.phoneInput, { color: tc.textPrimary }]}
             placeholder=""
-            placeholderTextColor={colors.textTertiary}
+            placeholderTextColor={tc.textTertiary}
             keyboardType="phone-pad"
             value={phoneNumber}
             onChangeText={setPhoneNumber}
@@ -121,40 +136,57 @@ export default function PhoneSignUp() {
         </View>
 
         {/* Description */}
-        <Text style={styles.description}>
+        <Text style={[styles.description, { color: tc.textSecondary }]}>
           We'll send you a text with a verification code.
         </Text>
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
 
         {/* Continue Button - Always Visible */}
         <TouchableOpacity
-          style={[styles.continueButton, (phoneNumber.length < 10 || isLoading) && styles.continueButtonDisabled]}
+          style={[
+            styles.continueButton,
+            { backgroundColor: isDark ? tc.white : tc.black },
+            (phoneNumber.length < 10 || isLoading) && { backgroundColor: tc.bgElevated, borderWidth: 1, borderColor: tc.borderMedium },
+          ]}
           onPress={handleContinue}
           disabled={phoneNumber.length < 10 || isLoading}
           activeOpacity={0.8}
         >
           {isLoading ? (
-            <ActivityIndicator color={colors.white} size="small" />
+            <ActivityIndicator color={isDark ? tc.black : tc.white} size="small" />
           ) : (
-            <Text style={[styles.continueIcon, phoneNumber.length < 10 && styles.continueIconDisabled]}>→</Text>
+            <Text style={[styles.continueIcon, { color: isDark ? tc.black : tc.white }, phoneNumber.length < 10 && { color: tc.textTertiary }]}>→</Text>
           )}
         </TouchableOpacity>
 
         {/* Divider */}
         <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
+          <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
+          <Text style={[styles.dividerText, { color: tc.textSecondary }]}>or</Text>
+          <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
         </View>
 
         {/* Google Button */}
         <TouchableOpacity
-          style={styles.googleButton}
-          onPress={() => console.log('Google signup')}
+          style={[styles.googleButton, { backgroundColor: tc.bgElevated, borderColor: tc.borderMedium }]}
+          onPress={async () => {
+            try {
+              const { createdSessionId, setActive: ssoSetActive } = await startSSOFlow({
+                strategy: 'oauth_google',
+                redirectUrl: AuthSession.makeRedirectUri(),
+              });
+              if (createdSessionId && ssoSetActive) {
+                await ssoSetActive({ session: createdSessionId });
+              }
+            } catch (err: any) {
+              const msg = err?.errors?.[0]?.longMessage || err?.message || 'Google sign up failed';
+              setError(msg);
+            }
+          }}
           activeOpacity={0.8}
         >
-          <Text style={styles.googleButtonText}>Sign up with Google</Text>
+          <Text style={[styles.googleButtonText, { color: tc.textPrimary }]}>Sign up with Google</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -164,7 +196,6 @@ export default function PhoneSignUp() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   closeButton: {
     position: 'absolute',
@@ -184,9 +215,8 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 64,
     height: 64,
-    borderRadius: 32,
+    borderRadius: borderRadius.full,
     borderWidth: 2,
-    borderColor: colors.textPrimary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.xl,
@@ -194,14 +224,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize['4xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing['2xl'],
   },
   phoneInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray300,
     paddingBottom: spacing.md,
     marginBottom: spacing.lg,
   },
@@ -211,7 +239,6 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     paddingRight: spacing.md,
     borderRightWidth: 1,
-    borderRightColor: colors.gray300,
   },
   flag: {
     fontSize: 24,
@@ -219,51 +246,36 @@ const styles = StyleSheet.create({
   countryCodeText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   dropdownIcon: {
     fontSize: 10,
-    color: colors.textSecondary,
   },
   phoneInput: {
     flex: 1,
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
     paddingLeft: spacing.lg,
   },
   description: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
     lineHeight: typography.fontSize.base * typography.lineHeight.normal,
     marginBottom: spacing['3xl'],
   },
   errorText: {
     fontSize: typography.fontSize.sm,
-    color: '#EF4444',
     marginBottom: spacing.md,
   },
   continueButton: {
     width: 64,
     height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.black,
+    borderRadius: borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'flex-end',
     marginTop: spacing.lg,
   },
-  continueButtonDisabled: {
-    backgroundColor: colors.bgElevated,
-    borderWidth: 1,
-    borderColor: colors.gray300,
-  },
   continueIcon: {
     fontSize: 28,
-    color: colors.white,
-  },
-  continueIconDisabled: {
-    color: colors.gray400,
   },
   divider: {
     flexDirection: 'row',
@@ -273,25 +285,20 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: colors.gray300,
   },
   dividerText: {
     marginHorizontal: spacing.md,
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   googleButton: {
     height: 56,
-    backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.gray300,
     justifyContent: 'center',
     alignItems: 'center',
   },
   googleButtonText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
 });

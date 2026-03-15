@@ -48,6 +48,7 @@ import AddClaimBottomSheet from '../components/AddClaimBottomSheet';
 import { compensationService } from '@/services/compensation.service';
 import { useAuth } from '@/context/AuthContext';
 import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
+import PluginErrorState from '@/features/trips/components/PluginErrorState';
 
 type TabId = 'overview' | 'active' | 'resolved';
 const TABS: { id: TabId; label: string }[] = [
@@ -84,29 +85,32 @@ export default function CompensationScreen() {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [rightsCards, setRightsCards] = useState<RightsCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [addClaimVisible, setAddClaimVisible] = useState(false);
   const [analyzingClaimId, setAnalyzingClaimId] = useState<string | null>(null);
   const [expandedClaimId, setExpandedClaimId] = useState<string | null>(null);
 
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setFetchError(null);
+      const [claimsData, cardsData] = await Promise.all([
+        compensationService.getClaims(tripId),
+        compensationService.getRightsCards(tripId),
+      ]);
+      setClaims(claimsData);
+      setRightsCards(cardsData);
+    } catch (err: any) {
+      console.error('Failed to load compensation data:', err);
+      setFetchError(err.message || 'Failed to load compensation data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let mounted = true;
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [claimsData, cardsData] = await Promise.all([
-          compensationService.getClaims(tripId),
-          compensationService.getRightsCards(tripId),
-        ]);
-        if (mounted) { setClaims(claimsData); setRightsCards(cardsData); }
-      } catch (err) {
-        console.error('Failed to load compensation data:', err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
     fetchData();
-    return () => { mounted = false; };
   }, [tripId]);
 
   const stats: ClaimStats = useMemo(() => {
@@ -172,6 +176,7 @@ export default function CompensationScreen() {
 
   if (!trip) return <SafeAreaView style={[styles.ctr, { backgroundColor: colors.bgPrimary }]}><Text style={{ color: colors.textPrimary }}>Trip not found</Text></SafeAreaView>;
   if (loading) return <View style={[styles.ctr, { backgroundColor: colors.bgPrimary, justifyContent: 'center', alignItems: 'center' }]}><ActivityIndicator size="large" color={colors.primary} /></View>;
+  if (fetchError) return <View style={[styles.ctr, { backgroundColor: colors.bgPrimary }]}><PluginErrorState message={fetchError} onRetry={fetchData} /></View>;
 
   if (claims.length === 0 && rightsCards.length === 0) {
     return (
@@ -212,7 +217,7 @@ export default function CompensationScreen() {
               setClaims(prev => [newClaim, ...prev]);
               showSuccess('Claim added!');
               setAddClaimVisible(false);
-            } catch (err) { console.error('Failed to create claim:', err); }
+            } catch (err: any) { console.error('Failed to create claim:', err); showError(err.message || 'Failed to create claim'); }
           }}
         />
       </>
@@ -518,7 +523,7 @@ export default function CompensationScreen() {
               setClaims(prev => [newClaim, ...prev]);
               showSuccess('Claim added!');
               setAddClaimVisible(false);
-            } catch (err) { console.error('Failed to create claim:', err); }
+            } catch (err: any) { console.error('Failed to create claim:', err); showError(err.message || 'Failed to create claim'); }
           }}
         />
       </SafeAreaView>

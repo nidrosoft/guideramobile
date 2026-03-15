@@ -8,10 +8,14 @@ interface OnboardingData {
   ethnicity: string;
   country: string;
   language: string;
+  languages: string[];
   emergencyContactPhone: string;
   travelStyle: string;
+  travelStyles: string[];
   dietaryRestrictions: string;
+  dietaryRestrictionsList: string[];
   accessibilityNeeds: string;
+  accessibilityNeedsList: string[];
 }
 
 interface OnboardingStore {
@@ -28,6 +32,10 @@ interface OnboardingStore {
   setTravelStyle: (style: string) => void;
   setDietaryRestrictions: (restrictions: string) => void;
   setAccessibilityNeeds: (needs: string) => void;
+  setLanguages: (languages: string[]) => void;
+  setTravelStyles: (styles: string[]) => void;
+  setDietaryRestrictionsList: (restrictions: string[]) => void;
+  setAccessibilityNeedsList: (needs: string[]) => void;
   setCurrentStep: (step: number) => void;
   reset: () => void;
   getProfileUpdates: () => Record<string, any>;
@@ -43,8 +51,12 @@ const initialData: OnboardingData = {
   language: '',
   emergencyContactPhone: '',
   travelStyle: '',
+  travelStyles: [],
   dietaryRestrictions: '',
+  dietaryRestrictionsList: [],
   accessibilityNeeds: '',
+  accessibilityNeedsList: [],
+  languages: [],
 };
 
 export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
@@ -95,6 +107,22 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     data: { ...state.data, accessibilityNeeds: needs } 
   })),
 
+  setLanguages: (languages) => set((state) => ({ 
+    data: { ...state.data, languages } 
+  })),
+
+  setTravelStyles: (styles) => set((state) => ({ 
+    data: { ...state.data, travelStyles: styles } 
+  })),
+
+  setDietaryRestrictionsList: (restrictions) => set((state) => ({ 
+    data: { ...state.data, dietaryRestrictionsList: restrictions } 
+  })),
+
+  setAccessibilityNeedsList: (needs) => set((state) => ({ 
+    data: { ...state.data, accessibilityNeedsList: needs } 
+  })),
+
   setCurrentStep: (step) => set({ currentStep: step }),
 
   reset: () => set({ data: { ...initialData }, currentStep: 0 }),
@@ -131,11 +159,12 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
       // DEPRECATED: Kept for backward compat (AccountScreen reads this).
       // Primary source of truth is the travel_preferences table (written in setup.tsx).
       travel_preferences: {
-        styles: data.travelStyle ? [data.travelStyle] : [],
+        styles: data.travelStyles.length > 0 ? data.travelStyles : (data.travelStyle ? [data.travelStyle] : []),
         interests: [],
-        dietary_restrictions: data.dietaryRestrictions ? [data.dietaryRestrictions] : [],
-        accessibility_needs: data.accessibilityNeeds ? [data.accessibilityNeeds] : [],
+        dietary_restrictions: data.dietaryRestrictionsList.length > 0 ? data.dietaryRestrictionsList : (data.dietaryRestrictions ? [data.dietaryRestrictions] : []),
+        accessibility_needs: data.accessibilityNeedsList.length > 0 ? data.accessibilityNeedsList : (data.accessibilityNeeds ? [data.accessibilityNeeds] : []),
       },
+      languages_spoken: data.languages.length > 0 ? data.languages : (data.language ? [data.language] : ['English']),
       emergency_contact: data.emergencyContactPhone ? {
         phone: data.emergencyContactPhone,
       } : null,

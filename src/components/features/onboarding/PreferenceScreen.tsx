@@ -5,8 +5,9 @@ import { useState, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, typography, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import ProgressStepper from '@/components/common/ProgressStepper';
-import { ArrowLeft } from 'iconsax-react-native';
+import { ArrowLeft, TickCircle } from 'iconsax-react-native';
 import { useOnboardingStore } from '@/stores/useOnboardingStore';
 import { useAuth } from '@/context/AuthContext';
 
@@ -17,9 +18,10 @@ type OnboardingField =
   | 'ethnicity' 
   | 'country' 
   | 'language' 
+  | 'languages'
   | 'emergencyContactPhone' 
-  | 'travelStyle' 
-  | 'dietaryRestrictions' 
+  | 'travelStyles'
+  | 'dietaryRestrictions'
   | 'accessibilityNeeds';
 
 interface PreferenceScreenProps {
@@ -27,7 +29,7 @@ interface PreferenceScreenProps {
   title: string;
   description: string;
   placeholder?: string;
-  inputType?: 'text' | 'select' | 'date';
+  inputType?: 'text' | 'select' | 'date' | 'multiselect';
   options?: string[];
   currentStep: number;
   totalSteps: number;
@@ -36,6 +38,8 @@ interface PreferenceScreenProps {
   keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
   showBackButton?: boolean;
   fieldName?: OnboardingField;
+  minSelections?: number;
+  maxSelections?: number;
 }
 
 export default function PreferenceScreen({
@@ -52,10 +56,14 @@ export default function PreferenceScreen({
   keyboardType = 'default',
   showBackButton = false,
   fieldName,
+  minSelections = 1,
+  maxSelections,
 }: PreferenceScreenProps) {
   const router = useRouter();
+  const { colors: tc, isDark } = useTheme();
   const [value, setValue] = useState('');
   const [selectedOption, setSelectedOption] = useState('');
+  const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   
@@ -69,7 +77,17 @@ export default function PreferenceScreen({
 
   const handleSelectOption = (option: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedOption(option);
+    if (inputType === 'multiselect') {
+      setSelectedOptions(prev => {
+        if (prev.includes(option)) {
+          return prev.filter(o => o !== option);
+        }
+        if (maxSelections && prev.length >= maxSelections) return prev;
+        return [...prev, option];
+      });
+    } else {
+      setSelectedOption(option);
+    }
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
@@ -96,7 +114,7 @@ export default function PreferenceScreen({
         onboardingStore.setEthnicity(selectedOption);
         break;
       case 'country':
-        onboardingStore.setCountry(value);
+        onboardingStore.setCountry(inputType === 'select' ? selectedOption : value);
         break;
       case 'language':
         onboardingStore.setLanguage(selectedOption);
@@ -104,14 +122,17 @@ export default function PreferenceScreen({
       case 'emergencyContactPhone':
         onboardingStore.setEmergencyContactPhone(value);
         break;
-      case 'travelStyle':
-        onboardingStore.setTravelStyle(selectedOption);
+      case 'languages':
+        onboardingStore.setLanguages(selectedOptions);
+        break;
+      case 'travelStyles':
+        onboardingStore.setTravelStyles(selectedOptions);
         break;
       case 'dietaryRestrictions':
-        onboardingStore.setDietaryRestrictions(selectedOption);
+        onboardingStore.setDietaryRestrictionsList(selectedOptions);
         break;
       case 'accessibilityNeeds':
-        onboardingStore.setAccessibilityNeeds(selectedOption);
+        onboardingStore.setAccessibilityNeedsList(selectedOptions);
         break;
     }
   };
@@ -122,6 +143,8 @@ export default function PreferenceScreen({
       hasValue = value.trim().length > 0;
     } else if (inputType === 'date') {
       hasValue = true;
+    } else if (inputType === 'multiselect') {
+      hasValue = selectedOptions.length >= minSelections;
     } else {
       hasValue = selectedOption.length > 0;
     }
@@ -145,26 +168,32 @@ export default function PreferenceScreen({
     ? value.trim().length > 0 
     : inputType === 'date'
     ? true
+    : inputType === 'multiselect'
+    ? selectedOptions.length >= minSelections
     : selectedOption.length > 0;
 
+  const selectionHint = inputType === 'multiselect' && minSelections > 1
+    ? `Select at least ${minSelections} (${selectedOptions.length}/${minSelections})`
+    : undefined;
+
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
       <View style={styles.headerContainer}>
         {/* Back Button - First Line */}
         {showBackButton && (
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <ArrowLeft size={24} color={colors.textPrimary} variant="Outline" />
+            <ArrowLeft size={24} color={tc.textPrimary} variant="Outline" />
           </TouchableOpacity>
         )}
 
         {/* Stepper and Icon - Second Line */}
         <View style={styles.stepperIconRow}>
           {/* Icon on Left */}
-          <View style={styles.iconContainer}>
-            <Icon size={32} color={colors.textPrimary} variant="Outline" />
+          <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
+            <Icon size={32} color={tc.textPrimary} variant="Outline" />
           </View>
 
           {/* Progress Stepper on Right */}
@@ -181,18 +210,25 @@ export default function PreferenceScreen({
       >
 
         {/* Title */}
-        <Text style={styles.title}>{title}</Text>
+        <Text style={[styles.title, { color: tc.textPrimary }]}>{title}</Text>
 
         {/* Description */}
-        <Text style={styles.description}>{description}</Text>
+        <Text style={[styles.description, { color: tc.textSecondary }]}>{description}</Text>
+
+        {/* Selection hint for multiselect */}
+        {selectionHint && (
+          <Text style={[styles.selectionHint, { color: tc.textTertiary }, isValid && { color: tc.success }]}>
+            {isValid ? `${selectedOptions.length} selected ✓` : selectionHint}
+          </Text>
+        )}
 
         {/* Input, Date Picker, or Options */}
         {inputType === 'text' ? (
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, { borderBottomColor: tc.borderMedium }]}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: tc.textPrimary }]}
               placeholder={placeholder}
-              placeholderTextColor={colors.textTertiary}
+              placeholderTextColor={tc.textTertiary}
               value={value}
               onChangeText={setValue}
               keyboardType={keyboardType}
@@ -202,10 +238,10 @@ export default function PreferenceScreen({
         ) : inputType === 'date' ? (
           <View style={styles.dateContainer}>
             <TouchableOpacity 
-              style={styles.dateButton}
+              style={[styles.dateButton, { borderBottomColor: tc.borderMedium }]}
               onPress={() => setShowDatePicker(true)}
             >
-              <Text style={styles.dateText}>
+              <Text style={[styles.dateText, { color: tc.textPrimary }]}>
                 {date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
               </Text>
             </TouchableOpacity>
@@ -219,6 +255,23 @@ export default function PreferenceScreen({
               />
             )}
           </View>
+        ) : inputType === 'multiselect' ? (
+          <View style={styles.chipContainer}>
+            {options.map((option) => {
+              const isSelected = selectedOptions.includes(option);
+              return (
+                <TouchableOpacity
+                  key={option}
+                  style={[styles.chip, { borderColor: tc.borderMedium, backgroundColor: tc.bgCard }, isSelected && { backgroundColor: tc.primary, borderColor: tc.primary }]}
+                  onPress={() => handleSelectOption(option)}
+                  activeOpacity={0.7}
+                >
+                  {isSelected && <TickCircle size={16} color={tc.white} variant="Bold" style={{ marginRight: 6 }} />}
+                  <Text style={[styles.chipText, { color: tc.textPrimary }, isSelected && { color: tc.white, fontWeight: typography.fontWeight.semibold }]}>{option}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         ) : (
           <View style={styles.radioContainer}>
             {options.map((option, index) => (
@@ -228,12 +281,12 @@ export default function PreferenceScreen({
                   onPress={() => handleSelectOption(option)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.radioText}>{option}</Text>
-                  <View style={styles.radioCircle}>
-                    {selectedOption === option && <View style={styles.radioSelected} />}
+                  <Text style={[styles.radioText, { color: tc.textPrimary }]}>{option}</Text>
+                  <View style={[styles.radioCircle, { borderColor: tc.textTertiary }]}>
+                    {selectedOption === option && <View style={[styles.radioSelected, { backgroundColor: tc.primary }]} />}
                   </View>
                 </TouchableOpacity>
-                {index < options.length - 1 && <View style={styles.separator} />}
+                {index < options.length - 1 && <View style={[styles.separator, { backgroundColor: tc.borderSubtle }]} />}
               </View>
             ))}
           </View>
@@ -244,12 +297,16 @@ export default function PreferenceScreen({
       {/* Continue Button - Fixed at bottom */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity
-          style={[styles.continueButton, !isValid && styles.continueButtonDisabled]}
+          style={[
+            styles.continueButton,
+            { backgroundColor: isDark ? tc.white : tc.black },
+            !isValid && { backgroundColor: tc.bgElevated, borderWidth: 1, borderColor: tc.borderMedium },
+          ]}
           onPress={handleContinue}
           disabled={!isValid}
           activeOpacity={0.8}
         >
-          <Text style={[styles.continueIcon, !isValid && styles.continueIconDisabled]}>→</Text>
+          <Text style={[styles.continueIcon, { color: isDark ? tc.black : tc.white }, !isValid && { color: tc.textTertiary }]}>→</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -259,7 +316,6 @@ export default function PreferenceScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   headerContainer: {
     paddingTop: 60,
@@ -283,7 +339,6 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     borderWidth: 2,
-    borderColor: colors.textPrimary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -301,25 +356,21 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.md,
   },
   description: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
     lineHeight: typography.fontSize.base * typography.lineHeight.normal,
     marginBottom: spacing['2xl'],
   },
   inputContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray300,
     paddingBottom: spacing.md,
     marginBottom: spacing.xl,
   },
   input: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
     padding: 0,
   },
   dateContainer: {
@@ -327,13 +378,11 @@ const styles = StyleSheet.create({
   },
   dateButton: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray300,
     paddingBottom: spacing.md,
   },
   dateText: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   radioContainer: {
     marginBottom: spacing.xl,
@@ -346,14 +395,12 @@ const styles = StyleSheet.create({
   },
   radioText: {
     fontSize: typography.fontSize.lg,
-    color: colors.textPrimary,
   },
   radioCircle: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: colors.gray400,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -361,11 +408,9 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: colors.primary,
   },
   separator: {
     height: 1,
-    backgroundColor: colors.gray200,
   },
   buttonContainer: {
     position: 'absolute',
@@ -375,21 +420,34 @@ const styles = StyleSheet.create({
   continueButton: {
     width: 64,
     height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.black,
+    borderRadius: borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  continueButtonDisabled: {
-    backgroundColor: colors.bgElevated,
-    borderWidth: 1,
-    borderColor: colors.gray300,
-  },
   continueIcon: {
     fontSize: 28,
-    color: colors.white,
   },
-  continueIconDisabled: {
-    color: colors.gray400,
+  selectionHint: {
+    fontSize: typography.fontSize.sm,
+    marginBottom: spacing.lg,
+    fontWeight: typography.fontWeight.medium,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.full,
+    borderWidth: 1.5,
+  },
+  chipText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.medium,
   },
 });

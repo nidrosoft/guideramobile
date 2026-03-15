@@ -1,22 +1,35 @@
 /**
- * DANGER MAP VIEW
- * 
- * Dark-themed map showing danger zones and incidents.
- * Premium design with smooth animations.
+ * SAFETY MAP VIEW
+ *
+ * Clean dark map with risk zone circles and alert pin markers.
+ * Uses Mapbox (dev build) or react-native-maps (Expo Go) — same dual-path as CityMapView.
+ * No clutter — just the map, zones, and pins.
  */
 
-import React, { useRef, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import MapView, { Marker, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
+import React, { useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Gps } from 'iconsax-react-native';
-import { colors } from '@/styles';
-import { DangerZone, Incident, Coordinates } from '../types/dangerAlerts.types';
-import { getDangerColor } from '../data/mockDangerData';
-import DangerMarker from './DangerMarker';
-import IncidentMarker from './IncidentMarker';
+import { colors, spacing } from '@/styles';
+import { DangerZone, Incident, Coordinates, DangerLevel } from '../types/dangerAlerts.types';
 
-const { width, height } = Dimensions.get('window');
+// Try Mapbox first, fall back to react-native-maps
+let MapboxGL: any = null;
+let MAPBOX_AVAILABLE = false;
+try { MapboxGL = require('@rnmapbox/maps').default; MAPBOX_AVAILABLE = true; } catch { MAPBOX_AVAILABLE = false; }
+
+let RNMapView: any = null;
+let RNMarker: any = null;
+let RNCircle: any = null;
+try {
+  const RNMaps = require('react-native-maps');
+  RNMapView = RNMaps.default; RNMarker = RNMaps.Marker; RNCircle = RNMaps.Circle;
+} catch {}
+
+function getDangerColor(level: DangerLevel, opacity: number = 1): string {
+  const base: Record<DangerLevel, string> = { low: '245,158,11', medium: '249,115,22', high: '239,68,68', critical: '220,38,38' };
+  return `rgba(${base[level] || base.low}, ${opacity})`;
+}
 
 interface DangerMapViewProps {
   userLocation: Coordinates | null;
@@ -28,58 +41,6 @@ interface DangerMapViewProps {
   onSelectIncident: (incident: Incident) => void;
 }
 
-// Dark map style for danger alerts
-const DARK_MAP_STYLE = [
-  { elementType: 'geometry', stylers: [{ color: '#1a1a2e' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1a2e' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
-  {
-    featureType: 'administrative.locality',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#d59563' }],
-  },
-  {
-    featureType: 'poi',
-    elementType: 'labels',
-    stylers: [{ visibility: 'off' }],
-  },
-  {
-    featureType: 'road',
-    elementType: 'geometry',
-    stylers: [{ color: '#2d2d44' }],
-  },
-  {
-    featureType: 'road',
-    elementType: 'geometry.stroke',
-    stylers: [{ color: '#1a1a2e' }],
-  },
-  {
-    featureType: 'road.highway',
-    elementType: 'geometry',
-    stylers: [{ color: '#3d3d5c' }],
-  },
-  {
-    featureType: 'road.highway',
-    elementType: 'geometry.stroke',
-    stylers: [{ color: '#1f1f3d' }],
-  },
-  {
-    featureType: 'transit',
-    elementType: 'geometry',
-    stylers: [{ color: '#2f2f4f' }],
-  },
-  {
-    featureType: 'water',
-    elementType: 'geometry',
-    stylers: [{ color: '#0e1626' }],
-  },
-  {
-    featureType: 'water',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#515c6d' }],
-  },
-];
-
 export default function DangerMapView({
   userLocation,
   dangerZones,
@@ -89,153 +50,159 @@ export default function DangerMapView({
   onSelectZone,
   onSelectIncident,
 }: DangerMapViewProps) {
-  const mapRef = useRef<MapView>(null);
+  const cameraRef = useRef<any>(null);
+  const rnMapRef = useRef<any>(null);
 
-  // Center on user location
   const handleCenterOnUser = useCallback(() => {
-    if (userLocation && mapRef.current) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      mapRef.current.animateToRegion({
-        ...userLocation,
-        latitudeDelta: 0.015,
-        longitudeDelta: 0.015,
-      }, 500);
+    if (!userLocation) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (MAPBOX_AVAILABLE && cameraRef.current) {
+      cameraRef.current.setCamera({
+        centerCoordinate: [userLocation.longitude, userLocation.latitude],
+        zoomLevel: 14,
+        animationDuration: 800,
+      });
+    } else if (rnMapRef.current) {
+      rnMapRef.current.animateToRegion({ ...userLocation, latitudeDelta: 0.02, longitudeDelta: 0.02 }, 500);
     }
   }, [userLocation]);
 
-  // Initial center on user
-  useEffect(() => {
-    if (userLocation && mapRef.current) {
-      mapRef.current.animateToRegion({
-        ...userLocation,
-        latitudeDelta: 0.02,
-        longitudeDelta: 0.02,
-      }, 1000);
-    }
-  }, [userLocation]);
+  const centerCoords: [number, number] = userLocation
+    ? [userLocation.longitude, userLocation.latitude]
+    : [-117.0713, 32.7767];
+
+  // ── Mapbox path ──
+  if (MAPBOX_AVAILABLE && MapboxGL) {
+    // Build GeoJSON circles for danger zones
+    const zoneFeatures = dangerZones.map(z => ({
+      type: 'Feature' as const,
+      id: z.id,
+      properties: { level: z.level, title: z.title, radius: z.radius },
+      geometry: { type: 'Point' as const, coordinates: [z.coordinates.longitude, z.coordinates.latitude] },
+    }));
+
+    return (
+      <View style={styles.container}>
+        <MapboxGL.MapView
+          style={styles.map}
+          styleURL={MapboxGL.StyleURL.Dark}
+          logoEnabled={false}
+          attributionEnabled={false}
+          compassEnabled={false}
+          scaleBarEnabled={false}
+        >
+          <MapboxGL.Camera
+            ref={cameraRef}
+            centerCoordinate={centerCoords}
+            zoomLevel={13}
+            animationMode="flyTo"
+            animationDuration={1000}
+          />
+          <MapboxGL.UserLocation visible showsUserHeadingIndicator animated />
+
+          {/* Danger zone markers */}
+          {dangerZones.map(zone => (
+            <MapboxGL.PointAnnotation
+              key={zone.id}
+              id={`zone-${zone.id}`}
+              coordinate={[zone.coordinates.longitude, zone.coordinates.latitude]}
+              onSelected={() => onSelectZone(zone)}
+            >
+              <View style={[styles.zonePin, { backgroundColor: getDangerColor(zone.level, 0.9) }]}>
+                <Text style={styles.zonePinText}>!</Text>
+              </View>
+            </MapboxGL.PointAnnotation>
+          ))}
+
+          {/* Incident markers */}
+          {incidents.map(inc => (
+            <MapboxGL.PointAnnotation
+              key={inc.id}
+              id={`inc-${inc.id}`}
+              coordinate={[inc.coordinates.longitude, inc.coordinates.latitude]}
+              onSelected={() => onSelectIncident(inc)}
+            >
+              <View style={[styles.incidentPin, { borderColor: getDangerColor(inc.level, 0.8) }]}>
+                <Text style={styles.incidentPinText}>{String.fromCodePoint(0x26A0)}</Text>
+              </View>
+            </MapboxGL.PointAnnotation>
+          ))}
+        </MapboxGL.MapView>
+
+      </View>
+    );
+  }
+
+  // ── Fallback: react-native-maps ──
+  if (!RNMapView) {
+    return <View style={[styles.container, { backgroundColor: '#1a1a2e', justifyContent: 'center', alignItems: 'center' }]}>
+      <Text style={{ color: '#666', fontSize: 16 }}>Map not available</Text>
+    </View>;
+  }
 
   const initialRegion = userLocation
-    ? { ...userLocation, latitudeDelta: 0.02, longitudeDelta: 0.02 }
-    : { latitude: 32.7767, longitude: -117.0713, latitudeDelta: 0.02, longitudeDelta: 0.02 };
+    ? { ...userLocation, latitudeDelta: 0.03, longitudeDelta: 0.03 }
+    : { latitude: 32.7767, longitude: -117.0713, latitudeDelta: 0.03, longitudeDelta: 0.03 };
 
   return (
     <View style={styles.container}>
-      <MapView
-        ref={mapRef}
+      <RNMapView
+        ref={rnMapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
+        provider={Platform.OS === 'android' ? 'google' : undefined}
         initialRegion={initialRegion}
-        customMapStyle={DARK_MAP_STYLE}
-        showsUserLocation={false}
+        showsUserLocation
         showsMyLocationButton={false}
-        showsCompass={false}
       >
-        {/* Danger Zone Circles */}
         {dangerZones.map(zone => (
           <React.Fragment key={zone.id}>
-            {/* Outer glow */}
-            <Circle
-              center={zone.coordinates}
-              radius={zone.radius * 1.2}
-              fillColor={getDangerColor(zone.level) + '15'}
-              strokeColor="transparent"
-            />
-            {/* Main zone */}
-            <Circle
+            <RNCircle
               center={zone.coordinates}
               radius={zone.radius}
-              fillColor={getDangerColor(zone.level) + '35'}
-              strokeColor={getDangerColor(zone.level)}
+              fillColor={getDangerColor(zone.level, 0.25)}
+              strokeColor={getDangerColor(zone.level, 0.7)}
               strokeWidth={2}
             />
-            {/* Center marker */}
-            <Marker
+            <RNMarker
               coordinate={zone.coordinates}
               onPress={() => onSelectZone(zone)}
-              anchor={{ x: 0.5, y: 0.5 }}
-            >
-              <DangerMarker 
-                zone={zone} 
-                isSelected={selectedZone?.id === zone.id}
-              />
-            </Marker>
+              pinColor={zone.level === 'critical' ? 'red' : zone.level === 'high' ? 'orange' : 'yellow'}
+            />
           </React.Fragment>
         ))}
-
-        {/* Incident Markers */}
-        {incidents.map(incident => (
-          <Marker
-            key={incident.id}
-            coordinate={incident.coordinates}
-            onPress={() => onSelectIncident(incident)}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <IncidentMarker
-              incident={incident}
-              isSelected={selectedIncident?.id === incident.id}
-            />
-          </Marker>
+        {incidents.map(inc => (
+          <RNMarker
+            key={inc.id}
+            coordinate={inc.coordinates}
+            onPress={() => onSelectIncident(inc)}
+            pinColor="red"
+          />
         ))}
-
-        {/* User Location */}
-        {userLocation && (
-          <Marker
-            coordinate={userLocation}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <View style={styles.userMarker}>
-              <View style={styles.userMarkerPulse} />
-              <View style={styles.userMarkerDot} />
-            </View>
-          </Marker>
-        )}
-      </MapView>
-
-      {/* GPS Button */}
-      <TouchableOpacity
-        style={styles.gpsButton}
-        onPress={handleCenterOnUser}
-        activeOpacity={0.8}
-      >
-        <Gps size={22} color={colors.primary} variant="Bold" />
-      </TouchableOpacity>
+      </RNMapView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  container: { flex: 1 },
+  map: { flex: 1 },
+  zonePin: {
+    width: 32, height: 32, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#FFFFFF',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 4, elevation: 5,
   },
-  map: {
-    width: width,
-    height: height,
+  zonePinText: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
+  incidentPin: {
+    width: 28, height: 28, borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.7)', borderWidth: 2,
   },
-  userMarker: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userMarkerPulse: {
-    position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary + '30',
-  },
-  userMarkerDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.primary,
-    borderWidth: 3,
-    borderColor: colors.white,
-  },
+  incidentPinText: { fontSize: 14 },
   gpsButton: {
     position: 'absolute',
-    top: 100,
-    right: 16,
-    width: 48,
-    height: 48,
+    top: 160, right: 16,
+    width: 48, height: 48,
     borderRadius: 24,
     backgroundColor: colors.gray900,
     justifyContent: 'center',

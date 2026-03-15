@@ -31,12 +31,13 @@ function mapEntry(row: any, blocks?: any[]): JournalEntry {
 }
 
 class JournalService {
-  async getEntries(tripId: string): Promise<JournalEntry[]> {
+  async getEntries(tripId: string, limit = 100): Promise<JournalEntry[]> {
     const { data, error } = await supabase
       .from('journal_entries')
       .select('*, journal_blocks(*)')
       .eq('trip_id', tripId)
-      .order('date', { ascending: false });
+      .order('date', { ascending: false })
+      .limit(limit);
 
     if (error) throw new Error(error.message);
     return (data ?? []).map((row) => mapEntry(row));
@@ -114,42 +115,13 @@ class JournalService {
     entryId: string,
     blocks: { type: string; content: any; position: number; size: string }[],
   ): Promise<void> {
-    // Replace strategy: delete existing, insert new
-    const { error: deleteError } = await supabase
-      .from('journal_blocks')
-      .delete()
-      .eq('entry_id', entryId);
+    // Transaction-safe: single RPC wraps delete + insert + word count update
+    const { error } = await supabase.rpc('save_journal_blocks', {
+      p_entry_id: entryId,
+      p_blocks: JSON.stringify(blocks),
+    });
 
-    if (deleteError) throw new Error(deleteError.message);
-
-    if (blocks.length === 0) return;
-
-    const rows = blocks.map((block) => ({
-      entry_id: entryId,
-      type: block.type,
-      content: block.content,
-      position: block.position,
-      size: block.size,
-    }));
-
-    const { error: insertError } = await supabase
-      .from('journal_blocks')
-      .insert(rows);
-
-    if (insertError) throw new Error(insertError.message);
-
-    // Recalculate word count from text blocks
-    const wordCount = blocks
-      .filter((b) => b.type === 'text' && b.content?.data?.text)
-      .reduce((sum, b) => {
-        const text: string = b.content.data.text;
-        return sum + text.trim().split(/\s+/).filter(Boolean).length;
-      }, 0);
-
-    await supabase
-      .from('journal_entries')
-      .update({ word_count: wordCount, updated_at: new Date().toISOString() })
-      .eq('id', entryId);
+    if (error) throw new Error(error.message);
   }
 }
 

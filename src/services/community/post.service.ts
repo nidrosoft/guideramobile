@@ -262,6 +262,51 @@ class PostService {
   // REACTIONS
   // ============================================
 
+  /**
+   * Get user's reactions for a batch of posts
+   * Returns a map of postId → reactionType
+   */
+  async getUserReactions(
+    userId: string,
+    postIds: string[]
+  ): Promise<Record<string, string>> {
+    if (!userId || postIds.length === 0) return {};
+
+    const { data, error } = await supabase
+      .from('post_reactions')
+      .select('post_id, reaction_type')
+      .eq('user_id', userId)
+      .in('post_id', postIds);
+
+    if (error || !data) return {};
+
+    const map: Record<string, string> = {};
+    for (const row of data) {
+      map[row.post_id] = row.reaction_type;
+    }
+    return map;
+  }
+
+  /**
+   * Check if user has saved specific posts
+   * Returns a set of saved post IDs
+   */
+  async getUserSavedPostIds(
+    userId: string,
+    postIds: string[]
+  ): Promise<Set<string>> {
+    if (!userId || postIds.length === 0) return new Set();
+
+    const { data, error } = await supabase
+      .from('saved_posts')
+      .select('post_id')
+      .eq('user_id', userId)
+      .in('post_id', postIds);
+
+    if (error || !data) return new Set();
+    return new Set(data.map((r: any) => r.post_id));
+  }
+
   async toggleReaction(
     postId: string,
     userId: string,

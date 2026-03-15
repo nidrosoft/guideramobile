@@ -17,6 +17,7 @@ import { useTripStore } from '@/features/trips/stores/trip.store';
 import AddActivityBottomSheet from '../components/AddActivityBottomSheet';
 import { plannerService, ItineraryDay } from '@/services/planner.service';
 import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
+import PluginErrorState from '@/features/trips/components/PluginErrorState';
 import { CalendarEdit } from 'iconsax-react-native';
 
 const TYPE_COLORS: Record<string, string> = {
@@ -49,22 +50,24 @@ export default function PlannerScreen() {
   const [insertAfterActivityId, setInsertAfterActivityId] = useState<string | null>(null);
   const [days, setDays] = useState<ItineraryDay[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadItinerary = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await plannerService.getDays(tripId);
+      setDays(result);
+    } catch (err: any) {
+      console.error('Failed to load itinerary:', err);
+      setError(err.message || 'Failed to load itinerary');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let mounted = true;
-    const loadItinerary = async () => {
-      try {
-        setLoading(true);
-        const result = await plannerService.getDays(tripId);
-        if (mounted) setDays(result);
-      } catch (err) {
-        console.error('Failed to load itinerary:', err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
     if (tripId) loadItinerary();
-    return () => { mounted = false; };
   }, [tripId]);
 
   if (!trip) {
@@ -79,6 +82,14 @@ export default function PlannerScreen() {
     return (
       <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={colors.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+        <PluginErrorState message={error} onRetry={loadItinerary} />
       </SafeAreaView>
     );
   }

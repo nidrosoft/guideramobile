@@ -44,6 +44,8 @@ export default function ScanScanningStep({ onNext, data }: StepComponentProps) {
   useEffect(() => {
     let cancelled = false;
 
+    const MAX_RETRIES = 3;
+
     const processScan = async () => {
       const imageBase64 = data.scannedData?.imageBase64;
       const mediaType = data.scannedData?.mediaType || 'image/jpeg';
@@ -53,31 +55,43 @@ export default function ScanScanningStep({ onNext, data }: StepComponentProps) {
         return;
       }
 
-      try {
-        const result = await tripImportEngine.scanTicket(
-          imageBase64,
-          mediaType,
-          profile?.id,
-        );
+      let lastError = '';
 
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         if (cancelled) return;
 
-        if (result.success && result.booking) {
-          onNext({ scannedBooking: result.booking });
-        } else {
-          onNext({
-            scanError: result.error || 'Could not extract booking information from this image.',
-            scannedBooking: null,
-          });
+        try {
+          if (attempt > 1) {
+            setMessage(`Retrying... (attempt ${attempt}/${MAX_RETRIES})`);
+            await new Promise(r => setTimeout(r, 2000));
+          }
+
+          const result = await tripImportEngine.scanTicket(
+            imageBase64,
+            mediaType,
+            profile?.id,
+          );
+
+          if (cancelled) return;
+
+          if (result.success && result.booking) {
+            onNext({ scannedBooking: result.booking });
+            return;
+          }
+
+          lastError = result.error || 'Could not extract booking information from this image.';
+        } catch (error: any) {
+          if (cancelled) return;
+          lastError = error.message || 'Failed to process the image.';
+          console.warn(`[Scan] Attempt ${attempt}/${MAX_RETRIES} failed:`, lastError);
         }
-      } catch (error: any) {
-        if (cancelled) return;
-        console.error('Scan processing error:', error);
-        onNext({
-          scanError: error.message || 'Failed to process the image. Please try again.',
-          scannedBooking: null,
-        });
       }
+
+      // All retries exhausted
+      onNext({
+        scanError: 'We couldn\'t read this ticket after multiple attempts. Try taking a clearer photo or uploading a screenshot instead.',
+        scannedBooking: null,
+      });
     };
 
     processScan();

@@ -55,6 +55,7 @@ import {
   EmergencyType,
 } from '../types/safety.types';
 import { safetyService } from '@/services/safety.service';
+import PluginErrorState from '@/features/trips/components/PluginErrorState';
 // useAuth available if needed for user-specific rendering
 
 // ─── Helper: score color ────────────────────────────────
@@ -145,29 +146,29 @@ export default function SafetyScreen() {
   const [alerts, setAlerts] = useState<SafetyAlert[]>([]);
   const [safetyProfile, setSafetyProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [checklistState, setChecklistState] = useState<Record<string, boolean>>({});
 
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [alertsData, profileData] = await Promise.all([
+        safetyService.getAlerts(tripId).catch(() => []),
+        safetyService.getSafetyProfile(tripId).catch(() => null),
+      ]);
+      setAlerts(alertsData);
+      setSafetyProfile(profileData);
+    } catch (err: any) {
+      console.error('Failed to load safety data:', err);
+      setError(err.message || 'Failed to load safety data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let mounted = true;
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [alertsData, profileData] = await Promise.all([
-          safetyService.getAlerts(tripId).catch(() => []),
-          safetyService.getSafetyProfile(tripId).catch(() => null),
-        ]);
-        if (mounted) {
-          setAlerts(alertsData);
-          setSafetyProfile(profileData);
-        }
-      } catch (err) {
-        console.error('Failed to load safety data:', err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
     fetchData();
-    return () => { mounted = false; };
   }, [tripId]);
 
   if (!trip) {
@@ -182,6 +183,14 @@ export default function SafetyScreen() {
     return (
       <View style={[s.container, { backgroundColor: themeColors.bgPrimary, justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={themeColors.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[s.container, { backgroundColor: themeColors.bgPrimary }]}>
+        <PluginErrorState message={error} onRetry={fetchData} />
       </View>
     );
   }

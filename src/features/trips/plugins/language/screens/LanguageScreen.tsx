@@ -29,6 +29,7 @@ import {
 } from 'iconsax-react-native';
 import { spacing, typography, colors, borderRadius } from '@/styles';
 import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
+import PluginErrorState from '@/features/trips/components/PluginErrorState';
 import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import { languageService } from '@/services/language.service';
@@ -169,11 +170,13 @@ export default function LanguageScreen() {
   const [activeCategory, setActiveCategory] = useState<PhraseCategory | 'favorites'>('emergency');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!tripId) return;
     try {
       setLoading(true);
+      setError(null);
       const allKits = await languageService.getKits(tripId);
       setKits(allKits);
       if (allKits.length > 0) {
@@ -182,8 +185,9 @@ export default function LanguageScreen() {
         const allPhrases = await languageService.getPhrases(activeKit.id);
         setPhrases(allPhrases);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load language data:', err);
+      setError(err.message || 'Failed to load language kit');
     } finally {
       setLoading(false);
     }
@@ -230,7 +234,7 @@ export default function LanguageScreen() {
 
   const hasFavorites = useMemo(() => phrases.some(p => p.isFavorited), [phrases]);
 
-  // ─── Loading / Trip not found ─────────────────────────
+  // ─── Loading / Error / Trip not found ──────────────────
   if (loading && !kit) {
     return (
       <SafeAreaView style={[s.safeArea, { backgroundColor: tc.bgPrimary }]}>
@@ -239,6 +243,14 @@ export default function LanguageScreen() {
           <ActivityIndicator size="large" color={tc.primary} />
           <Text style={[s.loadingText, { color: tc.textSecondary }]}>Loading language kit...</Text>
         </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error && !kit) {
+    return (
+      <SafeAreaView style={[s.safeArea, { backgroundColor: tc.bgPrimary }]}>
+        <PluginErrorState message={error} onRetry={fetchData} />
       </SafeAreaView>
     );
   }

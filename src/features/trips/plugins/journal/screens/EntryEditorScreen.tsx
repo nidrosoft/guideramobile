@@ -59,7 +59,7 @@ export default function EntryEditorScreen() {
   const router = useRouter();
   const { colors: tc, isDark } = useTheme();
   const params = useLocalSearchParams();
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
   
   const tripId = params.tripId as string;
   const entryId = params.entryId as string | undefined;
@@ -426,21 +426,21 @@ export default function EntryEditorScreen() {
           position: b.position,
           size: b.size,
         }));
+
+      // Transaction-safe: RPC handles delete + insert + word count in one atomic operation
       await journalService.saveBlocks(entryId, blocksToSave);
 
-      const wordCount = blocks
-        .filter(b => b.content?.type === BlockType.TEXT)
-        .reduce((sum, b) => {
-          const text: string = (b.content!.data as any).text || '';
-          return sum + text.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
-        }, 0);
+      // Update title separately (only metadata, not block data)
+      if (entryTitle !== title) {
+        await journalService.updateEntry(entryId, { title: entryTitle });
+      }
 
-      await journalService.updateEntry(entryId, { title: entryTitle, word_count: wordCount });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showSuccess('Journal entry saved!');
       router.back();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save journal entry:', err);
+      showError('Failed to save entry. Please try again.');
     } finally {
       setSaving(false);
     }

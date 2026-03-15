@@ -299,7 +299,7 @@ export default function GroupAdminScreen() {
                   );
                 }}
               >
-                <More size={20} color={colors.bgElevated0} />
+                <More size={20} color={colors.bgElevated} />
               </TouchableOpacity>
             )}
           </View>
@@ -356,7 +356,7 @@ export default function GroupAdminScreen() {
         <Text style={styles.settingsSectionTitle}>Group Information</Text>
         
         <TouchableOpacity style={styles.settingsItem}>
-          <Edit2 size={20} color={colors.bgElevated0} />
+          <Edit2 size={20} color={colors.bgElevated} />
           <View style={styles.settingsItemContent}>
             <Text style={styles.settingsItemTitle}>Edit Group Name</Text>
             <Text style={styles.settingsItemValue}>{groupSettings.name}</Text>
@@ -364,7 +364,7 @@ export default function GroupAdminScreen() {
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.settingsItem}>
-          <Edit2 size={20} color={colors.bgElevated0} />
+          <Edit2 size={20} color={colors.bgElevated} />
           <View style={styles.settingsItemContent}>
             <Text style={styles.settingsItemTitle}>Edit Description</Text>
             <Text style={styles.settingsItemValue} numberOfLines={1}>
@@ -380,9 +380,9 @@ export default function GroupAdminScreen() {
         
         <TouchableOpacity style={styles.settingsItem}>
           {groupSettings.privacy === 'public' ? (
-            <Global size={20} color={colors.bgElevated0} />
+            <Global size={20} color={colors.bgElevated} />
           ) : (
-            <Lock size={20} color={colors.bgElevated0} />
+            <Lock size={20} color={colors.bgElevated} />
           )}
           <View style={styles.settingsItemContent}>
             <Text style={styles.settingsItemTitle}>Group Privacy</Text>
@@ -509,7 +509,7 @@ export default function GroupAdminScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top }]}>
@@ -538,7 +538,7 @@ export default function GroupAdminScreen() {
                 setActiveTab(tab.id);
               }}
             >
-              <Icon size={18} color={isActive ? colors.primary : colors.bgElevated0} />
+              <Icon size={18} color={isActive ? colors.primary : colors.bgElevated} />
               <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
                 {tab.label}
               </Text>
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.bgElevated0,
+    color: colors.bgElevated,
   },
   tabTextActive: {
     color: colors.primary,

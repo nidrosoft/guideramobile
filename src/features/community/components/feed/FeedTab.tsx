@@ -47,6 +47,8 @@ interface FeedTabProps {
   onComment: (postId: string) => void;
   onShare: (postId: string) => void;
   onMore: (postId: string) => void;
+  onSave?: (postId: string) => void;
+  onRefresh?: () => Promise<void>;
 }
 
 function FeedTab({
@@ -59,6 +61,8 @@ function FeedTab({
   onComment,
   onShare,
   onMore,
+  onSave,
+  onRefresh,
 }: FeedTabProps) {
   const { colors: tc } = useTheme();
   const [activeFilter, setActiveFilter] = useState('all');
@@ -75,10 +79,9 @@ function FeedTab({
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // Simulate fetch
-    await new Promise(r => setTimeout(r, 1200));
+    await onRefresh?.();
     setRefreshing(false);
-  }, []);
+  }, [onRefresh]);
 
   const handleFilterPress = useCallback((id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -134,8 +137,9 @@ function FeedTab({
       onComment={onComment}
       onShare={onShare}
       onMore={onMore}
+      onSave={onSave}
     />
-  ), [onPostPress, onAuthorPress, onReact, onComment, onShare, onMore]);
+  ), [onPostPress, onAuthorPress, onReact, onComment, onShare, onMore, onSave]);
 
   const renderEmpty = useCallback(() => (
     <View style={styles.emptyState}>

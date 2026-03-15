@@ -22,7 +22,7 @@ import { SearchNormal1, Location, CloseCircle, TickCircle } from 'iconsax-react-
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { Location as LocationType } from '../../../types/booking.types';
-import { POPULAR_DESTINATIONS } from '../../../data/mockHotels';
+import { POPULAR_DESTINATIONS } from '../../../data/destinations';
 
 interface LocationPickerSheetProps {
   visible: boolean;

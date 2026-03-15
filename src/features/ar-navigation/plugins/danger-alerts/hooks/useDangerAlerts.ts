@@ -1,7 +1,9 @@
 /**
  * USE DANGER ALERTS HOOK
- * 
- * Main state management hook for the Danger Alerts plugin.
+ *
+ * Main state hook for the Safety Alerts plugin.
+ * Wired to real SafetyIntelligenceService (TravelRisk + GDACS + State Dept + CrimeoMeter).
+ * No mock data.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -15,11 +17,41 @@ import {
   DangerAlertsState,
   DangerLevel,
 } from '../types/dangerAlerts.types';
-import {
-  generateDangerZones,
-  generateIncidents,
-  DEFAULT_EMERGENCY_CONTACTS,
-} from '../data/mockDangerData';
+import { DEFAULT_EMERGENCY_CONTACTS } from '../data/mockDangerData';
+import { safetyIntelligenceService } from '@/services/safety/safety-intelligence.service';
+import type { SafetyAlert, SafetyZoneResult, SafetyLevel } from '@/services/safety/types/safety.types';
+
+// Map SafetyLevel to DangerLevel
+function mapLevelToDanger(level: SafetyLevel | string): DangerLevel {
+  switch (level) {
+    case 'critical': return 'critical';
+    case 'high': return 'high';
+    case 'caution': return 'medium';
+    case 'safe': return 'low';
+    default: return 'low';
+  }
+}
+
+// Map TravelRisk API severity string to DangerLevel
+function mapAlertSeverity(severity: string): DangerLevel {
+  switch (severity?.toLowerCase()) {
+    case 'critical': return 'critical';
+    case 'high': return 'high';
+    case 'medium': return 'medium';
+    case 'low': return 'low';
+    default: return 'low';
+  }
+}
+
+// Map TravelRisk API alert_type to our IncidentType
+function mapAlertType(type: string): any {
+  const map: Record<string, string> = {
+    earthquake: 'natural', flood: 'natural', cyclone: 'natural',
+    volcano: 'natural', tsunami: 'natural', wildfire: 'natural',
+    drought: 'natural',
+  };
+  return map[type?.toLowerCase()] || 'other';
+}
 
 // Zone alert state
 interface ZoneAlert {
@@ -166,27 +198,151 @@ export function useDangerAlerts() {
     }
   }, [state.userLocation, state.dangerZones]);
 
-  // Load danger zones and incidents
-  const loadDangerData = useCallback(() => {
+  // Load real safety data: local check + global alerts for the map
+  const loadDangerData = useCallback(async () => {
     if (!state.userLocation || dataLoadedRef.current) return;
     
     dataLoadedRef.current = true;
     setState(prev => ({ ...prev, isLoading: true }));
 
-    // Simulate API call
-    setTimeout(() => {
-      const zones = generateDangerZones(state.userLocation!);
-      const incidents = generateIncidents(state.userLocation!);
+    try {
+      // 1. Local safety check (1-mile radius around user)
+      const result: SafetyZoneResult = await safetyIntelligenceService.getRiskForLocation(
+        state.userLocation.latitude,
+        state.userLocation.longitude,
+        1
+      );
+
+      // 2. Load GLOBAL alerts from TravelRisk API for map pins (zoom out to see worldwide)
+      let globalZones: DangerZone[] = [];
+      try {
+        const { travelRiskAPI } = require('@/services/safety/apis/travel-risk.api');
+        if (travelRiskAPI.isConfigured) {
+          const globalAlerts = await travelRiskAPI.getAlerts({ limit: 100 });
+          globalZones = globalAlerts
+            .filter((a: any) => a.latitude && a.longitude)
+            .map((a: any, i: number) => ({
+              id: `global-${a.id || i}`,
+              coordinates: { latitude: a.latitude, longitude: a.longitude },
+              radius: 50000, // 50km visual radius for global events
+              level: mapAlertSeverity(a.severity),
+              type: mapAlertType(a.alert_type),
+              title: `${a.alert_type?.charAt(0).toUpperCase()}${a.alert_type?.slice(1) || 'Alert'}: ${a.location || 'Unknown'}`,
+              description: a.description || '',
+              reportCount: 1,
+              lastReported: new Date(a.event_date || a.created_at),
+              isActive: true,
+            }));
+          console.log(`🌍 Loaded ${globalZones.length} global disaster alerts for map`);
+        }
+      } catch (e) {
+        console.warn('Global alerts load error:', e);
+      }
+
+      // 3. Merge local alerts + global alerts
+      const localZones: DangerZone[] = result.alerts
+        .filter(a => a.coordinates)
+        .map((a, i) => ({
+          id: a.id || `local-${i}`,
+          coordinates: a.coordinates!,
+          radius: a.radius || 200,
+          level: mapLevelToDanger(a.level),
+          type: (a.type || 'other') as any,
+          title: a.title,
+          description: a.description,
+          reportCount: 1,
+          lastReported: a.timestamp,
+          isActive: true,
+        }));
+
+      // 4. Load user-submitted reports from Supabase (Waze-style, visible to all)
+      let userReportZones: DangerZone[] = [];
+      try {
+        const { supabase } = require('@/lib/supabase/client');
+        const { data: reports } = await supabase
+          .from('safety_alerts')
+          .select('*')
+          .eq('source', 'user_report')
+          .gt('valid_until', new Date().toISOString())
+          .not('coordinates', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (reports && reports.length > 0) {
+          userReportZones = reports
+            .filter((r: any) => r.coordinates?.latitude && r.coordinates?.longitude)
+            .map((r: any, i: number) => ({
+              id: `report-${r.id || i}`,
+              coordinates: { latitude: r.coordinates.latitude, longitude: r.coordinates.longitude },
+              radius: 500,
+              level: mapAlertSeverity(r.level || 'medium'),
+              type: (r.type || 'other') as any,
+              title: r.title || 'User Report',
+              description: r.description || '',
+              reportCount: 1,
+              lastReported: new Date(r.created_at),
+              isActive: true,
+            }));
+          console.log(`📢 Loaded ${userReportZones.length} user-submitted reports`);
+        }
+      } catch (e) {
+        console.warn('User reports load error:', e);
+      }
+
+      const allZones = [...localZones, ...globalZones, ...userReportZones];
+
+      // Convert to incidents for the list
+      const incidents: Incident[] = result.alerts.map((a, i) => ({
+        id: a.id || `inc-${i}`,
+        type: (a.type || 'other') as any,
+        level: mapLevelToDanger(a.level),
+        title: a.title,
+        description: a.description,
+        coordinates: a.coordinates || state.userLocation!,
+        reportedAt: a.timestamp,
+        verified: true,
+        upvotes: 0,
+        downvotes: 0,
+      }));
+
+      // Find nearest danger distance
+      let nearestDist: number | null = null;
+      if (allZones.length > 0 && state.userLocation) {
+        const distances = allZones.map(z => calculateDistance(state.userLocation!, z.coordinates));
+        nearestDist = Math.round(Math.min(...distances));
+      }
+
+      const safetyStatus: SafetyStatus = {
+        level: mapLevelToDanger(result.level),
+        nearestDanger: nearestDist,
+        activeAlerts: allZones.length,
+        message: result.summary,
+      };
 
       setState(prev => ({
         ...prev,
-        dangerZones: zones,
-        incidents: incidents,
+        dangerZones: allZones,
+        incidents,
+        safetyStatus,
         isLoading: false,
       }));
 
-      console.log('🚨 Loaded', zones.length, 'danger zones and', incidents.length, 'incidents');
-    }, 500);
+      console.log(`🚨 Safety: ${result.level} (score: ${result.score}), ${localZones.length} local + ${globalZones.length} global alerts`);
+    } catch (err) {
+      console.warn('Safety intelligence error:', err);
+      setState(prev => ({
+        ...prev,
+        dangerZones: [],
+        incidents: [],
+        isLoading: false,
+        safetyStatus: {
+          level: 'low',
+          nearestDanger: null,
+          activeAlerts: 0,
+          message: 'Could not check safety data. Stay aware of your surroundings.',
+        },
+      }));
+    }
   }, [state.userLocation]);
 
   // Calculate safety status based on proximity to danger zones

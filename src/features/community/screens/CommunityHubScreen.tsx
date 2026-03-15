@@ -1,10 +1,13 @@
 /**
- * COMMUNITY HUB SCREEN
+ * CONNECT HUB SCREEN (formerly Community Hub)
  *
- * Main entry point for the Community feature.
- * Simplified 4-tab layout: Discover, Guides, Groups, Events.
- * Header: title + search / map / notification icons.
- * No stats container, no hub-level search bar.
+ * NOTE: This feature was renamed from "Community" to "Connect" in the UI.
+ * The folder structure, routes, and code identifiers still use "community"
+ * for backward compatibility. All user-visible text says "Connect".
+ *
+ * Main entry point for the Connect feature.
+ * 4-tab layout: Discover, Guides, Groups, Events.
+ * Header: title + search / Pulse map / notification icons.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -40,6 +43,8 @@ import DiscoverFeed from '../components/DiscoverFeed';
 import GroupsTabContent from '../components/GroupsTabContent';
 import EventsTabContent from '../components/EventsTabContent';
 import GuidesTabContent from './GuidesTabContent';
+import GroupExplainerSheet from '../components/GroupExplainerSheet';
+import EventExplainerSheet from '../components/EventExplainerSheet';
 import { styles } from './CommunityHubScreen.styles';
 
 type TabType = 'discover' | 'guides' | 'groups' | 'events';
@@ -68,6 +73,8 @@ export default function CommunityHubScreen() {
   const { unreadCount: notificationCount } = useNotifications({ category: 'social', autoRefresh: true });
 
   const [messageCount, setMessageCount] = useState(0);
+  const [showGroupSheet, setShowGroupSheet] = useState(false);
+  const [showEventSheet, setShowEventSheet] = useState(false);
   const isPremium = true;
 
   useEffect(() => {
@@ -116,7 +123,12 @@ export default function CommunityHubScreen() {
 
   const handleCreateGroup = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/community/create' as any);
+    setShowGroupSheet(true);
+  };
+
+  const handleCreateEvent = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setShowEventSheet(true);
   };
 
   const renderTabContent = () => {
@@ -172,7 +184,7 @@ export default function CommunityHubScreen() {
             loading={loadingEvents}
             onRefresh={refetchEvents}
             onEventPress={handleEventPress}
-            onCreateEvent={() => router.push('/community/create-event' as any)}
+            onCreateEvent={handleCreateEvent}
             currentLocation="Paris"
           />
         );
@@ -189,7 +201,7 @@ export default function CommunityHubScreen() {
       {/* Header */}
       <View style={[styles.headerContainer, { paddingTop: insets.top, backgroundColor: tc.background }]}>
         <View style={styles.header}>
-          <Text style={[styles.title, { color: tc.textPrimary }]}>Community</Text>
+          <Text style={[styles.title, { color: tc.textPrimary }]}>Connect</Text>
           <View style={styles.headerRight}>
             {/* Search Icon */}
             <TouchableOpacity
@@ -286,6 +298,24 @@ export default function CommunityHubScreen() {
       <View style={styles.content}>
         {renderTabContent()}
       </View>
+
+      {/* Explainer Bottom Sheets */}
+      <GroupExplainerSheet
+        visible={showGroupSheet}
+        onClose={() => setShowGroupSheet(false)}
+        onCreate={() => {
+          setShowGroupSheet(false);
+          router.push('/community/create' as any);
+        }}
+      />
+      <EventExplainerSheet
+        visible={showEventSheet}
+        onClose={() => setShowEventSheet(false)}
+        onCreate={() => {
+          setShowEventSheet(false);
+          router.push('/community/create-event' as any);
+        }}
+      />
     </View>
   );
 }

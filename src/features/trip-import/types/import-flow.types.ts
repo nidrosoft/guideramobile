@@ -10,21 +10,11 @@ export type ImportMethod = 'email' | 'link' | 'manual' | 'scan';
 export type ImportStep = 
   // Method Selection
   | 'method-selection'
-  // Email Flow
+  // Email Flow (forward-based)
   | 'email-link'
-  | 'email-provider'
-  | 'email-input'
   | 'email-connecting'
-  | 'email-scanning'
   | 'email-bookings'
   | 'email-success'
-  // Link Flow
-  | 'link-provider'
-  | 'link-auth'
-  | 'link-connecting'
-  | 'link-fetching'
-  | 'link-trips'
-  | 'link-success'
   // Manual Flow
   | 'manual-type'
   | 'manual-flight'
@@ -65,9 +55,16 @@ export interface ImportFlowData {
   confirmationCode?: string;
   airline?: string;
   flightNumber?: string;
+  fromAirport?: string;
+  toAirport?: string;
+  cabinClass?: string;
   hotelName?: string;
+  hotelCity?: string;
   carCompany?: string;
+  pickupLocation?: string;
   activityName?: string;
+  activityLocation?: string;
+  activityDate?: string;
   confirmedBooking?: any;
   destination?: string;
   dates?: {
@@ -76,6 +73,7 @@ export interface ImportFlowData {
   };
   
   // Scan data (QR/barcode scanning)
+  uploadFromGallery?: boolean;
   scannedData?: any;
   scannedBooking?: any;
 

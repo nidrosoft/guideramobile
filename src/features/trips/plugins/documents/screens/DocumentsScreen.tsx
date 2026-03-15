@@ -58,6 +58,7 @@ import {
 } from '../types/document.types';
 import { documentService } from '@/services/document.service';
 import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
+import PluginErrorState from '@/features/trips/components/PluginErrorState';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -91,6 +92,7 @@ export default function DocumentsScreen() {
 
   // State
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [checklist, setChecklist] = useState<DocumentChecklist | null>(null);
   const [groups, setGroups] = useState<DocumentGroup[]>([]);
@@ -106,6 +108,7 @@ export default function DocumentsScreen() {
     if (!tripId) return;
     try {
       setLoading(true);
+      setError(null);
       const [cl, gr] = await Promise.all([
         documentService.getChecklist(tripId),
         documentService.getGroupedItems(tripId),
@@ -114,6 +117,7 @@ export default function DocumentsScreen() {
       setGroups(gr);
     } catch (err: any) {
       console.error('Failed to load documents:', err);
+      setError(err.message || 'Failed to load documents');
     } finally {
       setLoading(false);
     }
@@ -124,7 +128,7 @@ export default function DocumentsScreen() {
   // ─── Generate / Regenerate ────────────────────────────
 
   const handleGenerate = useCallback(async () => {
-    if (!tripId) return;
+    if (!tripId || generating) return;
     try {
       setGenerating(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -236,6 +240,14 @@ export default function DocumentsScreen() {
           <ActivityIndicator size="large" color={tc.primary} />
           <Text style={[styles.loadingText, { color: tc.textSecondary }]}>Loading documents...</Text>
         </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error && !checklist) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.bgPrimary }]}>
+        <PluginErrorState message={error} onRetry={loadData} />
       </SafeAreaView>
     );
   }
@@ -596,9 +608,11 @@ export default function DocumentsScreen() {
                       <View key={i} style={[styles.gapCard, { backgroundColor: tc.bgSunken, borderColor: tc.borderSubtle }]}>
                         <View style={styles.gapHeader}>
                           <Warning2 size={16} color={gap.severity === 'high' ? tc.error : tc.warning} variant="Bold" />
-                          <Text style={[styles.gapTitle, { color: tc.textPrimary }]}>{gap.title}</Text>
+                          <Text style={[styles.gapTitle, { color: tc.textPrimary }]}>{gap.title || gap.gap_type || 'Coverage Gap'}</Text>
                         </View>
-                        <Text style={[styles.gapExplanation, { color: tc.textSecondary }]}>{gap.explanation}</Text>
+                        {(gap.explanation || gap.what_you_need) ? (
+                          <Text style={[styles.gapExplanation, { color: tc.textSecondary }]}>{gap.explanation || gap.what_you_need}</Text>
+                        ) : null}
                         {gap.what_you_need && (
                           <Text style={[styles.gapNeed, { color: tc.textPrimary }]}>Need: {gap.what_you_need}</Text>
                         )}
@@ -667,7 +681,7 @@ export default function DocumentsScreen() {
                     <View style={styles.backupDetails}>
                       <Text style={[styles.backupItemText, { color: tc.textPrimary }]}>{item.item}</Text>
                       <View style={styles.backupMethods}>
-                        {item.storage_methods?.map((m: string, mi: number) => (
+                        {(Array.isArray(item.storage_methods) ? item.storage_methods : []).map((m: string, mi: number) => (
                           <View key={mi} style={[styles.methodPill, { backgroundColor: tc.bgSunken }]}>
                             <Text style={[styles.methodText, { color: tc.textTertiary }]}>{m}</Text>
                           </View>

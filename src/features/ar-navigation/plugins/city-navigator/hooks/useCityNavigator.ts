@@ -2,6 +2,8 @@
  * USE CITY NAVIGATOR HOOK
  * 
  * Main state management hook for the City Navigator plugin.
+ * Now wired to real Mapbox Directions + Geocoding APIs.
+ * Falls back to mock data if Mapbox token is not configured.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -16,6 +18,25 @@ import {
   DangerZone,
 } from '../types/cityNavigator.types';
 import { generatePOIsAroundLocation, generateDangerZonesAroundLocation } from '../data/mockPOIs';
+import { mapboxService, MapboxService } from '../../../services/mapbox.service';
+import type { POICategory } from '../types/cityNavigator.types';
+
+// Map Mapbox category strings to our POICategory type
+function mapMapboxCategory(raw: string): POICategory {
+  const lower = (raw || '').toLowerCase();
+  if (lower.includes('restaurant') || lower.includes('food')) return 'restaurant';
+  if (lower.includes('cafe') || lower.includes('coffee')) return 'cafe';
+  if (lower.includes('hotel') || lower.includes('lodging')) return 'hotel';
+  if (lower.includes('museum') || lower.includes('gallery')) return 'museum';
+  if (lower.includes('park') || lower.includes('garden')) return 'park';
+  if (lower.includes('shop') || lower.includes('store') || lower.includes('mall')) return 'shopping';
+  if (lower.includes('station') || lower.includes('transit') || lower.includes('bus')) return 'transport';
+  if (lower.includes('bar') || lower.includes('club') || lower.includes('night')) return 'nightlife';
+  if (lower.includes('hospital') || lower.includes('pharmacy') || lower.includes('doctor')) return 'health';
+  if (lower.includes('landmark') || lower.includes('monument') || lower.includes('historic')) return 'landmark';
+  if (lower.includes('attraction') || lower.includes('tourism')) return 'attraction';
+  return 'service';
+}
 
 const INITIAL_STATE: CityNavigatorState = {
   viewMode: 'map', // Default to map view so POIs are visible immediately
@@ -70,31 +91,50 @@ export function useCityNavigator() {
     }
   }, [state.userLocation]);
 
-  // Load POIs around user's location
-  const loadPOIs = useCallback(() => {
+  // Load POIs around user's location — uses Mapbox if configured, falls back to mock
+  const loadPOIs = useCallback(async () => {
     if (!state.userLocation) return;
     
     setState(prev => ({ ...prev, isLoading: true }));
     
-    // Generate POIs around user's actual location
-    setTimeout(() => {
-      const generatedPOIs = generatePOIsAroundLocation(state.userLocation!);
-      
-      // Calculate distance from user for each POI
-      const poisWithDistance = generatedPOIs.map((poi: POI) => ({
-        ...poi,
-        distance: calculateDistance(state.userLocation!, poi.coordinates),
-        duration: Math.round(calculateDistance(state.userLocation!, poi.coordinates) / 80), // ~80m/min walking
-      }));
+    try {
+      if (mapboxService.isConfigured) {
+        // Real Mapbox POI search
+        const places = await mapboxService.getNearbyPOIs(
+          state.userLocation.latitude,
+          state.userLocation.longitude,
+          undefined, // all categories
+          15
+        );
 
-      setState(prev => ({
-        ...prev,
-        pois: poisWithDistance,
-        isLoading: false,
-      }));
-      
-      console.log('📍 Loaded', poisWithDistance.length, 'POIs around user location');
-    }, 500);
+        const mappedPOIs: POI[] = places.map((p, i) => {
+          const coords = { latitude: p.coordinates.latitude, longitude: p.coordinates.longitude };
+          const dist = calculateDistance(state.userLocation!, coords);
+          return {
+            id: p.id || `poi-${i}`,
+            name: p.name,
+            category: mapMapboxCategory(p.category),
+            coordinates: coords,
+            address: p.address || '',
+            city: '',
+            country: '',
+            description: p.address,
+            distance: dist,
+            duration: Math.round(dist / 80),
+          };
+        });
+
+        setState(prev => ({ ...prev, pois: mappedPOIs, isLoading: false }));
+        console.log('📍 Loaded', mappedPOIs.length, 'real POIs from Mapbox');
+      } else {
+        // Mapbox not configured — show empty state
+        setState(prev => ({ ...prev, pois: [], isLoading: false }));
+        console.log('📍 Mapbox not configured — no POIs to show');
+      }
+    } catch (err) {
+      console.warn('POI load error:', err);
+      setState(prev => ({ ...prev, pois: [], isLoading: false }));
+    }
   }, [state.userLocation]);
 
   // Load danger zones around user's location
@@ -133,28 +173,65 @@ export function useCityNavigator() {
     setState(prev => ({ ...prev, selectedPOI: poi }));
   }, []);
 
-  // Start navigation to POI
-  const startNavigation = useCallback((poi: POI) => {
+  // Start navigation to POI — uses Mapbox Directions if configured, falls back to mock
+  const startNavigation = useCallback(async (poi: POI) => {
     if (!state.userLocation) return;
 
-    // Create mock route
+    setState(prev => ({ ...prev, isLoading: true }));
+
+    const modeMap: Record<string, 'walking' | 'driving' | 'cycling'> = {
+      walk: 'walking', car: 'driving', bike: 'cycling', scooter: 'cycling', all: 'walking',
+    };
+    const profile = modeMap[state.transportMode] || 'walking';
+
+    try {
+      if (mapboxService.isConfigured) {
+        const mbRoute = await mapboxService.getDirections(
+          { lat: state.userLocation.latitude, lng: state.userLocation.longitude },
+          { lat: poi.coordinates.latitude, lng: poi.coordinates.longitude },
+          profile
+        );
+
+        if (mbRoute) {
+          const route: Route = {
+            id: `route-${Date.now()}`,
+            origin: state.userLocation,
+            destination: poi.coordinates,
+            destinationName: poi.name,
+            distance: Math.round(mbRoute.distance),
+            duration: Math.round(mbRoute.duration / 60),
+            transportMode: state.transportMode === 'all' ? 'walk' : state.transportMode,
+            polyline: MapboxService.decodeRouteCoordinates(mbRoute.geometry),
+            steps: mbRoute.steps.map(s => ({
+              instruction: s.instruction,
+              distance: s.distance,
+              duration: s.duration,
+              maneuver: s.maneuver.type,
+            })),
+          };
+
+          setState(prev => ({ ...prev, route, isNavigating: true, selectedPOI: poi, isLoading: false }));
+          console.log('🗺️ Real Mapbox route:', Math.round(mbRoute.distance), 'm,', Math.round(mbRoute.duration / 60), 'min');
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Mapbox directions error:', err);
+    }
+
+    // If Mapbox failed or not configured, create a simple straight-line route (not mock data)
+    const dist = calculateDistance(state.userLocation, poi.coordinates);
     const route: Route = {
       id: `route-${Date.now()}`,
       origin: state.userLocation,
       destination: poi.coordinates,
       destinationName: poi.name,
-      distance: poi.distance || 0,
-      duration: poi.duration || 0,
+      distance: dist,
+      duration: Math.round(dist / 80),
       transportMode: state.transportMode === 'all' ? 'walk' : state.transportMode,
-      polyline: generateMockPolyline(state.userLocation, poi.coordinates),
+      polyline: [state.userLocation, poi.coordinates],
     };
-
-    setState(prev => ({
-      ...prev,
-      route,
-      isNavigating: true,
-      selectedPOI: poi,
-    }));
+    setState(prev => ({ ...prev, route, isNavigating: true, selectedPOI: poi, isLoading: false }));
   }, [state.userLocation, state.transportMode]);
 
   // Stop navigation

@@ -6,10 +6,12 @@ import * as Haptics from 'expo-haptics';
 import { Lock } from 'iconsax-react-native';
 import CloseIcon from '@/components/common/icons/CloseIcon';
 import { colors, typography, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useSignIn } from '@clerk/clerk-expo';
 
 export default function ForgotPassword() {
   const router = useRouter();
+  const { colors: tc, isDark } = useTheme();
   const { isLoaded, signIn } = useSignIn();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -90,31 +92,31 @@ export default function ForgotPassword() {
   if (pendingReset) {
     return (
       <KeyboardAvoidingView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: tc.background }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <StatusBar style="dark" />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         
         <TouchableOpacity style={styles.closeButton} onPress={handleBack}>
-          <CloseIcon size={24} color={colors.textPrimary} />
+          <CloseIcon size={24} color={tc.textPrimary} />
         </TouchableOpacity>
 
         <View style={styles.content}>
-          <View style={styles.iconContainer}>
-            <Lock size={32} color={colors.textPrimary} variant="Outline" />
+          <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
+            <Lock size={32} color={tc.textPrimary} variant="Outline" />
           </View>
 
-          <Text style={styles.title}>Reset your password</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: tc.textPrimary }]}>Reset your password</Text>
+          <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
             Enter the code sent to {email} and your new password.
           </Text>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Verification Code</Text>
+            <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Verification Code</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
               placeholder="Enter 6-digit code"
-              placeholderTextColor={colors.textTertiary}
+              placeholderTextColor={tc.textTertiary}
               keyboardType="number-pad"
               value={code}
               onChangeText={(text) => {
@@ -126,11 +128,11 @@ export default function ForgotPassword() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>New Password</Text>
+            <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>New Password</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
               placeholder="At least 8 characters"
-              placeholderTextColor={colors.textTertiary}
+              placeholderTextColor={tc.textTertiary}
               secureTextEntry
               value={newPassword}
               onChangeText={(text) => {
@@ -140,18 +142,18 @@ export default function ForgotPassword() {
             />
           </View>
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
 
           <TouchableOpacity
-            style={[styles.resetButton, (!code || !newPassword || isLoading) && styles.resetButtonDisabled]}
+            style={[styles.resetButton, { backgroundColor: tc.primary }, (!code || !newPassword || isLoading) && { backgroundColor: tc.gray300 }]}
             onPress={handleConfirmReset}
             disabled={!code || !newPassword || isLoading}
             activeOpacity={0.8}
           >
             {isLoading ? (
-              <ActivityIndicator color={colors.white} />
+              <ActivityIndicator color={tc.white} />
             ) : (
-              <Text style={styles.resetButtonText}>Reset Password</Text>
+              <Text style={[styles.resetButtonText, { color: tc.white }]}>Reset Password</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -161,30 +163,30 @@ export default function ForgotPassword() {
 
   if (showSuccess) {
     return (
-      <View style={styles.container}>
-        <StatusBar style="dark" />
+      <View style={[styles.container, { backgroundColor: tc.background }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         
         <TouchableOpacity style={styles.closeButton} onPress={handleBack}>
-          <CloseIcon size={24} color={colors.textPrimary} />
+          <CloseIcon size={24} color={tc.textPrimary} />
         </TouchableOpacity>
 
         <View style={styles.successContainer}>
-          <View style={styles.successIconContainer}>
-            <Lock size={48} color={colors.primary} variant="Bold" />
+          <View style={[styles.successIconContainer, { backgroundColor: `${tc.primary}15` }]}>
+            <Lock size={48} color={tc.primary} variant="Bold" />
           </View>
-          <Text style={styles.successTitle}>Check your email</Text>
-          <Text style={styles.successText}>
+          <Text style={[styles.successTitle, { color: tc.textPrimary }]}>Check your email</Text>
+          <Text style={[styles.successText, { color: tc.textSecondary }]}>
             We've sent password reset instructions to{'\n'}
-            <Text style={styles.emailHighlight}>{email}</Text>
+            <Text style={[styles.emailHighlight, { color: tc.textPrimary }]}>{email}</Text>
           </Text>
-          <Text style={styles.successSubtext}>
+          <Text style={[styles.successSubtext, { color: tc.textTertiary }]}>
             Click the link in the email to reset your password.
           </Text>
           <TouchableOpacity
-            style={styles.backToLoginButton}
+            style={[styles.backToLoginButton, { backgroundColor: tc.primary }]}
             onPress={() => router.push('/(auth)/email-signin' as any)}
           >
-            <Text style={styles.backToLoginText}>Back to Sign In</Text>
+            <Text style={[styles.backToLoginText, { color: tc.white }]}>Back to Sign In</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -193,31 +195,31 @@ export default function ForgotPassword() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: tc.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       <TouchableOpacity style={styles.closeButton} onPress={handleBack}>
-        <CloseIcon size={24} color={colors.textPrimary} />
+        <CloseIcon size={24} color={tc.textPrimary} />
       </TouchableOpacity>
 
       <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <Lock size={32} color={colors.textPrimary} variant="Outline" />
+        <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
+          <Lock size={32} color={tc.textPrimary} variant="Outline" />
         </View>
 
-        <Text style={styles.title}>Forgot password?</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { color: tc.textPrimary }]}>Forgot password?</Text>
+        <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
           Enter your email address and we'll send you instructions to reset your password.
         </Text>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Email</Text>
+          <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Email</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
             placeholder="you@example.com"
-            placeholderTextColor={colors.textTertiary}
+            placeholderTextColor={tc.textTertiary}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
@@ -230,25 +232,25 @@ export default function ForgotPassword() {
           />
         </View>
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
 
         <TouchableOpacity
-          style={[styles.resetButton, (!isFormValid || isLoading) && styles.resetButtonDisabled]}
+          style={[styles.resetButton, { backgroundColor: tc.primary }, (!isFormValid || isLoading) && { backgroundColor: tc.gray300 }]}
           onPress={handleResetPassword}
           disabled={!isFormValid || isLoading}
           activeOpacity={0.8}
         >
           {isLoading ? (
-            <ActivityIndicator color={colors.white} />
+            <ActivityIndicator color={tc.white} />
           ) : (
-            <Text style={styles.resetButtonText}>Send Reset Link</Text>
+            <Text style={[styles.resetButtonText, { color: tc.white }]}>Send Reset Link</Text>
           )}
         </TouchableOpacity>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Remember your password? </Text>
+          <Text style={[styles.footerText, { color: tc.textSecondary }]}>Remember your password? </Text>
           <TouchableOpacity onPress={() => router.push('/(auth)/email-signin' as any)}>
-            <Text style={styles.footerLink}>Sign In</Text>
+            <Text style={[styles.footerLink, { color: tc.primary }]}>Sign In</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -259,7 +261,6 @@ export default function ForgotPassword() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   closeButton: {
     position: 'absolute',
@@ -279,9 +280,8 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 64,
     height: 64,
-    borderRadius: 32,
+    borderRadius: borderRadius.full,
     borderWidth: 2,
-    borderColor: colors.textPrimary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
@@ -289,12 +289,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   subtitle: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
     marginBottom: spacing.xl,
     lineHeight: typography.fontSize.base * 1.5,
   },
@@ -304,39 +302,29 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
   input: {
     height: 48,
     borderWidth: 1,
-    borderColor: colors.gray300,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
     fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
-    backgroundColor: colors.bgElevated,
   },
   errorText: {
     fontSize: typography.fontSize.sm,
-    color: '#EF4444',
     marginBottom: spacing.md,
   },
   resetButton: {
     height: 52,
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: spacing.md,
   },
-  resetButtonDisabled: {
-    backgroundColor: colors.gray300,
-  },
   resetButtonText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
   },
   footer: {
     flexDirection: 'row',
@@ -346,12 +334,10 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
   },
   footerLink: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.primary,
   },
   successContainer: {
     flex: 1,
@@ -362,8 +348,7 @@ const styles = StyleSheet.create({
   successIconContainer: {
     width: 80,
     height: 80,
-    borderRadius: 40,
-    backgroundColor: `${colors.primary}15`,
+    borderRadius: borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.xl,
@@ -371,22 +356,18 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     marginBottom: spacing.md,
   },
   successText: {
     fontSize: typography.fontSize.base,
-    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: typography.fontSize.base * 1.5,
   },
   emailHighlight: {
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   successSubtext: {
     fontSize: typography.fontSize.sm,
-    color: colors.textTertiary,
     textAlign: 'center',
     marginTop: spacing.lg,
     paddingHorizontal: spacing.lg,
@@ -395,12 +376,10 @@ const styles = StyleSheet.create({
     marginTop: spacing['2xl'],
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
   },
   backToLoginText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
   },
 });

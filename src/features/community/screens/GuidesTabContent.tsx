@@ -33,6 +33,8 @@ import {
   DocumentText,
   People,
   Star1,
+  Briefcase,
+  ShoppingBag,
 } from 'iconsax-react-native';
 import { colors, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -177,161 +179,180 @@ export default function GuidesTabContent() {
     ...LISTING_CATEGORIES.map(c => ({ id: c.id as FilterCategory, label: c.label })),
   ];
 
-  return (
-    <><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.container, { backgroundColor: tc.background }]}>
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={[styles.searchBar, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
-          <SearchNormal1 size={18} color={tc.textSecondary} />
-          <TextInput
-            style={[styles.searchInput, { color: tc.textPrimary }]}
-            placeholder="Search guides, tours, services..."
-            placeholderTextColor={tc.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-      </View>
+  const hasGuides = guides.length > 0;
+  const hasListings = listings.length > 0;
+  const hasCommunities = communities.length > 0;
+  const hasAnyContent = hasGuides || hasListings || hasCommunities;
+  const isAllEmpty = !isFetching && !hasAnyContent;
 
-      {/* Partner Program Banner */}
+  return (
+    <><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.container, { backgroundColor: tc.background, flexGrow: isAllEmpty ? 1 : undefined }]}>
+      {/* Partner Program Banner — always show */}
       {!isPartner && (
         <View style={styles.sectionPadded}>
           <PartnerInviteCard onPress={() => setShowPartnerSheet(true)} />
         </View>
       )}
 
-      {/* Featured Guides */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Featured Local Guides</Text>
-          <TouchableOpacity style={styles.seeAllBtn} onPress={() => {}}>
-            <Text style={[styles.seeAllText, { color: tc.primary }]}>See All</Text>
-            <ArrowRight2 size={14} color={tc.primary} />
-          </TouchableOpacity>
+      {isAllEmpty ? (
+        /* Unified empty state — no section headers, no filters */
+        <View style={styles.fullEmptyState}>
+          <View style={[styles.emptyIconCircle, { backgroundColor: tc.primary + '12' }]}>
+            <Briefcase size={32} color={tc.primary} variant="Bold" />
+          </View>
+          <Text style={[styles.fullEmptyTitle, { color: tc.textPrimary }]}>
+            Local Guides Coming Soon
+          </Text>
+          <Text style={[styles.fullEmptySubtitle, { color: tc.textSecondary }]}>
+            This is where you'll find verified local guides offering tours, property rentals, transportation, and personalized experiences.{'\n\n'}As guides join Guidera, their profiles, listings, and communities will appear here. Want to be one of them? Tap the card above to get started — it's free!
+          </Text>
         </View>
+      ) : (
+        <>
+          {/* Search Bar — only when content exists */}
+          <View style={styles.searchContainer}>
+            <View style={[styles.searchBar, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }]}>
+              <SearchNormal1 size={18} color={tc.textSecondary} />
+              <TextInput
+                style={[styles.searchInput, { color: tc.textPrimary }]}
+                placeholder="Search guides, tours, services..."
+                placeholderTextColor={tc.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+          </View>
 
-        {/* Expertise Filter */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
-          <TouchableOpacity
-            style={[styles.filterChip, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }, !selectedExpertise && styles.filterChipActive]}
-            onPress={() => setSelectedExpertise(null)}
-          >
-            <Text style={[styles.filterChipText, { color: tc.textSecondary }, !selectedExpertise && styles.filterChipTextActive]}>All</Text>
-          </TouchableOpacity>
-          {EXPERTISE_OPTIONS.slice(0, 6).map(opt => (
-            <TouchableOpacity
-              key={opt.id}
-              style={[styles.filterChip, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }, selectedExpertise === opt.id && styles.filterChipActive]}
-              onPress={() => setSelectedExpertise(selectedExpertise === opt.id ? null : opt.id)}
-            >
-              <Text style={styles.filterEmoji}>{opt.emoji}</Text>
-              <Text style={[styles.filterChipText, { color: tc.textSecondary }, selectedExpertise === opt.id && styles.filterChipTextActive]}>
-                {opt.label.split(' ')[0]}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+          {/* Featured Guides — only when guides exist */}
+          {hasGuides && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Featured Local Guides</Text>
+                <TouchableOpacity style={styles.seeAllBtn} onPress={() => {}}>
+                  <Text style={[styles.seeAllText, { color: tc.primary }]}>See All</Text>
+                  <ArrowRight2 size={14} color={tc.primary} />
+                </TouchableOpacity>
+              </View>
 
-        {/* Guide Cards Horizontal */}
-        <FlatList
-          data={filteredGuides}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.guideList}
-          renderItem={({ item }) => (
-            <View style={styles.guideCardWrapper}>
-              <GuideCard
-                guide={item}
-                variant="horizontal"
-                onPress={() => handleGuidePress(item.id)}
-                onMessage={() => handleGuidePress(item.id)}
+              {/* Expertise Filter — only show chips for expertise areas that exist */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
+                <TouchableOpacity
+                  style={[styles.filterChip, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }, !selectedExpertise && styles.filterChipActive]}
+                  onPress={() => setSelectedExpertise(null)}
+                >
+                  <Text style={[styles.filterChipText, { color: tc.textSecondary }, !selectedExpertise && styles.filterChipTextActive]}>All</Text>
+                </TouchableOpacity>
+                {EXPERTISE_OPTIONS.slice(0, 6).map(opt => (
+                  <TouchableOpacity
+                    key={opt.id}
+                    style={[styles.filterChip, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }, selectedExpertise === opt.id && styles.filterChipActive]}
+                    onPress={() => setSelectedExpertise(selectedExpertise === opt.id ? null : opt.id)}
+                  >
+                    <Text style={styles.filterEmoji}>{opt.emoji}</Text>
+                    <Text style={[styles.filterChipText, { color: tc.textSecondary }, selectedExpertise === opt.id && styles.filterChipTextActive]}>
+                      {opt.label.split(' ')[0]}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <FlatList
+                data={filteredGuides}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={item => item.id}
+                contentContainerStyle={styles.guideList}
+                renderItem={({ item }) => (
+                  <View style={styles.guideCardWrapper}>
+                    <GuideCard
+                      guide={item}
+                      variant="horizontal"
+                      onPress={() => handleGuidePress(item.id)}
+                      onMessage={() => handleGuidePress(item.id)}
+                    />
+                  </View>
+                )}
               />
             </View>
           )}
-          ListEmptyComponent={
-            <Text style={[styles.emptyText, { color: tc.textSecondary }]}>No guides match your search</Text>
-          }
-        />
-      </View>
 
-      {/* Listings by Category */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Browse Listings</Text>
-        </View>
+          {/* Listings — only when listings exist */}
+          {hasListings && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Browse Listings</Text>
+              </View>
 
-        {/* Category Filters */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
-          {CATEGORY_FILTERS.map(cat => (
-            <TouchableOpacity
-              key={cat.id}
-              style={[styles.filterChip, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }, selectedCategory === cat.id && styles.filterChipActive]}
-              onPress={() => setSelectedCategory(cat.id)}
-            >
-              <Text style={[styles.filterChipText, { color: tc.textSecondary }, selectedCategory === cat.id && styles.filterChipTextActive]}>
-                {cat.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+              {/* Category Filters — only if we have enough diversity */}
+              {listings.length > 3 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
+                  {CATEGORY_FILTERS.map(cat => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[styles.filterChip, { backgroundColor: colors.bgElevated, borderColor: colors.borderSubtle }, selectedCategory === cat.id && styles.filterChipActive]}
+                      onPress={() => setSelectedCategory(cat.id)}
+                    >
+                      <Text style={[styles.filterChipText, { color: tc.textSecondary }, selectedCategory === cat.id && styles.filterChipTextActive]}>
+                        {cat.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
 
-        {/* Listing Cards */}
-        <View style={styles.sectionPadded}>
-          {filteredListings.length === 0 ? (
-            <Text style={[styles.emptyText, { color: tc.textSecondary }]}>No listings in this category</Text>
-          ) : (
-            filteredListings.map(listing => (
-              <ListingCard
-                key={listing.id}
-                listing={listing}
-                onPress={() => handleListingPress(listing.id)}
-                onInquire={() => handleGuidePress(listing.guideId)}
-              />
-            ))
+              <View style={styles.sectionPadded}>
+                {filteredListings.map(listing => (
+                  <ListingCard
+                    key={listing.id}
+                    listing={listing}
+                    onPress={() => handleListingPress(listing.id)}
+                    onInquire={() => handleGuidePress(listing.guideId)}
+                  />
+                ))}
+              </View>
+            </View>
           )}
-        </View>
-      </View>
 
-      {/* Featured Communities */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Top Communities with Guides</Text>
-          <TouchableOpacity style={styles.seeAllBtn}>
-            <Text style={[styles.seeAllText, { color: tc.primary }]}>See All</Text>
-            <ArrowRight2 size={14} color={tc.primary} />
-          </TouchableOpacity>
-        </View>
+          {/* Communities — only when communities exist */}
+          {hasCommunities && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Top Groups with Guides</Text>
+                <TouchableOpacity style={styles.seeAllBtn}>
+                  <Text style={[styles.seeAllText, { color: tc.primary }]}>See All</Text>
+                  <ArrowRight2 size={14} color={tc.primary} />
+                </TouchableOpacity>
+              </View>
 
-        <View style={styles.sectionPadded}>
-          {communities.map(comm => (
-            <TouchableOpacity key={comm.id} style={[styles.communityCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
-              {/* Cover Image */}
-              <Image source={{ uri: comm.coverImage }} style={styles.communityCover} />
-              {/* Trust Badge Overlay */}
-              <View style={[styles.trustBadgeOverlay, { backgroundColor: tc.bgElevated }]}> 
-                <Star1 size={12} color="#F59E0B" variant="Bold" />
-                <Text style={[styles.trustBadgeText, { color: tc.textPrimary }]}>{comm.trustRating}</Text>
+              <View style={styles.sectionPadded}>
+                {communities.map(comm => (
+                  <TouchableOpacity key={comm.id} style={[styles.communityCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+                    <Image source={{ uri: comm.coverImage }} style={styles.communityCover} />
+                    <View style={[styles.trustBadgeOverlay, { backgroundColor: tc.bgElevated }]}> 
+                      <Star1 size={12} color="#F59E0B" variant="Bold" />
+                      <Text style={[styles.trustBadgeText, { color: tc.textPrimary }]}>{comm.trustRating}</Text>
+                    </View>
+                    <View style={styles.communityCardContent}>
+                      <Text style={[styles.communityName, { color: tc.textPrimary }]} numberOfLines={1}>{comm.name}</Text>
+                      <Text style={[styles.communityDesc, { color: tc.textSecondary }]} numberOfLines={2}>{comm.description}</Text>
+                      <View style={styles.communityStats}>
+                        <View style={styles.communityStat}>
+                          <People size={13} color={tc.textSecondary} />
+                          <Text style={[styles.communityStatText, { color: tc.textSecondary }]}>{comm.memberCount.toLocaleString()}</Text>
+                        </View>
+                        <Text style={[styles.communityStatDot, { color: tc.textTertiary }]}>·</Text>
+                        <Text style={[styles.communityStatText, { color: tc.textSecondary }]}>{comm.guideCount} guides</Text>
+                        <Text style={[styles.communityStatDot, { color: tc.textTertiary }]}>·</Text>
+                        <Text style={[styles.communityStatText, { color: tc.textSecondary }]}>{comm.postsPerWeek}/wk</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
-              {/* Content */}
-              <View style={styles.communityCardContent}>
-                <Text style={[styles.communityName, { color: tc.textPrimary }]} numberOfLines={1}>{comm.name}</Text>
-                <Text style={[styles.communityDesc, { color: tc.textSecondary }]} numberOfLines={2}>{comm.description}</Text>
-                <View style={styles.communityStats}>
-                  <View style={styles.communityStat}>
-                    <People size={13} color={tc.textSecondary} />
-                    <Text style={[styles.communityStatText, { color: tc.textSecondary }]}>{comm.memberCount.toLocaleString()}</Text>
-                  </View>
-                  <Text style={[styles.communityStatDot, { color: tc.textTertiary }]}>·</Text>
-                  <Text style={[styles.communityStatText, { color: tc.textSecondary }]}>{comm.guideCount} guides</Text>
-                  <Text style={[styles.communityStatDot, { color: tc.textTertiary }]}>·</Text>
-                  <Text style={[styles.communityStatText, { color: tc.textSecondary }]}>{comm.postsPerWeek}/wk</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
+            </View>
+          )}
+        </>
+      )}
 
       <View style={{ height: 40 }} />
     </ScrollView>
@@ -524,5 +545,49 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     textAlign: 'center',
     paddingVertical: 30,
+  },
+  sectionEmpty: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+  },
+  fullEmptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+    paddingVertical: 32,
+  },
+  emptyIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  fullEmptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    maxWidth: 280,
+  },
+  fullEmptySubtitle: {
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    maxWidth: 300,
   },
 });

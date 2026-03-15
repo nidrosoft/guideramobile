@@ -1,90 +1,164 @@
 /**
  * VISION SERVICE
- * 
- * Service for image recognition using Google Cloud Vision API.
- * Identifies landmarks, objects, and text in images.
- * 
- * 🔑 API KEY REQUIRED: Google Cloud Vision API
- * 📚 Documentation: https://cloud.google.com/vision/docs
- * 
- * TODO: Add Google Cloud Vision API key to environment variables
- * TODO: Set up Google Cloud project and enable Vision API
- * TODO: Configure billing for Vision API usage
+ *
+ * Fully implemented Google Cloud Vision API.
+ * Landmark detection, OCR text extraction, and object detection.
+ * Uses the existing Google Maps API key (enable Vision API in Cloud Console).
+ *
+ * 🔑 Uses EXPO_PUBLIC_GOOGLE_MAPS_API_KEY (enable Vision API in Google Cloud Console)
  */
+
+// expo-file-system for base64 conversion
+const ExpoFileSystem = require('expo-file-system');
+
+export interface LandmarkResult {
+  name: string;
+  confidence: number;
+  coordinates: { latitude: number; longitude: number } | null;
+  boundingBox?: any;
+}
+
+export interface TextResult {
+  fullText: string;
+  blocks: { text: string; confidence?: number }[];
+}
+
+export interface ObjectResult {
+  name: string;
+  confidence: number;
+}
 
 export class VisionService {
   private apiKey: string;
+  private baseUrl = 'https://vision.googleapis.com/v1/images:annotate';
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
   }
 
+  get isConfigured(): boolean {
+    return !!this.apiKey && this.apiKey.length > 10;
+  }
+
+  /**
+   * Convert a local image URI to base64 string
+   */
+  private async imageToBase64(imageUri: string): Promise<string | null> {
+    try {
+      const base64 = await ExpoFileSystem.readAsStringAsync(imageUri, {
+        encoding: 'base64',
+      });
+      return base64;
+    } catch (e) {
+      console.warn('Image to base64 error:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Make a Vision API request with specified features
+   */
+  private async annotate(base64Image: string, features: { type: string; maxResults?: number }[]): Promise<any> {
+    const res = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: [{
+          image: { content: base64Image },
+          features,
+        }],
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.warn('Vision API error:', err);
+      return null;
+    }
+    const data = await res.json();
+    return data.responses?.[0] || null;
+  }
+
   /**
    * Detect landmarks in an image
-   * 
-   * TODO: Implement Google Cloud Vision API landmark detection
-   * - Convert image URI to base64
-   * - Send to Vision API endpoint: https://vision.googleapis.com/v1/images:annotate
-   * - Parse landmark annotations from response
-   * - Extract landmark name, location, confidence score
-   * - Fetch additional landmark details (history, facts, rating)
-   * - Return structured landmark data
-   * 
-   * @param imageUri - Local file URI or remote URL of the image
-   * @returns Landmark data with name, description, location, facts
    */
-  async detectLandmarks(imageUri: string) {
-    // TODO: Implement landmark detection
-    // Example API call structure:
-    // const response = await fetch('https://vision.googleapis.com/v1/images:annotate', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     requests: [{
-    //       image: { content: base64Image },
-    //       features: [{ type: 'LANDMARK_DETECTION', maxResults: 5 }]
-    //     }]
-    //   })
-    // });
-    return null;
+  async detectLandmarks(imageUri: string): Promise<LandmarkResult[]> {
+    if (!this.isConfigured) return [];
+    try {
+      const base64 = await this.imageToBase64(imageUri);
+      if (!base64) return [];
+
+      const response = await this.annotate(base64, [
+        { type: 'LANDMARK_DETECTION', maxResults: 5 },
+      ]);
+      if (!response?.landmarkAnnotations) return [];
+
+      return response.landmarkAnnotations.map((l: any) => ({
+        name: l.description || 'Unknown Landmark',
+        confidence: l.score || 0,
+        coordinates: l.locations?.[0]?.latLng
+          ? { latitude: l.locations[0].latLng.latitude, longitude: l.locations[0].latLng.longitude }
+          : null,
+        boundingBox: l.boundingPoly,
+      }));
+    } catch (e) {
+      console.warn('Landmark detection error:', e);
+      return [];
+    }
   }
 
   /**
    * Detect and extract text from an image (OCR)
-   * 
-   * TODO: Implement Google Cloud Vision API text detection
-   * - Convert image to base64
-   * - Send to Vision API with TEXT_DETECTION feature
-   * - Parse detected text and bounding boxes
-   * - Organize text by blocks/paragraphs
-   * - Return structured text data for translation
-   * 
-   * @param imageUri - Image containing text (e.g., restaurant menu)
-   * @returns Detected text with layout information
+   * Used by Menu Translator plugin
    */
-  async detectText(imageUri: string) {
-    // TODO: Implement OCR for menu translation
-    // This will be used by the Menu Translator plugin
-    return null;
+  async detectText(imageUri: string): Promise<TextResult | null> {
+    if (!this.isConfigured) return null;
+    try {
+      const base64 = await this.imageToBase64(imageUri);
+      if (!base64) return null;
+
+      const response = await this.annotate(base64, [
+        { type: 'TEXT_DETECTION', maxResults: 1 },
+      ]);
+      if (!response?.textAnnotations) return null;
+
+      const fullText = response.textAnnotations[0]?.description || '';
+      const blocks = response.textAnnotations.slice(1).map((t: any) => ({
+        text: t.description || '',
+        confidence: t.confidence,
+      }));
+
+      return { fullText, blocks };
+    } catch (e) {
+      console.warn('Text detection error:', e);
+      return null;
+    }
   }
 
   /**
-   * Detect objects in an image
-   * 
-   * TODO: Implement Google Cloud Vision API object detection
-   * - Useful for identifying items, buildings, vehicles
-   * - Can enhance AR navigation with object recognition
-   * - Returns object labels with confidence scores
-   * 
-   * @param imageUri - Image to analyze
-   * @returns Array of detected objects with labels and scores
+   * Detect objects and labels in an image
    */
-  async detectObjects(imageUri: string) {
-    // TODO: Implement object detection
-    return null;
+  async detectObjects(imageUri: string): Promise<ObjectResult[]> {
+    if (!this.isConfigured) return [];
+    try {
+      const base64 = await this.imageToBase64(imageUri);
+      if (!base64) return [];
+
+      const response = await this.annotate(base64, [
+        { type: 'LABEL_DETECTION', maxResults: 10 },
+      ]);
+      if (!response?.labelAnnotations) return [];
+
+      return response.labelAnnotations.map((l: any) => ({
+        name: l.description || 'Unknown',
+        confidence: l.score || 0,
+      }));
+    } catch (e) {
+      console.warn('Object detection error:', e);
+      return [];
+    }
   }
 }
 
-// TODO: Replace with actual API key from environment variables
-// Add GOOGLE_VISION_API_KEY to .env file
-export const visionService = new VisionService(process.env.GOOGLE_VISION_API_KEY || '');
+// Use the same Google API key — enable Vision API in Google Cloud Console
+const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+export const visionService = new VisionService(GOOGLE_API_KEY);
