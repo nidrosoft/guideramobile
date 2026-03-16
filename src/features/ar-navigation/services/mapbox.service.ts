@@ -135,35 +135,72 @@ export class MapboxService {
   }
 
   /**
-   * Search nearby POIs using geocoding with category filter
+   * Search nearby POIs using Google Places Nearby Search API.
+   * Mapbox geocoding doesn't support proper POI/category search on free tier.
+   * Falls back to Mapbox text search if Google key not available.
    */
   async getNearbyPOIs(
     latitude: number,
     longitude: number,
     category?: string,
-    limit: number = 10
+    limit: number = 15
   ): Promise<MapboxPlace[]> {
-    if (!this.isConfigured) return [];
-    try {
-      const query = category || 'restaurant,cafe,museum,park,hotel,bar';
-      let url = `${this.baseUrl}/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${this.token}&proximity=${longitude},${latitude}&limit=${limit}&types=poi`;
+    // Google Places Nearby Search — the most reliable POI search
+    const googleKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+    console.log('📍 getNearbyPOIs called:', { latitude, longitude, category, hasGoogleKey: !!googleKey, keyLen: googleKey.length });
 
-      const res = await fetch(url);
-      if (!res.ok) return [];
-      const data = await res.json();
+    if (googleKey && googleKey.length > 10) {
+      try {
+        // Map our category names to Google Places types
+        const type = this.mapCategoryToGoogleType(category || 'tourist_attraction');
+        const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=3000&type=${type}&key=${googleKey}`;
+        console.log('📍 Google Places URL:', url.replace(googleKey, 'KEY'));
 
-      return (data.features || []).map((f: any) => ({
-        id: f.id,
-        name: f.text || f.place_name,
-        address: f.place_name || '',
-        category: f.properties?.category || 'place',
-        coordinates: { longitude: f.center[0], latitude: f.center[1] },
-        distance: f.properties?.distance,
-      }));
-    } catch (e) {
-      console.warn('Mapbox POI search error:', e);
-      return [];
+        const res = await fetch(url);
+        const data = await res.json();
+        console.log('📍 Google Places response:', data.status, data.results?.length || 0, 'results');
+
+        if (data.status === 'OK' && data.results?.length > 0) {
+          return data.results.slice(0, limit).map((p: any, i: number) => ({
+            id: p.place_id || `gp-${i}`,
+            name: p.name,
+            address: p.vicinity || p.formatted_address || '',
+            category: category || 'place',
+            coordinates: {
+              latitude: p.geometry.location.lat,
+              longitude: p.geometry.location.lng,
+            },
+            distance: undefined,
+          }));
+        } else {
+          console.warn('📍 Google Places no results. Status:', data.status, data.error_message || '');
+        }
+      } catch (e) {
+        console.warn('📍 Google Places fetch error:', e);
+      }
+    } else {
+      console.warn('📍 No Google API key available for POI search');
     }
+
+    return [];
+  }
+
+  private mapCategoryToGoogleType(category: string): string {
+    const map: Record<string, string> = {
+      tourist_attraction: 'tourist_attraction',
+      restaurant: 'restaurant',
+      cafe: 'cafe',
+      museum: 'museum',
+      hospital: 'hospital',
+      bus_station: 'transit_station',
+      shopping_mall: 'shopping_mall',
+      park: 'park',
+      hotel: 'lodging',
+      bar: 'bar',
+      pharmacy: 'pharmacy',
+      airport: 'airport',
+    };
+    return map[category.toLowerCase()] || category;
   }
 
   /**

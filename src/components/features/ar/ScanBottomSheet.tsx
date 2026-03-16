@@ -54,8 +54,8 @@ const SCAN_ACTIONS: ScanAction[] = [
   },
   {
     id: 'menu-translator',
-    title: 'Translate Text',
-    description: 'Point at signs or menus',
+    title: 'AI Vision',
+    description: 'Translate signs, menus & build orders',
     icon: <LanguageSquare size={24} color="#EC4899" variant="Bold" />,
     color: '#EC4899',
     bgColor: '#EC489915',
@@ -78,8 +78,8 @@ const SCAN_ACTIONS: ScanAction[] = [
   },
   {
     id: 'scan-document',
-    title: 'Scan Document',
-    description: 'Import tickets or bookings',
+    title: 'Scan or Upload Ticket',
+    description: 'Import boarding pass, voucher, or confirmation',
     icon: <Scan size={24} color="#3B82F6" variant="Bold" />,
     color: '#3B82F6',
     bgColor: '#3B82F615',

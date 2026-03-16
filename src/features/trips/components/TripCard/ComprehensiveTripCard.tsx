@@ -163,10 +163,19 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
     setModules(fresh);
 
     try {
-      // Rate limit: max 10 generations per month per user
+      // Rate limit: max 10 generations per month PER USER
+      // trip.userId is the Clerk-synced profile.id that matches trips.user_id in DB
+      const currentUserId = trip.userId;
+      if (!currentUserId) {
+        showError('Please sign in to generate a Smart Plan.');
+        setGenerating(false);
+        return;
+      }
+
       const { count } = await supabase
         .from('trips')
         .select('id', { count: 'exact', head: true })
+        .eq('user_id', currentUserId)
         .eq('modules_generated', true)
         .gte('modules_generated_at', new Date(Date.now() - 30 * 86400000).toISOString());
 

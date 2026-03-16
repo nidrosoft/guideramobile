@@ -112,8 +112,8 @@ interface TripStore {
   hasMore: boolean;
   
   // Actions
-  fetchTrips: (userId?: string) => Promise<void>;
-  loadMoreTrips: (userId?: string) => Promise<void>;
+  fetchTrips: (userId: string) => Promise<void>;
+  loadMoreTrips: (userId: string) => Promise<void>;
   createTrip: (data: CreateTripData) => Promise<Trip>;
   updateTrip: (id: string, data: UpdateTripData) => Promise<void>;
   deleteTrip: (id: string) => Promise<void>;
@@ -143,21 +143,23 @@ export const useTripStore = create<TripStore>((set, get) => ({
   hasMore: false,
   
   // Fetch trips from Supabase (owned + shared via trip_members) — paginated
-  fetchTrips: async (userId?: string) => {
+  fetchTrips: async (userId: string) => {
     const PAGE_SIZE = 50;
+    if (!userId) {
+      console.error('[TripStore] fetchTrips called without userId — aborting to prevent data leak');
+      set({ trips: [], isLoading: false });
+      return;
+    }
     set({ isLoading: true, error: null });
     try {
-      // 1. Fetch owned trips (limited)
-      let ownedQuery = supabase
+      // 1. Fetch owned trips — ALWAYS filtered by user_id
+      const ownedQuery = supabase
         .from('trips')
         .select('*')
+        .eq('user_id', userId)
         .is('deleted_at', null)
         .order('start_date', { ascending: false })
         .limit(PAGE_SIZE);
-
-      if (userId) {
-        ownedQuery = ownedQuery.eq('user_id', userId);
-      }
 
       const { data: ownedTrips, error: ownedError } = await ownedQuery;
 
@@ -205,23 +207,20 @@ export const useTripStore = create<TripStore>((set, get) => ({
   },
 
   // Load more trips (pagination)
-  loadMoreTrips: async (userId?: string) => {
+  loadMoreTrips: async (userId: string) => {
     const PAGE_SIZE = 50;
     const { trips, isLoading, hasMore } = get();
-    if (isLoading || !hasMore) return;
+    if (isLoading || !hasMore || !userId) return;
 
     set({ isLoading: true });
     try {
-      let query = supabase
+      const query = supabase
         .from('trips')
         .select('*')
+        .eq('user_id', userId)
         .is('deleted_at', null)
         .order('start_date', { ascending: false })
         .range(trips.length, trips.length + PAGE_SIZE - 1);
-
-      if (userId) {
-        query = query.eq('user_id', userId);
-      }
 
       const { data: moreTrips, error } = await query;
       if (error) {

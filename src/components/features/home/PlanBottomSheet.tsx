@@ -7,6 +7,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { Global, Briefcase, SearchNormal1 } from 'iconsax-react-native';
 import ImportTripFlow from '@/features/trip-import/components/ImportTripFlow';
 import { useTripStore } from '@/features/trips/stores/trip.store';
+import { useAuth } from '@/context/AuthContext';
 
 interface PlanBottomSheetProps {
   visible: boolean;
@@ -17,6 +18,7 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
   const { colors } = useTheme();
   const router = useRouter();
   const { fetchTrips } = useTripStore();
+  const { profile } = useAuth();
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showImportFlow, setShowImportFlow] = useState(false);
 
@@ -152,7 +154,7 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
       onComplete={(tripData) => {
         setShowImportFlow(false);
         // Refresh trips from DB and navigate to Trips tab with scrollTo
-        fetchTrips();
+        if (profile?.id) fetchTrips(profile.id);
         const tripId = tripData?.importResult?.tripId || tripData?.importResult?.trips?.[0]?.id;
         setTimeout(() => {
           router.push(tripId

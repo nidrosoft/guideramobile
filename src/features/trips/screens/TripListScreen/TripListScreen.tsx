@@ -9,6 +9,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTripStore } from '../../stores/trip.store';
 import { TripState } from '../../types/trip.types';
+import { useAuth } from '@/context/AuthContext';
 import ComprehensiveTripCard from '../../components/TripCard/ComprehensiveTripCard';
 import PlanBottomSheet from '@/components/features/home/PlanBottomSheet';
 import { spacing, typography } from '@/styles';
@@ -36,6 +37,7 @@ export default function TripListScreen() {
   const animatedValue = useState(new Animated.Value(0))[0];
   const flatListRef = useRef<FlatList>(null);
   
+  const { profile } = useAuth();
   const { trips, fetchTrips, filterByState, isLoading } = useTripStore();
   
   // Dynamic styles based on theme
@@ -56,10 +58,12 @@ export default function TripListScreen() {
     emptyButtonText: { color: colors.white },
   }), [colors]);
   
-  // Fetch trips on mount
+  // Fetch trips on mount — ALWAYS filter by current user
   useEffect(() => {
-    fetchTrips();
-  }, []);
+    if (profile?.id) {
+      fetchTrips(profile.id);
+    }
+  }, [profile?.id]);
 
   // Auto-scroll to specific trip when navigated with scrollToTripId
   useEffect(() => {

@@ -15,23 +15,37 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const navigationState = useRootNavigationState();
 
   useEffect(() => {
-    if (!navigationState?.key || isLoading) return;
+    if (!navigationState?.key || isLoading) {
+      console.log('[AuthGuard] Waiting...', { hasNavKey: !!navigationState?.key, isLoading });
+      return;
+    }
 
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboardingGroup = segments[0] === '(onboarding)';
     const inTabsGroup = segments[0] === '(tabs)';
 
+    console.log('[AuthGuard] Evaluating:', {
+      isAuthenticated,
+      hasCompletedOnboarding,
+      currentSegment: segments[0],
+      inAuthGroup,
+      inOnboardingGroup,
+    });
+
     if (!isAuthenticated) {
       if (!inAuthGroup) {
+        console.log('[AuthGuard] → Redirecting to landing (not authenticated)');
         router.replace('/(auth)/landing');
       }
     } else {
       if (!hasCompletedOnboarding) {
         if (!inOnboardingGroup) {
+          console.log('[AuthGuard] → Redirecting to onboarding (authenticated, not onboarded)');
           router.replace('/(onboarding)/intro');
         }
       } else {
         if (inAuthGroup || inOnboardingGroup) {
+          console.log('[AuthGuard] → Redirecting to tabs (authenticated + onboarded)');
           router.replace('/(tabs)');
         }
       }

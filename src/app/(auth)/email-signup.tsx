@@ -1,17 +1,15 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import * as Haptics from 'expo-haptics';
-import React from 'react';
-import { Sms } from 'iconsax-react-native';
+import { Sms, Eye, EyeSlash } from 'iconsax-react-native';
 import CloseIcon from '@/components/common/icons/CloseIcon';
-import { colors, typography, spacing, borderRadius } from '@/styles';
+import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useSignUp, useSSO } from '@clerk/clerk-expo';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
-import CountryPicker, { Country, CountryCode } from 'react-native-country-picker-modal';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -29,25 +27,13 @@ export default function EmailSignUp() {
   const { colors: tc, isDark } = useTheme();
   const { isLoaded, signUp, setActive } = useSignUp();
   const { startSSOFlow } = useSSO();
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [countryCode, setCountryCode] = useState<CountryCode>('US');
-  const [callingCode, setCallingCode] = useState('1');
-  const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [pendingVerification, setPendingVerification] = useState(false);
   const [code, setCode] = useState('');
-
-  const onSelectCountry = (country: Country) => {
-    setCountryCode(country.cca2);
-    setCallingCode(country.callingCode[0]);
-  };
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -55,10 +41,6 @@ export default function EmailSignUp() {
   };
 
   const validateForm = () => {
-    if (!firstName.trim()) {
-      setError('First name is required');
-      return false;
-    }
     if (!email.trim()) {
       setError('Email is required');
       return false;
@@ -67,12 +49,8 @@ export default function EmailSignUp() {
       setError('Please enter a valid email');
       return false;
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return false;
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
       return false;
     }
     setError('');
@@ -87,20 +65,11 @@ export default function EmailSignUp() {
     setError('');
 
     try {
-      const createParams: Record<string, string> = {
+      await signUp.create({
         emailAddress: email,
         password,
-        firstName,
-      };
-      if (lastName.trim()) createParams.lastName = lastName;
-      if (username.trim()) createParams.username = username;
-      if (phoneNumber.length >= 7) {
-        createParams.phoneNumber = `+${callingCode}${phoneNumber}`;
-      }
+      });
 
-      await signUp.create(createParams);
-
-      // Send email verification code
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       setPendingVerification(true);
     } catch (err: any) {
@@ -123,27 +92,9 @@ export default function EmailSignUp() {
       if (signUpAttempt.status === 'complete') {
         await setActive({ session: signUpAttempt.createdSessionId });
         router.replace('/(onboarding)/intro');
-      } else if (signUpAttempt.status === 'missing_requirements') {
-        // Phone verification might still be needed if user provided a phone number
-        if (phoneNumber.length >= 7) {
-          try {
-            await signUp.preparePhoneNumberVerification({ strategy: 'phone_code' });
-            const fullPhone = `+${callingCode}${phoneNumber}`;
-            router.push({
-              pathname: '/(auth)/verify-otp',
-              params: { phone: fullPhone, mode: 'signup' },
-            });
-          } catch (prepErr: any) {
-            console.error('[EmailSignup] Phone verification prep failed:', prepErr);
-            setError('Additional verification required. Please try again.');
-          }
-        } else {
-          console.error('[EmailSignup] Missing requirements:', JSON.stringify(signUpAttempt, null, 2));
-          setError('Sign up incomplete. Please try again.');
-        }
       } else {
+        console.error('[EmailSignup] Status:', JSON.stringify(signUpAttempt, null, 2));
         setError('Verification incomplete. Please try again.');
-        console.error(JSON.stringify(signUpAttempt, null, 2));
       }
     } catch (err: any) {
       const clerkError = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err.message || 'Verification failed';
@@ -153,8 +104,26 @@ export default function EmailSignUp() {
     }
   };
 
-  const isFormValid = firstName.trim() && email.includes('@') && password.length >= 6 && password === confirmPassword;
+  const handleGoogleSignUp = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setError('');
+    try {
+      const { createdSessionId, setActive: ssoSetActive } = await startSSOFlow({
+        strategy: 'oauth_google',
+        redirectUrl: AuthSession.makeRedirectUri(),
+      });
+      if (createdSessionId && ssoSetActive) {
+        await ssoSetActive({ session: createdSessionId });
+      }
+    } catch (err: any) {
+      const msg = err?.errors?.[0]?.longMessage || err?.message || 'Google sign up failed';
+      setError(msg);
+    }
+  };
 
+  const isFormValid = email.includes('@') && password.length >= 8;
+
+  // ─── Verification Screen ────────────────────────────────────────────
   if (pendingVerification) {
     return (
       <KeyboardAvoidingView
@@ -172,31 +141,29 @@ export default function EmailSignUp() {
             <Sms size={32} color={tc.textPrimary} variant="Outline" />
           </View>
 
-          <Text style={[styles.title, { color: tc.textPrimary }]}>Verify your email</Text>
-          <Text style={[styles.verifyDescription, { color: tc.textSecondary }]}>
-            A verification code has been sent to {email}
+          <Text style={[styles.title, { color: tc.textPrimary }]}>Check your email</Text>
+          <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
+            We sent a verification code to{'\n'}
+            <Text style={{ fontWeight: typography.fontWeight.semibold, color: tc.textPrimary }}>{email}</Text>
           </Text>
 
           <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Verification Code</Text>
             <TextInput
               style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
               placeholder="Enter 6-digit code"
               placeholderTextColor={tc.textTertiary}
               keyboardType="number-pad"
               value={code}
-              onChangeText={(text) => {
-                setCode(text);
-                setError('');
-              }}
+              onChangeText={(text) => { setCode(text); setError(''); }}
               autoFocus
+              maxLength={6}
             />
           </View>
 
           {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
 
           <TouchableOpacity
-            style={[styles.signUpButton, { backgroundColor: tc.primary }, (!code || isLoading) && { backgroundColor: tc.gray300 }]}
+            style={[styles.primaryButton, { backgroundColor: tc.primary }, (!code || isLoading) && { opacity: 0.5 }]}
             onPress={handleVerifyEmail}
             disabled={!code || isLoading}
             activeOpacity={0.8}
@@ -204,7 +171,7 @@ export default function EmailSignUp() {
             {isLoading ? (
               <ActivityIndicator color={tc.white} />
             ) : (
-              <Text style={[styles.signUpButtonText, { color: tc.white }]}>Verify</Text>
+              <Text style={[styles.primaryButtonText, { color: tc.white }]}>Verify & Continue</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -212,6 +179,7 @@ export default function EmailSignUp() {
     );
   }
 
+  // ─── Sign Up Form ───────────────────────────────────────────────────
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: tc.background }]}
@@ -223,197 +191,98 @@ export default function EmailSignUp() {
         <CloseIcon size={24} color={tc.textPrimary} />
       </TouchableOpacity>
 
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.content}>
-          <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
-            <Sms size={32} color={tc.textPrimary} variant="Outline" />
-          </View>
+      <View style={styles.content}>
+        <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
+          <Sms size={32} color={tc.textPrimary} variant="Outline" />
+        </View>
 
-          <Text style={[styles.title, { color: tc.textPrimary }]}>Create your account</Text>
+        <Text style={[styles.title, { color: tc.textPrimary }]}>Create your account</Text>
+        <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
+          Just an email and password to get started. We'll personalize your experience next.
+        </Text>
 
-          <View style={styles.nameRow}>
-            <View style={styles.nameInputContainer}>
-              <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>First Name</Text>
-              <TextInput
-                style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
-                placeholder="John"
-                placeholderTextColor={tc.textTertiary}
-                value={firstName}
-                onChangeText={(text) => {
-                  setFirstName(text);
-                  setError('');
-                }}
-                autoCapitalize="words"
-              />
-            </View>
-            <View style={styles.nameInputContainer}>
-              <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Last Name</Text>
-              <TextInput
-                style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
-                placeholder="Doe"
-                placeholderTextColor={tc.textTertiary}
-                value={lastName}
-                onChangeText={(text) => {
-                  setLastName(text);
-                  setError('');
-                }}
-                autoCapitalize="words"
-              />
-            </View>
-          </View>
+        {/* Email */}
+        <View style={styles.inputContainer}>
+          <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Email</Text>
+          <TextInput
+            style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
+            placeholder="you@example.com"
+            placeholderTextColor={tc.textTertiary}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={email}
+            onChangeText={(text) => { setEmail(text); setError(''); }}
+            autoFocus
+          />
+        </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Username</Text>
+        {/* Password with show/hide */}
+        <View style={styles.inputContainer}>
+          <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Password</Text>
+          <View style={[styles.passwordRow, { borderColor: tc.borderMedium, backgroundColor: tc.bgElevated }]}>
             <TextInput
-              style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
-              placeholder="johndoe"
+              style={[styles.passwordInput, { color: tc.textPrimary }]}
+              placeholder="At least 8 characters"
               placeholderTextColor={tc.textTertiary}
-              autoCapitalize="none"
-              autoCorrect={false}
-              value={username}
-              onChangeText={(text) => {
-                setUsername(text.toLowerCase().replace(/[^a-z0-9_]/g, ''));
-                setError('');
-              }}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Email</Text>
-            <TextInput
-              style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
-              placeholder="you@example.com"
-              placeholderTextColor={tc.textTertiary}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                setError('');
-              }}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Phone Number</Text>
-            <View style={[styles.phoneInputRow, { borderColor: tc.borderMedium, backgroundColor: tc.bgElevated }]}>
-              <TouchableOpacity 
-                style={[styles.countryCodeButton, { borderRightColor: tc.borderMedium }]}
-                onPress={() => setShowCountryPicker(true)}
-              >
-                <CountryPicker
-                  countryCode={countryCode}
-                  withFilter
-                  withFlag
-                  withCallingCode
-                  withEmoji
-                  onSelect={onSelectCountry}
-                  visible={showCountryPicker}
-                  onClose={() => setShowCountryPicker(false)}
-                />
-                <Text style={[styles.countryCodeText, { color: tc.textPrimary }]}>+{callingCode}</Text>
-              </TouchableOpacity>
-              <TextInput
-                style={[styles.phoneInput, { color: tc.textPrimary }]}
-                placeholder="Phone number"
-                placeholderTextColor={tc.textTertiary}
-                keyboardType="phone-pad"
-                value={phoneNumber}
-                onChangeText={(text) => {
-                  setPhoneNumber(text);
-                  setError('');
-                }}
-                maxLength={15}
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Password</Text>
-            <TextInput
-              style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
-              placeholder="At least 6 characters"
-              placeholderTextColor={tc.textTertiary}
-              secureTextEntry
+              secureTextEntry={!showPassword}
               value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                setError('');
-              }}
+              onChangeText={(text) => { setPassword(text); setError(''); }}
             />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Confirm Password</Text>
-            <TextInput
-              style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
-              placeholder="Re-enter your password"
-              placeholderTextColor={tc.textTertiary}
-              secureTextEntry
-              value={confirmPassword}
-              onChangeText={(text) => {
-                setConfirmPassword(text);
-                setError('');
-              }}
-            />
-          </View>
-
-          {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
-
-          <TouchableOpacity
-            style={[styles.signUpButton, { backgroundColor: tc.primary }, (!isFormValid || isLoading) && { backgroundColor: tc.gray300 }]}
-            onPress={handleSignUp}
-            disabled={!isFormValid || isLoading}
-            activeOpacity={0.8}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={tc.white} />
-            ) : (
-              <Text style={[styles.signUpButtonText, { color: tc.white }]}>Create Account</Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.divider}>
-            <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
-            <Text style={[styles.dividerText, { color: tc.textSecondary }]}>or</Text>
-            <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.googleButton, { backgroundColor: tc.bgElevated, borderColor: tc.borderMedium }]}
-            onPress={async () => {
-              try {
-                const { createdSessionId, setActive: ssoSetActive } = await startSSOFlow({
-                  strategy: 'oauth_google',
-                  redirectUrl: AuthSession.makeRedirectUri(),
-                });
-                if (createdSessionId && ssoSetActive) {
-                  await ssoSetActive({ session: createdSessionId });
-                }
-              } catch (err: any) {
-                const msg = err?.errors?.[0]?.longMessage || err?.message || 'Google sign up failed';
-                setError(msg);
-              }
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.googleButtonText, { color: tc.textPrimary }]}>Sign up with Google</Text>
-          </TouchableOpacity>
-
-          <View style={styles.signInContainer}>
-            <Text style={[styles.signInText, { color: tc.textSecondary }]}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/email-signin' as any)}>
-              <Text style={[styles.signInLink, { color: tc.primary }]}>Sign In</Text>
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={() => setShowPassword(!showPassword)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              {showPassword ? (
+                <EyeSlash size={20} color={tc.textTertiary} variant="Outline" />
+              ) : (
+                <Eye size={20} color={tc.textTertiary} variant="Outline" />
+              )}
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+
+        {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
+
+        {/* Create Account Button */}
+        <TouchableOpacity
+          style={[styles.primaryButton, { backgroundColor: tc.primary }, (!isFormValid || isLoading) && { opacity: 0.5 }]}
+          onPress={handleSignUp}
+          disabled={!isFormValid || isLoading}
+          activeOpacity={0.8}
+        >
+          {isLoading ? (
+            <ActivityIndicator color={tc.white} />
+          ) : (
+            <Text style={[styles.primaryButtonText, { color: tc.white }]}>Create Account</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Divider */}
+        <View style={styles.divider}>
+          <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
+          <Text style={[styles.dividerText, { color: tc.textTertiary }]}>or</Text>
+          <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
+        </View>
+
+        {/* Google Sign Up */}
+        <TouchableOpacity
+          style={[styles.secondaryButton, { backgroundColor: tc.bgElevated, borderColor: tc.borderMedium }]}
+          onPress={handleGoogleSignUp}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.secondaryButtonText, { color: tc.textPrimary }]}>Continue with Google</Text>
+        </TouchableOpacity>
+
+        {/* Sign In Link */}
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: tc.textSecondary }]}>Already have an account? </Text>
+          <TouchableOpacity onPress={() => router.push('/(auth)/sign-in')}>
+            <Text style={[styles.footerLink, { color: tc.primary }]}>Sign In</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -431,12 +300,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
   },
   content: {
     flex: 1,
@@ -456,15 +319,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
+    marginBottom: spacing.sm,
+  },
+  subtitle: {
+    fontSize: typography.fontSize.base,
+    lineHeight: typography.fontSize.base * 1.5,
     marginBottom: spacing.xl,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.md,
-  },
-  nameInputContainer: {
-    flex: 1,
   },
   inputContainer: {
     marginBottom: spacing.md,
@@ -475,54 +335,44 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   input: {
-    height: 48,
+    height: 52,
     borderWidth: 1,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.lg,
     fontSize: typography.fontSize.base,
   },
-  phoneInputRow: {
+  passwordRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
+    height: 52,
     borderWidth: 1,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
   },
-  countryCodeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    height: 48,
-    borderRightWidth: 1,
-    gap: 4,
-  },
-  countryCodeText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  phoneInput: {
+  passwordInput: {
     flex: 1,
-    height: 48,
-    paddingHorizontal: spacing.md,
+    height: 52,
+    paddingHorizontal: spacing.lg,
     fontSize: typography.fontSize.base,
+  },
+  eyeButton: {
+    paddingHorizontal: spacing.md,
+    height: 52,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   errorText: {
     fontSize: typography.fontSize.sm,
     marginBottom: spacing.md,
   },
-  verifyDescription: {
-    fontSize: typography.fontSize.base,
-    marginBottom: spacing.xl,
-  },
-  signUpButton: {
+  primaryButton: {
     height: 52,
     borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
-  signUpButtonText: {
+  primaryButtonText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
   },
@@ -539,27 +389,27 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     fontSize: typography.fontSize.sm,
   },
-  googleButton: {
-    height: 56,
+  secondaryButton: {
+    height: 52,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  googleButtonText: {
+  secondaryButtonText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
   },
-  signInContainer: {
+  footer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: spacing.xl,
   },
-  signInText: {
+  footerText: {
     fontSize: typography.fontSize.base,
   },
-  signInLink: {
+  footerLink: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
   },

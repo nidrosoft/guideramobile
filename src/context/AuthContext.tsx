@@ -38,6 +38,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const isAuthenticated = !!isSignedIn && !!clerkUser;
   const hasCompletedOnboarding = profile?.onboarding_completed ?? false;
 
+  // Debug logging
+  console.log('[Auth State]', {
+    isUserLoaded,
+    isAuthLoaded,
+    isSignedIn: !!isSignedIn,
+    hasClerkUser: !!clerkUser,
+    clerkUserId: clerkUser?.id?.substring(0, 10),
+    isProfileLoading,
+    profileId: profile?.id?.substring(0, 8),
+    onboardingCompleted: profile?.onboarding_completed,
+    isLoading,
+    isAuthenticated,
+    hasCompletedOnboarding,
+  });
+
   // Sync Clerk user to Supabase profile when user signs in
   useEffect(() => {
     let isMounted = true;
@@ -49,8 +64,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
 
+      setIsProfileLoading(true);
+
       try {
-        console.log('[Auth] Syncing Clerk user to Supabase profile...');
+        console.log('[Auth] Syncing Clerk user to Supabase...', clerkUser.id);
         const profileData = await syncClerkUserToSupabase({
           id: clerkUser.id,
           firstName: clerkUser.firstName,
@@ -61,11 +78,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
         });
 
         if (isMounted) {
-          console.log('[Auth] Profile loaded, onboarding_completed:', profileData?.onboarding_completed);
+          if (profileData) {
+            console.log('[Auth] Profile synced OK:', profileData.id, 'onboarding:', profileData.onboarding_completed);
+          } else {
+            console.warn('[Auth] Profile sync returned null — profile creation may have failed');
+          }
           setProfile(profileData);
         }
       } catch (error) {
         console.error('[Auth] Error syncing profile:', error);
+        // Even on error, stop loading so AuthGuard can proceed
+        if (isMounted) {
+          setProfile(null);
+        }
       } finally {
         if (isMounted) {
           setIsProfileLoading(false);

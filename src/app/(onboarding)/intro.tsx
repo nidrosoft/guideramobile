@@ -1,12 +1,12 @@
-import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
+import { View, Text, StyleSheet, Animated, Platform, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect, useRef } from 'react';
 import * as Haptics from 'expo-haptics';
-import { Airplane, Location, Global, Briefcase } from 'iconsax-react-native';
+import { Magicpen, ShieldTick, MessageText1, LanguageSquare, People } from 'iconsax-react-native';
 import { colors, typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import PrimaryButton from '@/components/common/buttons/PrimaryButton';
+import { TouchableOpacity } from 'react-native';
 
 // Typewriter component for titles
 function TypewriterText({ 
@@ -140,16 +140,16 @@ function AnimatedFeature({
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       }
 
-      // Zoom in and out
+      // Zoom in and out — fast snap
       Animated.sequence([
         Animated.timing(scale, {
-          toValue: 1.15,
-          duration: 200,
+          toValue: 1.12,
+          duration: 120,
           useNativeDriver: true,
         }),
         Animated.timing(scale, {
           toValue: 1,
-          duration: 200,
+          duration: 120,
           useNativeDriver: true,
         }),
       ]).start();
@@ -160,7 +160,7 @@ function AnimatedFeature({
     <Animated.View 
       style={[
         styles.featureCard, 
-        { backgroundColor: feature.bgColor },
+        { backgroundColor: feature.bgColor, borderColor: feature.borderColor || 'transparent' },
         { transform: [{ scale }], opacity }
       ]}
     >
@@ -195,51 +195,64 @@ export default function Intro() {
 
   const features = [
     {
-      icon: Airplane,
-      title: 'Personalize your experience',
-      description: 'Tell us about your travel preferences',
-      bgColor: 'rgba(255, 107, 107, 0.10)',
-      iconBgColor: 'rgba(255, 107, 107, 0.18)',
-      iconColor: '#FF6B6B',
+      icon: Magicpen,
+      title: 'AI Smart Trip Planner',
+      description: 'One tap generates your full itinerary, packing list, safety guide, and more',
+      bgColor: isDark ? 'rgba(168, 85, 247, 0.14)' : 'rgba(168, 85, 247, 0.08)',
+      iconBgColor: isDark ? 'rgba(168, 85, 247, 0.28)' : 'rgba(168, 85, 247, 0.15)',
+      iconColor: '#C084FC',
+      borderColor: isDark ? 'rgba(168, 85, 247, 0.25)' : 'rgba(168, 85, 247, 0.12)',
     },
     {
-      icon: Location,
-      title: 'Find the best destinations',
-      description: 'Get AI-powered recommendations',
-      bgColor: 'rgba(2, 132, 199, 0.10)',
-      iconBgColor: 'rgba(2, 132, 199, 0.18)',
-      iconColor: '#38BDF8',
+      icon: ShieldTick,
+      title: 'Real-Time Safety Alerts',
+      description: 'Live travel advisories, emergency contacts, SOS, and danger zone warnings',
+      bgColor: isDark ? 'rgba(239, 68, 68, 0.14)' : 'rgba(239, 68, 68, 0.08)',
+      iconBgColor: isDark ? 'rgba(239, 68, 68, 0.28)' : 'rgba(239, 68, 68, 0.15)',
+      iconColor: '#F87171',
+      borderColor: isDark ? 'rgba(239, 68, 68, 0.25)' : 'rgba(239, 68, 68, 0.12)',
     },
     {
-      icon: Global,
-      title: 'Discover local insights',
-      description: 'Access cultural tips and safety info',
-      bgColor: 'rgba(234, 88, 12, 0.10)',
-      iconBgColor: 'rgba(234, 88, 12, 0.18)',
-      iconColor: '#FB923C',
+      icon: MessageText1,
+      title: 'AI Travel Assistant',
+      description: 'Ask anything — flights, visas, weather, maps, local tips, all in one chat',
+      bgColor: isDark ? 'rgba(59, 130, 246, 0.14)' : 'rgba(59, 130, 246, 0.08)',
+      iconBgColor: isDark ? 'rgba(59, 130, 246, 0.28)' : 'rgba(59, 130, 246, 0.15)',
+      iconColor: '#60A5FA',
+      borderColor: isDark ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.12)',
     },
     {
-      icon: Briefcase,
-      title: 'Book seamlessly',
-      description: 'All your travel needs in one place',
-      bgColor: 'rgba(22, 163, 74, 0.10)',
-      iconBgColor: 'rgba(22, 163, 74, 0.18)',
-      iconColor: '#4ADE80',
+      icon: LanguageSquare,
+      title: 'Cultural & Language Kit',
+      description: '120+ survival phrases, cultural do\'s & don\'ts, and local etiquette',
+      bgColor: isDark ? 'rgba(245, 158, 11, 0.14)' : 'rgba(245, 158, 11, 0.08)',
+      iconBgColor: isDark ? 'rgba(245, 158, 11, 0.28)' : 'rgba(245, 158, 11, 0.15)',
+      iconColor: '#FBBF24',
+      borderColor: isDark ? 'rgba(245, 158, 11, 0.25)' : 'rgba(245, 158, 11, 0.12)',
+    },
+    {
+      icon: People,
+      title: 'Travel Community',
+      description: 'Connect with travelers, local guides, join group meetups, and find travel buddies',
+      bgColor: isDark ? 'rgba(16, 185, 129, 0.14)' : 'rgba(16, 185, 129, 0.08)',
+      iconBgColor: isDark ? 'rgba(16, 185, 129, 0.28)' : 'rgba(16, 185, 129, 0.15)',
+      iconColor: '#34D399',
+      borderColor: isDark ? 'rgba(16, 185, 129, 0.25)' : 'rgba(16, 185, 129, 0.12)',
     },
   ];
 
   useEffect(() => {
     const timeouts: ReturnType<typeof setTimeout>[] = [];
 
-    // Feature appearance schedule (2 seconds apart)
+    // Feature appearance schedule (1.6 seconds apart for 5 cards)
     features.forEach((_, index) => {
       const timeout = setTimeout(() => {
         setCurrentFeatureIndex(index);
-      }, index * 2000);
+      }, index * 1600);
       timeouts.push(timeout);
     });
 
-    // Button appearance at 8 seconds
+    // Button appearance after all 5 cards (8.5 seconds)
     const buttonTimeout = setTimeout(() => {
       setShowButton(true);
       
@@ -254,16 +267,16 @@ export default function Intro() {
         friction: 8,
         useNativeDriver: true,
       }).start();
-    }, 8000);
+    }, 8500);
     timeouts.push(buttonTimeout);
 
-    // Zoom effects starting at 9 seconds (500ms apart)
+    // Zoom effects starting at 9.5 seconds (200ms apart — fast cascade)
     features.forEach((_, index) => {
       const timeout = setTimeout(() => {
         setZoomFeatureIndex(index);
         // Reset after animation
-        setTimeout(() => setZoomFeatureIndex(-1), 400);
-      }, 9000 + (index * 500));
+        setTimeout(() => setZoomFeatureIndex(-1), 250);
+      }, 9500 + (index * 200));
       timeouts.push(timeout);
     });
 
@@ -288,7 +301,7 @@ export default function Intro() {
       <View style={styles.header}>
         <Text style={[styles.title, { color: tc.textPrimary }]}>Welcome to Guidera!</Text>
         <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
-          Thank you for signing up. Let's set up your account to give you the best travel experience.
+          Your AI-powered travel companion that plans, protects, and connects you everywhere you go. Here's what makes Guidera different:
         </Text>
       </View>
 
@@ -314,12 +327,15 @@ export default function Intro() {
             { transform: [{ scale: buttonScale }] }
           ]}
         >
-          <Text style={[styles.setupText, { color: tc.textSecondary }]}>Ready to personalize your journey?</Text>
-          <PrimaryButton
-            title="Let's Do It!"
+          <Text style={[styles.setupText, { color: tc.textSecondary }]}>Let's personalize your experience</Text>
+          <TouchableOpacity
+            style={[styles.ctaButton, { backgroundColor: tc.primary }]}
             onPress={handleContinue}
-          />
-          <Text style={[styles.footerText, { color: tc.textTertiary }]}>Takes less than 2 minutes</Text>
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.ctaButtonText, { color: tc.white }]}>Get Started</Text>
+          </TouchableOpacity>
+          <Text style={[styles.footerText, { color: tc.textTertiary }]}>Quick setup — less than 2 minutes</Text>
         </Animated.View>
       )}
     </View>
@@ -354,15 +370,16 @@ const styles = StyleSheet.create({
   },
   featureCard: {
     flexDirection: 'row',
-    padding: 20,
-    borderRadius: 12,
+    padding: spacing.lg,
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
     gap: spacing.md,
-    minHeight: 80,
+    minHeight: 72,
   },
   iconContainer: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -370,13 +387,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   featureTitle: {
-    fontSize: 15,
-    fontWeight: typography.fontWeight.semibold,
-    marginBottom: spacing.xs,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.bold,
+    marginBottom: 2,
   },
   featureDescription: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: typography.fontSize.xs,
+    lineHeight: 17,
+  },
+  ctaButton: {
+    height: 52,
+    borderRadius: borderRadius.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  ctaButtonText: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
   },
   buttonContainer: {
     marginTop: spacing.xl,

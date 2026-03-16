@@ -42,14 +42,30 @@ import ScanScanningStep from '../steps/scan/ScanScanningStep';
 import ScanResultStep from '../steps/scan/ScanResultStep';
 import ScanSuccessStep from '../steps/scan/ScanSuccessStep';
 
-export default function ImportTripFlow({ visible, onClose, onComplete }: ImportFlowProps) {
+export default function ImportTripFlow({ visible, onClose, onComplete, initialMethod }: ImportFlowProps) {
   const { colors: tc } = useTheme();
-  const [flowState, setFlowState] = useState<ImportFlowState>({
-    currentStep: 'method-selection',
-    stepHistory: [],
-    method: null,
-    data: {},
-  });
+
+  const getInitialState = (): ImportFlowState => {
+    if (initialMethod === 'scan') {
+      return { currentStep: 'scan-camera', stepHistory: ['method-selection'], method: 'scan', data: {} };
+    }
+    if (initialMethod === 'email') {
+      return { currentStep: 'email-link', stepHistory: ['method-selection'], method: 'email', data: {} };
+    }
+    if (initialMethod === 'manual') {
+      return { currentStep: 'manual-type', stepHistory: ['method-selection'], method: 'manual', data: {} };
+    }
+    return { currentStep: 'method-selection', stepHistory: [], method: null, data: {} };
+  };
+
+  const [flowState, setFlowState] = useState<ImportFlowState>(getInitialState());
+
+  // Reset state when modal opens with a new initialMethod
+  React.useEffect(() => {
+    if (visible) {
+      setFlowState(getInitialState());
+    }
+  }, [visible, initialMethod]);
 
   const completeAndReset = () => {
     onComplete(flowState.data);

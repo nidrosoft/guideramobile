@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Text, StyleSheet } from 'react-native';
+import { Text, StyleSheet, Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { colors, typography } from '@/styles';
 
 interface TypingAnimationProps {
@@ -27,6 +28,9 @@ export default function TypingAnimation({
         // Typing
         if (currentText.length < currentPhrase.length) {
           setCurrentText(currentPhrase.slice(0, currentText.length + 1));
+          if (Platform.OS === 'ios') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }
         } else {
           // Finished typing, start deleting after pause
           setTimeout(() => setIsDeleting(true), pauseTime);
@@ -35,6 +39,9 @@ export default function TypingAnimation({
         // Deleting
         if (currentText.length > 0) {
           setCurrentText(currentText.slice(0, -1));
+          if (Platform.OS === 'ios') {
+            Haptics.selectionAsync();
+          }
         } else {
           // Finished deleting, move to next phrase
           setIsDeleting(false);

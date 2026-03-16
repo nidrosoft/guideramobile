@@ -93,6 +93,7 @@ export interface ImportFlowProps {
   visible: boolean;
   onClose: () => void;
   onComplete: (tripData: any) => void;
+  initialMethod?: ImportMethod;
 }
 
 export interface StepComponentProps {

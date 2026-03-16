@@ -8,7 +8,8 @@ import * as Haptics from 'expo-haptics';
 import { colors, typography, spacing, borderRadius, shadows } from '@/styles';
 import PrimaryButton from '@/components/common/buttons/PrimaryButton';
 import TypingAnimation from '@/components/common/TypingAnimation';
-import { useSSO } from '@clerk/clerk-expo';
+import { useSSO, useUser } from '@clerk/clerk-expo';
+import { syncClerkUserToSupabase } from '@/lib/clerk/profileSync';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 
@@ -30,6 +31,7 @@ export default function Landing() {
   useWarmUpBrowser();
   const router = useRouter();
   const { startSSOFlow } = useSSO();
+  const { user: clerkUser } = useUser();
   const [error, setError] = useState('');
   const [ssoLoading, setSsoLoading] = useState('');
 
@@ -57,15 +59,41 @@ export default function Landing() {
         redirectUrl: AuthSession.makeRedirectUri(),
       });
 
-      if (createdSessionId && setActive) {
-        await setActive({ session: createdSessionId });
-        // AuthGuard will handle navigation based on onboarding status
-      } else if ((signIn?.status as string) === 'needs_client_trust') {
-        // Clerk v3: New client trust — user needs additional verification
-        setError('For security, additional verification is needed. Please sign in with email or phone.');
+      console.log('[Landing SSO] Response:', {
+        createdSessionId: createdSessionId ? 'YES' : 'NULL',
+        hasSetActive: !!setActive,
+        signUpStatus: signUp?.status,
+        signInStatus: signIn?.status,
+        signUpId: signUp?.id,
+        signInId: signIn?.id,
+      });
+
+      if (createdSessionId) {
+        console.log('[Landing SSO] Session created, activating...');
+        await setActive!({ session: createdSessionId });
+        console.log('[Landing SSO] Session activated, navigating...');
+        router.replace('/');
+        return;
+      }
+
+      // No session created — log full details for debugging
+      console.log('[Landing SSO] No session. signUp:', JSON.stringify({
+        status: signUp?.status,
+        missingFields: (signUp as any)?.missingFields,
+        unverifiedFields: (signUp as any)?.unverifiedFields,
+        phoneNumber: (signUp as any)?.phoneNumber,
+      }));
+      console.log('[Landing SSO] signIn verification:', JSON.stringify({
+        status: (signIn as any)?.firstFactorVerification?.status,
+        errorCode: (signIn as any)?.firstFactorVerification?.error?.code,
+      }));
+      
+      // The most common cause: Clerk requires phone_number but SSO doesn't provide one.
+      // Fix: In Clerk Dashboard → Configure → Email, Phone, Username → make Phone "Optional"
+      if ((signIn?.status as string) === 'needs_client_trust') {
+        setError('Additional verification needed. Please sign in with email or phone.');
       } else {
-        // No session created — might need additional steps (MFA, etc.)
-        console.log('[Landing SSO] No session created. signUp status:', signUp?.status, 'signIn status:', signIn?.status);
+        setError('Could not complete sign up. Please check Clerk Dashboard settings or try email sign up.');
       }
     } catch (err: any) {
       const clerkError = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err.message || 'Sign up failed';
@@ -168,21 +196,34 @@ export default function Landing() {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Sign Up with Email Button (primary CTA) */}
-          <LinearGradient
-            colors={[colors.gradientStart, colors.gradientEnd]}
-            style={styles.signUpButton}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
+          {/* Sign Up Buttons Row */}
+          <View style={styles.signUpRow}>
+            <LinearGradient
+              colors={[colors.gradientStart, colors.gradientEnd]}
+              style={styles.signUpButton}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <TouchableOpacity
+                style={styles.signUpButtonInner}
+                onPress={handleEmailSignUp}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.signUpButtonText}>Email</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+
             <TouchableOpacity
-              style={styles.signUpButtonInner}
-              onPress={handleEmailSignUp}
+              style={styles.phoneSignUpButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                router.push('/(auth)/phone-signup');
+              }}
               activeOpacity={0.8}
             >
-              <Text style={styles.signUpButtonText}>Sign up with Email</Text>
+              <Text style={styles.phoneSignUpButtonText}>Phone</Text>
             </TouchableOpacity>
-          </LinearGradient>
+          </View>
 
           {error ? <Text style={styles.errorBadge}>{error}</Text> : null}
 
@@ -286,7 +327,12 @@ const styles = StyleSheet.create({
     color: colors.white,
     opacity: 0.8,
   },
+  signUpRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
   signUpButton: {
+    flex: 1,
     height: 56,
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
@@ -298,6 +344,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   signUpButtonText: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.white,
+  },
+  phoneSignUpButton: {
+    flex: 1,
+    height: 56,
+    borderRadius: borderRadius.lg,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  phoneSignUpButtonText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
     color: colors.white,

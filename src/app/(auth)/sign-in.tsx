@@ -1,12 +1,11 @@
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import * as Haptics from 'expo-haptics';
-import CountryPicker, { Country, CountryCode } from 'react-native-country-picker-modal';
-import PhoneIcon from '@/components/common/icons/PhoneIcon';
+import { Login, Eye, EyeSlash } from 'iconsax-react-native';
 import CloseIcon from '@/components/common/icons/CloseIcon';
-import { colors, typography, spacing, borderRadius, shadows } from '@/styles';
+import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useSignIn, useSSO } from '@clerk/clerk-expo';
 import * as WebBrowser from 'expo-web-browser';
@@ -30,136 +29,121 @@ export default function SignIn() {
   const { colors: tc, isDark } = useTheme();
   const { isLoaded, signIn, setActive } = useSignIn();
   const { startSSOFlow } = useSSO();
-  const [countryCode, setCountryCode] = useState<CountryCode>('US');
-  const [callingCode, setCallingCode] = useState('1');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const onSelectCountry = (country: Country) => {
-    setCountryCode(country.cca2);
-    setCallingCode(country.callingCode[0]);
-  };
+  // Smart detection: is the input an email or phone?
+  const inputMode = useMemo(() => {
+    const trimmed = identifier.trim();
+    if (trimmed.includes('@')) return 'email' as const;
+    if (/^\+?\d{7,}$/.test(trimmed.replace(/[\s\-()]/g, ''))) return 'phone' as const;
+    return 'unknown' as const;
+  }, [identifier]);
 
   const handleClose = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.back();
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleSSOSignIn = async (strategy: 'oauth_google' | 'oauth_apple' | 'oauth_facebook') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setError('');
-
+    setIsLoading(true);
     try {
-      const { createdSessionId, setActive: ssoSetActive, signIn: ssoSignIn, signUp: ssoSignUp } = await startSSOFlow({
-        strategy: 'oauth_google',
+      const { createdSessionId, setActive: ssoSetActive, signUp } = await startSSOFlow({
+        strategy,
         redirectUrl: AuthSession.makeRedirectUri(),
       });
-
       if (createdSessionId && ssoSetActive) {
         await ssoSetActive({ session: createdSessionId });
-        // AuthGuard will handle redirect
-      } else {
-        console.log('[SignIn SSO] No session created. signUp status:', ssoSignUp?.status, 'signIn status:', ssoSignIn?.status);
+        // Explicit navigation — don't rely on AuthGuard reactivity
+        const isNewUser = signUp?.status === 'complete';
+        if (isNewUser) {
+          router.replace('/(onboarding)/intro');
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          router.replace('/(tabs)');
+        }
+        return;
       }
     } catch (err: any) {
-      const clerkError = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err.message || 'Google sign in failed';
-      setError(clerkError);
+      setError(err?.errors?.[0]?.longMessage || err?.message || 'Sign in failed');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleEmailSignIn = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/(auth)/email-signin' as any);
-  };
+  const handleSignIn = async () => {
+    if (!isLoaded || isLoading) return;
+    const trimmed = identifier.trim();
+    if (!trimmed) { setError('Enter your email or phone number'); return; }
 
-  const handleContinue = async () => {
-    if (phoneNumber.length < 10 || !isLoaded || isLoading) return;
-    
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsLoading(true);
     setError('');
 
     try {
-      const fullPhone = `+${callingCode}${phoneNumber}`;
+      if (inputMode === 'email') {
+        // Email + password sign-in
+        if (!password) { setError('Password is required'); setIsLoading(false); return; }
+        const attempt = await signIn.create({ identifier: trimmed, password });
 
-      // Create sign-in with phone number
-      const result = await signIn.create({
-        identifier: fullPhone,
-      });
+        if (attempt.status === 'complete') {
+          await setActive({ session: attempt.createdSessionId });
+        } else if ((attempt.status as string) === 'needs_client_trust') {
+          setError('For security, additional verification is needed. Please try again.');
+        } else {
+          setError('Sign in incomplete. Please try again.');
+        }
+      } else {
+        // Phone sign-in — send OTP
+        const phoneNum = trimmed.startsWith('+') ? trimmed : `+${trimmed}`;
+        const result = await signIn.create({ identifier: phoneNum });
 
-      const { supportedFirstFactors, supportedSecondFactors } = result;
-
-      // Log full factor details for debugging
-      console.log('[SignIn] Full signIn status:', result.status);
-      console.log('[SignIn] supportedFirstFactors:', JSON.stringify(supportedFirstFactors));
-      console.log('[SignIn] supportedSecondFactors:', JSON.stringify(supportedSecondFactors));
-
-      // Find the phone_code factor
-      const phoneFactor = supportedFirstFactors?.find(
-        (f: any) => f.strategy === 'phone_code'
-      );
-
-      if (phoneFactor && 'phoneNumberId' in phoneFactor) {
-        await signIn.prepareFirstFactor({
-          strategy: 'phone_code',
-          phoneNumberId: phoneFactor.phoneNumberId,
-        });
-
-        // Navigate to OTP screen (replace to prevent double-stack)
-        router.replace({
-          pathname: '/(auth)/verify-otp',
-          params: {
-            phone: fullPhone,
-            mode: 'signin',
-          },
-        });
-      } else if (result.status === 'needs_client_trust' as any) {
-        // Clerk v3: New client trust challenge — prepare phone code for verification
-        const trustPhoneFactor = supportedFirstFactors?.find(
+        const phoneFactor = result.supportedFirstFactors?.find(
           (f: any) => f.strategy === 'phone_code'
         );
-        if (trustPhoneFactor && 'phoneNumberId' in trustPhoneFactor) {
+
+        if (phoneFactor && 'phoneNumberId' in phoneFactor) {
           await signIn.prepareFirstFactor({
             strategy: 'phone_code',
-            phoneNumberId: trustPhoneFactor.phoneNumberId,
+            phoneNumberId: phoneFactor.phoneNumberId,
           });
           router.replace({
             pathname: '/(auth)/verify-otp',
-            params: { phone: fullPhone, mode: 'signin' },
+            params: { phone: phoneNum, mode: 'signin' },
           });
         } else {
-          setError('Additional verification required. Please try signing in with email.');
-        }
-      } else {
-        // Check what factors ARE available and give specific guidance
-        const availableStrategies = supportedFirstFactors?.map((f: any) => f.strategy) || [];
-        console.log('[SignIn] Phone factor not found. Available strategies:', availableStrategies);
-        
-        if (availableStrategies.includes('oauth_google')) {
-          setError('This account uses Google sign-in. Please use the Google option below.');
-        } else if (availableStrategies.includes('email_code')) {
-          setError('Phone sign-in not available for this account. Try signing in with email.');
-        } else if (availableStrategies.includes('password')) {
-          setError('This account uses email & password. Try signing in with email.');
-        } else {
-          setError('Phone sign-in not available. Check that phone authentication is enabled in Clerk Dashboard → User & Authentication.');
+          const strategies = result.supportedFirstFactors?.map((f: any) => f.strategy) || [];
+          if (strategies.includes('password')) {
+            setError('This account uses email & password. Enter your email instead.');
+          } else if (strategies.includes('oauth_google')) {
+            setError('This account uses Google. Use the Google button below.');
+          } else {
+            setError('Phone sign-in not available for this account.');
+          }
         }
       }
     } catch (err: any) {
-      const errCode = err?.errors?.[0]?.code;
-      if (errCode === 'form_identifier_not_found') {
-        // Account doesn't exist — redirect to sign-up
-        router.push('/(auth)/email-signup' as any);
-        return;
+      const code = err?.errors?.[0]?.code;
+      if (code === 'form_identifier_not_found') {
+        setError('No account found. Check your email/phone or sign up.');
+      } else if (code === 'form_password_incorrect') {
+        setError('Incorrect password. Try again or reset it.');
+      } else {
+        setError(err?.errors?.[0]?.longMessage || err?.message || 'Sign in failed');
       }
-      const clerkError = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err.message || 'Failed to sign in';
-      setError(clerkError);
     } finally {
       setIsLoading(false);
     }
   };
+
+  const canSubmit = inputMode === 'email'
+    ? identifier.includes('@') && password.length > 0
+    : identifier.trim().replace(/[\s\-()]/g, '').length >= 7;
 
   return (
     <KeyboardAvoidingView
@@ -168,103 +152,136 @@ export default function SignIn() {
     >
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
-      {/* Close Button */}
       <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
         <CloseIcon size={24} color={tc.textPrimary} />
       </TouchableOpacity>
 
       <View style={styles.content}>
-        {/* Phone Icon */}
         <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
-          <PhoneIcon size={32} color={tc.textPrimary} />
+          <Login size={32} color={tc.textPrimary} variant="Outline" />
         </View>
 
-        {/* Header */}
-        <Text style={[styles.title, { color: tc.textPrimary }]}>Let's get you back in...</Text>
+        <Text style={[styles.title, { color: tc.textPrimary }]}>Welcome back</Text>
+        <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
+          Sign in with your email or phone number
+        </Text>
 
-        {/* Phone Input */}
-        <View style={[styles.phoneInputContainer, { borderBottomColor: tc.borderMedium }]}>
-          {/* Country Code */}
-          <TouchableOpacity 
-            style={[styles.countryCodeButton, { borderRightColor: tc.borderMedium }]}
-            onPress={() => setShowCountryPicker(true)}
-          >
-            <CountryPicker
-              countryCode={countryCode}
-              withFilter
-              withFlag
-              withCallingCode
-              withEmoji
-              onSelect={onSelectCountry}
-              visible={showCountryPicker}
-              onClose={() => setShowCountryPicker(false)}
-            />
-            <Text style={[styles.countryCodeText, { color: tc.textPrimary }]}>+{callingCode}</Text>
-            <Text style={[styles.dropdownIcon, { color: tc.textSecondary }]}>▼</Text>
-          </TouchableOpacity>
-
-          {/* Phone Number */}
+        {/* Smart Identifier Input */}
+        <View style={styles.inputContainer}>
+          <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Email or Phone</Text>
           <TextInput
-            style={[styles.phoneInput, { color: tc.textPrimary }]}
-            placeholder=""
+            style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
+            placeholder="you@example.com or +1234567890"
             placeholderTextColor={tc.textTertiary}
-            keyboardType="phone-pad"
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            maxLength={15}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={identifier}
+            onChangeText={(text) => { setIdentifier(text); setError(''); }}
             autoFocus
           />
         </View>
 
-        {/* Description */}
-        <Text style={[styles.description, { color: tc.textSecondary }]}>
-          We'll send you a text with a verification code to sign you back in.
-        </Text>
+        {/* Password field — only shown for email */}
+        {inputMode === 'email' && (
+          <View style={styles.inputContainer}>
+            <View style={styles.passwordLabelRow}>
+              <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Password</Text>
+              <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
+                <Text style={[styles.forgotLink, { color: tc.primary }]}>Forgot?</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.passwordRow, { borderColor: tc.borderMedium, backgroundColor: tc.bgElevated }]}>
+              <TextInput
+                style={[styles.passwordInput, { color: tc.textPrimary }]}
+                placeholder="Enter your password"
+                placeholderTextColor={tc.textTertiary}
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={(text) => { setPassword(text); setError(''); }}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword(!showPassword)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                {showPassword ? (
+                  <EyeSlash size={20} color={tc.textTertiary} variant="Outline" />
+                ) : (
+                  <Eye size={20} color={tc.textTertiary} variant="Outline" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Phone hint */}
+        {inputMode === 'phone' && (
+          <Text style={[styles.phoneHint, { color: tc.textTertiary }]}>
+            We'll send you a verification code via SMS
+          </Text>
+        )}
 
         {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
 
-        {/* Continue Button - Always Visible */}
+        {/* Sign In Button */}
         <TouchableOpacity
-          style={[
-            styles.continueButton,
-            { backgroundColor: isDark ? tc.white : tc.black },
-            (phoneNumber.length < 10 || isLoading) && { backgroundColor: tc.bgElevated, borderWidth: 1, borderColor: tc.borderMedium },
-          ]}
-          onPress={handleContinue}
-          disabled={phoneNumber.length < 10 || isLoading}
+          style={[styles.primaryButton, { backgroundColor: tc.primary }, (!canSubmit || isLoading) && { opacity: 0.5 }]}
+          onPress={handleSignIn}
+          disabled={!canSubmit || isLoading}
           activeOpacity={0.8}
         >
           {isLoading ? (
-            <ActivityIndicator color={isDark ? tc.black : tc.white} size="small" />
+            <ActivityIndicator color={tc.white} />
           ) : (
-            <Text style={[styles.continueIcon, { color: isDark ? tc.black : tc.white }, phoneNumber.length < 10 && { color: tc.textTertiary }]}>→</Text>
+            <Text style={[styles.primaryButtonText, { color: tc.white }]}>
+              {inputMode === 'phone' ? 'Send Code' : 'Sign In'}
+            </Text>
           )}
         </TouchableOpacity>
 
         {/* Divider */}
         <View style={styles.divider}>
           <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
-          <Text style={[styles.dividerText, { color: tc.textSecondary }]}>or</Text>
+          <Text style={[styles.dividerText, { color: tc.textTertiary }]}>or</Text>
           <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
         </View>
 
-        {/* Google Sign In Button */}
-        <TouchableOpacity
-          style={[styles.googleButton, { backgroundColor: tc.bgElevated, borderColor: tc.borderMedium }]}
-          onPress={handleGoogleSignIn}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.googleButtonText, { color: tc.textPrimary }]}>Sign in with Google</Text>
-        </TouchableOpacity>
+        {/* Social Sign In — label + 3 buttons in a row */}
+        <Text style={[styles.ssoLabel, { color: tc.textTertiary }]}>Continue with</Text>
+        <View style={styles.ssoRow}>
+          <TouchableOpacity
+            style={[styles.ssoButton, { borderColor: tc.borderMedium }]}
+            onPress={() => handleSSOSignIn('oauth_apple')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.ssoLogoText, { color: '#000000' }]}>{Platform.OS === 'ios' ? '\uF8FF' : 'A'}</Text>
+          </TouchableOpacity>
 
-        {/* Email Sign In Button */}
-        <TouchableOpacity
-          style={[styles.emailButton, { backgroundColor: tc.bgElevated, borderColor: tc.borderMedium }]}
-          onPress={handleEmailSignIn}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.emailButtonText, { color: tc.textPrimary }]}>Sign in with Email</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.ssoButton, { borderColor: tc.borderMedium }]}
+            onPress={() => handleSSOSignIn('oauth_google')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.ssoLogoText, { color: '#DB4437' }]}>G</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.ssoButton, { borderColor: tc.borderMedium }]}
+            onPress={() => handleSSOSignIn('oauth_facebook')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.ssoLogoText, { color: '#1877F2' }]}>f</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Sign Up Link */}
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: tc.textSecondary }]}>Don't have an account? </Text>
+          <TouchableOpacity onPress={() => router.push('/(auth)/email-signup' as any)}>
+            <Text style={[styles.footerLink, { color: tc.primary }]}>Sign Up</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -287,7 +304,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: spacing.xl,
-    paddingTop: 140,
+    paddingTop: 120,
   },
   iconContainer: {
     width: 64,
@@ -296,63 +313,81 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  title: {
-    fontSize: typography.fontSize['4xl'],
-    fontWeight: typography.fontWeight.bold,
-    marginBottom: spacing['2xl'],
-  },
-  phoneInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    paddingBottom: spacing.md,
     marginBottom: spacing.lg,
   },
-  countryCodeButton: {
+  title: {
+    fontSize: typography.fontSize['3xl'],
+    fontWeight: typography.fontWeight.bold,
+    marginBottom: spacing.sm,
+  },
+  subtitle: {
+    fontSize: typography.fontSize.base,
+    lineHeight: typography.fontSize.base * 1.5,
+    marginBottom: spacing.xl,
+  },
+  inputContainer: {
+    marginBottom: spacing.md,
+  },
+  inputLabel: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    marginBottom: spacing.xs,
+  },
+  input: {
+    height: 52,
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.lg,
+    fontSize: typography.fontSize.base,
+  },
+  passwordLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  forgotLink: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+  },
+  passwordRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingRight: spacing.md,
-    borderRightWidth: 1,
+    height: 52,
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
   },
-  flag: {
-    fontSize: 24,
-  },
-  countryCodeText: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  dropdownIcon: {
-    fontSize: 10,
-  },
-  phoneInput: {
+  passwordInput: {
     flex: 1,
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: typography.fontWeight.semibold,
-    paddingLeft: spacing.lg,
-  },
-  description: {
+    height: 52,
+    paddingHorizontal: spacing.lg,
     fontSize: typography.fontSize.base,
-    lineHeight: typography.fontSize.base * typography.lineHeight.normal,
-    marginBottom: spacing['3xl'],
+  },
+  eyeButton: {
+    paddingHorizontal: spacing.md,
+    height: 52,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  phoneHint: {
+    fontSize: typography.fontSize.sm,
+    marginBottom: spacing.md,
   },
   errorText: {
     fontSize: typography.fontSize.sm,
     marginBottom: spacing.md,
   },
-  continueButton: {
-    width: 64,
-    height: 64,
-    borderRadius: borderRadius.full,
+  primaryButton: {
+    height: 52,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    alignSelf: 'flex-end',
-    marginTop: spacing.lg,
+    marginTop: spacing.sm,
   },
-  continueIcon: {
-    fontSize: 28,
+  primaryButtonText: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
   },
   divider: {
     flexDirection: 'row',
@@ -367,27 +402,39 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     fontSize: typography.fontSize.sm,
   },
-  googleButton: {
-    height: 56,
+  ssoLabel: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  ssoRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  ssoButton: {
+    flex: 1,
+    height: 52,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  googleButtonText: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
+  ssoLogoText: {
+    fontSize: 24,
+    fontWeight: typography.fontWeight.bold,
   },
-  emailButton: {
-    height: 56,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
+  footer: {
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.xl,
   },
-  emailButtonText: {
-    fontSize: typography.fontSize.lg,
+  footerText: {
+    fontSize: typography.fontSize.base,
+  },
+  footerLink: {
+    fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
   },
 });

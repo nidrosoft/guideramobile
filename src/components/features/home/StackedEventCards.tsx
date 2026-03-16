@@ -178,7 +178,6 @@ export default function StackedEventCards({ events = [], loading = false }: Stac
       {visibleCards.map(({ event, index, position }) => {
         const cardContent = (
           <Animated.View
-            key={event.id}
             style={[
               styles.card,
               {
@@ -255,7 +254,7 @@ export default function StackedEventCards({ events = [], loading = false }: Stac
           );
         }
 
-        return cardContent;
+        return <View key={event.id}>{cardContent}</View>;
       })}
     </View>
   );

@@ -11,6 +11,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { Home2, Airplane, Category, People, User } from 'iconsax-react-native';
 import ScanBottomSheet, { ScanActionType } from '@/components/features/ar/ScanBottomSheet';
 import AIChatSheet from '@/components/features/ai/AIChatSheet';
+import ImportTripFlow from '@/features/trip-import/components/ImportTripFlow';
 import { useNotifications } from '@/hooks/useNotifications';
 
 // Custom Tab Bar with launcher button and bottom sheet
@@ -19,6 +20,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const router = useRouter();
   const [showScanSheet, setShowScanSheet] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
+  const [showImportFlow, setShowImportFlow] = useState(false);
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const { unreadCount: communityUnread } = useNotifications({ category: 'social', autoRefresh: true });
@@ -89,17 +91,21 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         return;
 
       case 'scan-document':
-        // Route to the trip import scan flow (ticket/boarding pass scanner)
-        router.push({ pathname: '/expenses/scan-receipt', params: { mode: 'document' } } as any);
+        // Open the trip import flow (ticket/boarding pass/hotel voucher scanner)
+        setTimeout(() => setShowImportFlow(true), 300);
         return;
 
       case 'navigate':
-        // Combined navigator with top toggle tabs (City/Airport/Landmarks)
-        router.push({ pathname: '/(tabs)/ar', params: { action: 'city-navigator', navigateMode: 'true' } });
+        // Unified Map & Navigation screen with mode tabs
+        router.push({ pathname: '/navigation', params: { mode: 'city' } } as any);
+        return;
+
+      case 'menu-translator':
+        // AI Vision Translator — standalone full-screen experience
+        router.push({ pathname: '/ai-vision' } as any);
         return;
 
       case 'danger-alerts':
-      case 'menu-translator':
       case 'landmark-scanner':
       case 'city-navigator':
       case 'airport-navigator':
@@ -227,6 +233,17 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         visible={showAIChat}
         onClose={() => setShowAIChat(false)}
         contextType="global"
+      />
+
+      {/* Trip Import Flow (triggered by Scan or Upload Ticket action) */}
+      <ImportTripFlow
+        visible={showImportFlow}
+        onClose={() => setShowImportFlow(false)}
+        onComplete={() => {
+          setShowImportFlow(false);
+          router.push('/(tabs)/trips' as any);
+        }}
+        initialMethod="scan"
       />
     </>
   );

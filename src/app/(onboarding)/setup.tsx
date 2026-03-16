@@ -1,22 +1,26 @@
-import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
+import { View, Text, StyleSheet, Animated, Platform, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import ConfettiCannon from 'react-native-confetti-cannon';
-import { User, Location, Heart, Shield, Airplane } from 'iconsax-react-native';
+import { User, Location, Heart, ShieldTick, Airplane, Magicpen, Map1 } from 'iconsax-react-native';
 import { colors, typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useOnboardingStore } from '@/stores/useOnboardingStore';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 const setupSteps = [
-  { id: 1, text: 'Setting up your account', icon: User, color: '#818CF8', bgColor: 'rgba(99, 102, 241, 0.12)', duration: 1500 },
-  { id: 2, text: 'Finding destinations', icon: Location, color: '#F472B6', bgColor: 'rgba(236, 72, 153, 0.12)', duration: 1500 },
-  { id: 3, text: 'Personalizing experience', icon: Heart, color: '#F87171', bgColor: 'rgba(239, 68, 68, 0.12)', duration: 1500 },
-  { id: 4, text: 'Configuring safety', icon: Shield, color: '#34D399', bgColor: 'rgba(16, 185, 129, 0.12)', duration: 1500 },
-  { id: 5, text: 'Preparing your journey', icon: Airplane, color: '#FBBF24', bgColor: 'rgba(245, 158, 11, 0.12)', duration: 1500 },
+  { id: 1, text: 'Creating your profile', icon: User, color: '#818CF8', bgColor: 'rgba(99, 102, 241, 0.15)', duration: 1200 },
+  { id: 2, text: 'Setting up AI assistant', icon: Magicpen, color: '#C084FC', bgColor: 'rgba(168, 85, 247, 0.15)', duration: 1100 },
+  { id: 3, text: 'Finding destinations for you', icon: Location, color: '#F472B6', bgColor: 'rgba(236, 72, 153, 0.15)', duration: 1000 },
+  { id: 4, text: 'Discovering local experiences', icon: Map1, color: '#60A5FA', bgColor: 'rgba(59, 130, 246, 0.15)', duration: 1100 },
+  { id: 5, text: 'Personalizing your feed', icon: Heart, color: '#F87171', bgColor: 'rgba(239, 68, 68, 0.15)', duration: 1000 },
+  { id: 6, text: 'Configuring safety alerts', icon: ShieldTick, color: '#34D399', bgColor: 'rgba(16, 185, 129, 0.15)', duration: 1100 },
+  { id: 7, text: 'Preparing your journey', icon: Airplane, color: '#FBBF24', bgColor: 'rgba(245, 158, 11, 0.15)', duration: 1200 },
 ];
 
 export default function Setup() {
@@ -121,17 +125,22 @@ export default function Setup() {
     }
   }, [currentStep]);
 
+  const progressPercent = Math.round(((completedSteps.length) / setupSteps.length) * 100);
+  const allDone = completedSteps.length === setupSteps.length;
+
   return (
     <View style={[styles.container, { backgroundColor: tc.bgPrimary }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
-      {/* Confetti */}
+      {/* Confetti — falls smoothly */}
       <ConfettiCannon
-        count={200}
-        origin={{x: -10, y: 0}}
+        count={250}
+        origin={{x: SCREEN_WIDTH / 2, y: -20}}
         autoStart={false}
         ref={confettiRef}
         fadeOut
+        fallSpeed={3000}
+        explosionSpeed={350}
       />
       
       {/* Content */}
@@ -142,17 +151,26 @@ export default function Setup() {
           <Text style={[styles.subtitle, { color: tc.textSecondary }]}>Setting up your experience</Text>
         </View>
 
+        {/* Progress Bar */}
+        <View style={[styles.progressBarContainer, { backgroundColor: tc.bgElevated }]}>
+          <View style={[styles.progressBarFill, { width: `${progressPercent}%`, backgroundColor: tc.primary }]} />
+        </View>
+        <Text style={[styles.progressText, { color: tc.textTertiary }]}>
+          {allDone ? 'All set! 🎉' : `${progressPercent}% complete`}
+        </Text>
+
         {/* Setup Steps */}
         <View style={styles.stepsContainer}>
           {setupSteps.map((step, index) => {
             const StepIcon = step.icon;
             const isCompleted = completedSteps.includes(index);
             const isActive = index === currentStep;
+            const isPending = !isCompleted && !isActive;
             
             return (
-              <View key={step.id} style={styles.stepItem}>
+              <View key={step.id} style={[styles.stepItem, isPending && { opacity: 0.4 }]}>
                 <View style={[styles.iconContainer, { backgroundColor: step.bgColor }]}>
-                  <StepIcon size={28} color={step.color} variant="Bold" />
+                  <StepIcon size={24} color={step.color} variant="Bold" />
                 </View>
                 
                 <View style={styles.stepContent}>
@@ -178,7 +196,7 @@ export default function Setup() {
 
         {/* Bottom Message */}
         <Text style={[styles.bottomMessage, { color: tc.textSecondary }]}>
-          This will only take a moment...
+          {allDone ? 'Welcome aboard! Redirecting...' : 'This will only take a moment...'}
         </Text>
       </View>
     </View>
@@ -208,8 +226,24 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     marginTop: spacing.sm,
   },
+  progressBarContainer: {
+    height: 6,
+    borderRadius: borderRadius.full,
+    overflow: 'hidden',
+    marginBottom: spacing.xs,
+  },
+  progressBarFill: {
+    height: 6,
+    borderRadius: borderRadius.full,
+  },
+  progressText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
   stepsContainer: {
-    gap: spacing.xl,
+    gap: spacing.md,
     flex: 1,
   },
   stepItem: {
@@ -218,9 +252,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },

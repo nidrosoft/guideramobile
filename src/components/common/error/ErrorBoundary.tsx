@@ -1,15 +1,19 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  TextInput,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { RefreshCircle, Warning2, MessageQuestion } from 'iconsax-react-native';
+import { RefreshCircle, Warning2, Send2, TickCircle } from 'iconsax-react-native';
 import { captureException, addBreadcrumb } from '@/services/sentry';
+import { supabase } from '@/lib/supabase/client';
 
 interface Props {
   children: ReactNode;
@@ -43,18 +47,15 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({ errorInfo });
 
-    // Call custom error handler if provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
 
-    // Log to console in development
     if (__DEV__) {
       console.error('ErrorBoundary caught an error:', error);
       console.error('Component stack:', errorInfo.componentStack);
     }
 
-    // Send to Sentry in production
     if (!__DEV__) {
       addBreadcrumb({
         category: 'error-boundary',
@@ -75,32 +76,22 @@ export class ErrorBoundary extends Component<Props, State> {
       error: null,
       errorInfo: null,
     });
-
     if (this.props.onReset) {
       this.props.onReset();
     }
   };
 
-  handleReportIssue = () => {
-    // TODO: Implement issue reporting (email, in-app form, etc.)
-    console.log('Report issue clicked');
-  };
-
   render() {
     if (this.state.hasError) {
-      // Use custom fallback if provided
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
-      // Default error UI based on level
       return (
         <ErrorFallback
           error={this.state.error}
           errorInfo={this.state.errorInfo}
           onReset={this.handleReset}
-          onReportIssue={this.handleReportIssue}
-          showDetails={this.props.showDetails ?? __DEV__}
           level={this.props.level ?? 'component'}
         />
       );
@@ -114,90 +105,142 @@ interface ErrorFallbackProps {
   error: Error | null;
   errorInfo: ErrorInfo | null;
   onReset: () => void;
-  onReportIssue: () => void;
-  showDetails: boolean;
   level: 'global' | 'feature' | 'component';
 }
 
-function ErrorFallback({
-  error,
-  errorInfo,
-  onReset,
-  onReportIssue,
-  showDetails,
-  level,
-}: ErrorFallbackProps) {
+function ErrorFallback({ error, errorInfo, onReset, level }: ErrorFallbackProps) {
+  const { colors: tc, isDark } = useTheme();
   const isGlobal = level === 'global';
-  const isFeature = level === 'feature';
+  const [userEmail, setUserEmail] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [reportSent, setReportSent] = useState(false);
+
+  const handleReportIssue = async () => {
+    setIsSending(true);
+    try {
+      const deviceInfo = `${Platform.OS} ${Platform.Version} | ${__DEV__ ? 'DEV' : 'PROD'}`;
+      
+      await supabase.functions.invoke('send-crash-report', {
+        body: {
+          errorName: error?.name || 'Unknown',
+          errorMessage: error?.message || 'No message',
+          componentStack: errorInfo?.componentStack?.trim() || '',
+          userEmail: userEmail.trim() || undefined,
+          deviceInfo,
+        },
+      });
+      
+      setReportSent(true);
+    } catch (err) {
+      console.error('[CrashReport] Failed to send:', err);
+      // Still mark as sent to avoid frustrating the user
+      setReportSent(true);
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   return (
-    <View style={[styles.container, isGlobal && styles.containerGlobal]}>
-      <View style={styles.content}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Error Icon */}
-        <View style={[styles.iconContainer, isGlobal && styles.iconContainerLarge]}>
-          <Warning2
-            size={isGlobal ? 64 : 48}
-            color={colors.error}
-            variant="Bold"
-          />
+        <View style={[styles.iconContainer, { backgroundColor: `${tc.error}15` }]}>
+          <Warning2 size={isGlobal ? 48 : 36} color={tc.error} variant="Bold" />
         </View>
 
-        {/* Error Title */}
-        <Text style={[styles.title, isGlobal && styles.titleLarge]}>
-          {isGlobal
-            ? 'Something went wrong'
-            : isFeature
-            ? 'This feature encountered an error'
-            : 'Unable to load this section'}
+        {/* Title */}
+        <Text style={[styles.title, { color: tc.textPrimary }]}>
+          {isGlobal ? 'Something went wrong' : 'This section crashed'}
         </Text>
 
-        {/* Error Description */}
-        <Text style={styles.description}>
+        {/* Description */}
+        <Text style={[styles.description, { color: tc.textSecondary }]}>
           {isGlobal
-            ? "We're sorry, but something unexpected happened. Please try again or restart the app."
-            : "Don't worry, your data is safe. Try refreshing or come back later."}
+            ? "We're sorry about this. You can try again or send us a crash report so we can fix it."
+            : "Don't worry, your data is safe. Try refreshing or report this issue."}
         </Text>
 
         {/* Action Buttons */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={styles.primaryButton}
+            style={[styles.primaryButton, { backgroundColor: tc.primary }]}
             onPress={onReset}
             activeOpacity={0.8}
           >
-            <RefreshCircle size={20} color={colors.white} variant="Bold" />
-            <Text style={styles.primaryButtonText}>Try Again</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={onReportIssue}
-            activeOpacity={0.8}
-          >
-            <MessageQuestion size={20} color={colors.primary} variant="Outline" />
-            <Text style={styles.secondaryButtonText}>Report Issue</Text>
+            <RefreshCircle size={20} color={tc.white} variant="Bold" />
+            <Text style={[styles.primaryButtonText, { color: tc.white }]}>Try Again</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Error Details (Dev Mode) */}
-        {showDetails && error && (
-          <View style={styles.detailsContainer}>
-            <Text style={styles.detailsTitle}>Error Details</Text>
-            <ScrollView
-              style={styles.detailsScroll}
-              showsVerticalScrollIndicator={false}
-            >
-              <Text style={styles.errorName}>{error.name}</Text>
-              <Text style={styles.errorMessage}>{error.message}</Text>
+        {/* Error Details — always shown */}
+        {error && (
+          <View style={[styles.detailsContainer, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+            <Text style={[styles.detailsTitle, { color: tc.textTertiary }]}>CRASH DETAILS</Text>
+            <ScrollView style={styles.detailsScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+              <Text style={[styles.errorName, { color: tc.error }]}>{error.name}</Text>
+              <Text style={[styles.errorMessage, { color: tc.textPrimary }]}>{error.message}</Text>
               {errorInfo?.componentStack && (
-                <Text style={styles.stackTrace}>
+                <Text style={[styles.stackTrace, { color: tc.textTertiary }]}>
                   {errorInfo.componentStack.trim()}
                 </Text>
               )}
             </ScrollView>
           </View>
         )}
-      </View>
+
+        {/* Report Section */}
+        {reportSent ? (
+          <View style={[styles.reportSentCard, { backgroundColor: `${tc.success}12`, borderColor: `${tc.success}30` }]}>
+            <TickCircle size={24} color={tc.success} variant="Bold" />
+            <View style={{ flex: 1, marginLeft: spacing.sm }}>
+              <Text style={[styles.reportSentTitle, { color: tc.success }]}>Report Sent</Text>
+              <Text style={[styles.reportSentText, { color: tc.textSecondary }]}>
+                Thank you! Our team will look into this.
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <View style={[styles.reportSection, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+            <Text style={[styles.reportTitle, { color: tc.textPrimary }]}>Help us fix this</Text>
+            <Text style={[styles.reportSubtitle, { color: tc.textTertiary }]}>
+              The crash details above will be included automatically.
+            </Text>
+
+            {/* Optional email */}
+            <TextInput
+              style={[styles.emailInput, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgCard }]}
+              placeholder="Your email (optional)"
+              placeholderTextColor={tc.textTertiary}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={userEmail}
+              onChangeText={setUserEmail}
+            />
+
+            <TouchableOpacity
+              style={[styles.reportButton, { backgroundColor: isDark ? tc.white : tc.black }, isSending && { opacity: 0.6 }]}
+              onPress={handleReportIssue}
+              disabled={isSending}
+              activeOpacity={0.8}
+            >
+              {isSending ? (
+                <ActivityIndicator color={isDark ? tc.black : tc.white} size="small" />
+              ) : (
+                <>
+                  <Send2 size={18} color={isDark ? tc.black : tc.white} variant="Bold" />
+                  <Text style={[styles.reportButtonText, { color: isDark ? tc.black : tc.white }]}>
+                    Report This Issue
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -205,120 +248,140 @@ function ErrorFallback({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,
-  },
-  containerGlobal: {
-    backgroundColor: colors.bgElevated,
-  },
-  content: {
-    alignItems: 'center',
-    maxWidth: 320,
+    paddingTop: 80,
+    paddingBottom: 40,
   },
   iconContainer: {
     width: 80,
     height: 80,
-    borderRadius: 40,
-    backgroundColor: `${colors.error}15`,
+    borderRadius: borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
-  iconContainerLarge: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
-  titleLarge: {
-    fontSize: typography.fontSize['2xl'],
-  },
   description: {
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: spacing.xl,
+    maxWidth: 300,
   },
   buttonContainer: {
     width: '100%',
-    gap: spacing.sm,
+    maxWidth: 320,
+    marginBottom: spacing.lg,
   },
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
-    borderRadius: 12,
+    borderRadius: borderRadius.lg,
     gap: spacing.sm,
   },
   primaryButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.bgElevated,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.gray200,
-    gap: spacing.sm,
-  },
-  secondaryButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.primary,
   },
   detailsContainer: {
     width: '100%',
-    marginTop: spacing.xl,
-    backgroundColor: colors.gray50,
-    borderRadius: 12,
+    maxWidth: 320,
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
     padding: spacing.md,
-    maxHeight: 200,
+    maxHeight: 180,
+    marginBottom: spacing.lg,
   },
   detailsTitle: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textSecondary,
     marginBottom: spacing.sm,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   detailsScroll: {
-    maxHeight: 150,
+    maxHeight: 130,
   },
   errorName: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.bold,
-    color: colors.error,
     marginBottom: spacing.xs,
   },
   errorMessage: {
     fontSize: typography.fontSize.xs,
-    color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
   stackTrace: {
     fontSize: 10,
-    fontFamily: 'monospace',
-    color: colors.textSecondary,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     lineHeight: 16,
+  },
+  reportSection: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    padding: spacing.lg,
+  },
+  reportTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    marginBottom: spacing.xs,
+  },
+  reportSubtitle: {
+    fontSize: typography.fontSize.xs,
+    marginBottom: spacing.md,
+    lineHeight: 18,
+  },
+  emailInput: {
+    height: 44,
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    fontSize: typography.fontSize.sm,
+    marginBottom: spacing.md,
+  },
+  reportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
+    borderRadius: borderRadius.lg,
+    gap: spacing.sm,
+  },
+  reportButtonText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  reportSentCard: {
+    width: '100%',
+    maxWidth: 320,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    padding: spacing.lg,
+  },
+  reportSentTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    marginBottom: 2,
+  },
+  reportSentText: {
+    fontSize: typography.fontSize.sm,
   },
 });
 
