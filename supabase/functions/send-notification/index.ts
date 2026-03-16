@@ -147,7 +147,44 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { action } = body;
+    const { action, type } = body;
+
+    // ── SOS / Direct email or SMS notification ──
+    // Called by sos.service.ts with { type: 'email'|'sms', to, subject, body }
+    if (type === 'email') {
+      const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || '';
+      if (!RESEND_API_KEY) {
+        console.error('[send-notification] RESEND_API_KEY not set — cannot send email');
+        return new Response(
+          JSON.stringify({ error: 'Email service not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${RESEND_API_KEY}` },
+        body: JSON.stringify({
+          from: 'Guidera Emergency <emergency@guidera.one>',
+          to: [body.to],
+          subject: body.subject || 'Emergency SOS Alert',
+          html: `<div style="font-family:sans-serif;padding:20px;"><h2 style="color:#EF4444;">🚨 Emergency Alert</h2><p>${(body.body || '').replace(/\n/g, '<br>')}</p></div>`,
+        }),
+      });
+      const result = await res.json();
+      return new Response(
+        JSON.stringify({ success: res.ok, id: result.id }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (type === 'sms') {
+      // SMS requires Twilio or similar — log for now, will be wired when Twilio is configured
+      console.warn(`[send-notification] SMS requested to ${body.to} but no SMS provider configured. Message: ${(body.body || '').substring(0, 100)}`);
+      return new Response(
+        JSON.stringify({ success: false, error: 'SMS provider not configured yet' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // ── dispatch_pending ──
     // Process all pending alerts that are due

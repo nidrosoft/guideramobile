@@ -63,6 +63,10 @@ export default function ForgotPassword() {
 
   const handleConfirmReset = async () => {
     if (!isLoaded || !code || !newPassword) return;
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
 
     setIsLoading(true);
     setError('');

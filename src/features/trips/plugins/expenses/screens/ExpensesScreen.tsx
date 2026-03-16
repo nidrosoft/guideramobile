@@ -109,7 +109,7 @@ export default function ExpensesScreen() {
   const stats: ExpenseStats = useMemo(() => {
     const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
     const budgetRemaining = budget - totalSpent;
-    const percentageUsed = (totalSpent / budget) * 100;
+    const percentageUsed = budget > 0 ? (totalSpent / budget) * 100 : 0;
 
     // Calculate category totals
     const categoryMap = new Map<ExpenseCategory, number>();

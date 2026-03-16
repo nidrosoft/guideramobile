@@ -45,8 +45,8 @@ export default function EmailSignUp() {
       setError('Email is required');
       return false;
     }
-    if (!email.includes('@') || !email.includes('.')) {
-      setError('Please enter a valid email');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) {
+      setError('Please enter a valid email address');
       return false;
     }
     if (password.length < 8) {
