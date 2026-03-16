@@ -145,20 +145,20 @@ export class MapboxService {
     category?: string,
     limit: number = 15
   ): Promise<MapboxPlace[]> {
-    // Google Places Nearby Search — the most reliable POI search
-    const googleKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-    if (__DEV__) console.log('📍 getNearbyPOIs called:', { latitude, longitude, category, hasGoogleKey: !!googleKey, keyLen: googleKey.length });
+    // Google Places via server-side proxy — key never exposed to client
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://pkydmdygctojtfzbqcud.supabase.co';
+    const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
-    if (googleKey && googleKey.length > 10) {
+    if (supabaseUrl) {
       try {
-        // Map our category names to Google Places types
         const type = this.mapCategoryToGoogleType(category || 'tourist_attraction');
-        const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=3000&type=${type}&key=${googleKey}`;
-        if (__DEV__) console.log('📍 Google Places URL:', url.replace(googleKey, 'KEY'));
-
-        const res = await fetch(url);
+        const res = await fetch(`${supabaseUrl}/functions/v1/google-api-proxy`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey },
+          body: JSON.stringify({ action: 'places_nearby', latitude, longitude, radius: 3000, type }),
+        });
         const data = await res.json();
-        if (__DEV__) console.log('📍 Google Places response:', data.status, data.results?.length || 0, 'results');
+        if (__DEV__) console.log('📍 Places proxy response:', data.status, data.results?.length || 0, 'results');
 
         if (data.status === 'OK' && data.results?.length > 0) {
           return data.results.slice(0, limit).map((p: any, i: number) => ({

@@ -114,6 +114,46 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // ── Places Nearby Search ──
+    if (action === "places_nearby") {
+      const { latitude, longitude, radius, type, keyword } = body;
+      if (!latitude || !longitude) return Response.json({ error: "Missing coordinates" }, { status: 400, headers: corsHeaders });
+      let url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=${radius || 3000}&key=${GOOGLE_API_KEY}`;
+      if (type) url += `&type=${type}`;
+      if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      return Response.json({ results: data.results || [], status: data.status }, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── Places Text Search ──
+    if (action === "places_search") {
+      const { query } = body;
+      if (!query) return Response.json({ error: "Missing query" }, { status: 400, headers: corsHeaders });
+      const res = await fetch(`https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${GOOGLE_API_KEY}`);
+      const data = await res.json();
+      return Response.json({ results: data.results || [], status: data.status }, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── Directions ──
+    if (action === "directions") {
+      const { origin, destination, mode } = body;
+      if (!origin || !destination) return Response.json({ error: "Missing origin/destination" }, { status: 400, headers: corsHeaders });
+      const res = await fetch(`https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}&mode=${mode || "walking"}&key=${GOOGLE_API_KEY}`);
+      const data = await res.json();
+      return Response.json(data, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── Place Photo URL ──
+    if (action === "place_photo") {
+      const { photoReference, maxWidth } = body;
+      if (!photoReference) return Response.json({ error: "Missing photoReference" }, { status: 400, headers: corsHeaders });
+      return Response.json(
+        { url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth || 800}&photo_reference=${photoReference}&key=${GOOGLE_API_KEY}` },
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return Response.json(
       { error: `Unknown action: ${action}` },
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -173,22 +173,32 @@ const DESTINATION_PHOTOS: Record<string, string> = {
  * Google Places returns real photos from Google Maps — accurate for any destination.
  */
 async function fetchDestinationCoverImage(cityName: string): Promise<string> {
-  const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://pkydmdygctojtfzbqcud.supabase.co';
+  const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
-  if (GOOGLE_API_KEY && cityName) {
+  if (supabaseUrl && cityName) {
     try {
-      // Step 1: Text Search to get place_id
-      const searchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(cityName + ' city')}&key=${GOOGLE_API_KEY}`;
-      const searchRes = await fetch(searchUrl);
+      // Step 1: Text Search via proxy to get photo_reference
+      const searchRes = await fetch(`${supabaseUrl}/functions/v1/google-api-proxy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey },
+        body: JSON.stringify({ action: 'places_search', query: cityName + ' city' }),
+      });
       const searchData = await searchRes.json();
 
       if (searchData.results?.[0]?.photos?.[0]?.photo_reference) {
         const photoRef = searchData.results[0].photos[0].photo_reference;
-        // Step 2: Get photo URL (this URL redirects to the actual image)
-        return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photoRef}&key=${GOOGLE_API_KEY}`;
+        // Step 2: Get photo URL via proxy
+        const photoRes = await fetch(`${supabaseUrl}/functions/v1/google-api-proxy`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey },
+          body: JSON.stringify({ action: 'place_photo', photoReference: photoRef, maxWidth: 800 }),
+        });
+        const photoData = await photoRes.json();
+        if (photoData.url) return photoData.url;
       }
     } catch (err) {
-      if (__DEV__) console.warn('Google Places photo fetch failed, using Unsplash fallback:', err);
+      if (__DEV__) console.warn('Places photo fetch failed, using fallback:', err);
     }
   }
 

@@ -39,33 +39,39 @@ export interface GoogleMapsPlace {
 }
 
 class GoogleMapsService {
-  private apiKey: string;
+  private proxyUrl: string;
+  private supabaseKey: string;
   private isInitialized = false;
 
   constructor() {
-    this.apiKey = GOOGLE_MAPS_CONFIG.API_KEY;
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://pkydmdygctojtfzbqcud.supabase.co';
+    this.proxyUrl = `${supabaseUrl}/functions/v1/google-api-proxy`;
+    this.supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
   }
 
   /**
    * Initialize Google Maps SDK
    */
   async initialize(): Promise<void> {
-    if (!this.apiKey) {
-      throw new Error('Google Maps API key not configured');
-    }
-
     this.isInitialized = true;
     if (__DEV__) console.log('✅ Google Maps initialized');
   }
 
   /**
-   * Get API key
+   * Get API key — no longer exposes key, returns empty string for backward compat
    */
   getApiKey(): string {
-    if (!this.apiKey) {
-      throw new Error('Google Maps API key not configured');
-    }
-    return this.apiKey;
+    return GOOGLE_MAPS_CONFIG.API_KEY || '';
+  }
+
+  private async callProxy(body: Record<string, any>): Promise<any> {
+    const res = await fetch(this.proxyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': this.supabaseKey },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return null;
+    return res.json();
   }
 
   /**
@@ -77,15 +83,15 @@ class GoogleMapsService {
     radius: number = 1000
   ): Promise<GoogleMapsPlace[]> {
     try {
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/nearbysearch/json?` +
-        `location=${location.latitude},${location.longitude}&` +
-        `radius=${radius}&` +
-        `keyword=${encodeURIComponent(query)}&` +
-        `key=${this.apiKey}`
-      );
+      const data = await this.callProxy({
+        action: 'places_nearby',
+        latitude: location.latitude,
+        longitude: location.longitude,
+        radius,
+        keyword: query,
+      });
 
-      const data = await response.json();
+      if (!data) throw new Error('Proxy request failed');
 
       if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
         throw new Error(`Places API error: ${data.status}`);
@@ -116,15 +122,14 @@ class GoogleMapsService {
     mode: 'walking' | 'driving' = 'walking'
   ): Promise<GoogleMapsRoute | null> {
     try {
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/directions/json?` +
-        `origin=${origin.latitude},${origin.longitude}&` +
-        `destination=${destination.latitude},${destination.longitude}&` +
-        `mode=${mode}&` +
-        `key=${this.apiKey}`
-      );
+      const data = await this.callProxy({
+        action: 'directions',
+        origin: `${origin.latitude},${origin.longitude}`,
+        destination: `${destination.latitude},${destination.longitude}`,
+        mode,
+      });
 
-      const data = await response.json();
+      if (!data) throw new Error('Proxy request failed');
 
       if (data.status !== 'OK') {
         throw new Error(`Directions API error: ${data.status}`);
