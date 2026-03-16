@@ -23,7 +23,15 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Build the email HTML
+    // SECURITY: Escape HTML to prevent injection attacks
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    const safeErrorName = esc(String(errorName).substring(0, 200));
+    const safeErrorMessage = esc(String(errorMessage).substring(0, 2000));
+    const safeStack = componentStack ? esc(String(componentStack).substring(0, 5000)) : '';
+    const safeEmail = userEmail ? esc(String(userEmail).substring(0, 200)) : '';
+    const safeDeviceInfo = deviceInfo ? esc(String(deviceInfo).substring(0, 500)) : '';
+
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #1a1a1a; border-radius: 12px; padding: 24px; margin-bottom: 16px;">
@@ -33,27 +41,27 @@ Deno.serve(async (req: Request) => {
 
         <div style="background: #f8f8f8; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
           <h3 style="color: #333; margin: 0 0 8px 0;">Error</h3>
-          <p style="color: #EF4444; font-weight: 600; margin: 0 0 4px 0;">${errorName}</p>
-          <p style="color: #666; margin: 0;">${errorMessage}</p>
+          <p style="color: #EF4444; font-weight: 600; margin: 0 0 4px 0;">${safeErrorName}</p>
+          <p style="color: #666; margin: 0;">${safeErrorMessage}</p>
         </div>
 
-        ${componentStack ? `
+        ${safeStack ? `
         <div style="background: #1a1a1a; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
           <h3 style="color: #ccc; margin: 0 0 8px 0; font-size: 14px;">Component Stack</h3>
-          <pre style="color: #999; font-size: 11px; line-height: 1.5; white-space: pre-wrap; margin: 0; overflow-x: auto;">${componentStack}</pre>
+          <pre style="color: #999; font-size: 11px; line-height: 1.5; white-space: pre-wrap; margin: 0; overflow-x: auto;">${safeStack}</pre>
         </div>
         ` : ''}
 
-        ${userEmail ? `
+        ${safeEmail ? `
         <div style="background: #f0fdf4; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-          <p style="color: #166534; margin: 0;"><strong>User Contact:</strong> ${userEmail}</p>
+          <p style="color: #166534; margin: 0;"><strong>User Contact:</strong> ${safeEmail}</p>
         </div>
         ` : ''}
 
-        ${deviceInfo ? `
+        ${safeDeviceInfo ? `
         <div style="background: #f8f8f8; border-radius: 12px; padding: 16px;">
           <h3 style="color: #333; margin: 0 0 8px 0; font-size: 14px;">Device Info</h3>
-          <p style="color: #666; margin: 0; font-size: 12px;">${deviceInfo}</p>
+          <p style="color: #666; margin: 0; font-size: 12px;">${safeDeviceInfo}</p>
         </div>
         ` : ''}
       </div>

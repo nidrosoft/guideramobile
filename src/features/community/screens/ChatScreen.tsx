@@ -70,37 +70,61 @@ export default function ChatScreen() {
   });
   const currentUserId = profile?.id || '';
 
+  // Track the resolved conversation ID (may differ from route param if a userId was passed)
+  const [conversationId, setConversationId] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
       if (!profile?.id || !id) return;
       try {
-        const [rawMessages, conversations] = await Promise.all([
-          chatService.getMessages(id, { limit: 50 }),
-          chatService.getConversations(profile.id),
-        ]);
+        // First, try to find a conversation matching the ID
+        const conversations = await chatService.getConversations(profile.id);
         if (cancelled) return;
 
-        const conv = conversations.find(c => c.id === id);
+        let conv = conversations.find(c => c.id === id);
+        let resolvedConvId = id;
+
+        // If no conversation found by ID, the param might be a userId — resolve it
+        if (!conv) {
+          // Check if any conversation has this user as the other participant
+          const byUser = conversations.find(c => c.otherUser.id === id);
+          if (byUser) {
+            conv = byUser;
+            resolvedConvId = byUser.id;
+          } else {
+            // No existing conversation — create one (id is treated as otherUserId)
+            const newConv = await chatService.getOrCreateConversation(profile.id, id);
+            conv = newConv;
+            resolvedConvId = newConv.id;
+          }
+        }
+
+        setConversationId(resolvedConvId);
+
         if (conv) {
           const nameParts = conv.otherUser.fullName.split(' ');
           setBuddy({
             id: conv.otherUser.id,
             firstName: nameParts[0] || '',
             lastName: nameParts.slice(1).join(' ') || '',
-            avatar: conv.otherUser.avatarUrl || 'https://i.pravatar.cc/150?img=1',
+            avatar: conv.otherUser.avatarUrl || '',
             isOnline: false,
             lastSeen: new Date(),
           });
         }
+
+        // Load messages using the resolved conversation ID
+        const rawMessages = await chatService.getMessages(resolvedConvId, { limit: 50 });
+        if (cancelled) return;
 
         const mapped: ChatMessageData[] = rawMessages.map(m => ({
           id: m.id,
           senderId: m.senderId,
           senderName: m.senderId === profile.id ? 'You' : (conv?.otherUser.fullName || 'Unknown'),
           senderAvatar: m.senderId === profile.id
-            ? (profile.avatar_url || 'https://i.pravatar.cc/150?img=12')
-            : (conv?.otherUser.avatarUrl || 'https://i.pravatar.cc/150?img=1'),
+            ? (profile.avatar_url || '')
+            : (conv?.otherUser.avatarUrl || ''),
           type: (m.type || 'text') as any,
           content: m.content,
           status: 'read' as const,
@@ -144,7 +168,7 @@ export default function ChatScreen() {
     setInputText('');
     
     try {
-      const saved = await chatService.sendMessage(id, profile.id, content);
+      const saved = await chatService.sendMessage(conversationId || id, profile.id, content);
       setMessages(prev => 
         prev.map(m => m.id === tempId ? { ...m, id: saved.id, status: 'delivered' as const } : m)
       );
@@ -154,7 +178,7 @@ export default function ChatScreen() {
         prev.map(m => m.id === tempId ? { ...m, status: 'sent' as const } : m)
       );
     }
-  }, [inputText, profile, id, currentUserId]);
+  }, [inputText, profile, id, conversationId, currentUserId]);
   
   const handleReaction = useCallback((messageId: string, emoji: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

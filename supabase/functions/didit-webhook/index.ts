@@ -21,52 +21,56 @@ Deno.serve(async (req: Request) => {
     let vendorData: string | null = null;
     let payload: Record<string, any> = {};
 
-    // Handle both GET (callback redirect) and POST (webhook)
+    // SECURITY: Only accept POST requests — GET is not a valid webhook method
     if (req.method === "GET") {
-      const url = new URL(req.url);
-      sessionId = url.searchParams.get("verificationSessionId") || url.searchParams.get("session_id");
-      status = url.searchParams.get("status");
-      vendorData = url.searchParams.get("vendor_data");
-      console.log(`[didit-webhook] GET callback: session=${sessionId}, status=${status}`);
-    } else {
-      const body = await req.text();
-      payload = JSON.parse(body);
-
-      // Verify webhook signature if secret is configured
-      if (DIDIT_WEBHOOK_SECRET) {
-        const signatureSimple = req.headers.get("x-signature-simple");
-        const signatureV2 = req.headers.get("x-signature-v2");
-
-        if (signatureSimple) {
-          const encoder = new TextEncoder();
-          const key = await crypto.subtle.importKey(
-            "raw",
-            encoder.encode(DIDIT_WEBHOOK_SECRET),
-            { name: "HMAC", hash: "SHA-256" },
-            false,
-            ["sign"]
-          );
-          const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(body));
-          const expected = Array.from(new Uint8Array(signature))
-            .map((b) => b.toString(16).padStart(2, "0"))
-            .join("");
-
-          if (expected !== signatureSimple) {
-            console.error("[didit-webhook] Invalid simple signature");
-            return Response.json(
-              { error: "Invalid signature" },
-              { status: 401, headers: corsHeaders }
-            );
-          }
-        } else if (!signatureV2) {
-          console.warn("[didit-webhook] No signature header present, proceeding anyway");
-        }
-      }
-
-      sessionId = payload.session_id;
-      status = payload.status;
-      vendorData = payload.vendor_data;
+      return Response.json(
+        { error: "GET not allowed. Webhooks must use POST." },
+        { status: 405, headers: corsHeaders }
+      );
     }
+
+    const body = await req.text();
+    payload = JSON.parse(body);
+
+    // SECURITY: Verify webhook signature — reject unsigned requests
+    if (DIDIT_WEBHOOK_SECRET) {
+      const signatureSimple = req.headers.get("x-signature-simple");
+      const signatureV2 = req.headers.get("x-signature-v2");
+
+      if (signatureSimple) {
+        const encoder = new TextEncoder();
+        const key = await crypto.subtle.importKey(
+          "raw",
+          encoder.encode(DIDIT_WEBHOOK_SECRET),
+          { name: "HMAC", hash: "SHA-256" },
+          false,
+          ["sign"]
+        );
+        const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(body));
+        const expected = Array.from(new Uint8Array(signature))
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+
+        if (expected !== signatureSimple) {
+          console.error("[didit-webhook] Invalid simple signature");
+          return Response.json(
+            { error: "Invalid signature" },
+            { status: 401, headers: corsHeaders }
+          );
+        }
+      } else if (!signatureV2) {
+        // SECURITY: Reject unsigned requests instead of proceeding
+        console.error("[didit-webhook] No signature header present — rejecting");
+        return Response.json(
+          { error: "Missing signature" },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+    }
+
+    sessionId = payload.session_id;
+    status = payload.status;
+    vendorData = payload.vendor_data;
 
     console.log(`[didit-webhook] Received: session=${sessionId}, status=${status}, vendor_data=${vendorData}`);
 
