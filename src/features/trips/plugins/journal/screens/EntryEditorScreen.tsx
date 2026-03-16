@@ -411,9 +411,35 @@ export default function EntryEditorScreen() {
 
   const handleSave = async () => {
     if (!entryId) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      showSuccess('Journal entry saved!');
-      router.back();
+      // New entry — create it first, then save blocks
+      try {
+        setSaving(true);
+        const newEntry = await journalService.createEntry(tripId, {
+          title: entryTitle || 'Untitled Entry',
+          entry_date: new Date().toISOString(),
+        });
+        if (newEntry?.id) {
+          const blocksToSave = blocks
+            .filter(b => b.content !== null)
+            .map(b => ({
+              type: b.content!.type,
+              content: b.content,
+              position: b.position,
+              size: b.size,
+            }));
+          if (blocksToSave.length > 0) {
+            await journalService.saveBlocks(newEntry.id, blocksToSave);
+          }
+        }
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showSuccess('Journal entry saved!');
+        router.back();
+      } catch (err) {
+        if (__DEV__) console.warn('Failed to create journal entry:', err);
+        showError('Failed to save entry. Please try again.');
+      } finally {
+        setSaving(false);
+      }
       return;
     }
     try {

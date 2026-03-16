@@ -176,8 +176,9 @@ export default function StackedEventCards({ events = [], loading = false }: Stac
   return (
     <View style={styles.container}>
       {visibleCards.map(({ event, index, position }) => {
-        const cardContent = (
+        const cardContent = (key: string) => (
           <Animated.View
+            key={key}
             style={[
               styles.card,
               {
@@ -248,13 +249,13 @@ export default function StackedEventCards({ events = [], loading = false }: Stac
           });
           const composed = Gesture.Race(panGesture, tapGesture);
           return (
-            <GestureDetector key={event.id} gesture={composed}>
-              {cardContent}
+            <GestureDetector key={`gd-${event.id}`} gesture={composed}>
+              {cardContent(`card-${event.id}`)}
             </GestureDetector>
           );
         }
 
-        return <View key={event.id}>{cardContent}</View>;
+        return cardContent(String(event.id));
       })}
     </View>
   );

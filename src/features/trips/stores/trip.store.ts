@@ -8,10 +8,50 @@ import { Trip, TripState, CreateTripData, UpdateTripData } from '../types/trip.t
 import { canTransitionTo } from '../config/trip-states.config';
 import { supabase } from '@/lib/supabase/client';
 
+/** Shape of a trip row from the Supabase trips table */
+interface DbTripRow {
+  id: string;
+  user_id: string;
+  title?: string;
+  state?: string;
+  status?: string;
+  start_date?: string;
+  end_date?: string;
+  destination?: { name?: string; city?: string; country?: string; latitude?: number; longitude?: number };
+  primary_destination_name?: string;
+  primary_destination_country?: string;
+  cover_image_url?: string;
+  budget_total?: number;
+  budget_currency?: string;
+  traveler_count?: number;
+  booking_count?: number;
+  flight_count?: number;
+  hotel_count?: number;
+  car_count?: number;
+  experience_count?: number;
+  total_booked_amount?: number;
+  is_shared?: boolean;
+  tags?: string[];
+  created_at: string;
+  updated_at?: string;
+  created_via?: string;
+  airline_name?: string;
+  cabin_class?: string;
+  route?: string;
+  flight_number?: string;
+  modules_generated?: boolean;
+  published_at?: string;
+  started_at?: string;
+  completed_at?: string;
+  cancelled_at?: string;
+  deleted_at?: string;
+  [key: string]: any; // Allow extra fields from DB
+}
+
 /**
  * Map DB state/status to TripState enum based on dates
  */
-function computeTripState(dbTrip: any): TripState {
+function computeTripState(dbTrip: DbTripRow): TripState {
   // Explicit states from DB
   if (dbTrip.state === 'cancelled' || dbTrip.status === 'cancelled') return TripState.CANCELLED;
   if (dbTrip.state === 'draft' && dbTrip.status !== 'planning') return TripState.DRAFT;
@@ -48,7 +88,7 @@ function computeTripState(dbTrip: any): TripState {
 /**
  * Convert a Supabase DB trip row into the Trip interface
  */
-function dbTripToTrip(dbTrip: any): Trip {
+function dbTripToTrip(dbTrip: DbTripRow): Trip {
   const computedState = computeTripState(dbTrip);
   const dest = dbTrip.destination || {};
 
@@ -65,15 +105,22 @@ function dbTripToTrip(dbTrip: any): Trip {
         ? { latitude: dest.latitude, longitude: dest.longitude }
         : undefined,
     },
-    startDate: dbTrip.start_date ? new Date(dbTrip.start_date) : new Date(),
-    endDate: dbTrip.end_date ? new Date(dbTrip.end_date) : new Date(),
+    startDate: dbTrip.start_date ? new Date(dbTrip.start_date) : new Date(0), // epoch = clearly missing
+    endDate: dbTrip.end_date ? new Date(dbTrip.end_date) : new Date(0),
     title: dbTrip.title || 'Untitled Trip',
     coverImage: dbTrip.cover_image_url || '',
     budget: dbTrip.budget_total
       ? { amount: Number(dbTrip.budget_total), currency: dbTrip.budget_currency || 'USD' }
       : undefined,
-    travelers: [],
-    bookings: [],
+    travelers: Array.from({ length: dbTrip.traveler_count || 1 }, (_, i) => ({
+      id: i === 0 ? (dbTrip.user_id || `owner-${dbTrip.id}`) : `traveler-${dbTrip.id}-${i}`,
+      userId: i === 0 ? (dbTrip.user_id || '') : '',
+      name: i === 0 ? 'You' : `Traveler ${i + 1}`,
+      email: '',
+      role: (i === 0 ? 'owner' : 'member') as 'owner' | 'member',
+    })),
+    // Bookings loaded separately via trip_bookings table when trip detail is opened
+    bookings: [] as any[],
     metadata: {
       createdAt: new Date(dbTrip.created_at),
       updatedAt: new Date(dbTrip.updated_at || dbTrip.created_at),
@@ -378,6 +425,11 @@ export const useTripStore = create<TripStore>((set, get) => ({
   
   // Publish trip (DRAFT → UPCOMING)
   publishTrip: async (id: string) => {
+    const trip = get().trips.find(t => t.id === id);
+    if (trip && !canTransitionTo(trip.state, TripState.UPCOMING)) {
+      set({ error: `Cannot publish a trip that is ${trip.state}` });
+      return;
+    }
     set({ isLoading: true, error: null });
     try {
       const { data: dbTrip, error: dbError } = await supabase
@@ -405,6 +457,11 @@ export const useTripStore = create<TripStore>((set, get) => ({
   
   // Start trip (UPCOMING → ONGOING)
   startTrip: async (id: string) => {
+    const trip = get().trips.find(t => t.id === id);
+    if (trip && !canTransitionTo(trip.state, TripState.ONGOING)) {
+      set({ error: `Cannot start a trip that is ${trip.state}` });
+      return;
+    }
     set({ isLoading: true, error: null });
     try {
       const { data: dbTrip, error: dbError } = await supabase
@@ -432,6 +489,11 @@ export const useTripStore = create<TripStore>((set, get) => ({
   
   // Complete trip (ONGOING → PAST)
   completeTrip: async (id: string) => {
+    const trip = get().trips.find(t => t.id === id);
+    if (trip && !canTransitionTo(trip.state, TripState.PAST)) {
+      set({ error: `Cannot complete a trip that is ${trip.state}` });
+      return;
+    }
     set({ isLoading: true, error: null });
     try {
       const { data: dbTrip, error: dbError } = await supabase
@@ -459,6 +521,11 @@ export const useTripStore = create<TripStore>((set, get) => ({
   
   // Cancel trip
   cancelTrip: async (id: string) => {
+    const trip = get().trips.find(t => t.id === id);
+    if (trip && !canTransitionTo(trip.state, TripState.CANCELLED)) {
+      set({ error: `Cannot cancel a trip that is ${trip.state}` });
+      return;
+    }
     set({ isLoading: true, error: null });
     try {
       const { data: dbTrip, error: dbError } = await supabase

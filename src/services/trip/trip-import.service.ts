@@ -788,13 +788,9 @@ async function exchangeOAuthCode(provider: string, code: string): Promise<{
   refresh_token?: string;
   expires_at?: string;
 }> {
-  // This would call the provider's token endpoint
-  // Placeholder implementation
-  return {
-    access_token: 'mock_access_token',
-    refresh_token: 'mock_refresh_token',
-    expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
-  };
+  // TODO: Implement real OAuth token exchange per provider (Expedia, Booking.com, etc.)
+  // Each provider has its own token endpoint and client credentials
+  throw new Error(`OAuth token exchange not yet implemented for ${provider}. This feature is coming soon.`);
 }
 
 async function getOAuthAccountInfo(provider: string, accessToken: string): Promise<{
@@ -802,19 +798,13 @@ async function getOAuthAccountInfo(provider: string, accessToken: string): Promi
   email?: string;
   name?: string;
 }> {
-  // This would call the provider's user info endpoint
-  // Placeholder implementation
-  return {
-    id: 'mock_account_id',
-    email: 'user@example.com',
-    name: 'User Name',
-  };
+  // TODO: Implement real provider user info lookup
+  throw new Error(`Provider account lookup not yet implemented for ${provider}. This feature is coming soon.`);
 }
 
 async function fetchProviderBookings(provider: string, accessToken: string): Promise<any[]> {
-  // This would call the provider's bookings API
-  // Placeholder implementation
-  return [];
+  // TODO: Implement real provider bookings API integration
+  throw new Error(`Booking import not yet implemented for ${provider}. This feature is coming soon.`);
 }
 
 function normalizeOAuthBooking(booking: any, provider: string): ParsedImportData {

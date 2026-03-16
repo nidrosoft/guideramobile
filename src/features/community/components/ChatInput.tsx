@@ -135,21 +135,31 @@ export default function ChatInput({
     }
   };
   
-  const shareLocation = () => {
+  const shareLocation = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setShowAttachMenu(false);
     Animated.timing(attachMenuAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
     
-    // In real app, get actual location
-    const mockLocation: MediaAttachment = {
-      type: 'location',
-      location: {
-        lat: 35.6762,
-        lng: 139.6503,
-        name: 'Shibuya, Tokyo',
-      },
-    };
-    setAttachments(prev => [...prev, mockLocation].slice(0, 5));
+    try {
+      const ExpoLocation = require('expo-location');
+      const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        if (__DEV__) console.warn('Location permission denied');
+        return;
+      }
+      const loc = await ExpoLocation.getCurrentPositionAsync({ accuracy: ExpoLocation.Accuracy.Balanced });
+      const locationAttachment: MediaAttachment = {
+        type: 'location',
+        location: {
+          lat: loc.coords.latitude,
+          lng: loc.coords.longitude,
+          name: 'My Location',
+        },
+      };
+      setAttachments(prev => [...prev, locationAttachment].slice(0, 5));
+    } catch (err) {
+      if (__DEV__) console.warn('Failed to get location:', err);
+    }
   };
   
   const removeAttachment = (index: number) => {

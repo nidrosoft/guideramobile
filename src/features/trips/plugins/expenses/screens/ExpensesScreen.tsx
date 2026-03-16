@@ -67,7 +67,7 @@ export default function ExpensesScreen() {
   const { profile } = useAuth();
   const tripId = params.tripId as string;
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [budget, setBudget] = useState(0);
@@ -208,7 +208,8 @@ export default function ExpensesScreen() {
         setExpenses([newExpense, ...expenses]);
       }
     } catch (err) {
-      console.error('Failed to save expense:', err);
+      showError(editingExpense ? 'Failed to update expense.' : 'Failed to add expense. Please try again.');
+      if (__DEV__) console.warn('Failed to save expense:', err);
     }
   };
 
@@ -224,12 +225,16 @@ export default function ExpensesScreen() {
 
   const handleDeleteExpense = async (expenseId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const previousExpenses = [...expenses];
     setExpenses(expenses.filter(e => e.id !== expenseId));
     showSuccess('Expense deleted');
     try {
       await expenseService.deleteExpense(expenseId);
     } catch (err) {
-      console.error('Failed to delete expense:', err);
+      // Revert on failure — restore the deleted expense
+      setExpenses(previousExpenses);
+      showError?.('Failed to delete expense. Please try again.');
+      if (__DEV__) console.warn('Failed to delete expense:', err);
     }
   };
 

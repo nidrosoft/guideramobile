@@ -197,7 +197,7 @@ export default function LanguageScreen() {
 
   const handleToggleFav = useCallback(async (phraseId: string, isFav: boolean) => {
     setPhrases(prev => prev.map(p => p.id === phraseId ? { ...p, isFavorited: isFav } : p));
-    try { await languageService.toggleFavorite(phraseId, isFav); } catch {}
+    try { await languageService.toggleFavorite(phraseId, isFav); } catch (err) { if (__DEV__) console.warn('Toggle favorite failed:', err); }
   }, []);
 
   const handleSwitchKit = useCallback(async (newKit: LanguageKit) => {
@@ -206,7 +206,7 @@ export default function LanguageScreen() {
     try {
       const allPhrases = await languageService.getPhrases(newKit.id);
       setPhrases(allPhrases);
-    } catch {} finally { setLoading(false); }
+    } catch (err) { if (__DEV__) console.warn('Switch kit failed:', err); } finally { setLoading(false); }
   }, []);
 
   const filteredPhrases = useMemo(() => {

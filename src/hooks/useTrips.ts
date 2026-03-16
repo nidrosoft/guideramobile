@@ -96,7 +96,8 @@ export function useTrips(
 
   useEffect(() => {
     fetchTrips(true);
-  }, [userId, JSON.stringify(filters)]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, filters?.status, filters?.limit, filters?.destination]);
 
   const refresh = useCallback(() => fetchTrips(true), [fetchTrips]);
   const loadMore = useCallback(() => fetchTrips(false), [fetchTrips]);

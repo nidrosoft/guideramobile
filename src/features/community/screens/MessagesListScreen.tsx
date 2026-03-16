@@ -70,7 +70,7 @@ export default function MessagesListScreen() {
         id: c.id,
         type: 'dm' as const,
         name: c.otherUser.fullName,
-        avatar: c.otherUser.avatarUrl || 'https://i.pravatar.cc/150?img=1',
+        avatar: c.otherUser.avatarUrl || '',
         lastMessage: c.lastMessage || '',
         lastMessageTime: c.lastMessageAt ? new Date(c.lastMessageAt) : new Date(),
         unreadCount: c.unreadCount || 0,

@@ -48,25 +48,9 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; Icon: any }> =
   moderator: { label: 'Mod', color: '#8B5CF6', Icon: Profile2User },
 };
 
-const MOCK_MEMBERS: MemberItem[] = [
-  { id: 'usr-owner', firstName: 'Alex', lastName: 'Rivera', avatar: 'https://i.pravatar.cc/150?img=1', role: 'owner', isVerified: true, country: 'Spain', joinedAt: '2024-09-15' },
-  { id: 'usr-admin', firstName: 'Priya', lastName: 'Sharma', avatar: 'https://i.pravatar.cc/150?img=2', role: 'admin', isVerified: true, country: 'India', joinedAt: '2024-10-01' },
-  { id: 'usr-mod', firstName: 'James', lastName: 'Park', avatar: 'https://i.pravatar.cc/150?img=4', role: 'moderator', isVerified: true, country: 'South Korea', joinedAt: '2024-10-15' },
-  { id: 'usr-1', firstName: 'Sarah', lastName: 'Chen', avatar: 'https://i.pravatar.cc/150?img=5', role: 'member', isVerified: true, country: 'United States', joinedAt: '2024-11-01' },
-  { id: 'usr-2', firstName: 'Mike', lastName: 'Johnson', avatar: 'https://i.pravatar.cc/150?img=12', role: 'member', isVerified: true, country: 'Canada', joinedAt: '2024-11-10' },
-  { id: 'usr-3', firstName: 'Emma', lastName: 'Wilson', avatar: 'https://i.pravatar.cc/150?img=9', role: 'member', isVerified: false, country: 'United Kingdom', joinedAt: '2024-12-01' },
-  { id: 'usr-4', firstName: 'Yuki', lastName: 'Tanaka', avatar: 'https://i.pravatar.cc/150?img=3', role: 'member', isVerified: true, country: 'Japan', joinedAt: '2025-01-05' },
-  { id: 'usr-5', firstName: 'Carlos', lastName: 'Mendez', avatar: 'https://i.pravatar.cc/150?img=7', role: 'member', isVerified: true, country: 'Colombia', joinedAt: '2025-01-20' },
-  { id: 'usr-6', firstName: 'Lina', lastName: 'Muller', avatar: 'https://i.pravatar.cc/150?img=10', role: 'member', isVerified: false, country: 'Germany', joinedAt: '2025-02-01' },
-  { id: 'usr-7', firstName: 'Tomoko', lastName: 'Hayashi', avatar: 'https://i.pravatar.cc/150?img=6', role: 'member', isVerified: true, country: 'Japan', joinedAt: '2025-02-10' },
-];
-
-function MembersTab({ members: _members, totalCount, onMemberPress }: MembersTabProps) {
+function MembersTab({ members, totalCount, onMemberPress }: MembersTabProps) {
   const { colors: tc } = useTheme();
   const [search, setSearch] = useState('');
-
-  // Use mock for now
-  const members = MOCK_MEMBERS;
 
   const filtered = useMemo(() => {
     if (!search.trim()) return members;

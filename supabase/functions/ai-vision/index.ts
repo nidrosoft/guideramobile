@@ -130,7 +130,13 @@ async function handleExtractMenu(apiKey: string, body: any) {
   }];
 
   const raw = await callGemini(apiKey, contents, PROMPTS.menuScan(lang));
-  const parsed = JSON.parse(cleanJson(raw));
+  let parsed: any;
+  try {
+    parsed = JSON.parse(cleanJson(raw));
+  } catch (parseErr) {
+    console.error('[ai-vision] menuScan JSON parse failed:', parseErr);
+    return { items: [], error: 'Failed to parse menu data. Please try again.' };
+  }
 
   if (parsed.error) return { items: [], error: parsed.error };
 
@@ -166,7 +172,13 @@ async function handleGenerateOrder(apiKey: string, body: any) {
   }];
 
   const raw = await callGemini(apiKey, contents, PROMPTS.orderBuilder(lang, country));
-  const parsed = JSON.parse(cleanJson(raw));
+  let parsed: any;
+  try {
+    parsed = JSON.parse(cleanJson(raw));
+  } catch (parseErr) {
+    console.error('[ai-vision] orderBuilder JSON parse failed:', parseErr);
+    return { spokenOrder: '', localOrder: '', tips: [], etiquette: [] };
+  }
 
   return {
     spokenOrder: parsed.spoken_order || '',

@@ -147,7 +147,7 @@ export default function GroupsTabContent({
             activeOpacity={0.7}
           >
             <Image
-              source={{ uri: group.groupPhotoUrl || 'https://via.placeholder.com/56' }}
+              source={{ uri: group.groupPhotoUrl || '' }}
               style={styles.groupAvatar}
             />
             <View style={styles.groupInfo}>

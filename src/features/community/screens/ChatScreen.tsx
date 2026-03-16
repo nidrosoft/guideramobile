@@ -157,7 +157,7 @@ export default function ChatScreen() {
       id: tempId,
       senderId: currentUserId,
       senderName: 'You',
-      senderAvatar: profile.avatar_url || 'https://i.pravatar.cc/150?img=12',
+      senderAvatar: profile.avatar_url || '',
       type: 'text',
       content,
       status: 'sending',

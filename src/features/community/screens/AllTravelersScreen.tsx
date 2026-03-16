@@ -61,7 +61,7 @@ function mapSuggestionToTraveler(s: any): TravelerItem {
     id: s.user.id,
     firstName: s.user.firstName || '',
     lastName: s.user.lastName || '',
-    avatar: s.user.avatarUrl || 'https://i.pravatar.cc/150?img=1',
+    avatar: s.user.avatarUrl || '',
     bio: s.user.bio || '',
     matchScore: s.matchScore || 0,
     travelStyles: s.user.travelStyles || [],

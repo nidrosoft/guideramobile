@@ -62,10 +62,11 @@ export default function VerifyOTP() {
     }
   };
 
-  // Auto-submit when all digits are filled
+  // Auto-submit when all digits are filled (debounced to prevent double-fire)
   useEffect(() => {
     if (otp.every(d => d !== '') && !isVerifying) {
-      handleVerify();
+      const timer = setTimeout(() => handleVerify(), 300);
+      return () => clearTimeout(timer);
     }
   }, [otp]);
 

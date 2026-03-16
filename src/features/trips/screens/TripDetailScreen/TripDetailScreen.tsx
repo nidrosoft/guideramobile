@@ -160,8 +160,8 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
 
   const loadTripData = () => {
     if (!tripId) return;
-    packingService.getProgress(tripId).then(setPackingProgress).catch(() => {});
-    invitationService.getTripInvitations(tripId).then(setInvitations).catch(() => {});
+    packingService.getProgress(tripId).then(setPackingProgress).catch((err) => { if (__DEV__) console.warn('Failed to load packing progress:', err); });
+    invitationService.getTripInvitations(tripId).then(setInvitations).catch((err) => { if (__DEV__) console.warn('Failed to load invitations:', err); });
   };
 
   useEffect(() => {

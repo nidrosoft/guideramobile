@@ -23,15 +23,28 @@ export interface SupportedLanguage {
 }
 
 export class TranslationService {
-  private apiKey: string;
-  private baseUrl = 'https://translation.googleapis.com/language/translate/v2';
+  private proxyUrl: string;
+  private supabaseKey: string;
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
+  constructor(_apiKey?: string) {
+    // API key no longer used client-side — proxied through edge function
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://pkydmdygctojtfzbqcud.supabase.co';
+    this.proxyUrl = `${supabaseUrl}/functions/v1/google-api-proxy`;
+    this.supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
   }
 
   get isConfigured(): boolean {
-    return !!this.apiKey && this.apiKey.length > 10;
+    return !!this.proxyUrl;
+  }
+
+  private async callProxy(body: Record<string, any>): Promise<any> {
+    const res = await fetch(this.proxyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': this.supabaseKey },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return null;
+    return res.json();
   }
 
   async translate(
@@ -41,22 +54,9 @@ export class TranslationService {
   ): Promise<TranslationResult | null> {
     if (!this.isConfigured || !text.trim()) return null;
     try {
-      const body: any = { q: text, target: targetLanguage, format: 'text' };
-      if (sourceLanguage) body.source = sourceLanguage;
-
-      const res = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      const t = data.data?.translations?.[0];
-      if (!t) return null;
-      return {
-        translatedText: t.translatedText,
-        detectedSourceLanguage: t.detectedSourceLanguage,
-      };
+      const data = await this.callProxy({ action: 'translate', text, target: targetLanguage, source: sourceLanguage });
+      if (!data?.translatedText) return null;
+      return { translatedText: data.translatedText, detectedSourceLanguage: data.detectedSourceLanguage };
     } catch (e) {
       if (__DEV__) console.warn('Translation error:', e);
       return null;
@@ -66,16 +66,9 @@ export class TranslationService {
   async detectLanguage(text: string): Promise<LanguageDetection | null> {
     if (!this.isConfigured || !text.trim()) return null;
     try {
-      const res = await fetch(`${this.baseUrl}/detect?key=${this.apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q: text }),
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      const d = data.data?.detections?.[0]?.[0];
-      if (!d) return null;
-      return { language: d.language, confidence: d.confidence };
+      const data = await this.callProxy({ action: 'detect', text });
+      if (!data?.language) return null;
+      return { language: data.language, confidence: data.confidence };
     } catch (e) {
       if (__DEV__) console.warn('Language detection error:', e);
       return null;
@@ -85,12 +78,8 @@ export class TranslationService {
   async getSupportedLanguages(targetLanguage: string = 'en'): Promise<SupportedLanguage[]> {
     if (!this.isConfigured) return [];
     try {
-      const res = await fetch(
-        `${this.baseUrl}/languages?key=${this.apiKey}&target=${targetLanguage}`
-      );
-      if (!res.ok) return [];
-      const data = await res.json();
-      return (data.data?.languages || []).map((l: any) => ({
+      const data = await this.callProxy({ action: 'languages', target: targetLanguage });
+      return (data?.languages || []).map((l: any) => ({
         language: l.language,
         name: l.name || l.language,
       }));
@@ -106,28 +95,13 @@ export class TranslationService {
     sourceLanguage?: string
   ): Promise<TranslationResult[]> {
     if (!this.isConfigured || texts.length === 0) return [];
-    try {
-      const body: any = { q: texts, target: targetLanguage, format: 'text' };
-      if (sourceLanguage) body.source = sourceLanguage;
-
-      const res = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return (data.data?.translations || []).map((t: any) => ({
-        translatedText: t.translatedText,
-        detectedSourceLanguage: t.detectedSourceLanguage,
-      }));
-    } catch (e) {
-      if (__DEV__) console.warn('Batch translation error:', e);
-      return [];
-    }
+    // Batch by translating each individually through proxy
+    const results = await Promise.all(
+      texts.map(text => this.translate(text, targetLanguage, sourceLanguage))
+    );
+    return results.filter((r): r is TranslationResult => r !== null);
   }
 }
 
-// Use the same Google API key — just enable Translation API in Google Cloud Console
-const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-export const translationService = new TranslationService(GOOGLE_API_KEY);
+// No API key needed — proxied through Supabase edge function
+export const translationService = new TranslationService();

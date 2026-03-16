@@ -137,4 +137,9 @@ export const styles = StyleSheet.create({
   bottomPadding: {
     height: 100,
   },
+  emptyHint: {
+    fontSize: 14,
+    textAlign: 'center',
+    paddingVertical: spacing.lg,
+  },
 });

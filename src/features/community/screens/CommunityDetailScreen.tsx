@@ -55,7 +55,7 @@ function mapServicePostToFeedPost(p: any): FeedPost {
       id: p.author?.id || p.authorId,
       firstName: p.author?.fullName?.split(' ')[0] || 'User',
       lastName: p.author?.fullName?.split(' ').slice(1).join(' ') || '',
-      avatar: p.author?.avatarUrl || 'https://i.pravatar.cc/150?img=1',
+      avatar: p.author?.avatarUrl || '',
       isVerified: false,
     },
     postType: (p.postType || 'general') as any,
@@ -112,7 +112,7 @@ export default function CommunityDetailScreen() {
     createdAt: '',
   });
 
-  const userAvatar = profile?.avatar_url || 'https://i.pravatar.cc/150?img=12';
+  const userAvatar = profile?.avatar_url || '';
 
   useEffect(() => {
     let cancelled = false;

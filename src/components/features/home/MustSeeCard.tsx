@@ -115,12 +115,14 @@ const styles = StyleSheet.create({
   },
   infoContainer: {
     paddingHorizontal: spacing.sm,
+    height: 110,
   },
   name: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
     marginBottom: 4,
     lineHeight: 22,
+    height: 44,
   },
   category: {
     fontSize: typography.fontSize.xs,

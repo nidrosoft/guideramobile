@@ -47,7 +47,7 @@ export default function OutdoorMap({
 
   const centerCoords: [number, number] = userLocation
     ? [userLocation.longitude, userLocation.latitude]
-    : [-117.0713, 32.7767];
+    : [0, 0]; // No location available — will show empty map
 
   const handleRecenter = useCallback(() => {
     if (!userLocation) return;
@@ -153,7 +153,7 @@ export default function OutdoorMap({
 
   const initialRegion = userLocation
     ? { ...userLocation, latitudeDelta: 0.02, longitudeDelta: 0.02 }
-    : { latitude: 32.7767, longitude: -117.0713, latitudeDelta: 0.02, longitudeDelta: 0.02 };
+    : { latitude: 0, longitude: 0, latitudeDelta: 0.02, longitudeDelta: 0.02 };
 
   return (
     <View style={styles.container}>

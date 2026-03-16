@@ -22,9 +22,13 @@ const memoryCache = new Map<string, CachedTranslation>();
  * Generate a cache key from source text and target language.
  */
 function getCacheKey(sourceText: string, targetLanguage: string): string {
-  // Simple hash: first 100 chars + length + target language
-  const normalized = sourceText.trim().toLowerCase().slice(0, 100);
-  return `${normalized}_${sourceText.length}_${targetLanguage}`;
+  // Hash the full text content to avoid collisions from prefix+length matching
+  const text = sourceText.trim().toLowerCase();
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+  }
+  return `${(hash >>> 0).toString(36)}_${text.length}_${targetLanguage}`;
 }
 
 /**

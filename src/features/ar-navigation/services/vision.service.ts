@@ -29,15 +29,17 @@ export interface ObjectResult {
 }
 
 export class VisionService {
-  private apiKey: string;
-  private baseUrl = 'https://vision.googleapis.com/v1/images:annotate';
+  private supabaseUrl: string;
+  private supabaseKey: string;
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
+  constructor(_apiKey?: string) {
+    // API key no longer used client-side — proxied through edge function
+    this.supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://pkydmdygctojtfzbqcud.supabase.co';
+    this.supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
   }
 
   get isConfigured(): boolean {
-    return !!this.apiKey && this.apiKey.length > 10;
+    return !!this.supabaseUrl;
   }
 
   /**
@@ -59,23 +61,24 @@ export class VisionService {
    * Make a Vision API request with specified features
    */
   private async annotate(base64Image: string, features: { type: string; maxResults?: number }[]): Promise<any> {
-    const res = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
+    const res = await fetch(`${this.supabaseUrl}/functions/v1/google-api-proxy`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': this.supabaseKey,
+      },
       body: JSON.stringify({
-        requests: [{
-          image: { content: base64Image },
-          features,
-        }],
+        action: 'vision',
+        base64Image,
+        features,
       }),
     });
     if (!res.ok) {
-      const err = await res.text();
-      if (__DEV__) console.warn('Vision API error:', err);
+      if (__DEV__) console.warn('Vision proxy error:', res.status);
       return null;
     }
     const data = await res.json();
-    return data.responses?.[0] || null;
+    return data.result || null;
   }
 
   /**
