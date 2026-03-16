@@ -849,14 +849,25 @@ function calculateNextSyncTime(frequency: string): string {
   return now.toISOString();
 }
 
+// Simple obfuscation key derived from app identity — not military-grade but prevents
+// trivial Base64 reversal. For true encryption, use a server-side encrypt/decrypt flow.
+const OBFUSCATION_KEY = 'guidera:token:v1';
+
 async function encryptToken(token: string): Promise<string> {
-  // In production, use proper encryption
-  return Buffer.from(token).toString('base64');
+  // XOR with rotating key + Base64 encode — prevents trivial Base64 reversal
+  const keyBytes = OBFUSCATION_KEY.split('').map(c => c.charCodeAt(0));
+  const tokenBytes = token.split('').map(c => c.charCodeAt(0));
+  const encrypted = tokenBytes.map((b, i) => b ^ keyBytes[i % keyBytes.length]);
+  const chars = encrypted.map(b => String.fromCharCode(b)).join('');
+  return btoa(chars);
 }
 
 async function decryptToken(encrypted: string): Promise<string> {
-  // In production, use proper decryption
-  return Buffer.from(encrypted, 'base64').toString('utf-8');
+  const chars = atob(encrypted);
+  const keyBytes = OBFUSCATION_KEY.split('').map(c => c.charCodeAt(0));
+  const encryptedBytes = chars.split('').map(c => c.charCodeAt(0));
+  const decrypted = encryptedBytes.map((b, i) => b ^ keyBytes[i % keyBytes.length]);
+  return decrypted.map(b => String.fromCharCode(b)).join('');
 }
 
 async function findMatchingTrip(userId: string, parsed: ParsedImportData): Promise<any | null> {
