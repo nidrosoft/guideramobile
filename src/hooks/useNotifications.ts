@@ -51,12 +51,12 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   // Fetch notifications from DB
   const fetchNotifications = useCallback(async () => {
     if (!userId) {
-      console.log('[Notifications] No userId yet, skipping fetch');
+      if (__DEV__) console.log('[Notifications] No userId yet, skipping fetch');
       setIsLoading(false);
       return;
     }
 
-    console.log('[Notifications] Fetching for userId:', userId, 'category:', category, 'excludeCategory:', excludeCategory);
+    if (__DEV__) console.log('[Notifications] Fetching for userId:', userId, 'category:', category, 'excludeCategory:', excludeCategory);
 
     try {
       let query = supabase
@@ -76,10 +76,10 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
       const { data, error: fetchError } = await query;
 
-      console.log('[Notifications] Query result:', data?.length, 'items, error:', fetchError?.message || 'none');
+      if (__DEV__) console.log('[Notifications] Query result:', data?.length, 'items, error:', fetchError?.message || 'none');
 
       if (fetchError) {
-        console.warn('Failed to fetch notifications:', fetchError);
+        if (__DEV__) console.warn('Failed to fetch notifications:', fetchError);
         setError(fetchError.message);
         return;
       }
@@ -106,7 +106,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       setUnreadCount(mapped.filter(n => !n.isRead).length);
       setError(null);
     } catch (err) {
-      console.warn('Notification fetch error:', err);
+      if (__DEV__) console.warn('Notification fetch error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -134,7 +134,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       const { count } = await query;
       setUnreadCount(count || 0);
     } catch (err) {
-      console.warn('Unread count fetch error:', err);
+      if (__DEV__) console.warn('Unread count fetch error:', err);
     }
   }, [userId, category, excludeCategory]);
 
@@ -154,7 +154,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (err) {
-      console.warn('Mark as read error:', err);
+      if (__DEV__) console.warn('Mark as read error:', err);
     }
   }, [userId]);
 
@@ -178,7 +178,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true, status: 'read' })));
       setUnreadCount(0);
     } catch (err) {
-      console.warn('Mark all as read error:', err);
+      if (__DEV__) console.warn('Mark all as read error:', err);
     }
   }, [userId, category]);
 

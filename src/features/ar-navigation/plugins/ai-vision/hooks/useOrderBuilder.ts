@@ -96,7 +96,7 @@ export function useOrderBuilder(): UseOrderBuilderReturn {
         });
       } catch (e: any) {
         setError(e?.message || 'Failed to generate order. Please try again.');
-        console.warn('[useOrderBuilder] Generate error:', e);
+        if (__DEV__) console.warn('[useOrderBuilder] Generate error:', e);
       } finally {
         setIsGenerating(false);
       }

@@ -69,7 +69,7 @@ export function useLocalExperiences(
         if (!cancelled) setCategories(cats);
       })
       .catch((err) => {
-        console.warn('Failed to fetch experience categories:', err);
+        if (__DEV__) console.warn('Failed to fetch experience categories:', err);
       })
       .finally(() => {
         if (!cancelled) setIsCategoriesLoading(false);

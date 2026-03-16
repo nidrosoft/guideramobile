@@ -50,7 +50,7 @@ export class VisionService {
       });
       return base64;
     } catch (e) {
-      console.warn('Image to base64 error:', e);
+      if (__DEV__) console.warn('Image to base64 error:', e);
       return null;
     }
   }
@@ -71,7 +71,7 @@ export class VisionService {
     });
     if (!res.ok) {
       const err = await res.text();
-      console.warn('Vision API error:', err);
+      if (__DEV__) console.warn('Vision API error:', err);
       return null;
     }
     const data = await res.json();
@@ -101,7 +101,7 @@ export class VisionService {
         boundingBox: l.boundingPoly,
       }));
     } catch (e) {
-      console.warn('Landmark detection error:', e);
+      if (__DEV__) console.warn('Landmark detection error:', e);
       return [];
     }
   }
@@ -129,7 +129,7 @@ export class VisionService {
 
       return { fullText, blocks };
     } catch (e) {
-      console.warn('Text detection error:', e);
+      if (__DEV__) console.warn('Text detection error:', e);
       return null;
     }
   }
@@ -153,7 +153,7 @@ export class VisionService {
         confidence: l.score || 0,
       }));
     } catch (e) {
-      console.warn('Object detection error:', e);
+      if (__DEV__) console.warn('Object detection error:', e);
       return [];
     }
   }

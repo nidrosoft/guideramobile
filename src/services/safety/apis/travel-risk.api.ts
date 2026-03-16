@@ -66,7 +66,7 @@ export class TravelRiskAPI {
         })),
       };
     } catch (e) {
-      console.warn('TravelRisk API error:', e);
+      if (__DEV__) console.warn('TravelRisk API error:', e);
       return null;
     }
   }
@@ -101,7 +101,7 @@ export class TravelRiskAPI {
         })),
       };
     } catch (e) {
-      console.warn('TravelRisk API coordinates error:', e);
+      if (__DEV__) console.warn('TravelRisk API coordinates error:', e);
       return null;
     }
   }
@@ -122,7 +122,7 @@ export class TravelRiskAPI {
       const data = await res.json();
       return data.data || [];
     } catch (e) {
-      console.warn('TravelRisk alerts error:', e);
+      if (__DEV__) console.warn('TravelRisk alerts error:', e);
       return [];
     }
   }

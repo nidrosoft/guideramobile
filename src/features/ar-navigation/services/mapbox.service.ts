@@ -68,7 +68,7 @@ export class MapboxService {
         coordinates: { longitude: f.center[0], latitude: f.center[1] },
       }));
     } catch (e) {
-      console.warn('Mapbox geocode error:', e);
+      if (__DEV__) console.warn('Mapbox geocode error:', e);
       return [];
     }
   }
@@ -88,7 +88,7 @@ export class MapboxService {
       if (!f) return null;
       return { name: f.text || '', address: f.place_name || '' };
     } catch (e) {
-      console.warn('Mapbox reverse geocode error:', e);
+      if (__DEV__) console.warn('Mapbox reverse geocode error:', e);
       return null;
     }
   }
@@ -129,7 +129,7 @@ export class MapboxService {
         })),
       };
     } catch (e) {
-      console.warn('Mapbox directions error:', e);
+      if (__DEV__) console.warn('Mapbox directions error:', e);
       return null;
     }
   }
@@ -147,18 +147,18 @@ export class MapboxService {
   ): Promise<MapboxPlace[]> {
     // Google Places Nearby Search — the most reliable POI search
     const googleKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-    console.log('📍 getNearbyPOIs called:', { latitude, longitude, category, hasGoogleKey: !!googleKey, keyLen: googleKey.length });
+    if (__DEV__) console.log('📍 getNearbyPOIs called:', { latitude, longitude, category, hasGoogleKey: !!googleKey, keyLen: googleKey.length });
 
     if (googleKey && googleKey.length > 10) {
       try {
         // Map our category names to Google Places types
         const type = this.mapCategoryToGoogleType(category || 'tourist_attraction');
         const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=3000&type=${type}&key=${googleKey}`;
-        console.log('📍 Google Places URL:', url.replace(googleKey, 'KEY'));
+        if (__DEV__) console.log('📍 Google Places URL:', url.replace(googleKey, 'KEY'));
 
         const res = await fetch(url);
         const data = await res.json();
-        console.log('📍 Google Places response:', data.status, data.results?.length || 0, 'results');
+        if (__DEV__) console.log('📍 Google Places response:', data.status, data.results?.length || 0, 'results');
 
         if (data.status === 'OK' && data.results?.length > 0) {
           return data.results.slice(0, limit).map((p: any, i: number) => ({
@@ -173,13 +173,13 @@ export class MapboxService {
             distance: undefined,
           }));
         } else {
-          console.warn('📍 Google Places no results. Status:', data.status, data.error_message || '');
+          if (__DEV__) console.warn('📍 Google Places no results. Status:', data.status, data.error_message || '');
         }
       } catch (e) {
-        console.warn('📍 Google Places fetch error:', e);
+        if (__DEV__) console.warn('📍 Google Places fetch error:', e);
       }
     } else {
-      console.warn('📍 No Google API key available for POI search');
+      if (__DEV__) console.warn('📍 No Google API key available for POI search');
     }
 
     return [];

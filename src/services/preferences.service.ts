@@ -852,7 +852,7 @@ class PreferencesService {
         body: { user_id: userId, refresh: true },
       });
     } catch (error) {
-      console.warn('Failed to invalidate homepage cache:', error);
+      if (__DEV__) console.warn('Failed to invalidate homepage cache:', error);
     }
   }
   

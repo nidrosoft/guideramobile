@@ -188,7 +188,7 @@ async function fetchDestinationCoverImage(cityName: string): Promise<string> {
         return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photoRef}&key=${GOOGLE_API_KEY}`;
       }
     } catch (err) {
-      console.warn('Google Places photo fetch failed, using Unsplash fallback:', err);
+      if (__DEV__) console.warn('Google Places photo fetch failed, using Unsplash fallback:', err);
     }
   }
 

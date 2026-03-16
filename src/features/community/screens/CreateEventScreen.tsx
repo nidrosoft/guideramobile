@@ -173,7 +173,7 @@ export default function CreateEventScreen() {
         ]
       );
     } catch (err) {
-      console.warn('Create event error:', err);
+      if (__DEV__) console.warn('Create event error:', err);
       setIsSubmitting(false);
       Alert.alert('Error', 'Failed to create event. Please try again.');
     }

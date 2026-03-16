@@ -26,11 +26,11 @@ export const dangerAlertsPlugin: ARPlugin = {
   },
   
   onActivate: () => {
-    console.log('🚨 Danger Alerts activated');
+    if (__DEV__) console.log('🚨 Danger Alerts activated');
   },
   
   onDeactivate: () => {
-    console.log('🚨 Danger Alerts deactivated');
+    if (__DEV__) console.log('🚨 Danger Alerts deactivated');
   },
 };
 

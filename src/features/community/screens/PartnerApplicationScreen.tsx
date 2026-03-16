@@ -223,7 +223,7 @@ export default function PartnerApplicationScreen() {
                   .eq('id', profile.id);
               }
             } catch (promoteErr) {
-              console.warn('Failed to auto-promote application status:', promoteErr);
+              if (__DEV__) console.warn('Failed to auto-promote application status:', promoteErr);
             }
           }
           setIsApproved(true);
@@ -235,7 +235,7 @@ export default function PartnerApplicationScreen() {
           setIsSubmitted(true);
         }
       } catch (err: any) {
-        console.warn('Failed to init partner application:', err);
+        if (__DEV__) console.warn('Failed to init partner application:', err);
         Alert.alert('Initialization Error', err?.message || 'Failed to start application. Please try again.');
       }
     })();
@@ -317,7 +317,7 @@ export default function PartnerApplicationScreen() {
         setter(result.assets[0].uri);
       }
     } catch (err) {
-      console.warn('Image picker error:', err);
+      if (__DEV__) console.warn('Image picker error:', err);
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
@@ -339,7 +339,7 @@ export default function PartnerApplicationScreen() {
         setPortfolioPhotoUris(prev => [...prev, result.assets[0].uri]);
       }
     } catch (err) {
-      console.warn('Image picker error:', err);
+      if (__DEV__) console.warn('Image picker error:', err);
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
@@ -514,7 +514,7 @@ export default function PartnerApplicationScreen() {
           }
         }
       } catch (err: any) {
-        console.warn('Poll error:', err);
+        if (__DEV__) console.warn('Poll error:', err);
         // Stop polling on unrecoverable errors (e.g., 404)
         if (err?.message?.includes('404') || err?.message?.includes('not found')) {
           if (pollIntervalRef.current) {

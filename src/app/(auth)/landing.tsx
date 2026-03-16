@@ -59,7 +59,7 @@ export default function Landing() {
         redirectUrl: AuthSession.makeRedirectUri(),
       });
 
-      console.log('[Landing SSO] Response:', {
+      if (__DEV__) console.log('[Landing SSO] Response:', {
         createdSessionId: createdSessionId ? 'YES' : 'NULL',
         hasSetActive: !!setActive,
         signUpStatus: signUp?.status,
@@ -69,21 +69,21 @@ export default function Landing() {
       });
 
       if (createdSessionId) {
-        console.log('[Landing SSO] Session created, activating...');
+        if (__DEV__) console.log('[Landing SSO] Session created, activating...');
         await setActive!({ session: createdSessionId });
-        console.log('[Landing SSO] Session activated, navigating...');
+        if (__DEV__) console.log('[Landing SSO] Session activated, navigating...');
         router.replace('/');
         return;
       }
 
       // No session created — log full details for debugging
-      console.log('[Landing SSO] No session. signUp:', JSON.stringify({
+      if (__DEV__) console.log('[Landing SSO] No session. signUp:', JSON.stringify({
         status: signUp?.status,
         missingFields: (signUp as any)?.missingFields,
         unverifiedFields: (signUp as any)?.unverifiedFields,
         phoneNumber: (signUp as any)?.phoneNumber,
       }));
-      console.log('[Landing SSO] signIn verification:', JSON.stringify({
+      if (__DEV__) console.log('[Landing SSO] signIn verification:', JSON.stringify({
         status: (signIn as any)?.firstFactorVerification?.status,
         errorCode: (signIn as any)?.firstFactorVerification?.error?.code,
       }));
@@ -237,7 +237,10 @@ export default function Landing() {
 
           {/* Terms */}
           <Text style={styles.terms}>
-            By signing up, you agree to our <Text style={styles.termsLink}>Terms</Text>. See how we use your data in our <Text style={styles.termsLink}>Privacy Policy</Text>.
+            By signing up, you agree to our{' '}
+            <Text style={styles.termsLink} onPress={() => router.push('/account/terms-of-service' as any)}>Terms</Text>
+            . See how we use your data in our{' '}
+            <Text style={styles.termsLink} onPress={() => router.push('/account/privacy-policy' as any)}>Privacy Policy</Text>.
           </Text>
         </View>
       </View>

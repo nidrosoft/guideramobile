@@ -219,7 +219,7 @@ class PostService {
         }
       }
     } catch (e) {
-      console.warn('Failed to increment comment count:', e);
+      if (__DEV__) console.warn('Failed to increment comment count:', e);
     }
 
     return this.mapComment(comment);
@@ -254,7 +254,7 @@ class PostService {
         }
       }
     } catch (e) {
-      console.warn('Failed to decrement comment count:', e);
+      if (__DEV__) console.warn('Failed to decrement comment count:', e);
     }
   }
 

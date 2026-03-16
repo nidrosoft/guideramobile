@@ -28,14 +28,14 @@ let lastCheckCoords = { lat: 0, lng: 0 };
  */
 TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }: any) => {
   if (error) {
-    console.warn('Geofence task error:', error);
+    if (__DEV__) console.warn('Geofence task error:', error);
     return;
   }
   if (!data) return;
 
   const { eventType, region } = data;
   if (eventType === Location.GeofencingEventType.Enter) {
-    console.log('📍 Entered safety zone:', region.identifier);
+    if (__DEV__) console.log('📍 Entered safety zone:', region.identifier);
     await checkSafetyForZone(region.latitude, region.longitude, region.identifier);
   }
 });
@@ -46,7 +46,7 @@ TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }: any) => {
  */
 TaskManager.defineTask(LOCATION_TASK, async ({ data, error }: any) => {
   if (error) {
-    console.warn('Location task error:', error);
+    if (__DEV__) console.warn('Location task error:', error);
     return;
   }
   if (!data?.locations?.length) return;
@@ -80,7 +80,7 @@ async function checkSafetyForZone(lat: number, lng: number, zoneId: string) {
     saveSafetyAlert(lat, lng, result).catch(console.warn);
 
   } catch (err) {
-    console.warn('Safety zone check error:', err);
+    if (__DEV__) console.warn('Safety zone check error:', err);
   }
 }
 
@@ -109,7 +109,7 @@ async function saveSafetyAlert(lat: number, lng: number, result: SafetyZoneResul
       source: 'geofence',
     });
   } catch (e) {
-    console.warn('Failed to save safety alert:', e);
+    if (__DEV__) console.warn('Failed to save safety alert:', e);
   }
 }
 
@@ -124,7 +124,7 @@ export async function startSafetyMonitoring(): Promise<boolean> {
 
     const { status: bg } = await Location.requestBackgroundPermissionsAsync();
     if (bg !== 'granted') {
-      console.warn('Background location permission denied — safety monitoring limited to foreground');
+      if (__DEV__) console.warn('Background location permission denied — safety monitoring limited to foreground');
     }
 
     // Start background location tracking
@@ -143,10 +143,10 @@ export async function startSafetyMonitoring(): Promise<boolean> {
       });
     }
 
-    console.log('✅ Safety monitoring started');
+    if (__DEV__) console.log('✅ Safety monitoring started');
     return true;
   } catch (e) {
-    console.warn('Failed to start safety monitoring:', e);
+    if (__DEV__) console.warn('Failed to start safety monitoring:', e);
     return false;
   }
 }
@@ -166,9 +166,9 @@ export async function stopSafetyMonitoring() {
       await Location.stopGeofencingAsync(GEOFENCE_TASK);
     }
 
-    console.log('🛑 Safety monitoring stopped');
+    if (__DEV__) console.log('🛑 Safety monitoring stopped');
   } catch (e) {
-    console.warn('Failed to stop safety monitoring:', e);
+    if (__DEV__) console.warn('Failed to stop safety monitoring:', e);
   }
 }
 
@@ -198,7 +198,7 @@ export async function checkCurrentLocationSafety(): Promise<SafetyZoneResult | n
       1
     );
   } catch (e) {
-    console.warn('Current location safety check error:', e);
+    if (__DEV__) console.warn('Current location safety check error:', e);
     return null;
   }
 }

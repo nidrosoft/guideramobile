@@ -2,29 +2,35 @@ import { supabase } from '@/lib/supabase/client';
 import { Profile } from '@/types/auth.types';
 
 /**
- * Generate a deterministic UUID v5-like ID from a Clerk user ID.
- * This converts a Clerk ID (e.g. "user_abc123") into a valid UUID format
- * that Supabase's uuid column accepts.
+ * Generate a deterministic UUID from a Clerk user ID using MurmurHash3-based mixing.
+ * Uses a Guidera-specific namespace prefix to prevent collisions with other systems.
+ * The same Clerk ID always produces the same UUID — safe for DB primary keys.
+ * 
+ * Note: Existing users already have profiles matched by clerk_id column, not this UUID.
+ * This UUID is only used when creating NEW profiles.
  */
 function clerkIdToUuid(clerkId: string): string {
-  // Simple hash-based UUID generation from Clerk ID
-  let hash = 0;
-  for (let i = 0; i < clerkId.length; i++) {
-    const char = clerkId.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
+  const input = 'guidera:clerk:' + clerkId;
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < input.length; i++) {
+    const ch = input.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
   }
-  
-  // Create a deterministic UUID from the clerk ID string
-  // Use the clerk ID chars to fill a UUID pattern
-  const hex = clerkId.split('').map(c => {
-    const code = c.charCodeAt(0);
-    return code.toString(16).padStart(2, '0');
-  }).join('');
-  
-  // Pad or truncate to 32 hex chars, then format as UUID
-  const padded = (hex + '0'.repeat(32)).slice(0, 32);
-  return `${padded.slice(0, 8)}-${padded.slice(8, 12)}-4${padded.slice(13, 16)}-a${padded.slice(17, 20)}-${padded.slice(20, 32)}`;
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+
+  // Generate 4 x 32-bit values for full UUID coverage
+  const v1 = (h1 >>> 0).toString(16).padStart(8, '0');
+  const v2 = (h2 >>> 0).toString(16).padStart(8, '0');
+  const v3 = ((h1 ^ 0x9e3779b9) >>> 0).toString(16).padStart(8, '0');
+  const v4 = ((h2 ^ 0x517cc1b7) >>> 0).toString(16).padStart(8, '0');
+  const hex = v1 + v2 + v3 + v4;
+
+  // Format as UUID v4 (set version nibble to 4, variant bits to 10xx)
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-${(8 + (parseInt(hex[16], 16) & 3)).toString(16)}${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
 /**
@@ -89,16 +95,19 @@ export async function syncClerkUserToSupabase(clerkUser: {
       return existingProfile as Profile;
     }
 
-    // Check if there's an existing profile by email (migration from old Supabase auth)
+    // Check if there's an orphaned profile by email (migration from old Supabase auth)
+    // SECURITY: Only link if the profile has NO clerk_id — meaning it's a pre-Clerk migration orphan.
+    // If it already has a clerk_id, it belongs to another user — do NOT hijack it.
     if (email) {
       const { data: emailProfile } = await supabase
         .from('profiles')
         .select('*')
         .eq('email', email)
+        .is('clerk_id', null)
         .single();
 
       if (emailProfile) {
-        // Found existing profile by email — link it to the Clerk user
+        // Found orphaned profile by email (no clerk_id) — safe to link
         const { data: updatedProfile, error: updateError } = await supabase
           .from('profiles')
           .update({
@@ -118,17 +127,19 @@ export async function syncClerkUserToSupabase(clerkUser: {
           return emailProfile as Profile;
         }
 
-        console.log('[ProfileSync] Linked existing profile to Clerk user via email');
+        if (__DEV__) console.log('[ProfileSync] Linked existing profile to Clerk user via email');
         return updatedProfile as Profile;
       }
     }
 
-    // Check if there's an existing profile by phone (migration case)
+    // Check if there's an orphaned profile by phone (migration case)
+    // SECURITY: Only link if the profile has NO clerk_id — prevents hijacking another user's profile.
     if (phone) {
       const { data: phoneProfile } = await supabase
         .from('profiles')
         .select('*')
         .eq('phone', phone)
+        .is('clerk_id', null)
         .single();
 
       if (phoneProfile) {
@@ -151,7 +162,7 @@ export async function syncClerkUserToSupabase(clerkUser: {
           return phoneProfile as Profile;
         }
 
-        console.log('[ProfileSync] Linked existing profile to Clerk user via phone');
+        if (__DEV__) console.log('[ProfileSync] Linked existing profile to Clerk user via phone');
         return updatedProfile as Profile;
       }
     }
@@ -180,7 +191,7 @@ export async function syncClerkUserToSupabase(clerkUser: {
       return null;
     }
 
-    console.log('[ProfileSync] Created new profile for Clerk user');
+    if (__DEV__) console.log('[ProfileSync] Created new profile for Clerk user');
     return newProfile as Profile;
   } catch (error) {
     console.error('[ProfileSync] Unexpected error:', error);

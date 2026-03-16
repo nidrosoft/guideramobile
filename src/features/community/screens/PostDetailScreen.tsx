@@ -131,7 +131,7 @@ export default function PostDetailScreen() {
         const mapped = rawComments.map(mapServiceCommentToFeedComment);
         setComments(nestComments(mapped));
       } catch (err) {
-        console.warn('PostDetailScreen load error:', err);
+        if (__DEV__) console.warn('PostDetailScreen load error:', err);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -256,7 +256,7 @@ export default function PostDetailScreen() {
         return replaceOptimistic(prev);
       });
     } catch (err) {
-      console.warn('Failed to save comment:', err);
+      if (__DEV__) console.warn('Failed to save comment:', err);
     }
   }, [commentText, replyingTo, post?.id, profile]);
 

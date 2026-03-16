@@ -83,7 +83,7 @@ export default function ScanScanningStep({ onNext, data }: StepComponentProps) {
         } catch (error: any) {
           if (cancelled) return;
           lastError = error.message || 'Failed to process the image.';
-          console.warn(`[Scan] Attempt ${attempt}/${MAX_RETRIES} failed:`, lastError);
+          if (__DEV__) console.warn(`[Scan] Attempt ${attempt}/${MAX_RETRIES} failed:`, lastError);
         }
       }
 

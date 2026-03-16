@@ -83,7 +83,7 @@ export default function HotelWhereSection({
         },
       });
 
-      console.log('Places API response:', { data, error });
+      if (__DEV__) console.log('Places API response:', { data, error });
 
       if (error) throw error;
 

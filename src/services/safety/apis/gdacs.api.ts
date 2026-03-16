@@ -61,7 +61,7 @@ export class GDACSAPI {
           date: new Date(f.properties?.fromdate || Date.now()),
         }));
     } catch (e) {
-      console.warn('GDACS API error:', e);
+      if (__DEV__) console.warn('GDACS API error:', e);
       return [];
     }
   }

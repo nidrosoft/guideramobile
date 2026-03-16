@@ -56,7 +56,7 @@ class SitumService {
       await Situm.init();
       await Situm.setApiKey(apiKey);
       this.isInitialized = true;
-      console.log('✅ Situm initialized successfully');
+      if (__DEV__) console.log('✅ Situm initialized successfully');
     } catch (error) {
       console.error('❌ Situm initialization failed:', error);
       throw error;
@@ -110,7 +110,7 @@ class SitumService {
         }
       );
       
-      console.log('✅ Location updates started');
+      if (__DEV__) console.log('✅ Location updates started');
     } catch (error) {
       console.error('❌ Failed to start positioning:', error);
       throw error;
@@ -124,7 +124,7 @@ class SitumService {
     try {
       await Situm.removeUpdates();
       this.locationCallback = null;
-      console.log('✅ Location updates stopped');
+      if (__DEV__) console.log('✅ Location updates stopped');
     } catch (error) {
       console.error('❌ Failed to stop positioning:', error);
     }

@@ -109,7 +109,7 @@ export default function FlightSearchLoadingScreen({
         
         // Validate return date is after departure date
         if (returnDateStr && returnDateStr < depDate) {
-          console.warn('Return date is before departure date, ignoring return date');
+          if (__DEV__) console.warn('Return date is before departure date, ignoring return date');
           returnDateStr = undefined;
         }
         

@@ -87,7 +87,7 @@ export default function EventDetailScreen() {
       if (error) throw error;
       setEvent(data as DiscoveredEvent);
     } catch (err) {
-      console.warn('Failed to load event:', err);
+      if (__DEV__) console.warn('Failed to load event:', err);
     } finally {
       setIsLoading(false);
     }

@@ -201,22 +201,24 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
       {
         id: 'security-settings',
         title: 'Security',
-        subtitle: '2FA, biometrics, sessions',
+        subtitle: 'Coming soon — biometrics & 2FA',
         icon: ShieldTick,
         iconColor: '#10B981',
         iconVariant: 'TwoTone',
         route: '/account/security',
         showChevron: true,
+        disabled: true,
       },
       {
         id: 'verification',
         title: 'Trusted Traveler',
-        subtitle: 'Verify your identity for community trust',
+        subtitle: 'Coming soon — identity verification',
         icon: Verify,
         iconColor: colors.primary,
         iconVariant: 'TwoTone',
         route: '/account/verification',
         showChevron: true,
+        disabled: true,
       },
     ],
   },
@@ -297,7 +299,7 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
         destructive: true,
         action: () => {
           // Will be handled by the component
-          console.log('Logout action');
+          if (__DEV__) console.log('Logout action');
         },
       },
       {

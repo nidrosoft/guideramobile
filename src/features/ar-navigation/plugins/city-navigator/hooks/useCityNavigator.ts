@@ -60,7 +60,7 @@ export function useCityNavigator() {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          console.log('Location permission denied');
+          if (__DEV__) console.log('Location permission denied');
           return;
         }
 
@@ -125,14 +125,14 @@ export function useCityNavigator() {
         });
 
         setState(prev => ({ ...prev, pois: mappedPOIs, isLoading: false }));
-        console.log('📍 Loaded', mappedPOIs.length, 'real POIs from Mapbox');
+        if (__DEV__) console.log('📍 Loaded', mappedPOIs.length, 'real POIs from Mapbox');
       } else {
         // Mapbox not configured — show empty state
         setState(prev => ({ ...prev, pois: [], isLoading: false }));
-        console.log('📍 Mapbox not configured — no POIs to show');
+        if (__DEV__) console.log('📍 Mapbox not configured — no POIs to show');
       }
     } catch (err) {
-      console.warn('POI load error:', err);
+      if (__DEV__) console.warn('POI load error:', err);
       setState(prev => ({ ...prev, pois: [], isLoading: false }));
     }
   }, [state.userLocation]);
@@ -147,7 +147,7 @@ export function useCityNavigator() {
       dangerZones: zones,
     }));
     
-    console.log('⚠️ Loaded', zones.length, 'danger zones');
+    if (__DEV__) console.log('⚠️ Loaded', zones.length, 'danger zones');
   }, [state.userLocation]);
 
   // Toggle view mode
@@ -211,12 +211,12 @@ export function useCityNavigator() {
           };
 
           setState(prev => ({ ...prev, route, isNavigating: true, selectedPOI: poi, isLoading: false }));
-          console.log('🗺️ Real Mapbox route:', Math.round(mbRoute.distance), 'm,', Math.round(mbRoute.duration / 60), 'min');
+          if (__DEV__) console.log('🗺️ Real Mapbox route:', Math.round(mbRoute.distance), 'm,', Math.round(mbRoute.duration / 60), 'min');
           return;
         }
       }
     } catch (err) {
-      console.warn('Mapbox directions error:', err);
+      if (__DEV__) console.warn('Mapbox directions error:', err);
     }
 
     // If Mapbox failed or not configured, create a simple straight-line route (not mock data)

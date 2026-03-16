@@ -101,7 +101,7 @@ export function useAirportNavigation() {
 
     } catch (err: any) {
       setError(err?.message || 'Navigation failed. Try again.');
-      console.warn('Airport navigation error:', err);
+      if (__DEV__) console.warn('Airport navigation error:', err);
     }
   };
 

@@ -180,7 +180,7 @@ class ProviderManagerService {
     }
 
     // Log results count for debugging
-    console.log(`Provider Manager ${category} search: ${response.data.results?.length || 0} results`);
+    if (__DEV__) console.log(`Provider Manager ${category} search: ${response.data.results?.length || 0} results`);
 
     return {
       results: response.data.results || [],
@@ -373,7 +373,7 @@ class ProviderManagerService {
     sessionId?: string;
     preferences?: UserSearchPreferences;
   }): Promise<T> {
-    console.log('Provider Manager Request:', JSON.stringify(body).substring(0, 500));
+    if (__DEV__) console.log('Provider Manager Request:', JSON.stringify(body).substring(0, 500));
     
     const { data, error } = await supabase.functions.invoke(this.functionName, {
       body,
@@ -385,9 +385,9 @@ class ProviderManagerService {
       throw new ProviderManagerError('FUNCTION_ERROR', error.message);
     }
 
-    console.log('Provider Manager Response received:', data?.success ? 'success' : 'failed');
+    if (__DEV__) console.log('Provider Manager Response received:', data?.success ? 'success' : 'failed');
     if (data?.data?.results) {
-      console.log('Provider Manager Results count:', data.data.results.length);
+      if (__DEV__) console.log('Provider Manager Results count:', data.data.results.length);
     }
     return data as T;
   }

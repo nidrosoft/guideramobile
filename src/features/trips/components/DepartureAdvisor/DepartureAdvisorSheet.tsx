@@ -120,7 +120,7 @@ export default function DepartureAdvisorSheet({
       const result = await departureAdvisorService.calculate(params);
       setAdvisory(result);
     } catch (err) {
-      console.warn('Departure advisor: edge function unavailable, using local estimate.', err);
+      if (__DEV__) console.warn('Departure advisor: edge function unavailable, using local estimate.', err);
       // Fallback to mock data so the UI can be previewed before edge function is deployed
       const now = new Date();
       const depDate = new Date(departureTime);

@@ -155,7 +155,7 @@ export default function CreateGroupScreen() {
         ]
       );
     } catch (err) {
-      console.warn('Create group error:', err);
+      if (__DEV__) console.warn('Create group error:', err);
       setIsSubmitting(false);
       Alert.alert('Error', 'Failed to create group. Please try again.');
     }

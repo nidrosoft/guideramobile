@@ -166,7 +166,7 @@ export default function PlannerPlugin({ visible, onClose, trip }: PlannerPluginP
                   activity={mapToPluginActivity(act)}
                   showAddButton={index < currentDay.activities.length - 1}
                   onAddPress={() => {
-                    console.log('Add activity between', act.id);
+                    if (__DEV__) console.log('Add activity between', act.id);
                   }}
                 />
               ))}

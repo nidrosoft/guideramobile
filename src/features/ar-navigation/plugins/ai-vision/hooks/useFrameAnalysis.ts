@@ -98,7 +98,7 @@ export function useFrameAnalysis(): UseFrameAnalysisReturn {
         ExpoFileSystem.deleteAsync(photo.uri, { idempotent: true }).catch(() => {});
       }
     } catch (e: any) {
-      console.warn('[useFrameAnalysis] Error:', e);
+      if (__DEV__) console.warn('[useFrameAnalysis] Error:', e);
       setError(e?.message || 'Frame analysis failed');
     } finally {
       isProcessingRef.current = false;

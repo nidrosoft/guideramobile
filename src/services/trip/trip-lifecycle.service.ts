@@ -82,7 +82,7 @@ const ON_ENTER_EFFECTS: Partial<Record<TripStatus, (trip: Trip) => Promise<void>
         endDate: new Date(trip.end_date),
       });
     } catch (err) {
-      console.warn('Failed to schedule trip notifications:', err);
+      if (__DEV__) console.warn('Failed to schedule trip notifications:', err);
     }
   },
 
@@ -130,7 +130,7 @@ const ON_ENTER_EFFECTS: Partial<Record<TripStatus, (trip: Trip) => Promise<void>
     try {
       await cancelTripNotifications(trip.id);
     } catch (err) {
-      console.warn('Failed to cancel trip notifications:', err);
+      if (__DEV__) console.warn('Failed to cancel trip notifications:', err);
     }
   },
 };

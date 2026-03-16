@@ -58,7 +58,7 @@ export class TranslationService {
         detectedSourceLanguage: t.detectedSourceLanguage,
       };
     } catch (e) {
-      console.warn('Translation error:', e);
+      if (__DEV__) console.warn('Translation error:', e);
       return null;
     }
   }
@@ -77,7 +77,7 @@ export class TranslationService {
       if (!d) return null;
       return { language: d.language, confidence: d.confidence };
     } catch (e) {
-      console.warn('Language detection error:', e);
+      if (__DEV__) console.warn('Language detection error:', e);
       return null;
     }
   }
@@ -95,7 +95,7 @@ export class TranslationService {
         name: l.name || l.language,
       }));
     } catch (e) {
-      console.warn('Supported languages error:', e);
+      if (__DEV__) console.warn('Supported languages error:', e);
       return [];
     }
   }
@@ -122,7 +122,7 @@ export class TranslationService {
         detectedSourceLanguage: t.detectedSourceLanguage,
       }));
     } catch (e) {
-      console.warn('Batch translation error:', e);
+      if (__DEV__) console.warn('Batch translation error:', e);
       return [];
     }
   }

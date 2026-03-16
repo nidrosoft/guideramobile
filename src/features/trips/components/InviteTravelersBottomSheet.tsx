@@ -100,7 +100,7 @@ export default function InviteTravelersBottomSheet({
       setInviteeName('');
       onClose();
     } catch (err: any) {
-      console.warn('[Invite] Failed to send:', err);
+      if (__DEV__) console.warn('[Invite] Failed to send:', err);
       showError(err.message || 'Failed to send invitations. Please try again.');
     } finally {
       setSending(false);

@@ -7,6 +7,7 @@ import {
   updateSupabaseProfile 
 } from '@/lib/clerk/profileSync';
 import { supabase } from '@/lib/supabase/client';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const initialState: AuthContextType = {
   user: null,
@@ -38,20 +39,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const isAuthenticated = !!isSignedIn && !!clerkUser;
   const hasCompletedOnboarding = profile?.onboarding_completed ?? false;
 
-  // Debug logging
-  console.log('[Auth State]', {
-    isUserLoaded,
-    isAuthLoaded,
-    isSignedIn: !!isSignedIn,
-    hasClerkUser: !!clerkUser,
-    clerkUserId: clerkUser?.id?.substring(0, 10),
-    isProfileLoading,
-    profileId: profile?.id?.substring(0, 8),
-    onboardingCompleted: profile?.onboarding_completed,
-    isLoading,
-    isAuthenticated,
-    hasCompletedOnboarding,
-  });
+  if (__DEV__) {
+    if (__DEV__) console.log('[Auth State]', {
+      isUserLoaded,
+      isAuthLoaded,
+      isSignedIn: !!isSignedIn,
+      hasClerkUser: !!clerkUser,
+      clerkUserId: clerkUser?.id?.substring(0, 10),
+      isProfileLoading,
+      profileId: profile?.id?.substring(0, 8),
+      onboardingCompleted: profile?.onboarding_completed,
+      isLoading,
+      isAuthenticated,
+      hasCompletedOnboarding,
+    });
+  }
 
   // Sync Clerk user to Supabase profile when user signs in
   useEffect(() => {
@@ -67,7 +69,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsProfileLoading(true);
 
       try {
-        console.log('[Auth] Syncing Clerk user to Supabase...', clerkUser.id);
+        if (__DEV__) console.log('[Auth] Syncing Clerk user to Supabase...', clerkUser.id);
         const profileData = await syncClerkUserToSupabase({
           id: clerkUser.id,
           firstName: clerkUser.firstName,
@@ -79,9 +81,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         if (isMounted) {
           if (profileData) {
-            console.log('[Auth] Profile synced OK:', profileData.id, 'onboarding:', profileData.onboarding_completed);
+            if (__DEV__) console.log('[Auth] Profile synced OK:', profileData.id, 'onboarding:', profileData.onboarding_completed);
           } else {
-            console.warn('[Auth] Profile sync returned null — profile creation may have failed');
+            if (__DEV__) console.warn('[Auth] Profile sync returned null — profile creation may have failed');
           }
           setProfile(profileData);
         }
@@ -118,8 +120,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const signOut = async () => {
     try {
-      await clerkSignOut();
+      // Clear cached data before signing out
+      const keysToPreserve = ['@guidera_theme_mode', '@guidera_theme_user_chosen'];
+      const allKeys = await AsyncStorage.getAllKeys();
+      const keysToRemove = allKeys.filter((k: string) => !keysToPreserve.includes(k));
+      if (keysToRemove.length > 0) {
+        await AsyncStorage.multiRemove(keysToRemove);
+      }
+      
       setProfile(null);
+      setIsProfileLoading(true);
+      await clerkSignOut();
     } catch (error) {
       console.error('Error signing out:', error);
     }

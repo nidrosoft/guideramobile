@@ -93,7 +93,7 @@ export const BookingPassBottomSheet: React.FC<BookingPassBottomSheetProps> = ({
               <View style={styles.detailsRow}>
                 <View style={styles.detailColumn}>
                   <Text style={styles.detailLabel}>GATE</Text>
-                  <Text style={styles.detailValueLarge}>{details.departure.gate || 'A4'}</Text>
+                  <Text style={styles.detailValueLarge}>{details.departure.gate || '—'}</Text>
                 </View>
 
                 <View style={styles.airlineLogoContainer}>
@@ -102,8 +102,8 @@ export const BookingPassBottomSheet: React.FC<BookingPassBottomSheetProps> = ({
                 </View>
 
                 <View style={[styles.detailColumn, styles.detailRight]}>
-                  <Text style={styles.detailLabel}>SET</Text>
-                  <Text style={styles.detailValueLarge}>{details.seatNumber || 'B2'}</Text>
+                  <Text style={styles.detailLabel}>SEAT</Text>
+                  <Text style={styles.detailValueLarge}>{details.seatNumber || '—'}</Text>
                 </View>
               </View>
 
@@ -111,7 +111,7 @@ export const BookingPassBottomSheet: React.FC<BookingPassBottomSheetProps> = ({
               <View style={styles.detailsRow}>
                 <View style={styles.detailColumn}>
                   <Text style={styles.detailLabel}>TERMINAL</Text>
-                  <Text style={styles.detailValueLarge}>{details.departure.terminal || '4'}</Text>
+                  <Text style={styles.detailValueLarge}>{details.departure.terminal || '—'}</Text>
                 </View>
 
                 <View style={[styles.detailColumn, styles.detailRight]}>
@@ -124,7 +124,7 @@ export const BookingPassBottomSheet: React.FC<BookingPassBottomSheetProps> = ({
               <View style={styles.detailsRow}>
                 <View style={styles.detailColumn}>
                   <Text style={styles.detailLabel}>PASSENGER NAME</Text>
-                  <Text style={styles.detailValueLarge}>Alex Bajefski</Text>
+                  <Text style={styles.detailValueLarge}>{(details as any).passengerName || '—'}</Text>
                 </View>
 
                 <View style={[styles.detailColumn, styles.detailRight]}>

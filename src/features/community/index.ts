@@ -67,6 +67,4 @@ export * from './types/guide.types';
 // Config
 export * from './config/community.config';
 
-// Mock Data (for development)
-export * from './data/mockData';
-export * from './data/guideMockData';
+// Mock Data — removed from production exports (use direct imports in __DEV__ only)

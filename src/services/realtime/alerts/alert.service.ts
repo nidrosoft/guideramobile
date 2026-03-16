@@ -174,7 +174,7 @@ class AlertService {
     // Check user preferences
     const preferences = await this.getUserPreferences(userId);
     if (!preferences || !this.isAlertEnabled(alertType, preferences)) {
-      console.log(`Alert ${typeCode} disabled for user ${userId}`);
+      if (__DEV__) console.log(`Alert ${typeCode} disabled for user ${userId}`);
       return null;
     }
 

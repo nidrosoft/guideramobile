@@ -55,7 +55,7 @@ class GoogleMapsService {
     }
 
     this.isInitialized = true;
-    console.log('✅ Google Maps initialized');
+    if (__DEV__) console.log('✅ Google Maps initialized');
   }
 
   /**

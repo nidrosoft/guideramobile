@@ -107,7 +107,7 @@ export function useTranslation(): UseTranslationReturn {
       } catch (e: any) {
         const msg = e?.message || 'Translation failed.';
         setError(msg);
-        console.warn('[useTranslation] Error:', e);
+        if (__DEV__) console.warn('[useTranslation] Error:', e);
         return null;
       } finally {
         setIsTranslating(false);

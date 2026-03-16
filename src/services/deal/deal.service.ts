@@ -279,7 +279,7 @@ export async function getPersonalizedDeals(
           }));
         }
       } catch (err) {
-        console.warn('GIL: user_deal_matches query failed, falling back to deal_cache:', err);
+        if (__DEV__) console.warn('GIL: user_deal_matches query failed, falling back to deal_cache:', err);
       }
     }
 
@@ -299,7 +299,7 @@ export async function getPersonalizedDeals(
       const { data: cached, error: cacheError } = await query;
 
       if (cacheError) {
-        console.warn('GIL: deal_cache query failed:', cacheError.message);
+        if (__DEV__) console.warn('GIL: deal_cache query failed:', cacheError.message);
       }
 
       if (cached && cached.length > 0) {
@@ -340,7 +340,7 @@ export async function getPersonalizedDeals(
 
     return { data: results, error: null };
   } catch (error) {
-    console.warn('GIL: getPersonalizedDeals failed:', error);
+    if (__DEV__) console.warn('GIL: getPersonalizedDeals failed:', error);
     return { data: [], error: error as Error };
   }
 }
@@ -361,7 +361,7 @@ async function triggerBackgroundScan(userId: string): Promise<void> {
       body: { scan_type: 'explore', batch_size: 5 },
     });
   } catch (err) {
-    console.warn('Background scan trigger failed:', err);
+    if (__DEV__) console.warn('Background scan trigger failed:', err);
   }
 }
 

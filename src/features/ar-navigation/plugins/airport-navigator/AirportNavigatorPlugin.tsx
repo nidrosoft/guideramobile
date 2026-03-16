@@ -142,11 +142,11 @@ export const airportNavigatorPlugin: ARPlugin = {
   },
   
   onActivate: () => {
-    console.log('Airport Navigator activated');
+    if (__DEV__) console.log('Airport Navigator activated');
   },
   
   onDeactivate: () => {
-    console.log('Airport Navigator deactivated');
+    if (__DEV__) console.log('Airport Navigator deactivated');
   },
 };
 

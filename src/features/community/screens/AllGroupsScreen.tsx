@@ -94,7 +94,7 @@ export default function AllGroupsScreen() {
       });
       setGroups(result.map(g => mapGroupToPreview(g, myGroupIds)));
     } catch (err) {
-      console.warn('Failed to fetch groups:', err);
+      if (__DEV__) console.warn('Failed to fetch groups:', err);
     } finally {
       setLoading(false);
     }

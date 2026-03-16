@@ -183,7 +183,7 @@ export default function TravelerProfileScreen() {
     } catch (err) {
       // Revert on error
       setIsFollowing(wasFollowing);
-      console.warn('Follow toggle error:', err);
+      if (__DEV__) console.warn('Follow toggle error:', err);
     }
   };
 

@@ -40,7 +40,7 @@ export default function BottomViewToggle({
 
   const handleCenterLocation = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    console.log('📍 GPS button pressed - centering on location');
+    if (__DEV__) console.log('📍 GPS button pressed - centering on location');
     onCenterLocation?.();
   };
 

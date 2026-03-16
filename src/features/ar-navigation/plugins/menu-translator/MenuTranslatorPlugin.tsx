@@ -41,7 +41,7 @@ function MenuTranslatorOverlay() {
 
   const handleSave = () => {
     // TODO: Implement save to database
-    console.log('Save translation:', translation);
+    if (__DEV__) console.log('Save translation:', translation);
   };
 
   // Auto-show bottom sheet when translation is available
@@ -90,11 +90,11 @@ export const menuTranslatorPlugin: ARPlugin = {
   },
   
   onActivate: () => {
-    console.log('Menu Translator activated');
+    if (__DEV__) console.log('Menu Translator activated');
   },
   
   onDeactivate: () => {
-    console.log('Menu Translator deactivated');
+    if (__DEV__) console.log('Menu Translator deactivated');
   },
 };
 

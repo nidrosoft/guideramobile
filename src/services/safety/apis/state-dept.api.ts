@@ -42,7 +42,7 @@ export class StateDeptAPI {
       cacheTimestamp = Date.now();
       return advisories;
     } catch (e) {
-      console.warn('State Dept API error:', e);
+      if (__DEV__) console.warn('State Dept API error:', e);
       return cachedAdvisories || [];
     }
   }

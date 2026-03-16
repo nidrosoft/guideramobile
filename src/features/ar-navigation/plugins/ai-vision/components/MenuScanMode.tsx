@@ -80,7 +80,7 @@ export default function MenuScanMode({
         setMenuItems(items);
       } catch (e: any) {
         setError(e?.message || 'Could not read menu. Please try again.');
-        console.warn('[MenuScanMode] Extract error:', e);
+        if (__DEV__) console.warn('[MenuScanMode] Extract error:', e);
       } finally {
         setIsProcessing(false);
       }
@@ -99,7 +99,7 @@ export default function MenuScanMode({
       if (photo?.uri) setCapturedImage(photo.uri);
       if (photo?.base64) processMenuImage(photo.base64);
     } catch (e) {
-      console.warn('[MenuScanMode] Capture error:', e);
+      if (__DEV__) console.warn('[MenuScanMode] Capture error:', e);
     }
   };
 

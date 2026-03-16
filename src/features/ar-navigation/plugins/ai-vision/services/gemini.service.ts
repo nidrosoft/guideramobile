@@ -27,7 +27,7 @@ async function callEdgeFunction(action: string, payload: Record<string, any>): P
 
   if (!res.ok) {
     const errText = await res.text();
-    console.warn('[GeminiService] Edge function error:', res.status, errText);
+    if (__DEV__) console.warn('[GeminiService] Edge function error:', res.status, errText);
     throw new Error(`AI Vision error: ${res.status}`);
   }
 

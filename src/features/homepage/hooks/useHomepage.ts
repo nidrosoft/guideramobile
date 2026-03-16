@@ -49,7 +49,7 @@ export function useHomepage(options: UseHomepageOptions = {}): UseHomepageResult
     try {
       const { status } = await Location.requestForegroundPermissionsAsync()
       if (status !== 'granted') {
-        console.log('Location permission not granted')
+        if (__DEV__) console.log('Location permission not granted')
         return null
       }
       
@@ -64,7 +64,7 @@ export function useHomepage(options: UseHomepageOptions = {}): UseHomepageResult
       
       return locationRef.current
     } catch (err) {
-      console.warn('Failed to get location:', err)
+      if (__DEV__) console.warn('Failed to get location:', err)
       return null
     }
   }, [includeLocation])

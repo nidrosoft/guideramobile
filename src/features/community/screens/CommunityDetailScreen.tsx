@@ -181,7 +181,7 @@ export default function CommunityDetailScreen() {
         })));
         setMembers(membersData);
       } catch (err) {
-        console.warn('CommunityDetailScreen load error:', err);
+        if (__DEV__) console.warn('CommunityDetailScreen load error:', err);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -209,7 +209,7 @@ export default function CommunityDetailScreen() {
         }
       }
     } catch (err) {
-      console.warn('Join/leave error:', err);
+      if (__DEV__) console.warn('Join/leave error:', err);
     }
   }, [profile?.id, id, group.isMember]);
 

@@ -75,7 +75,7 @@ export default function MapScreen({ initialMode = 'city', onClose }: MapScreenPr
   React.useEffect(() => {
     if (!nav.userLocation) return;
     if (poisLoaded && mode !== 'landmarks') return; // only auto-load once for city, always reload for landmarks
-    console.log('📍 MapScreen: Loading POIs for mode:', mode, 'location:', nav.userLocation.latitude.toFixed(4), nav.userLocation.longitude.toFixed(4));
+    if (__DEV__) console.log('📍 MapScreen: Loading POIs for mode:', mode, 'location:', nav.userLocation.latitude.toFixed(4), nav.userLocation.longitude.toFixed(4));
     landmarks.searchNearby(nav.userLocation.latitude, nav.userLocation.longitude, mode === 'landmarks' ? landmarks.activeCategory : 'all');
     if (mode !== 'landmarks') setPoisLoaded(true);
   }, [nav.userLocation, mode, landmarks.activeCategory]);

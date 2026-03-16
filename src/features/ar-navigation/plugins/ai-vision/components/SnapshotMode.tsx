@@ -100,7 +100,7 @@ export default function SnapshotMode({
         processImage(photo.uri);
       }
     } catch (e) {
-      console.warn('[SnapshotMode] Capture error:', e);
+      if (__DEV__) console.warn('[SnapshotMode] Capture error:', e);
     }
   };
 

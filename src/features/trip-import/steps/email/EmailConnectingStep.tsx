@@ -68,7 +68,7 @@ export default function EmailConnectingStep({ onNext, data }: StepComponentProps
         }
       } catch (error: any) {
         if (cancelled) return;
-        console.warn('[EmailImport] Polling error:', error);
+        if (__DEV__) console.warn('[EmailImport] Polling error:', error);
         onNext({
           scanError: 'Something went wrong while checking for your email. Please try again.',
           scanStatus: 'failed',

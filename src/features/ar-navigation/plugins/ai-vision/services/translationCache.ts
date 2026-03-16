@@ -77,7 +77,7 @@ export async function persistCache(): Promise<void> {
     const entries = Array.from(memoryCache.entries()).slice(-50); // keep last 50
     await AsyncStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(entries));
   } catch (e) {
-    console.warn('[TranslationCache] Persist error:', e);
+    if (__DEV__) console.warn('[TranslationCache] Persist error:', e);
   }
 }
 
@@ -98,7 +98,7 @@ export async function loadCache(): Promise<void> {
       }
     }
   } catch (e) {
-    console.warn('[TranslationCache] Load error:', e);
+    if (__DEV__) console.warn('[TranslationCache] Load error:', e);
   }
 }
 

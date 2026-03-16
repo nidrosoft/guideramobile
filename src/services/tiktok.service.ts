@@ -65,13 +65,13 @@ async function callEdgeFunction(body: Record<string, any>): Promise<TikTokRespon
     const { data, error } = await supabase.functions.invoke('tiktok-content', { body });
 
     if (error) {
-      console.warn('TikTok service error:', error.message);
+      if (__DEV__) console.warn('TikTok service error:', error.message);
       return { success: false, videos: [], hasMore: false, source: 'tiktok', cached: false, fallback: true, error: error.message };
     }
 
     return data as TikTokResponse;
   } catch (err: any) {
-    console.warn('TikTok service exception:', err.message);
+    if (__DEV__) console.warn('TikTok service exception:', err.message);
     return { success: false, videos: [], hasMore: false, source: 'tiktok', cached: false, fallback: true, error: err.message };
   }
 }

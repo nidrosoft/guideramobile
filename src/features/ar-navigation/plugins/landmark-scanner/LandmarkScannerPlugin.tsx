@@ -64,11 +64,11 @@ export const landmarkScannerPlugin: ARPlugin = {
   },
   
   onActivate: () => {
-    console.log('Landmark Scanner activated');
+    if (__DEV__) console.log('Landmark Scanner activated');
   },
   
   onDeactivate: () => {
-    console.log('Landmark Scanner deactivated');
+    if (__DEV__) console.log('Landmark Scanner deactivated');
   },
 };
 

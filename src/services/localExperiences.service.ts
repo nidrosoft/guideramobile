@@ -122,7 +122,7 @@ class LocalExperiencesService {
     });
 
     if (error) {
-      console.warn('Failed to fetch categories:', error);
+      if (__DEV__) console.warn('Failed to fetch categories:', error);
       return this.getFallbackCategories();
     }
 
@@ -154,7 +154,7 @@ class LocalExperiencesService {
         return experience;
       }
     } catch (err) {
-      console.warn('Detail API failed, using cache:', err);
+      if (__DEV__) console.warn('Detail API failed, using cache:', err);
     }
 
     // Fall back to cached search data

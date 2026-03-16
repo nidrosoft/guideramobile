@@ -38,7 +38,7 @@ export function useLandmarkSearch() {
       const results = await mapboxService.getNearbyPOIs(latitude, longitude, query, 15);
       setPlaces(results);
     } catch (e) {
-      console.warn('Landmark search error:', e);
+      if (__DEV__) console.warn('Landmark search error:', e);
       setPlaces([]);
     } finally {
       setLoading(false);
@@ -57,7 +57,7 @@ export function useLandmarkSearch() {
       const results = await mapboxService.geocode(query, { lat: latitude, lng: longitude });
       setPlaces(results);
     } catch (e) {
-      console.warn('Search error:', e);
+      if (__DEV__) console.warn('Search error:', e);
       setPlaces([]);
     } finally {
       setLoading(false);

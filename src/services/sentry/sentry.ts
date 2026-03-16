@@ -32,7 +32,7 @@ const getEnvironment = (): string => {
 export function initSentry(): void {
   if (!SENTRY_DSN) {
     if (__DEV__) {
-      console.warn(
+      if (__DEV__) console.warn(
         '[Sentry] DSN not configured. Add EXPO_PUBLIC_SENTRY_DSN to your .env file.'
       );
     }
@@ -95,7 +95,7 @@ export function initSentry(): void {
     },
   });
 
-  console.log('[Sentry] Initialized successfully');
+  if (__DEV__) console.log('[Sentry] Initialized successfully');
 }
 
 /**

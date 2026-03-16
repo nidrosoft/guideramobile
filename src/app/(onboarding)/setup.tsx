@@ -36,7 +36,6 @@ export default function Setup() {
 
   const saveProfileData = async () => {
     if (hasSavedProfile) return;
-    setHasSavedProfile(true);
     
     try {
       const profileUpdates = getProfileUpdates();
@@ -86,14 +85,16 @@ export default function Setup() {
           .upsert(travelPrefsRow, { onConflict: 'user_id' });
 
         if (tpError) {
-          console.warn('Error saving travel_preferences row:', tpError.message);
+          if (__DEV__) console.warn('Error saving travel_preferences row:', tpError.message);
         }
       }
 
       await completeOnboarding();
       resetOnboarding();
+      setHasSavedProfile(true); // Only mark as saved after full success
     } catch (error) {
       console.error('Error saving profile:', error);
+      // Don't set hasSavedProfile — allow retry on next attempt
     }
   };
 

@@ -89,7 +89,7 @@ export default function CreatePostScreen() {
       });
       router.back();
     } catch (err) {
-      console.warn('Create post error:', err);
+      if (__DEV__) console.warn('Create post error:', err);
       Alert.alert('Error', 'Failed to create post. Please try again.');
     } finally {
       setIsPosting(false);

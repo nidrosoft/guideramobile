@@ -107,7 +107,7 @@ export function useDangerAlerts() {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          console.log('Location permission denied');
+          if (__DEV__) console.log('Location permission denied');
           return;
         }
 
@@ -233,10 +233,10 @@ export function useDangerAlerts() {
               lastReported: new Date(a.event_date || a.created_at),
               isActive: true,
             }));
-          console.log(`🌍 Loaded ${globalZones.length} global disaster alerts for map`);
+          if (__DEV__) console.log(`🌍 Loaded ${globalZones.length} global disaster alerts for map`);
         }
       } catch (e) {
-        console.warn('Global alerts load error:', e);
+        if (__DEV__) console.warn('Global alerts load error:', e);
       }
 
       // 3. Merge local alerts + global alerts
@@ -283,10 +283,10 @@ export function useDangerAlerts() {
               lastReported: new Date(r.created_at),
               isActive: true,
             }));
-          console.log(`📢 Loaded ${userReportZones.length} user-submitted reports`);
+          if (__DEV__) console.log(`📢 Loaded ${userReportZones.length} user-submitted reports`);
         }
       } catch (e) {
-        console.warn('User reports load error:', e);
+        if (__DEV__) console.warn('User reports load error:', e);
       }
 
       const allZones = [...localZones, ...globalZones, ...userReportZones];
@@ -327,9 +327,9 @@ export function useDangerAlerts() {
         isLoading: false,
       }));
 
-      console.log(`🚨 Safety: ${result.level} (score: ${result.score}), ${localZones.length} local + ${globalZones.length} global alerts`);
+      if (__DEV__) console.log(`🚨 Safety: ${result.level} (score: ${result.score}), ${localZones.length} local + ${globalZones.length} global alerts`);
     } catch (err) {
-      console.warn('Safety intelligence error:', err);
+      if (__DEV__) console.warn('Safety intelligence error:', err);
       setState(prev => ({
         ...prev,
         dangerZones: [],
@@ -504,7 +504,7 @@ export function useDangerAlerts() {
     }));
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    console.log('📝 New incident reported:', newIncident.title);
+    if (__DEV__) console.log('📝 New incident reported:', newIncident.title);
   }, [state.userLocation]);
 
   return {

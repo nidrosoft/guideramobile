@@ -138,7 +138,7 @@ export default function VerificationScreen() {
         });
       }
     } catch (error) {
-      console.log('No verification record found');
+      if (__DEV__) console.log('No verification record found');
     } finally {
       setIsLoading(false);
     }

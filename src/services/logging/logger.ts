@@ -153,7 +153,7 @@ class Logger {
         console.info(`${prefix}${contextStr}`, entry.message, entry.data ?? '');
         break;
       case 'warn':
-        console.warn(`${prefix}${contextStr}`, entry.message, entry.data ?? '');
+        if (__DEV__) console.warn(`${prefix}${contextStr}`, entry.message, entry.data ?? '');
         break;
       case 'error':
         console.error(`${prefix}${contextStr}`, entry.message, entry.data ?? '');

@@ -68,7 +68,7 @@ class HomepageService {
             return data as HomepageResponse
           }
         } catch (edgeFunctionError) {
-          console.warn('Edge Function unavailable, falling back to direct query:', edgeFunctionError)
+          if (__DEV__) console.warn('Edge Function unavailable, falling back to direct query:', edgeFunctionError)
         }
       }
 

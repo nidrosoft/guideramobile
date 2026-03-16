@@ -70,7 +70,7 @@ export function useUserLocation() {
           country = place.country || null;
         }
       } catch (geocodeErr) {
-        console.warn('Reverse geocode failed:', geocodeErr);
+        if (__DEV__) console.warn('Reverse geocode failed:', geocodeErr);
       }
 
       const loc: UserLocation = {
@@ -84,7 +84,7 @@ export function useUserLocation() {
       cachedLocation = loc;
       setLocation(loc);
     } catch (err: any) {
-      console.warn('Location error:', err);
+      if (__DEV__) console.warn('Location error:', err);
       setError(err.message || 'Failed to get location');
     } finally {
       setIsLoading(false);

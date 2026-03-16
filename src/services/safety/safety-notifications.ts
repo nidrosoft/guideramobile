@@ -51,7 +51,7 @@ export async function sendSafetyNotification(result: SafetyZoneResult): Promise<
     });
 
   } catch (e) {
-    console.warn('Safety notification error:', e);
+    if (__DEV__) console.warn('Safety notification error:', e);
   }
 }
 

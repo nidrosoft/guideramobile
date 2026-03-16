@@ -81,7 +81,7 @@ export default function LocalExperienceDetailScreen() {
       const data = await localExperiencesService.getExperienceDetail(params.id);
       setExperience(data);
     } catch (err) {
-      console.warn('Failed to load experience:', err);
+      if (__DEV__) console.warn('Failed to load experience:', err);
     } finally {
       setIsLoading(false);
     }

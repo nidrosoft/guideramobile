@@ -71,8 +71,8 @@ export default function CityNavigatorOverlay({ arContext }: CityNavigatorOverlay
 
   // Center map on user location
   const handleCenterLocation = useCallback(() => {
-    console.log('📍 handleCenterLocation called, userLocation:', userLocation);
-    console.log('📍 mapRef.current:', mapRef.current);
+    if (__DEV__) console.log('📍 handleCenterLocation called, userLocation:', userLocation);
+    if (__DEV__) console.log('📍 mapRef.current:', mapRef.current);
     
     if (userLocation && mapRef.current) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -81,9 +81,9 @@ export default function CityNavigatorOverlay({ arContext }: CityNavigatorOverlay
         latitudeDelta: 0.015,
         longitudeDelta: 0.015,
       }, 500);
-      console.log('📍 Animating to user location');
+      if (__DEV__) console.log('📍 Animating to user location');
     } else {
-      console.log('📍 Cannot center - missing userLocation or mapRef');
+      if (__DEV__) console.log('📍 Cannot center - missing userLocation or mapRef');
     }
   }, [userLocation]);
 
@@ -95,7 +95,7 @@ export default function CityNavigatorOverlay({ arContext }: CityNavigatorOverlay
   });
 
   // Debug logging
-  console.log('🏙️ CityNavigatorOverlay - viewMode:', viewMode, 'POIs:', filteredPOIs.length);
+  if (__DEV__) console.log('🏙️ CityNavigatorOverlay - viewMode:', viewMode, 'POIs:', filteredPOIs.length);
 
   return (
     <View style={styles.container}>

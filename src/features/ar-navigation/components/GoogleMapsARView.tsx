@@ -45,7 +45,7 @@ export default function GoogleMapsARView({
         if (directions) {
           setRoute(directions);
           onRouteReady?.(directions);
-          console.log('✅ Route calculated:', {
+          if (__DEV__) console.log('✅ Route calculated:', {
             distance: `${directions.distance}m`,
             duration: `${Math.round(directions.duration / 60)}min`,
             steps: directions.steps.length,

@@ -116,7 +116,7 @@ export default function CollectionDetailScreen() {
 
   const handleItemPress = (item: SavedItem) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    console.log('Item pressed:', item);
+    if (__DEV__) console.log('Item pressed:', item);
   };
 
   const renderGridItems = () => {

@@ -150,7 +150,7 @@ export default function ReportScreen() {
       );
     } catch (err) {
       setIsSubmitting(false);
-      console.warn('Report submission error:', err);
+      if (__DEV__) console.warn('Report submission error:', err);
       Alert.alert('Error', 'Failed to submit report. Please try again.');
     }
   };

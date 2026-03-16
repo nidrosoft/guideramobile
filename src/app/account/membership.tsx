@@ -90,7 +90,7 @@ export default function MembershipScreen() {
   const handleUpgrade = (tier: MembershipTierInfo) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     // In production, this would open Stripe checkout
-    console.log('Upgrade to:', tier.name);
+    if (__DEV__) console.log('Upgrade to:', tier.name);
   };
 
   const currentTierInfo = rewardsService.getTierInfo(currentTier);

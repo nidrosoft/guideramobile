@@ -92,7 +92,7 @@ export default function MessagesListScreen() {
       );
       setConversations(combined);
     } catch (err) {
-      console.warn('MessagesListScreen load error:', err);
+      if (__DEV__) console.warn('MessagesListScreen load error:', err);
     } finally {
       setLoading(false);
     }

@@ -164,7 +164,7 @@ export const useTripStore = create<TripStore>((set, get) => ({
       const { data: ownedTrips, error: ownedError } = await ownedQuery;
 
       if (ownedError) {
-        console.warn('Failed to fetch owned trips:', ownedError.message);
+        if (__DEV__) console.warn('Failed to fetch owned trips:', ownedError.message);
         set({ trips: [], isLoading: false, error: ownedError.message });
         return;
       }
@@ -201,7 +201,7 @@ export const useTripStore = create<TripStore>((set, get) => ({
       const hasMore = (ownedTrips || []).length >= PAGE_SIZE;
       set({ trips: realTrips, isLoading: false, hasMore });
     } catch (error) {
-      console.warn('fetchTrips error:', error);
+      if (__DEV__) console.warn('fetchTrips error:', error);
       set({ trips: [], error: (error as Error).message, isLoading: false });
     }
   },

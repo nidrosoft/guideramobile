@@ -104,7 +104,7 @@ export default function VerifyOTP() {
             return;
           }
           // Missing fields are optional — try to complete anyway
-          console.log('[VerifyOTP] missing_requirements, missingFields:', JSON.stringify(attempt));
+          if (__DEV__) console.log('[VerifyOTP] missing_requirements, missingFields:', JSON.stringify(attempt));
           setError('Sign up incomplete. Please try signing up with email instead.');
         } else {
           setError('Verification incomplete. Please try again.');

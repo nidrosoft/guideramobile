@@ -56,7 +56,7 @@ export function useVisionOCR(): UseVisionOCRReturn {
     } catch (e: any) {
       const msg = e?.message || 'Failed to extract text from image.';
       setError(msg);
-      console.warn('[useVisionOCR] Error:', e);
+      if (__DEV__) console.warn('[useVisionOCR] Error:', e);
       return null;
     } finally {
       setIsProcessing(false);

@@ -95,7 +95,7 @@ export default function DealDetailScreen() {
         setIsSaved((saved || []).length > 0);
       }
     } catch (err) {
-      console.warn('Failed to load deal:', err);
+      if (__DEV__) console.warn('Failed to load deal:', err);
     } finally {
       setIsLoading(false);
     }

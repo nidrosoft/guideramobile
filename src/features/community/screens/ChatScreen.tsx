@@ -108,7 +108,7 @@ export default function ChatScreen() {
         }));
         setMessages(mapped);
       } catch (err) {
-        console.warn('ChatScreen load error:', err);
+        if (__DEV__) console.warn('ChatScreen load error:', err);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -149,7 +149,7 @@ export default function ChatScreen() {
         prev.map(m => m.id === tempId ? { ...m, id: saved.id, status: 'delivered' as const } : m)
       );
     } catch (err) {
-      console.warn('Failed to send message:', err);
+      if (__DEV__) console.warn('Failed to send message:', err);
       setMessages(prev => 
         prev.map(m => m.id === tempId ? { ...m, status: 'sent' as const } : m)
       );

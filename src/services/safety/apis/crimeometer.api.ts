@@ -67,7 +67,7 @@ export class CrimeoMeterAPI {
 
       return { totalIncidents, crimeScore, incidents: incidents.slice(0, 20) };
     } catch (e) {
-      console.warn('CrimeoMeter API error:', e);
+      if (__DEV__) console.warn('CrimeoMeter API error:', e);
       return null;
     }
   }

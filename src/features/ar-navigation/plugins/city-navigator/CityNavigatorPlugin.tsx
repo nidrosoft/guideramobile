@@ -26,11 +26,11 @@ export const cityNavigatorPlugin: ARPlugin = {
   },
   
   onActivate: () => {
-    console.log('City Navigator activated');
+    if (__DEV__) console.log('City Navigator activated');
   },
   
   onDeactivate: () => {
-    console.log('City Navigator deactivated');
+    if (__DEV__) console.log('City Navigator deactivated');
   },
 };
 
