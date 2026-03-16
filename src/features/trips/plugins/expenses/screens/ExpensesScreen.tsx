@@ -285,7 +285,8 @@ export default function ExpensesScreen() {
   };
 
   const formatCurrency = (amount: number) => {
-    return `$${amount.toFixed(2)}`;
+    const symbol = budgetCurrency === 'EUR' ? '€' : budgetCurrency === 'GBP' ? '£' : budgetCurrency === 'JPY' ? '¥' : '$';
+    return `${symbol}${amount.toFixed(budgetCurrency === 'JPY' ? 0 : 2)}`;
   };
 
   const formatDate = (date: Date) => {
