@@ -23,6 +23,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { groupService } from '@/services/community/group.service';
 import { buddyService } from '@/services/community/buddy.service';
+import { notifyNewFollower } from '@/services/notifications/community-notifications';
 import { eventService } from '@/services/community/event.service';
 import { activityService } from '@/services/community/activity.service';
 import { supabase } from '@/lib/supabase/client';
@@ -105,7 +106,7 @@ function mapSuggestionToBuddyMatch(s: any): BuddyMatch {
     verificationLevel: s.user.isVerified ? 'id' : 'none',
     countriesVisited: s.user.countryCount || 0,
     rating: s.user.averageRating || 0,
-    connectionStatus: 'none',
+    connectionStatus: s.connectionStatus || s.status || 'none',
     sharedTrip: s.tripOverlap
       ? {
           destination: s.tripOverlap.destination,
@@ -261,11 +262,21 @@ export default function DiscoverFeed({
       setTravelers(prev => prev.map(t =>
         t.userId === targetUserId ? { ...t, connectionStatus: 'pending_sent' as any } : t
       ));
-      Alert.alert('Request Sent!', 'Your connection request has been sent.');
+      // Notify target user about the connection request
+      const senderName = profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : 'Someone';
+      notifyNewFollower(targetUserId, senderName, profile?.avatar_url).catch(() => {});
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Could not send connection request.');
+      const msg = err?.message || '';
+      if (msg.includes('already pending') || msg.includes('Already buddies')) {
+        // Already pending or connected — just update UI, no error
+        setTravelers(prev => prev.map(t =>
+          t.userId === targetUserId ? { ...t, connectionStatus: 'pending_sent' as any } : t
+        ));
+      } else {
+        Alert.alert('Error', msg || 'Could not send connection request.');
+      }
     }
-  }, [userId]);
+  }, [userId, profile]);
 
   const hasNoContent = !initialLoading &&
     trendingGroups.length === 0 &&

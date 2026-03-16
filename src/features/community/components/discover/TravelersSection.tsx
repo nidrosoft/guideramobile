@@ -37,7 +37,7 @@ export default function TravelersSection({
   return (
     <View style={styles.section}>
       <SectionHeader
-        title="Travelers You Might Like"
+        title="Connect with Other Travelers"
         onSeeAll={onSeeAll}
       />
       {loading ? (

@@ -201,7 +201,7 @@ export default function DiscoverTabContent({
       {/* Travelers You Might Like */}
       <View style={styles.section}>
         <SectionHeader
-          title="👥 Travelers You Might Like"
+          title="👥 Connect with Other Travelers"
           onSeeAll={onSeeAllTravelers}
         />
         <Text style={[styles.emptyHint, { color: tc.textTertiary }]}>Connect with travelers on your trips</Text>
