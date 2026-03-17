@@ -100,7 +100,7 @@ export default function FlightSearchScreen({
         serviceType="flight"
         title="Find a Flight"
         searchButtonLabel="Search"
-        backgroundImage={require('../../../../../../assets/images/flightbg.png')}
+        backgroundImage={require('../../../../../../assets/images/flightbg.jpg')}
         onClose={onBack}
         onSearch={handleSearch}
         initialFlightData={initialData}

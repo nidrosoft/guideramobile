@@ -250,7 +250,7 @@ export default function HotelResultsScreen({
     <View style={[styles.container, { backgroundColor: tc.background }]}>
       {/* Header */}
       <ImageBackground
-        source={require('../../../../../../assets/images/bookingbg.png')}
+        source={require('../../../../../../assets/images/bookingbg.jpg')}
         style={[styles.header, { paddingTop: insets.top + spacing.sm }]}
         resizeMode="cover"
       >

@@ -62,7 +62,7 @@ export default function PackageSearchScreen({
         serviceType="package"
         title="Build Your Package"
         searchButtonLabel="Build Your Package"
-        backgroundImage={require('../../../../../../assets/images/packagebg.png')}
+        backgroundImage={require('../../../../../../assets/images/packagebg.jpg')}
         onClose={onClose}
         onSearch={handleSearch}
         initialPackageData={{

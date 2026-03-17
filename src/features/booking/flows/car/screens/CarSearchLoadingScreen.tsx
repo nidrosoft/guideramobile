@@ -268,7 +268,7 @@ export default function CarSearchLoadingScreen({ onComplete }: CarSearchLoadingS
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
       <ImageBackground
-        source={require('../../../../../../assets/images/carbg.png')}
+        source={require('../../../../../../assets/images/carbg.jpg')}
         style={[styles.background, { paddingTop: insets.top }]}
         resizeMode="cover"
       >

@@ -199,7 +199,7 @@ export default function FlightDealScreen({
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Hero Header with Flight Image */}
       <ImageBackground
-        source={require('../../../../../../assets/images/flightbg.png')}
+        source={require('../../../../../../assets/images/flightbg.jpg')}
         style={[styles.heroHeader, { paddingTop: insets.top + spacing.xs }]}
         resizeMode="cover"
       >

@@ -227,7 +227,7 @@ export default function ExperienceResultsScreen({
 
       {/* Header with Background Image */}
       <ImageBackground
-        source={require('../../../../../../assets/images/experiencebg.png')}
+        source={require('../../../../../../assets/images/experiencebg.jpg')}
         style={[styles.header, { paddingTop: insets.top + spacing.sm }]}
         resizeMode="cover"
       >

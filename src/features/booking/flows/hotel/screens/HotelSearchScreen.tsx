@@ -118,7 +118,7 @@ export default function HotelSearchScreen({
         serviceType="hotel"
         title="Find a Hotel"
         searchButtonLabel="Search"
-        backgroundImage={require('../../../../../../assets/images/bookingbg.png')}
+        backgroundImage={require('../../../../../../assets/images/bookingbg.jpg')}
         onClose={onBack}
         onSearch={handleSearch}
         initialHotelData={initialData}

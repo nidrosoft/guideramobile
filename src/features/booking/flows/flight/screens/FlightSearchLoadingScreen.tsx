@@ -210,7 +210,7 @@ export default function FlightSearchLoadingScreen({
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
       <ImageBackground
-        source={require('../../../../../../assets/images/flightbg.png')}
+        source={require('../../../../../../assets/images/flightbg.jpg')}
         style={[styles.background, { paddingTop: insets.top }]}
         resizeMode="cover"
       >

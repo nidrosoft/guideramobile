@@ -141,7 +141,7 @@ export default function CarResultsScreen({
     <View style={[styles.container, { backgroundColor: tc.background }]}>
       {/* Header with Background Image */}
       <ImageBackground
-        source={require('../../../../../../assets/images/carbg.png')}
+        source={require('../../../../../../assets/images/carbg.jpg')}
         style={[styles.header, { paddingTop: insets.top + spacing.md }]}
         resizeMode="cover"
       >

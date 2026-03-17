@@ -53,7 +53,7 @@ export default function CarSearchScreen({ onSearch, onBack, onClose }: CarSearch
         serviceType="car"
         title="Find Your Car"
         searchButtonLabel="Search Cars"
-        backgroundImage={require('../../../../../../assets/images/carbg.png')}
+        backgroundImage={require('../../../../../../assets/images/carbg.jpg')}
         onClose={onClose}
         onSearch={handleSearch}
         initialCarData={{

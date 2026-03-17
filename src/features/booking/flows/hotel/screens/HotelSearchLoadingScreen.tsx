@@ -269,7 +269,7 @@ export default function HotelSearchLoadingScreen({
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
       <ImageBackground
-        source={require('../../../../../../assets/images/bookingbg.png')}
+        source={require('../../../../../../assets/images/bookingbg.jpg')}
         style={[styles.background, { paddingTop: insets.top }]}
         resizeMode="cover"
       >

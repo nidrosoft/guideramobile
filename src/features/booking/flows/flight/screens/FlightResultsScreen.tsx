@@ -441,7 +441,7 @@ export default function FlightResultsScreen({
     <View style={[styles.container, { backgroundColor: tc.background }]}>
       {/* Header with Background Image */}
       <ImageBackground
-        source={require('../../../../../../assets/images/flightbg.png')}
+        source={require('../../../../../../assets/images/flightbg.jpg')}
         style={[styles.header, { paddingTop: insets.top + spacing.md }]}
         resizeMode="cover"
       >

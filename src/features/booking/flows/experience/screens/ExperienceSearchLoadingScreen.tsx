@@ -229,7 +229,7 @@ export default function ExperienceSearchLoadingScreen({
   return (
     <View style={styles.container}>
       <ImageBackground
-        source={require('../../../../../../assets/images/experiencebg.png')}
+        source={require('../../../../../../assets/images/experiencebg.jpg')}
         style={[styles.background, { paddingTop: insets.top }]}
         resizeMode="cover"
       >

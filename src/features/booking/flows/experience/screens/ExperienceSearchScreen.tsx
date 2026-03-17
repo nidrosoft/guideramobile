@@ -60,7 +60,7 @@ export default function ExperienceSearchScreen({
         serviceType="experience"
         title="Find Experiences"
         searchButtonLabel="Search Experiences"
-        backgroundImage={require('../../../../../../assets/images/experiencebg.png')}
+        backgroundImage={require('../../../../../../assets/images/experiencebg.jpg')}
         onClose={onClose}
         onSearch={handleSearch}
         initialExperienceData={{
