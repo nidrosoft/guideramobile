@@ -56,12 +56,7 @@
       "expo-router",
       "expo-camera",
       "expo-location",
-      [
-        "@rnmapbox/maps",
-        {
-          "RNMapboxMapsVersion": "11.0.0"
-        }
-      ],
+      "@rnmapbox/maps",
       [
         "expo-build-properties",
         {
