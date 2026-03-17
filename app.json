@@ -69,7 +69,11 @@
             "targetSdkVersion": 35
           }
         }
-      ]
+      ],
+      "@sentry/react-native",
+      "expo-maps",
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
