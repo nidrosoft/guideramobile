@@ -1,63 +1,29 @@
 /**
  * MANUAL RESULT STEP
  * 
- * Step 5 in manual import flow - Display fetched booking details.
- * User can review and confirm the booking information.
+ * Step 5 in manual import flow - Display processed booking details.
+ * User reviews the real data they entered and confirms to create the trip.
  */
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Airplane, Building, Car, Calendar, Location, TickCircle } from 'iconsax-react-native';
+import { Airplane, Building, Car, TickCircle, TicketStar } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { StepComponentProps } from '../../types/import-flow.types';
 
-// Mock booking data based on type
-const getMockBooking = (type: string, data: any) => {
-  if (type === 'flight') {
-    return {
-      icon: Airplane,
-      title: `${data.airline || 'Airline'} ${data.flightNumber || 'Flight'}`,
-      details: [
-        { label: 'Confirmation', value: data.confirmationCode || 'N/A' },
-        { label: 'Departure', value: 'San Francisco (SFO)' },
-        { label: 'Arrival', value: 'New York (JFK)' },
-        { label: 'Date', value: 'Dec 15, 2024 • 10:30 AM' },
-        { label: 'Duration', value: '5h 30m' },
-      ],
-    };
-  } else if (type === 'hotel') {
-    return {
-      icon: Building,
-      title: data.hotelName || 'Hotel Reservation',
-      details: [
-        { label: 'Confirmation', value: data.confirmationCode || 'N/A' },
-        { label: 'Location', value: 'Paris, France' },
-        { label: 'Check-in', value: 'Dec 15, 2024 • 3:00 PM' },
-        { label: 'Check-out', value: 'Dec 20, 2024 • 11:00 AM' },
-        { label: 'Nights', value: '5 nights' },
-      ],
-    };
-  } else if (type === 'car') {
-    return {
-      icon: Car,
-      title: `${data.carCompany || 'Car Rental'}`,
-      details: [
-        { label: 'Confirmation', value: data.confirmationCode || 'N/A' },
-        { label: 'Vehicle', value: 'Compact SUV' },
-        { label: 'Pickup', value: 'LAX Airport • Dec 15, 2024' },
-        { label: 'Return', value: 'LAX Airport • Dec 20, 2024' },
-        { label: 'Duration', value: '5 days' },
-      ],
-    };
-  }
-  return { icon: Airplane, title: 'Booking', details: [] };
+const TYPE_ICONS: Record<string, any> = {
+  flight: Airplane,
+  hotel: Building,
+  car: Car,
+  activity: TicketStar,
 };
 
 export default function ManualResultStep({ onNext, data }: StepComponentProps) {
+  const { colors: tc } = useTheme();
   const type = data.manualType || 'flight';
-  const booking = getMockBooking(type, data);
-  const Icon = booking.icon;
+  const booking = data.confirmedBooking || { title: 'Booking', details: [] };
+  const Icon = TYPE_ICONS[type] || Airplane;
 
   return (
     <ScrollView 
@@ -66,29 +32,29 @@ export default function ManualResultStep({ onNext, data }: StepComponentProps) {
       contentContainerStyle={styles.content}
     >
       <View style={styles.successBadge}>
-        <TickCircle size={24} color={colors.success} variant="Bold" />
-        <Text style={styles.successText}>Booking Found!</Text>
+        <TickCircle size={24} color={tc.success} variant="Bold" />
+        <Text style={[styles.successText, { color: tc.success }]}>Details Ready</Text>
       </View>
 
-      <Text style={styles.title}>Review Your Booking</Text>
-      <Text style={styles.description}>
+      <Text style={[styles.title, { color: tc.textPrimary }]}>Review Your Booking</Text>
+      <Text style={[styles.description, { color: tc.textSecondary }]}>
         Confirm the details below are correct
       </Text>
 
       {/* Booking Card */}
-      <View style={styles.bookingCard}>
-        <View style={styles.bookingHeader}>
-          <View style={styles.iconContainer}>
-            <Icon size={28} color={colors.primary} variant="Bold" />
+      <View style={[styles.bookingCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+        <View style={[styles.bookingHeader, { borderBottomColor: tc.borderSubtle }]}>
+          <View style={[styles.iconContainer, { backgroundColor: tc.primary + '15' }]}>
+            <Icon size={28} color={tc.primary} variant="Bold" />
           </View>
-          <Text style={styles.bookingTitle}>{booking.title}</Text>
+          <Text style={[styles.bookingTitle, { color: tc.textPrimary }]}>{booking.title}</Text>
         </View>
 
         <View style={styles.detailsList}>
-          {booking.details.map((detail, index) => (
+          {booking.details.map((detail: { label: string; value: string }, index: number) => (
             <View key={index} style={styles.detailRow}>
-              <Text style={styles.detailLabel}>{detail.label}</Text>
-              <Text style={styles.detailValue}>{detail.value}</Text>
+              <Text style={[styles.detailLabel, { color: tc.textSecondary }]}>{detail.label}</Text>
+              <Text style={[styles.detailValue, { color: tc.textPrimary }]}>{detail.value}</Text>
             </View>
           ))}
         </View>
@@ -97,7 +63,7 @@ export default function ManualResultStep({ onNext, data }: StepComponentProps) {
       {/* Buttons */}
       <View style={styles.buttonsContainer}>
         <TouchableOpacity
-          style={styles.confirmButton}
+          style={[styles.confirmButton, { backgroundColor: tc.primary }]}
           onPress={() => onNext({ confirmedBooking: booking })}
         >
           <Text style={styles.confirmButtonText}>Add to Trip</Text>

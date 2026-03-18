@@ -657,16 +657,9 @@ serve(async (req: Request) => {
       }
     }
 
-    // If no results from any provider, use fallback mock data for testing
+    // If no results from any provider, return empty with message
     if (results.length === 0) {
-      console.log('No results from APIs, using fallback mock data');
-      const fallbackResults = generateFallbackFlights(request);
-      providers.push({
-        code: 'fallback',
-        responseTime: 0,
-        resultCount: fallbackResults.length,
-      });
-      results = fallbackResults;
+      console.log('No results from any flight provider for this route');
     }
 
     // Sort by price

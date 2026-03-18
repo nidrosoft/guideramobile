@@ -75,7 +75,7 @@ export default function RoomDetailSheet({
         >
           {/* Room Image */}
           <Image
-            source={{ uri: room.images[0] || 'https://via.placeholder.com/400x200' }}
+            source={{ uri: room.images[0] || undefined }}
             style={styles.roomImage}
             resizeMode="cover"
           />

@@ -9,7 +9,6 @@ import { spacing, typography, borderRadius, colors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import { BookingType, FlightDetails, HotelDetails, CarRentalDetails, ActivityDetails } from '@/features/trips/types/trip.types';
-import { BookingPassBottomSheet } from '@/features/trips/components/BookingPassBottomSheet';
 import InviteTravelersBottomSheet from '@/features/trips/components/InviteTravelersBottomSheet';
 import CircleButton from '@/components/atoms/CircleButton/CircleButton';
 import { useToast } from '@/contexts/ToastContext';
@@ -152,7 +151,6 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
   const { showSuccess } = useToast();
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
   const isLoading = useTripStore(state => state.isLoading);
-  const [selectedBooking, setSelectedBooking] = useState<{ id: string; type: BookingType; details: any; number: string; status: string } | null>(null);
   const [inviteSheetVisible, setInviteSheetVisible] = useState(false);
   const [packingProgress, setPackingProgress] = useState({ total: 0, packed: 0, percentage: 0 });
   const [invitations, setInvitations] = useState<TripInvitation[]>([]);
@@ -179,15 +177,6 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
 
   const duration = Math.ceil((trip.endDate.getTime() - trip.startDate.getTime()) / (1000 * 60 * 60 * 24));
 
-  const openBookingPass = (booking: any) => {
-    setSelectedBooking({
-      id: booking.id,
-      type: booking.type,
-      details: booking.details,
-      number: booking.confirmationNumber || booking.id,
-      status: booking.status,
-    });
-  };
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event: any) => {
@@ -307,7 +296,7 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
               {flights.map(booking => {
                 const details = booking.details as FlightDetails;
                 return (
-                  <TouchableOpacity key={booking.id} style={[styles.bookingCard, { borderBottomColor: colors.borderSubtle }]} onPress={() => openBookingPass(booking)} activeOpacity={0.7}>
+                  <TouchableOpacity key={booking.id} style={[styles.bookingCard, { borderBottomColor: colors.borderSubtle }]} activeOpacity={0.7}>
                     <View style={[styles.bookingIcon, { backgroundColor: `${colors.primary}15` }]}>
                       <Airplane size={24} color={colors.primary} variant="Bold" />
                     </View>
@@ -331,7 +320,7 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
               {hotels.map(booking => {
                 const details = booking.details as HotelDetails;
                 return (
-                  <TouchableOpacity key={booking.id} style={[styles.bookingCard, { borderBottomColor: colors.borderSubtle }]} onPress={() => openBookingPass(booking)} activeOpacity={0.7}>
+                  <TouchableOpacity key={booking.id} style={[styles.bookingCard, { borderBottomColor: colors.borderSubtle }]} activeOpacity={0.7}>
                       <View style={[styles.bookingIcon, { backgroundColor: `${colors.success}15` }]}>
                         <Building size={24} color={colors.success} variant="Bold" />
                       </View>
@@ -355,7 +344,7 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
               {cars.map(booking => {
                 const details = booking.details as CarRentalDetails;
                 return (
-                  <TouchableOpacity key={booking.id} style={[styles.bookingCard, { borderBottomColor: colors.borderSubtle }]} onPress={() => openBookingPass(booking)} activeOpacity={0.7}>
+                  <TouchableOpacity key={booking.id} style={[styles.bookingCard, { borderBottomColor: colors.borderSubtle }]} activeOpacity={0.7}>
                       <View style={[styles.bookingIcon, { backgroundColor: `${colors.warning}15` }]}>
                         <Car size={24} color={colors.warning} variant="Bold" />
                       </View>
@@ -379,7 +368,7 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
               {activities.map(booking => {
                 const details = booking.details as ActivityDetails;
                 return (
-                  <TouchableOpacity key={booking.id} style={[styles.bookingCard, { borderBottomColor: colors.borderSubtle }]} onPress={() => openBookingPass(booking)} activeOpacity={0.7}>
+                  <TouchableOpacity key={booking.id} style={[styles.bookingCard, { borderBottomColor: colors.borderSubtle }]} activeOpacity={0.7}>
                       <View style={[styles.bookingIcon, { backgroundColor: `${colors.info}15` }]}>
                         <Location size={24} color={colors.info} variant="Bold" />
                       </View>
@@ -614,17 +603,6 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
         <CircleButton icon={<More size={24} color={colors.textPrimary} />} onPress={() => {}} />
       </Animated.View>
 
-      {/* Booking Pass Bottom Sheet */}
-      {selectedBooking && (
-        <BookingPassBottomSheet
-          visible={!!selectedBooking}
-          onClose={() => setSelectedBooking(null)}
-          bookingType={selectedBooking.type}
-          details={selectedBooking.details}
-          bookingNumber={selectedBooking.number}
-          status={selectedBooking.status}
-        />
-      )}
 
       {/* Invite Travelers Bottom Sheet */}
       <InviteTravelersBottomSheet

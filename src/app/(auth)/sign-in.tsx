@@ -64,7 +64,8 @@ export default function SignIn() {
         if (isNewUser) {
           router.replace('/(onboarding)/intro');
         } else {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          // Brief delay for Clerk session propagation before navigation
+          await new Promise(resolve => setTimeout(resolve, 300));
           router.replace('/(tabs)');
         }
         return;

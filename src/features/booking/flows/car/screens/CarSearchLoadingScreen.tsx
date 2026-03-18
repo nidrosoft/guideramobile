@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
@@ -103,6 +103,7 @@ export default function CarSearchLoadingScreen({ onComplete }: CarSearchLoadingS
         await search(providerParams);
       } catch (error) {
         console.error('Car search error:', error);
+        Alert.alert('Search Failed', 'Unable to search for cars right now. Please try again later.');
         navigateOnce([]);
       }
     };

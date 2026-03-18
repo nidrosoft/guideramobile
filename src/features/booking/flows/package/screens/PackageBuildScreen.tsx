@@ -629,7 +629,7 @@ export default function PackageBuildScreen({
       id: exp.id,
       title: exp.title,
       shortDescription: exp.shortDescription,
-      images: exp.images || ['https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=400'],
+      images: exp.images || [],
       category: exp.category,
       duration: exp.duration || 180,
       price: typeof exp.price === 'number' ? exp.price : (exp.price?.amount || 0),

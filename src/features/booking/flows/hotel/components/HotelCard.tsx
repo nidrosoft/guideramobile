@@ -33,7 +33,7 @@ export default function HotelCard({
   isFavorite = false,
 }: HotelCardProps) {
   const totalPrice = hotel.pricePerNight.amount * nights;
-  const mainImage = hotel.images[0]?.url || 'https://via.placeholder.com/300x200';
+  const mainImage = hotel.images[0]?.url || undefined;
   
   // Get top 3 amenities
   const topAmenities = hotel.amenities.slice(0, 3).map(a => a.name);

@@ -3,7 +3,7 @@
  * React hooks for trip management
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import {
   Trip,
@@ -161,6 +161,9 @@ export function useTrip(
     error: null,
   });
 
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
   const fetchTrip = useCallback(async () => {
     if (!tripId || !userId) {
       setState(prev => ({ ...prev, isLoading: false }));
@@ -174,14 +177,14 @@ export function useTrip(
         includeTravelers: true,
         includeBookings: true,
         includeActivities: true,
-        ...options,
+        ...optionsRef.current,
       });
 
       setState({ trip, isLoading: false, error: null });
     } catch (error) {
       setState({ trip: null, isLoading: false, error: error as Error });
     }
-  }, [tripId, userId, JSON.stringify(options)]);
+  }, [tripId, userId]);
 
   useEffect(() => {
     fetchTrip();

@@ -120,40 +120,8 @@ export default function DepartureAdvisorSheet({
       const result = await departureAdvisorService.calculate(params);
       setAdvisory(result);
     } catch (err) {
-      if (__DEV__) console.warn('Departure advisor: edge function unavailable, using local estimate.', err);
-      // Fallback to mock data so the UI can be previewed before edge function is deployed
-      const now = new Date();
-      const depDate = new Date(departureTime);
-      const leaveBy = new Date(depDate.getTime() - 170 * 60000); // 2h50m before
-      const boardingAt = new Date(depDate.getTime() - 45 * 60000); // 45m before
-      setAdvisory({
-        advisoryId: null,
-        leaveByTime: leaveBy.toISOString(),
-        boardingTime: boardingAt.toISOString(),
-        totalMinutesNeeded: 170,
-        breakdown: {
-          driveTime: 45,
-          trafficBuffer: 10,
-          parkingAndTransfer: 12,
-          checkinCutoff: isInternational ? 60 : 45,
-          securityEstimate: 25,
-          gateWalkTime: 12,
-          comfortBuffer: 20,
-          totalMinutes: 170,
-        },
-        transport: [
-          { mode: 'drive', durationMinutes: 55, distanceKm: 42, trafficLevel: 'moderate', departBy: new Date(leaveBy.getTime() - 5 * 60000).toISOString() },
-          { mode: 'rideshare', durationMinutes: 63, distanceKm: 42, estimatedCost: { min: 32, max: 48, currency: 'USD' }, trafficLevel: 'moderate', departBy: new Date(leaveBy.getTime() - 13 * 60000).toISOString() },
-          { mode: 'transit', durationMinutes: 85, distanceKm: 38, trafficLevel: 'light', departBy: new Date(leaveBy.getTime() - 30 * 60000).toISOString() },
-        ],
-        risks: [
-          { category: 'Traffic', level: 'moderate', detail: 'Moderate traffic detected on your route.' },
-          { category: 'Security', level: 'moderate', detail: `TSA estimated at 25 min.` },
-          { category: 'Flight', level: 'low', detail: 'Flight is on time.' },
-        ],
-        reasoning: `We calculated a 45 minute drive to ${departureAirport} based on current traffic conditions (moderate). Estimated 25 min at security based on ${departureAirport} at this time of day. ${isInternational ? 'International flights require check-in at least 60 minutes before departure.' : 'Domestic flights recommend check-in at least 45 minutes before departure.'} We added a 20 minute comfort buffer.`,
-        confidence: 'medium',
-      });
+      if (__DEV__) console.warn('Departure advisor calculation failed:', err);
+      setError('Unable to calculate departure time. Please check your location services and try again.');
     } finally {
       setLoading(false);
     }

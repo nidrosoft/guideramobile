@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, Dimensions, Alert } from 'react-native';
 import { Airplane, Wallet3, CloseCircle, DocumentDownload } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -25,8 +25,25 @@ export const BookingPassBottomSheet: React.FC<BookingPassBottomSheetProps> = ({
   status,
 }) => {
   if (bookingType !== BookingType.FLIGHT) {
-    // For now, only handle flights
-    return null;
+    return (
+      <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+        <View style={styles.overlay}>
+          <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
+          <View style={styles.bottomSheet}>
+            <View style={styles.handleBar} />
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <CloseCircle size={28} color={colors.gray400} variant="Bold" />
+            </TouchableOpacity>
+            <View style={{ padding: spacing.xl, alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+              <Text style={{ fontSize: typography.fontSize.lg, fontWeight: '600', color: colors.gray900, marginBottom: spacing.sm }}>Booking Pass</Text>
+              <Text style={{ fontSize: typography.fontSize.base, color: colors.gray500, textAlign: 'center' }}>
+                {bookingType.charAt(0).toUpperCase() + bookingType.slice(1)} boarding passes are coming soon.
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
   }
 
   return (
@@ -151,12 +168,12 @@ export const BookingPassBottomSheet: React.FC<BookingPassBottomSheetProps> = ({
 
             {/* Action Buttons */}
             <View style={styles.actionsContainer}>
-              <TouchableOpacity style={styles.primaryButton}>
+              <TouchableOpacity style={styles.primaryButton} onPress={() => Alert.alert('Coming Soon', 'Ticket download will be available in a future update.')}>
                 <DocumentDownload size={20} color={colors.white} variant="Bold" />
                 <Text style={styles.primaryButtonText}>Download Ticket</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.secondaryButton}>
+              <TouchableOpacity style={styles.secondaryButton} onPress={() => Alert.alert('Coming Soon', 'Add to Wallet will be available in a future update.')}>
                 <Wallet3 size={20} color={colors.primary} variant="Bold" />
                 <Text style={styles.secondaryButtonText}>Add to Wallet</Text>
               </TouchableOpacity>

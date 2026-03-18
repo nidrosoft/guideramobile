@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
@@ -133,6 +133,7 @@ export default function ExperienceSearchLoadingScreen({
         onComplete();
       } catch (error) {
         console.error('Experience search error:', error);
+        Alert.alert('Search Failed', 'Unable to search for experiences right now. Please try again later.');
         onComplete();
       }
     };
