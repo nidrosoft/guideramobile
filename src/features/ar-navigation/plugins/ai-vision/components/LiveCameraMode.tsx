@@ -28,32 +28,65 @@ export default function LiveCameraMode({ userLanguage, onLanguageChange, onClose
   const cameraRef = useRef<any>(null);
   const { isActive, isProcessing, currentResult, error, start, stop } = useFrameAnalysis();
   const [isMuted, setIsMuted] = useState(false);
+  const [isListening, setIsListening] = useState(false); // AI only analyzes when user asks
+  const [hasGreeted, setHasGreeted] = useState(false);
   const lastSpokenRef = useRef<string>('');
+  const isMutedRef = useRef(false); // ref for mute state inside async callbacks
 
-  // Start frame analysis when camera is ready
+  // Keep mute ref in sync with state
+  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
+
+  // Welcome greeting on first open (with user's name if available)
+  useEffect(() => {
+    if (hasGreeted) return;
+    setHasGreeted(true);
+    const timer = setTimeout(async () => {
+      if (isMutedRef.current) return;
+      try {
+        // Try to get user's first name for personalized greeting
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        const profileStr = await AsyncStorage.getItem('@guidera_profile_cache');
+        let name = '';
+        if (profileStr) {
+          try { name = JSON.parse(profileStr)?.first_name || ''; } catch {}
+        }
+        const greeting = name
+          ? `Hey ${name}! I'm your AI travel companion. Point your camera at anything — a sign, a landmark, a menu — and tap the "What's this?" button when you want me to take a look.`
+          : `Hey there! I'm your AI travel companion. Point your camera at anything interesting and tap "What's this?" when you want me to tell you about it.`;
+        await speak(greeting, { language: 'en', rate: 1.05 });
+      } catch {}
+    }, 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Camera ready — but DON'T auto-start analysis (passive mode)
   const handleCameraReady = useCallback(() => {
-    if (cameraRef.current && !isActive) {
+    // Camera is ready but we wait for user to tap "What's this?"
+  }, []);
+
+  // User taps "What's this?" — take ONE snapshot and analyze it
+  const handleAskAI = useCallback(async () => {
+    if (!cameraRef.current || isProcessing) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsListening(true);
+
+    // Take a single snapshot and analyze it
+    if (!isActive) {
       start(cameraRef.current, userLanguage);
     }
-  }, [isActive, start, userLanguage]);
 
-  // Restart analysis when language changes
-  useEffect(() => {
-    if (isActive && cameraRef.current) {
+    // Auto-stop after one analysis cycle (3 seconds max)
+    setTimeout(() => {
       stop();
-      const timer = setTimeout(() => {
-        if (cameraRef.current) {
-          start(cameraRef.current, userLanguage);
-        }
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [userLanguage]);
+      setIsListening(false);
+    }, 4000);
+  }, [isActive, isProcessing, start, stop, userLanguage]);
 
-  // Speak translation when new result arrives (if not muted)
+  // Speak result when new analysis arrives (only if not muted)
   useEffect(() => {
     if (
-      !isMuted &&
+      !isMutedRef.current &&
+      isListening &&
       currentResult?.hasText &&
       currentResult.translation &&
       currentResult.translation !== lastSpokenRef.current
@@ -61,10 +94,10 @@ export default function LiveCameraMode({ userLanguage, onLanguageChange, onClose
       lastSpokenRef.current = currentResult.translation;
       speak(currentResult.translation, {
         language: userLanguage,
-        rate: 0.9,
+        rate: 1.05,
       }).catch(() => {});
     }
-  }, [currentResult, isMuted, userLanguage]);
+  }, [currentResult, isListening, userLanguage]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -76,8 +109,10 @@ export default function LiveCameraMode({ userLanguage, onLanguageChange, onClose
 
   const toggleMute = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setIsMuted(prev => !prev);
-    if (!isMuted) {
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    isMutedRef.current = newMuted;
+    if (newMuted) {
       stopSpeaking();
     }
   };
@@ -92,25 +127,19 @@ export default function LiveCameraMode({ userLanguage, onLanguageChange, onClose
         onCameraReady={handleCameraReady}
       />
 
-      {/* Top controls — close, live indicator, language picker all inline */}
+      {/* Top controls — live indicator, language picker, close */}
       <View style={styles.topBar}>
-        {/* Live indicator */}
         <View style={styles.liveIndicator}>
-          <View style={[styles.liveDot, isActive && styles.liveDotActive]} />
+          <View style={[styles.liveDot, isListening && styles.liveDotActive]} />
           <Text style={styles.liveText}>
-            {isActive ? 'LIVE' : 'STARTING...'}
+            {isListening ? 'LOOKING...' : isProcessing ? 'THINKING...' : 'READY'}
           </Text>
         </View>
 
         <View style={{ flex: 1 }} />
 
-        {/* Language picker */}
-        <LanguagePicker
-          selectedLanguage={userLanguage}
-          onSelect={onLanguageChange}
-        />
+        <LanguagePicker selectedLanguage={userLanguage} onSelect={onLanguageChange} />
 
-        {/* Close button — inline next to language picker */}
         {onClose && (
           <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={styles.closeButton}>
             <CloseCircle size={32} color="rgba(255,255,255,0.85)" variant="Bold" />
@@ -118,12 +147,27 @@ export default function LiveCameraMode({ userLanguage, onLanguageChange, onClose
         )}
       </View>
 
-      {/* Translation overlay */}
+      {/* Translation overlay — shows result when available */}
       <TranslationOverlay result={currentResult} isProcessing={isProcessing} />
+
+      {/* "What's this?" — main CTA button in center */}
+      <View style={styles.askContainer}>
+        <TouchableOpacity
+          style={[styles.askButton, isListening && styles.askButtonActive]}
+          onPress={handleAskAI}
+          activeOpacity={0.8}
+          disabled={isProcessing}
+        >
+          {isProcessing ? (
+            <Text style={styles.askButtonText}>Analyzing...</Text>
+          ) : (
+            <Text style={styles.askButtonText}>What's this?</Text>
+          )}
+        </TouchableOpacity>
+      </View>
 
       {/* Bottom controls (above mode selector) */}
       <View style={styles.bottomControls}>
-        {/* Mute toggle */}
         <TouchableOpacity style={styles.controlButton} onPress={toggleMute} activeOpacity={0.7}>
           {isMuted ? (
             <VolumeCross size={24} color="#FFFFFF" variant="Bold" />
@@ -133,7 +177,6 @@ export default function LiveCameraMode({ userLanguage, onLanguageChange, onClose
           <Text style={styles.controlLabel}>{isMuted ? 'Unmute' : 'Mute'}</Text>
         </TouchableOpacity>
 
-        {/* Voice settings */}
         {onVoiceSettings && (
           <TouchableOpacity style={styles.controlButton} onPress={onVoiceSettings} activeOpacity={0.7}>
             <Microphone2 size={24} color="rgba(255,255,255,0.7)" variant="Bold" />
@@ -141,15 +184,13 @@ export default function LiveCameraMode({ userLanguage, onLanguageChange, onClose
           </TouchableOpacity>
         )}
 
-        {/* Hint */}
         <View style={styles.hintContainer}>
           <Text style={styles.hintText}>
-            Point camera at signs, menus, or text
+            Point at anything, then tap above
           </Text>
         </View>
       </View>
 
-      {/* Error display */}
       {error && (
         <View style={styles.errorBanner}>
           <Text style={styles.errorText}>{error}</Text>
@@ -257,5 +298,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#FFFFFF',
     textAlign: 'center',
+  },
+  // "What's this?" CTA button
+  askContainer: {
+    position: 'absolute',
+    bottom: 200,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  askButton: {
+    backgroundColor: 'rgba(63,195,158,0.9)',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 28,
+    shadowColor: '#3FC39E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  askButtonActive: {
+    backgroundColor: 'rgba(239,68,68,0.9)',
+    shadowColor: '#EF4444',
+  },
+  askButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
 });
