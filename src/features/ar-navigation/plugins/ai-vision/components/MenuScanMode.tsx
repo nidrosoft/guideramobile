@@ -45,6 +45,8 @@ interface MenuScanModeProps {
   initialBase64?: string; // from snapshot mode bridge
 }
 
+const MAX_PAGES = 3;
+
 export default function MenuScanMode({
   userLanguage,
   onLanguageChange,
@@ -53,40 +55,61 @@ export default function MenuScanMode({
 }: MenuScanModeProps) {
   const cameraRef = useRef<any>(null);
   const [showCamera, setShowCamera] = useState(!initialBase64);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [capturedPages, setCapturedPages] = useState<{ uri: string; base64: string }[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingPage, setProcessingPage] = useState(0); // which page # is being processed
   const [error, setError] = useState<string | null>(null);
 
   // Process on initial base64 if provided (bridge from snapshot)
   React.useEffect(() => {
     if (initialBase64) {
-      processMenuImage(initialBase64);
+      processMenuPages([{ uri: '', base64: initialBase64 }]);
     }
   }, [initialBase64]);
 
-  const processMenuImage = useCallback(
-    async (base64: string) => {
+  /**
+   * Process one or more menu page images — extracts items from each,
+   * merges results, and deduplicates overlapping items.
+   */
+  const processMenuPages = useCallback(
+    async (pages: { uri: string; base64: string }[]) => {
       setShowCamera(false);
       setIsProcessing(true);
       setError(null);
-      setMenuItems([]);
 
       try {
-        const items = await extractMenu(base64, userLanguage);
-        if (items.length === 0) {
-          setError('No menu items found. Try with a clearer photo.');
+        let allItems: MenuItem[] = [...menuItems]; // keep existing items when adding pages
+        const existingNames = new Set(allItems.map(i => i.nameOriginal.toLowerCase().trim()));
+
+        for (let i = 0; i < pages.length; i++) {
+          setProcessingPage(i + 1);
+          const items = await extractMenu(pages[i].base64, userLanguage);
+
+          // Deduplicate: skip items whose original name already exists
+          for (const item of items) {
+            const key = item.nameOriginal.toLowerCase().trim();
+            if (!existingNames.has(key)) {
+              existingNames.add(key);
+              allItems.push(item);
+            }
+          }
+        }
+
+        if (allItems.length === 0) {
+          setError('No menu items found. Try with clearer photos.');
           return;
         }
-        setMenuItems(items);
+        setMenuItems(allItems);
       } catch (e: any) {
         setError(e?.message || 'Could not read menu. Please try again.');
         if (__DEV__) console.warn('[MenuScanMode] Extract error:', e);
       } finally {
         setIsProcessing(false);
+        setProcessingPage(0);
       }
     },
-    [userLanguage],
+    [userLanguage, menuItems],
   );
 
   const handleCapture = async () => {
@@ -94,11 +117,15 @@ export default function MenuScanMode({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
+        quality: 0.7,
         base64: true,
+        imageType: 'jpg',
       });
-      if (photo?.uri) setCapturedImage(photo.uri);
-      if (photo?.base64) processMenuImage(photo.base64);
+      if (photo?.base64) {
+        const newPage = { uri: photo.uri || '', base64: photo.base64 };
+        setCapturedPages(prev => [...prev, newPage]);
+        processMenuPages([newPage]);
+      }
     } catch (e) {
       if (__DEV__) console.warn('[MenuScanMode] Capture error:', e);
     }
@@ -108,20 +135,35 @@ export default function MenuScanMode({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      quality: 0.8,
+      quality: 0.7,
+      allowsMultipleSelection: true,
+      selectionLimit: MAX_PAGES,
     });
-    if (!result.canceled && result.assets[0]?.uri) {
-      setCapturedImage(result.assets[0].uri);
-      try {
-        const b64 = await ExpoFileSystem.readAsStringAsync(result.assets[0].uri, { encoding: 'base64' });
-        processMenuImage(b64);
-      } catch {}
+    if (!result.canceled && result.assets.length > 0) {
+      const newPages: { uri: string; base64: string }[] = [];
+      for (const asset of result.assets) {
+        try {
+          const b64 = await ExpoFileSystem.readAsStringAsync(asset.uri, { encoding: 'base64' });
+          newPages.push({ uri: asset.uri, base64: b64 });
+        } catch {}
+      }
+      if (newPages.length > 0) {
+        setCapturedPages(prev => [...prev, ...newPages]);
+        processMenuPages(newPages);
+      }
     }
+  };
+
+  // Add another page (return to camera but keep existing menu items)
+  const handleAddPage = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowCamera(true);
+    setError(null);
   };
 
   const handleReset = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setCapturedImage(null);
+    setCapturedPages([]);
     setMenuItems([]);
     setError(null);
     setShowCamera(true);
@@ -171,6 +213,9 @@ export default function MenuScanMode({
     return Array.from(catMap.entries()).map(([title, data]) => ({ title, data }));
   }, [menuItems]);
 
+  const canAddMore = capturedPages.length < MAX_PAGES;
+  const pageCount = capturedPages.length;
+
   // ── Camera View ───────────────────────────────────────────
   if (showCamera) {
     return (
@@ -180,7 +225,9 @@ export default function MenuScanMode({
         <View style={styles.topBar}>
           <View style={styles.modeLabel}>
             <Receipt21 size={16} color="#EC4899" variant="Bold" />
-            <Text style={styles.modeLabelText}>Scan Menu</Text>
+            <Text style={styles.modeLabelText}>
+              {pageCount > 0 ? `Page ${pageCount + 1} of ${MAX_PAGES}` : 'Scan Menu'}
+            </Text>
           </View>
           <LanguagePicker selectedLanguage={userLanguage} onSelect={onLanguageChange} />
         </View>
@@ -190,8 +237,36 @@ export default function MenuScanMode({
           <View style={[styles.corner, styles.tr]} />
           <View style={[styles.corner, styles.bl]} />
           <View style={[styles.corner, styles.br]} />
-          <Text style={styles.frameHint}>Capture the full menu</Text>
+          <Text style={styles.frameHint}>
+            {pageCount > 0 ? 'Capture another page of the menu' : 'Capture the full menu'}
+          </Text>
         </View>
+
+        {/* Thumbnail strip of already captured pages */}
+        {pageCount > 0 && (
+          <View style={styles.thumbnailStrip}>
+            {capturedPages.map((page, idx) => (
+              <View key={idx} style={styles.thumbnailWrapper}>
+                {page.uri ? (
+                  <Image source={{ uri: page.uri }} style={styles.thumbnail} />
+                ) : (
+                  <View style={[styles.thumbnail, { backgroundColor: 'rgba(236,72,153,0.2)', justifyContent: 'center', alignItems: 'center' }]}>
+                    <Text style={{ color: '#EC4899', fontSize: 12, fontWeight: '700' }}>{idx + 1}</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+            {/* "Done" button to go back to results */}
+            <TouchableOpacity
+              style={styles.donePagesBtn}
+              onPress={() => { setShowCamera(false); }}
+              activeOpacity={0.7}
+            >
+              <TickCircle size={18} color="#3FC39E" variant="Bold" />
+              <Text style={styles.donePagesText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.captureRow}>
           <TouchableOpacity style={styles.galleryBtn} onPress={handlePickImage} activeOpacity={0.7}>
@@ -215,13 +290,29 @@ export default function MenuScanMode({
           <ArrowLeft2 size={20} color="#FFFFFF" variant="Bold" />
           <Text style={styles.backText}>New Scan</Text>
         </TouchableOpacity>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {pageCount > 0 && (
+            <View style={styles.pageCountBadge}>
+              <Text style={styles.pageCountText}>{pageCount} page{pageCount > 1 ? 's' : ''}</Text>
+            </View>
+          )}
+          {canAddMore && !isProcessing && menuItems.length > 0 && (
+            <TouchableOpacity style={styles.addPageBtn} onPress={handleAddPage} activeOpacity={0.7}>
+              <Camera size={16} color="#EC4899" variant="Bold" />
+              <Text style={styles.addPageText}>Add Page</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Loading */}
       {isProcessing && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator color="#EC4899" size="large" />
-          <Text style={styles.loadingText}>Reading menu...</Text>
+          <Text style={styles.loadingText}>
+            {processingPage > 0 ? `Reading page ${processingPage}...` : 'Reading menu...'}
+          </Text>
           <Text style={styles.loadingSubtext}>Extracting items and translating</Text>
         </View>
       )}
@@ -361,7 +452,7 @@ const styles = StyleSheet.create({
   },
   captureBtnInner: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFFFFF' },
   // ── Menu Results ──
-  menuHeader: { paddingTop: 56, paddingHorizontal: 16, paddingBottom: 8 },
+  menuHeader: { paddingTop: 56, paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   backText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
   loadingContainer: {
@@ -425,4 +516,30 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   buildOrderText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  // Multi-photo thumbnail strip
+  thumbnailStrip: {
+    position: 'absolute', bottom: 190, left: 16, right: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 100,
+  },
+  thumbnailWrapper: {
+    borderWidth: 2, borderColor: '#EC4899', borderRadius: 8, overflow: 'hidden',
+  },
+  thumbnail: {
+    width: 44, height: 44, borderRadius: 6,
+  },
+  donePagesBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(63,195,158,0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14,
+  },
+  donePagesText: { fontSize: 13, fontWeight: '600', color: '#3FC39E' },
+  addPageBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(236,72,153,0.15)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 14,
+    borderWidth: 1, borderColor: 'rgba(236,72,153,0.3)',
+  },
+  addPageText: { fontSize: 13, fontWeight: '600', color: '#EC4899' },
+  pageCountBadge: {
+    backgroundColor: 'rgba(236,72,153,0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+  },
+  pageCountText: { fontSize: 12, fontWeight: '600', color: '#EC4899' },
 });
