@@ -25,7 +25,10 @@ import {
   saveLanguagePreference,
   loadCache,
 } from '../services/translationCache';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { VisionMode, MenuItem } from '../types/aiVision.types';
+
+const VOICE_SETUP_DONE_KEY = '@guidera_voice_setup_done';
 
 interface TranslatorScreenProps {
   onClose: () => void;
@@ -47,6 +50,7 @@ export default function TranslatorScreen({ onClose, initialMode }: TranslatorScr
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
 
   // Initialize language from preference or device locale
+  // Auto-show voice settings on first launch so user picks their voice
   useEffect(() => {
     (async () => {
       await loadCache();
@@ -55,12 +59,20 @@ export default function TranslatorScreen({ onClose, initialMode }: TranslatorScr
       if (saved) {
         setUserLanguage(saved);
       } else {
-        // Use device locale
         const deviceLocale = Localization.getLocales()?.[0]?.languageCode;
         if (deviceLocale) {
           setUserLanguage(deviceLocale);
         }
       }
+
+      // First-time voice setup — show bottom sheet automatically
+      try {
+        const setupDone = await AsyncStorage.getItem(VOICE_SETUP_DONE_KEY);
+        if (!setupDone) {
+          // Small delay so the camera has time to load first
+          setTimeout(() => setShowVoiceSettings(true), 1200);
+        }
+      } catch {}
     })();
   }, []);
 
@@ -106,6 +118,7 @@ export default function TranslatorScreen({ onClose, initialMode }: TranslatorScr
           userLanguage={userLanguage}
           onLanguageChange={handleLanguageChange}
           onClose={handleClose}
+          onVoiceSettings={() => setShowVoiceSettings(true)}
         />
       )}
 

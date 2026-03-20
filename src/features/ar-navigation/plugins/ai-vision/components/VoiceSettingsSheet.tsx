@@ -119,9 +119,13 @@ export default function VoiceSettingsSheet({ visible, onClose }: VoiceSettingsSh
     await AsyncStorage.setItem(SPEED_KEY, String(speed));
   }, []);
 
-  const handleClose = useCallback(() => {
+  const handleClose = useCallback(async () => {
     stopSpeaking();
     setPreviewingId(null);
+    // Mark first-time voice setup as complete so it doesn't auto-show again
+    try {
+      await AsyncStorage.setItem('@guidera_voice_setup_done', 'true');
+    } catch {}
     onClose();
   }, [onClose]);
 

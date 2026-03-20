@@ -21,9 +21,10 @@ interface LiveCameraModeProps {
   userLanguage: string;
   onLanguageChange: (lang: string) => void;
   onClose?: () => void;
+  onVoiceSettings?: () => void;
 }
 
-export default function LiveCameraMode({ userLanguage, onLanguageChange, onClose }: LiveCameraModeProps) {
+export default function LiveCameraMode({ userLanguage, onLanguageChange, onClose, onVoiceSettings }: LiveCameraModeProps) {
   const cameraRef = useRef<any>(null);
   const { isActive, isProcessing, currentResult, error, start, stop } = useFrameAnalysis();
   const [isMuted, setIsMuted] = useState(false);
@@ -132,10 +133,18 @@ export default function LiveCameraMode({ userLanguage, onLanguageChange, onClose
           <Text style={styles.controlLabel}>{isMuted ? 'Unmute' : 'Mute'}</Text>
         </TouchableOpacity>
 
+        {/* Voice settings */}
+        {onVoiceSettings && (
+          <TouchableOpacity style={styles.controlButton} onPress={onVoiceSettings} activeOpacity={0.7}>
+            <Microphone2 size={24} color="rgba(255,255,255,0.7)" variant="Bold" />
+            <Text style={styles.controlLabel}>Voice</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Hint */}
         <View style={styles.hintContainer}>
           <Text style={styles.hintText}>
-            Point your camera at signs, menus, or text
+            Point camera at signs, menus, or text
           </Text>
         </View>
       </View>
