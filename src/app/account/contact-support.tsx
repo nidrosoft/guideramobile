@@ -22,7 +22,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
-  ArrowLeft, 
+  ArrowLeft2, 
   Message,
   Sms,
   Call,
@@ -218,7 +218,7 @@ Device: ${Platform.OS} ${Platform.Version}
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Contact Support</Text>
@@ -277,7 +277,7 @@ Device: ${Platform.OS} ${Platform.Version}
                 <Text style={[styles.contactOptionTitle, { color: tc.textPrimary }]}>Email Support</Text>
                 <Text style={[styles.contactOptionSubtitle, { color: tc.textSecondary }]}>support@guidera.app</Text>
               </View>
-              <ArrowLeft size={16} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
+              <ArrowLeft2 size={16} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
           </View>
 

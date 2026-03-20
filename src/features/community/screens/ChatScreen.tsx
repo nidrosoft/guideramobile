@@ -24,7 +24,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   More,
   Send2,
   Camera,
@@ -304,7 +304,7 @@ export default function ChatScreen() {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.profileInfo} activeOpacity={0.7}>

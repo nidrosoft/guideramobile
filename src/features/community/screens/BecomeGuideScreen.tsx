@@ -26,7 +26,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   ArrowRight2,
   Location,
   LanguageSquare,
@@ -415,7 +415,7 @@ export default function BecomeGuideScreen() {
       <View style={[styles.screen, { backgroundColor: themeColors.background }]}>
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity style={[styles.backBtn, { backgroundColor: themeColors.bgElevated }]} onPress={() => router.back()}>
-            <ArrowLeft size={20} color={themeColors.textPrimary} />
+            <ArrowLeft2 size={20} color={themeColors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>Become a Local Guide</Text>
           <View style={{ width: 60 }} />
@@ -432,7 +432,7 @@ export default function BecomeGuideScreen() {
       <View style={[styles.screen, { backgroundColor: themeColors.background }]}>
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity style={[styles.backBtn, { backgroundColor: themeColors.bgElevated }]} onPress={() => router.back()}>
-            <ArrowLeft size={20} color={themeColors.textPrimary} />
+            <ArrowLeft2 size={20} color={themeColors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>Local Guide</Text>
           <View style={{ width: 60 }} />
@@ -465,7 +465,7 @@ export default function BecomeGuideScreen() {
       <View style={[styles.screen, { backgroundColor: themeColors.background }]}>
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity style={[styles.backBtn, { backgroundColor: themeColors.bgElevated }]} onPress={() => router.back()}>
-            <ArrowLeft size={20} color={themeColors.textPrimary} />
+            <ArrowLeft2 size={20} color={themeColors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>Application Status</Text>
           <View style={{ width: 60 }} />
@@ -515,7 +515,7 @@ export default function BecomeGuideScreen() {
       <View style={[styles.screen, { backgroundColor: themeColors.background }]}>
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity style={[styles.backBtn, { backgroundColor: themeColors.bgElevated }]} onPress={() => router.back()}>
-            <ArrowLeft size={20} color={themeColors.textPrimary} />
+            <ArrowLeft2 size={20} color={themeColors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>Application Status</Text>
           <View style={{ width: 60 }} />
@@ -552,7 +552,7 @@ export default function BecomeGuideScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={[styles.backBtn, { backgroundColor: themeColors.bgElevated }]} onPress={handleBack}>
-          <ArrowLeft size={20} color={themeColors.textPrimary} />
+          <ArrowLeft2 size={20} color={themeColors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: themeColors.textPrimary }]}>Become a Local Guide</Text>
         <Text style={[styles.stepIndicator, { color: themeColors.textSecondary }]}>Step {step}/{TOTAL_STEPS}</Text>

@@ -21,7 +21,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Send2, People } from 'iconsax-react-native';
+import { ArrowLeft2, Send2, People } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -221,7 +221,7 @@ export default function ActivityChatScreen() {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
           <Text style={[styles.headerTitle, { color: tc.textPrimary }]} numberOfLines={1}>

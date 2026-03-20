@@ -19,7 +19,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
-  ArrowLeft, 
+  ArrowLeft2, 
   Lock,
   ShieldTick,
   Mobile,
@@ -252,7 +252,7 @@ export default function SecuritySettingsScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Security</Text>
         <View style={styles.headerSpacer}>
@@ -278,7 +278,7 @@ export default function SecuritySettingsScreen() {
                 <Text style={[styles.settingTitle, { color: tc.textPrimary }]}>Change Password</Text>
                 <Text style={[styles.settingDescription, { color: tc.textSecondary }]}>Update your password regularly</Text>
               </View>
-              <ArrowLeft size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
+              <ArrowLeft2 size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
           </View>
         </View>
@@ -311,7 +311,7 @@ export default function SecuritySettingsScreen() {
                   <Text style={[styles.enabledBadgeText, { color: tc.success }]}>On</Text>
                 </View>
               ) : (
-                <ArrowLeft size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
+                <ArrowLeft2 size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
               )}
             </TouchableOpacity>
           </View>
@@ -358,7 +358,7 @@ export default function SecuritySettingsScreen() {
                   {sessionCount} {sessionCount === 1 ? 'device' : 'devices'} logged in
                 </Text>
               </View>
-              <ArrowLeft size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
+              <ArrowLeft2 size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
 
             <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />

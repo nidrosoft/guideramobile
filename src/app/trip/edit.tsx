@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, Edit2 } from 'iconsax-react-native';
+import { ArrowLeft2, Edit2 } from 'iconsax-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { typography, spacing, borderRadius } from '@/styles';
 import * as Haptics from 'expo-haptics';
@@ -18,7 +18,7 @@ export default function EditTrip() {
         style={styles.backButton}
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.back(); }}
       >
-        <ArrowLeft size={24} color={tc.textPrimary} />
+        <ArrowLeft2 size={24} color={tc.textPrimary} />
       </TouchableOpacity>
 
       <View style={styles.content}>

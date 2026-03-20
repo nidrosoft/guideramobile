@@ -7,7 +7,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, CloseCircle } from 'iconsax-react-native';
+import { ArrowLeft2, CloseCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -63,7 +63,7 @@ export default function BookingHeader({
               onPress={handleBack}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <ArrowLeft size={24} color={colors.textPrimary} />
+              <ArrowLeft2 size={24} color={colors.textPrimary} />
             </TouchableOpacity>
           )}
         </View>

@@ -13,7 +13,7 @@ import {
 import MapView, { Marker } from 'react-native-maps';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   Add,
   Book1,
   DocumentText,
@@ -183,7 +183,7 @@ export default function JournalScreen() {
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ArrowLeft size={24} color={colors.textPrimary} variant="Linear" />
+            <ArrowLeft2 size={24} color={colors.textPrimary} variant="Linear" />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Journal</Text>
           <TouchableOpacity 

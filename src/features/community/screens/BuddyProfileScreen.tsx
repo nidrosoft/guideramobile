@@ -19,7 +19,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   More,
   Location,
   Calendar,
@@ -283,7 +283,7 @@ export default function BuddyProfileScreen() {
           {/* Top Bar */}
           <View style={[styles.topBar, { paddingTop: insets.top }]}>
             <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
-              <ArrowLeft size={24} color="#FFFFFF" />
+              <ArrowLeft2 size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerButton} onPress={handleReport}>
               <More size={24} color="#FFFFFF" />

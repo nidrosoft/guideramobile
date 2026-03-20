@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedScrollHandler, useSharedValue, useAnimatedStyle, interpolate, Extrapolate } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, More, Calendar, User, Airplane, Building, Car, Location, CalendarEdit, Bag2, Book, ShieldTick, InfoCircle, SecuritySafe, DollarCircle, LanguageSquare, DocumentText } from 'iconsax-react-native';
+import { ArrowLeft2, More, Calendar, User, Airplane, Building, Car, Location, CalendarEdit, Bag2, Book, ShieldTick, InfoCircle, SecuritySafe, DollarCircle, LanguageSquare, DocumentText } from 'iconsax-react-native';
 import { spacing, typography, borderRadius, colors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
@@ -37,7 +37,7 @@ function TripDetailSkeleton({ isDark, colors: c, insets, onBack }: { isDark: boo
 
       {/* Back Button */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <CircleButton onPress={onBack} icon={<ArrowLeft size={20} color={c.textPrimary} />} />
+        <CircleButton onPress={onBack} icon={<ArrowLeft2 size={20} color={c.textPrimary} />} />
         <View style={styles.spacer} />
       </View>
 
@@ -598,9 +598,10 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
       </Animated.ScrollView>
 
       <Animated.View style={[styles.header, { paddingTop: insets.top + 8 }, headerAnimatedStyle]}>
-        <CircleButton icon={<ArrowLeft size={24} color={colors.textPrimary} />} onPress={() => router.back()} />
+        <CircleButton icon={<ArrowLeft2 size={24} color={colors.textPrimary} />} onPress={() => router.back()} />
         <View style={styles.spacer} />
-        <CircleButton icon={<More size={24} color={colors.textPrimary} />} onPress={() => {}} />
+        {/* Menu removed — trip status managed automatically by the system */}
+        <View style={{ width: 40 }} />
       </Animated.View>
 
 

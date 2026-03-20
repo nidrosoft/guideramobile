@@ -20,7 +20,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
-  ArrowLeft, 
+  ArrowLeft2, 
   Verify,
   Camera,
   Card,
@@ -474,7 +474,7 @@ export default function VerificationScreen() {
                 <Text style={[styles.docTitle, { color: tc.textPrimary }]}>{doc.label}</Text>
                 <Text style={[styles.docDesc, { color: tc.textSecondary }]}>{doc.description}</Text>
               </View>
-              <ArrowLeft size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
+              <ArrowLeft2 size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
           );
         })}
@@ -642,7 +642,7 @@ export default function VerificationScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: cardBorder }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Trusted Traveler</Text>
         <View style={styles.headerSpacer} />

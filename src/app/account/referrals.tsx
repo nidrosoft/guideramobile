@@ -24,7 +24,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
-  ArrowLeft, 
+  ArrowLeft2, 
   People,
   Copy,
   Share as ShareIcon,
@@ -215,7 +215,7 @@ export default function ReferralsScreen() {
           {/* Fixed Navigation Row - always visible and touchable */}
           <View style={[styles.header, { backgroundColor: 'transparent', borderBottomColor: 'transparent' }]}>
             <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <ArrowLeft size={24} color={colors.white} />
+              <ArrowLeft2 size={24} color={colors.white} />
             </TouchableOpacity>
             <Animated.Text style={[styles.headerTitle, { opacity: compactHeaderOpacity }]}>
               Refer Friends

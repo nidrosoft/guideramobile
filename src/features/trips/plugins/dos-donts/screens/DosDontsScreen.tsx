@@ -19,7 +19,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Location, InfoCircle, Global, TickCircle, CloseCircle, Like1, Dislike, ShieldTick, Warning2 } from 'iconsax-react-native';
+import { ArrowLeft2, Location, InfoCircle, Global, TickCircle, CloseCircle, Like1, Dislike, ShieldTick, Warning2 } from 'iconsax-react-native';
 import { spacing, typography, borderRadius, colors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
@@ -261,7 +261,7 @@ export default function DosDontsScreen() {
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ArrowLeft size={24} color={colors.textPrimary} />
+            <ArrowLeft2 size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Do's & Don'ts</Text>
           <TouchableOpacity

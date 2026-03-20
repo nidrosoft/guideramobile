@@ -22,7 +22,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   Location as LocationIcon,
   Add,
   Map1,
@@ -227,7 +227,7 @@ export default function PulseScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? 'rgba(18,18,18,0.95)' : 'rgba(255,255,255,0.95)' }]}>
         <TouchableOpacity style={[styles.headerBtn, { backgroundColor: tc.bgElevated }]} onPress={() => router.back()}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{cityName ? `Pulse · ${cityName}` : 'Pulse'}</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>

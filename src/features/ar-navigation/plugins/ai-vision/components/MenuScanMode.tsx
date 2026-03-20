@@ -41,6 +41,7 @@ interface MenuScanModeProps {
   userLanguage: string;
   onLanguageChange: (lang: string) => void;
   onBuildOrder: (items: MenuItem[]) => void;
+  onClose?: () => void;
   initialBase64?: string; // from snapshot mode bridge
 }
 

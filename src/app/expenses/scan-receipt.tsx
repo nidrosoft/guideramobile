@@ -20,7 +20,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import {
-  ArrowLeft, Camera, Gallery, TickCircle, CloseCircle,
+  ArrowLeft2, Camera, Gallery, TickCircle, CloseCircle,
   Receipt1, Trash, Add,
 } from 'iconsax-react-native';
 import { useTheme } from '@/context/ThemeContext';
@@ -331,7 +331,7 @@ export default function ScanReceiptScreen() {
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + spacing.sm, borderBottomColor: tc.borderSubtle }]}>
           <TouchableOpacity onPress={resetCamera} style={[styles.backBtn, { backgroundColor: tc.bgSunken }]}>
-            <ArrowLeft size={20} color={tc.textPrimary} />
+            <ArrowLeft2 size={20} color={tc.textPrimary} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Review Expenses</Text>

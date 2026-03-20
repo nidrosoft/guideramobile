@@ -15,7 +15,7 @@ import {
   ImageBackground,
 } from 'react-native';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   More,
   Verify,
   Setting2,
@@ -90,7 +90,7 @@ function GroupHeader({
         {/* Top navigation bar */}
         <View style={[styles.topBar, { paddingTop: paddingTop + 4 }]}>
           <TouchableOpacity style={styles.navButton} onPress={onBack}>
-            <ArrowLeft size={22} color="#FFFFFF" />
+            <ArrowLeft2 size={22} color="#FFFFFF" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.navButton} onPress={onMore}>
             <More size={22} color="#FFFFFF" />

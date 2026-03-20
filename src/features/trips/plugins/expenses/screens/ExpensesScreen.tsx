@@ -14,7 +14,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PieChart, BarChart } from 'react-native-chart-kit';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   Add,
   DollarCircle,
   ShoppingCart,
@@ -367,7 +367,7 @@ export default function ExpensesScreen() {
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ArrowLeft size={24} color={colors.textPrimary} variant="Linear" />
+            <ArrowLeft2 size={24} color={colors.textPrimary} variant="Linear" />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Expenses</Text>
           <View style={styles.headerActions}>

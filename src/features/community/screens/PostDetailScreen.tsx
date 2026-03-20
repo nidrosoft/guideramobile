@@ -21,7 +21,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Send2 } from 'iconsax-react-native';
+import { ArrowLeft2, Send2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -312,7 +312,7 @@ export default function PostDetailScreen() {
       {/* Header bar */}
       <View style={[styles.header, { paddingTop: insets.top + 4, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={22} color={tc.textPrimary} />
+          <ArrowLeft2 size={22} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Post</Text>
         <View style={styles.backButton} />

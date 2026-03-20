@@ -8,7 +8,7 @@
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Heart } from 'iconsax-react-native';
+import { ArrowLeft2, Heart } from 'iconsax-react-native';
 import CircleButton from '@/components/atoms/CircleButton/CircleButton';
 import ShareIcon from '@/components/atoms/ShareIcon/ShareIcon';
 import { typography, spacing } from '@/styles';
@@ -49,7 +49,7 @@ export default function DetailHeader({
     <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
       {/* Back Button */}
       <CircleButton
-        icon={<ArrowLeft size={24} color={colors.textPrimary} />}
+        icon={<ArrowLeft2 size={24} color={colors.textPrimary} />}
         onPress={handleBack}
       />
 

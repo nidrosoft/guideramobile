@@ -14,7 +14,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ArrowRight2, Calendar } from 'iconsax-react-native';
+import { ArrowLeft2, ArrowRight2, Calendar } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -187,7 +187,7 @@ export default function DateRangePicker({
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <ArrowLeft size={24} color={colors.textPrimary} />
+            <ArrowLeft2 size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Select Dates</Text>
           <View style={styles.closeButton} />
@@ -245,7 +245,7 @@ export default function DateRangePicker({
             disabled={!canGoToPrevious}
             style={[styles.navButton, { backgroundColor: colors.bgElevated }, !canGoToPrevious && { opacity: 0.4 }]}
           >
-            <ArrowLeft size={20} color={colors.textPrimary} />
+            <ArrowLeft2 size={20} color={colors.textPrimary} />
           </TouchableOpacity>
           
           <Text style={[styles.monthTitle, { color: colors.textPrimary }]}>

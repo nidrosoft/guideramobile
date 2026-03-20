@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, Easing } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import { colors as staticColors } from '@/styles';
@@ -24,6 +24,22 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const { unreadCount: communityUnread } = useNotifications({ category: 'social', autoRefresh: true });
+
+  // Animated launcher icon — spins when user returns to a tab
+  const launcherRotation = useSharedValue(0);
+  const focusedIndex = state.index;
+
+  useEffect(() => {
+    // Trigger spin animation whenever focused tab changes (user navigated back)
+    launcherRotation.value = withSequence(
+      withTiming(0, { duration: 0 }),
+      withTiming(360, { duration: 800, easing: Easing.out(Easing.cubic) })
+    );
+  }, [focusedIndex]);
+
+  const launcherAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${launcherRotation.value}deg` }],
+  }));
 
   // Dynamic styles based on theme
   const dynamicStyles = useMemo(() => ({
@@ -185,7 +201,9 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 >
                   <View style={styles.launcherContainer}>
                     <View style={[styles.launcherButton, dynamicStyles.launcherButton]}>
-                      <Category size={24} color={staticColors.white} variant="Bold" />
+                      <Animated.View style={launcherAnimatedStyle}>
+                        <Category size={24} color={staticColors.white} variant="Bold" />
+                      </Animated.View>
                     </View>
                   </View>
                 </TouchableOpacity>

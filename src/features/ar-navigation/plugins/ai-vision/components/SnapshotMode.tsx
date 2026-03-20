@@ -45,6 +45,7 @@ interface SnapshotModeProps {
   userLanguage: string;
   onLanguageChange: (lang: string) => void;
   onSwitchToMenu: (base64: string) => void;
+  onClose?: () => void;
 }
 
 export default function SnapshotMode({

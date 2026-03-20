@@ -18,7 +18,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, TickCircle } from 'iconsax-react-native';
+import { ArrowLeft2, TickCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -219,7 +219,7 @@ export default function AccessibilityPreferencesScreen() {
         ]}
       >
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Food, Health & Access</Text>
         <TouchableOpacity 

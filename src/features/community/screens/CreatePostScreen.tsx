@@ -23,7 +23,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   Camera,
   Location,
   Tag,
@@ -150,7 +150,7 @@ export default function CreatePostScreen() {
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + 4, borderBottomColor: tc.borderSubtle }]}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <ArrowLeft size={22} color={tc.textPrimary} />
+            <ArrowLeft2 size={22} color={tc.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Create Post</Text>
           <TouchableOpacity

@@ -19,7 +19,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
-  ArrowLeft, 
+  ArrowLeft2, 
   Eye, 
   EyeSlash, 
   People, 
@@ -182,7 +182,7 @@ export default function PrivacySettingsScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Privacy Settings</Text>
         <View style={styles.headerSpacer}>
@@ -215,7 +215,7 @@ export default function PrivacySettingsScreen() {
                   {VISIBILITY_OPTIONS.find(o => o.value === settings.profile_visibility)?.label}
                 </Text>
               </View>
-              <ArrowLeft 
+              <ArrowLeft2 
                 size={18} 
                 color={tc.textTertiary} 
                 style={{ transform: [{ rotate: showProfileVisibility ? '90deg' : '-90deg' }] }} 
@@ -307,7 +307,7 @@ export default function PrivacySettingsScreen() {
                   {VISIBILITY_OPTIONS.find(o => o.value === settings.trip_sharing)?.label}
                 </Text>
               </View>
-              <ArrowLeft 
+              <ArrowLeft2 
                 size={18} 
                 color={tc.textTertiary} 
                 style={{ transform: [{ rotate: showTripSharing ? '90deg' : '-90deg' }] }} 
@@ -394,7 +394,7 @@ export default function PrivacySettingsScreen() {
                 <Text style={[styles.settingTitle, { color: tc.textPrimary }]}>Download My Data</Text>
                 <Text style={[styles.settingDescription, { color: tc.textSecondary }]}>Get a copy of your data</Text>
               </View>
-              <ArrowLeft size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
+              <ArrowLeft2 size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
 
             <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
@@ -408,7 +408,7 @@ export default function PrivacySettingsScreen() {
                 <Text style={[styles.settingTitle, { color: tc.textPrimary }]}>Connected Apps</Text>
                 <Text style={[styles.settingDescription, { color: tc.textSecondary }]}>Manage third-party access</Text>
               </View>
-              <ArrowLeft size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
+              <ArrowLeft2 size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
           </View>
         </View>

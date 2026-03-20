@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Airplane, Building, Location, DirectRight, Clock, Star1, Car } from 'iconsax-react-native';
+import { ArrowLeft2, Airplane, Building, Location, DirectRight, Clock, Star1, Car } from 'iconsax-react-native';
 import { spacing, typography, borderRadius, colors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -187,7 +187,7 @@ export default function PlannerScreen() {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.textPrimary} variant="Linear" />
+          <ArrowLeft2 size={24} color={colors.textPrimary} variant="Linear" />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Trip Plan</Text>
         <View style={{ width: 40 }} />

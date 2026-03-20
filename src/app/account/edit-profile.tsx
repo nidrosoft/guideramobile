@@ -23,7 +23,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   Camera,
   Location,
   Verify,
@@ -696,7 +696,7 @@ export default function EditProfileScreen() {
         borderBottomColor: tc.borderSubtle,
       }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={22} color={tc.textPrimary} />
+          <ArrowLeft2 size={22} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Edit Profile</Text>
         <TouchableOpacity onPress={handleSave} disabled={isSaving} style={styles.saveButton}>

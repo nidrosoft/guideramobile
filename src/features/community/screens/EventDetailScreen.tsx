@@ -19,7 +19,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   Share,
   Location,
   Calendar,
@@ -221,7 +221,7 @@ export default function EventDetailScreen() {
           {/* Top Bar */}
           <View style={[styles.topBar, { paddingTop: insets.top }]}>
             <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
-              <ArrowLeft size={24} color={colors.white} />
+              <ArrowLeft2 size={24} color={colors.white} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerButton} onPress={handleShare}>
               <Share size={24} color={colors.white} />

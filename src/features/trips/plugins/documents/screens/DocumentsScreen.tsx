@@ -25,7 +25,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   Danger,
   TickCircle,
   InfoCircle,
@@ -231,7 +231,7 @@ export default function DocumentsScreen() {
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <View style={[styles.header, { borderBottomColor: tc.borderSubtle }]}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <ArrowLeft size={24} color={tc.textPrimary} />
+            <ArrowLeft2 size={24} color={tc.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Documents</Text>
           <View style={{ width: 24 }} />
@@ -268,7 +268,7 @@ export default function DocumentsScreen() {
       {/* ─── Header ─────────────────────────────────────── */}
       <View style={[styles.header, { borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Documents</Text>

@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Eye, Camera, Receipt21, VolumeHigh } from 'iconsax-react-native';
+import { Eye, Camera, Receipt21, VolumeHigh, Microphone2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import type { VisionMode } from '../types/aiVision.types';
@@ -15,6 +15,7 @@ import type { VisionMode } from '../types/aiVision.types';
 interface ModeSelectorProps {
   activeMode: VisionMode;
   onModeChange: (mode: VisionMode) => void;
+  onVoiceSettings?: () => void;
 }
 
 const MODES: { id: VisionMode; label: string; icon: (color: string) => React.ReactNode }[] = [
@@ -43,7 +44,7 @@ const MODES: { id: VisionMode; label: string; icon: (color: string) => React.Rea
 const ACTIVE_COLOR = '#3FC39E';
 const INACTIVE_COLOR = 'rgba(255,255,255,0.5)';
 
-export default function ModeSelector({ activeMode, onModeChange }: ModeSelectorProps) {
+export default function ModeSelector({ activeMode, onModeChange, onVoiceSettings }: ModeSelectorProps) {
   const handlePress = (mode: VisionMode) => {
     if (mode === activeMode) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -69,6 +70,20 @@ export default function ModeSelector({ activeMode, onModeChange }: ModeSelectorP
             </TouchableOpacity>
           );
         })}
+
+        {/* Voice settings button */}
+        {onVoiceSettings && (
+          <TouchableOpacity
+            style={styles.settingsBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onVoiceSettings();
+            }}
+            activeOpacity={0.7}
+          >
+            <Microphone2 size={18} color={INACTIVE_COLOR} variant="Bold" />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -110,5 +125,13 @@ const styles = StyleSheet.create({
   },
   labelActive: {
     color: ACTIVE_COLOR,
+  },
+  settingsBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 2,
   },
 });

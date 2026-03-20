@@ -29,7 +29,7 @@ import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   ArrowRight2,
   Camera,
   DocumentUpload,
@@ -622,7 +622,7 @@ export default function PartnerApplicationScreen() {
     <View style={[styles.screen, { backgroundColor: tc.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity style={[styles.backBtn, { backgroundColor: tc.bgElevated }]} onPress={() => router.back()}>
-          <ArrowLeft size={20} color={tc.textPrimary} />
+          <ArrowLeft2 size={20} color={tc.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Application Submitted</Text>
@@ -1235,7 +1235,7 @@ export default function PartnerApplicationScreen() {
       <View style={[styles.screen, { backgroundColor: tc.background }]}>
         <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: tc.borderSubtle }]}>
           <TouchableOpacity style={[styles.backBtn, { backgroundColor: tc.bgElevated }]} onPress={() => router.back()}>
-            <ArrowLeft size={20} color={tc.textPrimary} />
+            <ArrowLeft2 size={20} color={tc.textPrimary} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Local Guide</Text>
@@ -1323,7 +1323,7 @@ export default function PartnerApplicationScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity style={[styles.backBtn, { backgroundColor: tc.bgElevated }]} onPress={handleBack}>
-          <ArrowLeft size={20} color={tc.textPrimary} />
+          <ArrowLeft2 size={20} color={tc.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Partner Application</Text>
@@ -1384,7 +1384,7 @@ export default function PartnerApplicationScreen() {
               style={[styles.backBtn, { backgroundColor: tc.bgElevated }]}
               onPress={handleWebViewClose}
             >
-              <ArrowLeft size={20} color={tc.textPrimary} />
+              <ArrowLeft2 size={20} color={tc.textPrimary} />
             </TouchableOpacity>
             <Text style={[styles.webViewTitle, { color: tc.textPrimary }]}>Identity Verification</Text>
             <View style={{ width: 40 }} />

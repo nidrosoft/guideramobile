@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import {
-  ArrowLeft, Airplane, Building, Building4, Star1, Calendar,
+  ArrowLeft2, Airplane, Building, Building4, Star1, Calendar,
   Clock, Magicpen, MoneyRecive, ArrowDown2, ArrowUp2,
   Sun1, People, Reserve, ShieldTick, Car, Map, Wallet2, LanguageSquare,
   Warning2, DocumentText, Wifi, Timer1, Moneys,
@@ -379,7 +379,7 @@ export default function TripSnapshotScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={[styles.backBtn, { backgroundColor: tc.bgSunken }]}>
-          <ArrowLeft size={20} color={tc.textPrimary} />
+          <ArrowLeft2 size={20} color={tc.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: tc.textPrimary }]} numberOfLines={1}>{destination}</Text>

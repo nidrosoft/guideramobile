@@ -8,7 +8,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { ArrowLeft, SearchNormal1, Setting4 } from 'iconsax-react-native';
+import { ArrowLeft2, SearchNormal1, Setting4 } from 'iconsax-react-native';
 import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -55,7 +55,7 @@ export default function SearchHeader({
   return (
     <View style={[styles.header, dynamicStyles.header, { paddingTop: paddingTop + spacing.sm }]}>
       <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-        <ArrowLeft size={24} color={colors.textPrimary} />
+        <ArrowLeft2 size={24} color={colors.textPrimary} />
       </TouchableOpacity>
 
       <View style={[styles.searchBar, dynamicStyles.searchBar]}>

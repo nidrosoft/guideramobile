@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   Add,
   Airplane,
   DollarCircle,
@@ -431,7 +431,7 @@ export default function CompensationScreen() {
       <SafeAreaView style={[styles.safe, { backgroundColor: colors.bgPrimary }]}>
         {/* Header */}
         <View style={[styles.hdr, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><ArrowLeft size={24} color={colors.textPrimary} /></TouchableOpacity>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><ArrowLeft2 size={24} color={colors.textPrimary} /></TouchableOpacity>
           <Text style={[styles.hdrTitle, { color: colors.textPrimary }]}>Compensation Tracker</Text>
           <TouchableOpacity style={[styles.addBtn, { backgroundColor: `${colors.primary}12` }]} onPress={() => setAddClaimVisible(true)}>
             <Add size={24} color={colors.primary} variant="Bold" />

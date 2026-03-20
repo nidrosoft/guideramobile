@@ -31,7 +31,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import * as Calendar from 'expo-calendar';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   ExportSquare,
   Clock,
   Calendar as CalendarIcon,
@@ -233,7 +233,7 @@ export default function EventDetailScreen() {
         <StatusBar style={isDark ? 'light' : 'dark'} />
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
           <TouchableOpacity onPress={handleBack} style={[styles.navBtn, { backgroundColor: colors.bgCard }]}>
-            <ArrowLeft size={22} color={colors.textPrimary} />
+            <ArrowLeft2 size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
         <View style={styles.center}>
@@ -272,7 +272,7 @@ export default function EventDetailScreen() {
           {/* Nav buttons */}
           <View style={[styles.heroNav, { top: insets.top + 8 }]}>
             <TouchableOpacity onPress={handleBack} style={styles.navBtn}>
-              <ArrowLeft size={22} color="#FFF" />
+              <ArrowLeft2 size={22} color="#FFF" />
             </TouchableOpacity>
             <View style={styles.navRight}>
               <TouchableOpacity onPress={handleShare} style={styles.navBtn}>

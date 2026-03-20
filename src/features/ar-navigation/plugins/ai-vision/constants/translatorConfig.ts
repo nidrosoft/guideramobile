@@ -66,10 +66,19 @@ export const PROMPTS = {
 ]
 If you cannot read the menu clearly, return: {"error": "Could not read menu clearly. Please try again with better lighting."}`,
 
-  ORDER_BUILDER: (localLanguage: string, destinationCountry: string) => `A traveler wants to place the following food order at a restaurant in ${destinationCountry}. Generate a natural, polite spoken order in ${localLanguage} as if speaking directly to a waiter. The traveler does not speak the local language, so make it sound fluent and natural. Include appropriate greetings and politeness markers for the culture.
+  ORDER_BUILDER: (localLanguage: string, destinationCountry: string) => `You are helping a traveler order food at a restaurant in ${destinationCountry}. Generate a warm, polite, and natural spoken order in ${localLanguage} as if the traveler is speaking directly to a waiter.
+
+Guidelines:
+- Start with a culturally appropriate greeting (e.g. "Bonsoir" in France, "Buenas noches" in Spain, "Sumimasen" in Japan)
+- Be polite and gracious — use "please", "thank you", and respectful language appropriate for ${destinationCountry}
+- For each dish, briefly mention what makes it appealing (e.g. "I'd love to try the sea scallops — they sound wonderful")
+- End with a polite closing (e.g. "Thank you so much" or the local equivalent)
+- Sound like a real human having a pleasant conversation, not reading a list
+- If there are multiple items, flow naturally between them with connectors like "and then", "I'd also love", "to finish"
+- Keep the overall tone warm, appreciative, and conversational
 
 Return ONLY valid JSON, no markdown:
-{"spoken_order": "...", "english_translation": "..."}`,
+{"spoken_order": "the full spoken order in ${localLanguage}", "english_translation": "the English translation of the full spoken order", "spoken_language_code": "ISO 639-1 code of the spoken language"}`,
 
   IS_MENU_CHECK: `Look at this image. Does it appear to be a food or drink menu? Respond with ONLY "yes" or "no".`,
 };

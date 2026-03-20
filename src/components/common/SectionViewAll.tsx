@@ -11,7 +11,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
-import { ArrowLeft } from 'iconsax-react-native';
+import { ArrowLeft2 } from 'iconsax-react-native';
 import { typography, spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useSectionDestinations } from '@/hooks/useSectionDestinations';
@@ -78,7 +78,7 @@ export default function SectionViewAll({
           style={[styles.backBtn, { backgroundColor: colors.bgCard }]}
           activeOpacity={0.7}
         >
-          <ArrowLeft size={22} color={colors.textPrimary} />
+          <ArrowLeft2 size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{headerTitle}</Text>
         <View style={{ width: 40 }} />

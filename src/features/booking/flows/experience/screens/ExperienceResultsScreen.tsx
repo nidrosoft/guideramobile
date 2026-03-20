@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   CloseCircle,
   Setting4,
   ArrowDown2,
@@ -234,7 +234,7 @@ export default function ExperienceResultsScreen({
         <View style={styles.headerOverlay} />
         <View style={styles.headerContent}>
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <ArrowLeft size={24} color="#FFFFFF" />
+            <ArrowLeft2 size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>{searchParams.destination?.name || 'Experiences'}</Text>

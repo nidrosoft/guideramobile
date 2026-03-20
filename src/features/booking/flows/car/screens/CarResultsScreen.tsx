@@ -18,7 +18,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   CloseCircle,
   Setting4,
   ArrowDown2,
@@ -148,7 +148,7 @@ export default function CarResultsScreen({
         <View style={styles.headerOverlay} />
         <View style={styles.headerContent}>
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <ArrowLeft size={24} color="#FFFFFF" />
+            <ArrowLeft2 size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Available Cars</Text>

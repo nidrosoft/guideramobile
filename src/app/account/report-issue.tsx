@@ -21,7 +21,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
-  ArrowLeft, 
+  ArrowLeft2, 
   Warning2,
   Airplane,
   Card,
@@ -211,7 +211,7 @@ export default function ReportIssueScreen() {
                 <Text style={[styles.categoryLabel, { color: tc.textPrimary }]}>{category.label}</Text>
                 <Text style={[styles.categoryDescription, { color: tc.textSecondary }]}>{category.description}</Text>
               </View>
-              <ArrowLeft size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
+              <ArrowLeft2 size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
           );
         })}
@@ -227,7 +227,7 @@ export default function ReportIssueScreen() {
         onPress={() => setStep('category')}
         activeOpacity={0.7}
       >
-        <ArrowLeft size={16} color={tc.primary} />
+        <ArrowLeft2 size={16} color={tc.primary} />
         <Text style={[styles.selectedCategoryText, { color: tc.primary }]}>
           {ISSUE_CATEGORIES.find(c => c.id === selectedCategory)?.label}
         </Text>
@@ -378,7 +378,7 @@ export default function ReportIssueScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Report an Issue</Text>
         <View style={styles.headerSpacer} />

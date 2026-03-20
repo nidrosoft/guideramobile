@@ -17,7 +17,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Sun1, Moon, Mobile, TickCircle } from 'iconsax-react-native';
+import { ArrowLeft2, Sun1, Moon, Mobile, TickCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors as lightColors, darkColors } from '@/styles/colors';
 import { spacing, typography, borderRadius } from '@/styles';
@@ -130,7 +130,7 @@ export default function AppearanceSettingsScreen() {
       {/* Header */}
       <View style={[styles.header, dynamicStyles.header, { paddingTop: insets.top + spacing.sm }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>Appearance</Text>
         <View style={styles.headerSpacer} />

@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   SearchNormal1,
   Star1,
   CloseCircle,
@@ -287,7 +287,7 @@ export default function LanguageScreen() {
       {/* Header */}
       <View style={[s.header, { backgroundColor: tc.bgPrimary, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.backButton}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[s.headerTitle, { color: tc.textPrimary }]}>Language Kit</Text>
         <View style={[s.penetrationBadge, { backgroundColor: `${penetrationColor(kit.englishPenetration, tc)}15` }]}>

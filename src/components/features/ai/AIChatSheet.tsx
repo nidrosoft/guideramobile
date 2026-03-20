@@ -18,7 +18,7 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Send2, Star1, Crown, Add, Clock, MessageText } from 'iconsax-react-native';
+import { ArrowLeft2, Send2, Star1, Crown, Add, Clock, MessageText } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 // Custom lightweight markdown renderer (see MarkdownBubble below)
@@ -680,7 +680,7 @@ export default function AIChatSheet({
       {/* Header */}
       <View style={[styles.header, dynamicStyles.header]}>
         <TouchableOpacity style={styles.backBtn} onPress={onClose} activeOpacity={0.7}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft2 size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <LinearGradient colors={['#3FC39E', '#2D9A7A']} style={styles.headerAvatar}>
@@ -750,7 +750,7 @@ export default function AIChatSheet({
                   </Text>
                 </View>
               </View>
-              <ArrowLeft size={16} color={colors.textTertiary} variant="Linear" style={{ transform: [{ rotate: '180deg' }] }} />
+              <ArrowLeft2 size={16} color={colors.textTertiary} variant="Linear" style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
           )}
         />
@@ -778,7 +778,7 @@ export default function AIChatSheet({
           }}
           activeOpacity={0.7}
         >
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft2 size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <LinearGradient colors={['#3FC39E', '#2D9A7A']} style={styles.headerAvatar}>

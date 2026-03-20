@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   Modal,
 } from 'react-native';
-import { ArrowLeft } from 'iconsax-react-native';
+import { ArrowLeft2 } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import * as Haptics from 'expo-haptics';
@@ -322,7 +322,7 @@ export default function ImportTripFlow({ visible, onClose, onComplete, initialMe
             <View style={styles.headerLeft}>
               {flowState.stepHistory.length > 0 ? (
                 <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                  <ArrowLeft size={24} color={tc.textPrimary} />
+                  <ArrowLeft2 size={24} color={tc.textPrimary} />
                 </TouchableOpacity>
               ) : (
                 <View style={styles.backButtonPlaceholder} />

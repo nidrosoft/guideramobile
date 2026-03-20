@@ -21,7 +21,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   Star1,
   Message,
   Heart,
@@ -210,7 +210,7 @@ export default function ListingDetailScreen() {
             {/* Overlay buttons */}
             <View style={[styles.photoOverlay, { paddingTop: insets.top }]}>
               <TouchableOpacity style={styles.overlayBtn} onPress={() => router.back()}>
-                <ArrowLeft size={20} color={colors.white} />
+                <ArrowLeft2 size={20} color={colors.white} />
               </TouchableOpacity>
               <View style={styles.overlayRight}>
                 <TouchableOpacity style={styles.overlayBtn} onPress={handleShare}>
@@ -227,7 +227,7 @@ export default function ListingDetailScreen() {
             <catConfig.Icon size={40} color={catConfig.color} />
             <View style={[styles.photoOverlay, { paddingTop: insets.top }]}>
               <TouchableOpacity style={styles.overlayBtn} onPress={() => router.back()}>
-                <ArrowLeft size={20} color={colors.textPrimary} />
+                <ArrowLeft2 size={20} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
           </View>

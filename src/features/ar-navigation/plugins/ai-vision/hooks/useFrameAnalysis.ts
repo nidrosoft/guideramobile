@@ -67,14 +67,27 @@ export function useFrameAnalysis(): UseFrameAnalysisReturn {
 
     try {
       // Capture a low-res snapshot from the camera
-      const photo = await camera.takePictureAsync({
-        quality: 0.3,       // Low quality for speed
-        base64: true,        // Get base64 directly
-        skipProcessing: true,
-        shutterSound: false,
-      });
+      // Use minimal quality to prevent memory crashes on devices with less RAM (e.g. iPhone 12)
+      let photo: any;
+      try {
+        photo = await camera.takePictureAsync({
+          quality: 0.1,          // Minimal quality — live analysis doesn't need high-res
+          base64: true,
+          skipProcessing: true,
+          shutterSound: false,
+          imageType: 'jpg',      // Force JPEG for smaller memory footprint
+        });
+      } catch (captureErr) {
+        // Camera capture can fail on older devices under memory pressure — skip this frame
+        if (__DEV__) console.warn('[useFrameAnalysis] Capture failed:', captureErr);
+        return;
+      }
 
-      if (!photo?.base64) return;
+      if (!photo?.base64) {
+        // Clean up temp file even if base64 failed
+        if (photo?.uri) ExpoFileSystem.deleteAsync(photo.uri, { idempotent: true }).catch(() => {});
+        return;
+      }
 
       // Check if frame has changed significantly
       if (!hasSignificantChange(prevFrameRef.current, photo.base64)) {
@@ -93,10 +106,12 @@ export function useFrameAnalysis(): UseFrameAnalysisReturn {
       setCurrentResult(result);
       setError(null);
 
-      // Clean up temp file
+      // Clean up temp file immediately to free memory
       if (photo.uri) {
         ExpoFileSystem.deleteAsync(photo.uri, { idempotent: true }).catch(() => {});
       }
+      // Release base64 ref to help GC on low-memory devices
+      prevFrameRef.current = photo.base64.substring(0, 500); // Keep only a sample for diff check
     } catch (e: any) {
       if (__DEV__) console.warn('[useFrameAnalysis] Error:', e);
       setError(e?.message || 'Frame analysis failed');

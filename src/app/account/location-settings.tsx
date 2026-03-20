@@ -21,7 +21,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Location, Gps, SearchNormal1, TickCircle } from 'iconsax-react-native';
+import { ArrowLeft2, Location, Gps, SearchNormal1, TickCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import * as ExpoLocation from 'expo-location';
 import { spacing, typography, borderRadius } from '@/styles';
@@ -220,7 +220,7 @@ export default function LocationSettingsScreen() {
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.back(); }}
             style={[styles.backButton, { backgroundColor: tc.bgCard }]}
           >
-            <ArrowLeft size={20} color={tc.textPrimary} />
+            <ArrowLeft2 size={20} color={tc.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Set Location</Text>
           <View style={styles.backButton} />

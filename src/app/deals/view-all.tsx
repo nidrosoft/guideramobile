@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
-import { ArrowLeft, Star1 } from 'iconsax-react-native';
+import { ArrowLeft2, Star1 } from 'iconsax-react-native';
 import { typography, spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useGilDeals } from '@/hooks/useDeals';
@@ -102,7 +102,7 @@ export default function ViewAllDeals() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={[styles.backBtn, { backgroundColor: colors.bgCard }]} activeOpacity={0.7}>
-          <ArrowLeft size={22} color={colors.textPrimary} />
+          <ArrowLeft2 size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>All Deals</Text>
         <View style={{ width: 40 }} />

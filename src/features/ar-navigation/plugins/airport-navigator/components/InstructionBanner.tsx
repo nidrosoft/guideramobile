@@ -14,7 +14,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { ArrowRight, ArrowLeft, ArrowUp, ArrowDown } from 'iconsax-react-native';
+import { ArrowRight, ArrowLeft2, ArrowUp, ArrowDown } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
 import { NavigationStep, NavigationDirection } from '../types/navigation.types';
 
@@ -52,7 +52,7 @@ export default function InstructionBanner({ step, remainingDistance }: Instructi
         return <ArrowRight {...iconProps} />;
       case 'left':
       case 'slight_left':
-        return <ArrowLeft {...iconProps} />;
+        return <ArrowLeft2 {...iconProps} />;
       case 'upstairs':
         return <ArrowUp {...iconProps} />;
       case 'downstairs':

@@ -21,7 +21,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   Verify,
   Airplane,
   Global,
@@ -242,7 +242,7 @@ export default function TravelerProfileScreen() {
           />
           <View style={[styles.topBar, { paddingTop: insets.top + 4 }]}>
             <TouchableOpacity style={styles.navButton} onPress={handleBack}>
-              <ArrowLeft size={22} color="#FFFFFF" />
+              <ArrowLeft2 size={22} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </ImageBackground>

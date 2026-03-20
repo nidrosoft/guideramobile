@@ -10,7 +10,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
-import { ArrowLeft, CloseCircle } from 'iconsax-react-native';
+import { ArrowLeft2, CloseCircle } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { Trip } from '@/features/trips/types/trip.types';
@@ -90,7 +90,7 @@ export default function PlannerPlugin({ visible, onClose, trip }: PlannerPluginP
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.backButton}>
-            <ArrowLeft size={24} color={colors.gray900} variant="Linear" />
+            <ArrowLeft2 size={24} color={colors.gray900} variant="Linear" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Trip Planner</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>

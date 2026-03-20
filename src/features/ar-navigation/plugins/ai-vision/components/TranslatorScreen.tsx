@@ -19,6 +19,7 @@ import LiveCameraMode from './LiveCameraMode';
 import SnapshotMode from './SnapshotMode';
 import MenuScanMode from './MenuScanMode';
 import OrderBuilder from './OrderBuilder';
+import VoiceSettingsSheet from './VoiceSettingsSheet';
 import {
   loadLanguagePreference,
   saveLanguagePreference,
@@ -43,6 +44,7 @@ export default function TranslatorScreen({ onClose, initialMode }: TranslatorScr
   // Destination context (from active trip or default)
   const [localLanguage, setLocalLanguage] = useState('en');
   const [destinationCountry, setDestinationCountry] = useState('');
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
 
   // Initialize language from preference or device locale
   useEffect(() => {
@@ -98,20 +100,12 @@ export default function TranslatorScreen({ onClose, initialMode }: TranslatorScr
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Close button (top-right, shared across all modes) */}
-      <TouchableOpacity
-        style={[styles.closeButton, { top: insets.top + 8 }]}
-        onPress={handleClose}
-        activeOpacity={0.7}
-      >
-        <CloseCircle size={36} color="rgba(255,255,255,0.8)" variant="Bold" />
-      </TouchableOpacity>
-
-      {/* Active mode content */}
+      {/* Active mode content — close button passed as prop to each mode for inline positioning */}
       {activeMode === 'live' && (
         <LiveCameraMode
           userLanguage={userLanguage}
           onLanguageChange={handleLanguageChange}
+          onClose={handleClose}
         />
       )}
 
@@ -120,6 +114,7 @@ export default function TranslatorScreen({ onClose, initialMode }: TranslatorScr
           userLanguage={userLanguage}
           onLanguageChange={handleLanguageChange}
           onSwitchToMenu={handleSwitchToMenu}
+          onClose={handleClose}
         />
       )}
 
@@ -129,6 +124,7 @@ export default function TranslatorScreen({ onClose, initialMode }: TranslatorScr
           onLanguageChange={handleLanguageChange}
           onBuildOrder={handleBuildOrder}
           initialBase64={menuBase64}
+          onClose={handleClose}
         />
       )}
 
@@ -142,7 +138,17 @@ export default function TranslatorScreen({ onClose, initialMode }: TranslatorScr
       )}
 
       {/* Mode selector (bottom tabs, visible on all modes) */}
-      <ModeSelector activeMode={activeMode} onModeChange={handleModeChange} />
+      <ModeSelector
+        activeMode={activeMode}
+        onModeChange={handleModeChange}
+        onVoiceSettings={() => setShowVoiceSettings(true)}
+      />
+
+      {/* Voice Settings Bottom Sheet */}
+      <VoiceSettingsSheet
+        visible={showVoiceSettings}
+        onClose={() => setShowVoiceSettings(false)}
+      />
     </View>
   );
 }
@@ -151,14 +157,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
-  },
-  closeButton: {
-    position: 'absolute',
-    right: 16,
-    zIndex: 999,
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

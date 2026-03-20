@@ -11,6 +11,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { CameraView } from 'expo-camera';
 import { VolumeHigh, VolumeCross, Microphone2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
+import { CloseCircle } from 'iconsax-react-native';
 import TranslationOverlay from './TranslationOverlay';
 import LanguagePicker from './LanguagePicker';
 import { useFrameAnalysis } from '../hooks/useFrameAnalysis';
@@ -19,9 +20,10 @@ import { speak, stopSpeaking } from '../services/tts.service';
 interface LiveCameraModeProps {
   userLanguage: string;
   onLanguageChange: (lang: string) => void;
+  onClose?: () => void;
 }
 
-export default function LiveCameraMode({ userLanguage, onLanguageChange }: LiveCameraModeProps) {
+export default function LiveCameraMode({ userLanguage, onLanguageChange, onClose }: LiveCameraModeProps) {
   const cameraRef = useRef<any>(null);
   const { isActive, isProcessing, currentResult, error, start, stop } = useFrameAnalysis();
   const [isMuted, setIsMuted] = useState(false);
@@ -89,7 +91,7 @@ export default function LiveCameraMode({ userLanguage, onLanguageChange }: LiveC
         onCameraReady={handleCameraReady}
       />
 
-      {/* Top controls */}
+      {/* Top controls — close, live indicator, language picker all inline */}
       <View style={styles.topBar}>
         {/* Live indicator */}
         <View style={styles.liveIndicator}>
@@ -99,11 +101,20 @@ export default function LiveCameraMode({ userLanguage, onLanguageChange }: LiveC
           </Text>
         </View>
 
+        <View style={{ flex: 1 }} />
+
         {/* Language picker */}
         <LanguagePicker
           selectedLanguage={userLanguage}
           onSelect={onLanguageChange}
         />
+
+        {/* Close button — inline next to language picker */}
+        {onClose && (
+          <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={styles.closeButton}>
+            <CloseCircle size={32} color="rgba(255,255,255,0.85)" variant="Bold" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Translation overlay */}
@@ -149,12 +160,18 @@ const styles = StyleSheet.create({
   topBar: {
     position: 'absolute',
     top: 56,
-    left: 60,
+    left: 16,
     right: 16,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
     zIndex: 100,
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   liveIndicator: {
     flexDirection: 'row',

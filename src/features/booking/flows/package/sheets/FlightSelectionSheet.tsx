@@ -22,7 +22,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   CloseCircle,
   Airplane,
   Sort,
@@ -162,7 +162,7 @@ export default function FlightSelectionSheet({
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: tc.borderSubtle }]}>
           <TouchableOpacity style={[styles.backButton, { backgroundColor: tc.bgCard }]} onPress={onClose}>
-            <ArrowLeft size={24} color={tc.textPrimary} />
+            <ArrowLeft2 size={24} color={tc.textPrimary} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{title}</Text>

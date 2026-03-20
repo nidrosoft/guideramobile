@@ -481,16 +481,15 @@ export function useTripImport(userId: string | undefined): [UseImportState, {
     await fetchData();
   }, [userId, fetchData]);
 
-  const connectAccount = useCallback(async (provider: string): Promise<{ authUrl: string }> => {
-    if (!userId) throw new Error('User not available');
-    return TripImportService.initiateOAuthConnection(userId, provider);
-  }, [userId]);
+  // OAuth connect/disconnect removed — email import is the active import method.
+  // These no-ops are kept for backward compat with any UI that references them.
+  const connectAccount = useCallback(async (_provider: string): Promise<{ authUrl: string }> => {
+    throw new Error('OAuth import has been replaced by email import. Forward booking emails to your import address.');
+  }, []);
 
-  const disconnectAccount = useCallback(async (accountId: string): Promise<void> => {
-    if (!userId) return;
-    await TripImportService.disconnectLinkedAccount(userId, accountId);
-    await fetchData();
-  }, [userId, fetchData]);
+  const disconnectAccount = useCallback(async (_accountId: string): Promise<void> => {
+    // No-op — OAuth accounts are deprecated
+  }, []);
 
   const submitCorrections = useCallback(async (importId: string, corrections: any): Promise<void> => {
     if (!userId) return;

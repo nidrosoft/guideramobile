@@ -21,7 +21,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { ArrowLeft, Airplane, Building, Activity, Archive, Trash, Location, Map1 } from 'iconsax-react-native';
+import { ArrowLeft2, Airplane, Building, Activity, Archive, Trash, Location, Map1 } from 'iconsax-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -167,7 +167,7 @@ export default function SavedDealsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.back(); }} style={[styles.backBtn, { backgroundColor: colors.bgCard }]}>
-          <ArrowLeft size={22} color={colors.textPrimary} />
+          <ArrowLeft2 size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Saved Items</Text>
         <View style={{ width: 40 }} />

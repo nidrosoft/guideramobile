@@ -7,7 +7,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import ProgressStepper from '@/components/common/ProgressStepper';
-import { ArrowLeft, TickCircle } from 'iconsax-react-native';
+import { ArrowLeft2, TickCircle } from 'iconsax-react-native';
 import { useOnboardingStore } from '@/stores/useOnboardingStore';
 import { useAuth } from '@/context/AuthContext';
 
@@ -185,7 +185,7 @@ export default function PreferenceScreen({
         {/* Back Button - First Line */}
         {showBackButton && (
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <ArrowLeft size={24} color={tc.textPrimary} variant="Outline" />
+            <ArrowLeft2 size={24} color={tc.textPrimary} variant="Outline" />
           </TouchableOpacity>
         )}
 

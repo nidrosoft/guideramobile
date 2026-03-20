@@ -23,7 +23,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   Airplane,
   Building,
   Car,
@@ -164,7 +164,7 @@ export default function DealDetailScreen() {
         <StatusBar style="light" />
         <View style={[styles.header, { borderBottomColor: tc.borderSubtle }]}>
           <TouchableOpacity onPress={handleBack} style={styles.headerBtn}>
-            <ArrowLeft size={24} color={tc.textPrimary} />
+            <ArrowLeft2 size={24} color={tc.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Deal Detail</Text>
           <View style={{ width: 40 }} />
@@ -189,7 +189,7 @@ export default function DealDetailScreen() {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.headerBtn}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Deal Detail</Text>
         <TouchableOpacity onPress={handleDelete} style={styles.headerBtn}>

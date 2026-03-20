@@ -10,7 +10,7 @@ import { useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
-import { ArrowLeft, Location } from 'iconsax-react-native';
+import { ArrowLeft2, Location } from 'iconsax-react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Clock, Star1, TickCircle } from 'iconsax-react-native';
@@ -63,7 +63,7 @@ export default function ViewAllLocalExperiences() {
           style={[styles.backBtn, { backgroundColor: colors.bgCard }]}
           activeOpacity={0.7}
         >
-          <ArrowLeft size={22} color={colors.textPrimary} />
+          <ArrowLeft2 size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Local Experiences</Text>

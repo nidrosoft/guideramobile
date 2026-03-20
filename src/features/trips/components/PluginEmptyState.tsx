@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
-import { ArrowLeft } from 'iconsax-react-native';
+import { ArrowLeft2 } from 'iconsax-react-native';
 import { useRouter } from 'expo-router';
 import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -73,7 +73,7 @@ export default function PluginEmptyState({
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{headerTitle}</Text>
         {headerRight || <View style={{ width: 24 }} />}

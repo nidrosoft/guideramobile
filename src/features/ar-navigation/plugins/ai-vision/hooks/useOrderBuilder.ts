@@ -130,30 +130,40 @@ export function useOrderBuilder(): UseOrderBuilderReturn {
     }
 
     setIsPlaying(true);
+    setError(null);
+
     try {
-      if (__DEV__) console.log('[OrderBuilder] Playing TTS:', {
-        lang: generatedOrder.localLanguage,
-        textLength: generatedOrder.spokenOrder.length,
-        preview: generatedOrder.spokenOrder.substring(0, 50),
-      });
+      // Use a timeout to detect if speech never starts (silent mode / audio issue)
+      let speechStarted = false;
+      const silentModeTimeout = setTimeout(() => {
+        if (!speechStarted) {
+          setError('No audio? Turn off silent mode (flip the switch on the side of your phone) and try again.');
+        }
+      }, 2000);
 
       await speak(generatedOrder.spokenOrder, {
         language: generatedOrder.localLanguage,
-        rate: 0.85, // Slightly slower for clarity
+        rate: 1.1, // Natural conversational pace
         onDone: () => {
-          if (__DEV__) console.log('[OrderBuilder] TTS finished');
+          speechStarted = true;
+          clearTimeout(silentModeTimeout);
           setIsPlaying(false);
         },
         onError: (err) => {
+          clearTimeout(silentModeTimeout);
           if (__DEV__) console.warn('[OrderBuilder] TTS error:', err);
           setIsPlaying(false);
-          setError('Audio playback failed. Make sure your phone volume is up and try again.');
+          setError('Audio playback failed. Turn off silent mode and make sure volume is up.');
         },
       });
+
+      // If speak resolves without calling onDone (some edge cases), mark started
+      speechStarted = true;
+      clearTimeout(silentModeTimeout);
     } catch (err) {
       if (__DEV__) console.warn('[OrderBuilder] TTS catch:', err);
       setIsPlaying(false);
-      setError('Could not play audio. Check your phone volume and silent mode switch.');
+      setError('Could not play audio. Turn off silent mode (side switch) and increase volume.');
     }
   }, [generatedOrder]);
 

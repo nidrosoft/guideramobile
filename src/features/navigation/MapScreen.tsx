@@ -23,7 +23,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, SearchNormal1, Location, Map1, Airplane, Building } from 'iconsax-react-native';
+import { ArrowLeft2, SearchNormal1, Location, Map1, Airplane, Building } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { spacing, borderRadius as br } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -152,7 +152,7 @@ export default function MapScreen({ initialMode = 'city', onClose }: MapScreenPr
       {!nav.isNavigating && (
         <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity style={[styles.backBtn, { backgroundColor: tc.bgElevated }]} onPress={onClose}>
-            <ArrowLeft size={22} color={tc.textPrimary} />
+            <ArrowLeft2 size={22} color={tc.textPrimary} />
           </TouchableOpacity>
 
           <View style={[styles.modeRow, { backgroundColor: tc.bgElevated }]}>
@@ -273,7 +273,7 @@ export default function MapScreen({ initialMode = 'city', onClose }: MapScreenPr
         <View style={[styles.searchModal, { backgroundColor: tc.background }]}>
           <View style={[styles.searchModalHeader, { paddingTop: insets.top + spacing.sm }]}>
             <TouchableOpacity onPress={() => { setShowSearch(false); setSearchResults([]); setSearchText(''); }}>
-              <ArrowLeft size={24} color={tc.textPrimary} />
+              <ArrowLeft2 size={24} color={tc.textPrimary} />
             </TouchableOpacity>
             <TextInput
               style={[styles.searchInput, { color: tc.textPrimary, backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}

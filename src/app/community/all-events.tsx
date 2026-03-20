@@ -10,7 +10,7 @@ import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'iconsax-react-native';
+import { ArrowLeft2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -77,7 +77,7 @@ export default function AllEvents() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>All Events</Text>
         <View style={styles.headerSpacer} />

@@ -22,7 +22,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, ArrowRight2 } from 'iconsax-react-native';
+import { ArrowLeft2, ArrowRight2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import * as ExpoLocation from 'expo-location';
 import { spacing, borderRadius } from '@/styles';
@@ -262,7 +262,7 @@ export default function CreateActivityScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity style={[styles.backBtn, { backgroundColor: tc.bgElevated }]} onPress={handleBack}>
-          <ArrowLeft size={22} color={tc.textPrimary} />
+          <ArrowLeft2 size={22} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>
           {isEditing ? 'Edit Activity' : step === TOTAL_STEPS ? 'Almost Done' : `Step ${step} of ${TOTAL_STEPS}`}

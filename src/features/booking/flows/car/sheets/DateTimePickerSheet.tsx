@@ -15,7 +15,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CloseCircle, ArrowLeft, ArrowRight, TickCircle } from 'iconsax-react-native';
+import { CloseCircle, ArrowLeft2, ArrowRight, TickCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -151,7 +151,7 @@ export default function DateTimePickerSheet({
                     setCurrentMonth(prev);
                   }}
                 >
-                  <ArrowLeft size={24} color={tc.textPrimary} />
+                  <ArrowLeft2 size={24} color={tc.textPrimary} />
                 </TouchableOpacity>
                 <Text style={[styles.monthText, { color: tc.textPrimary }]}>
                   {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}

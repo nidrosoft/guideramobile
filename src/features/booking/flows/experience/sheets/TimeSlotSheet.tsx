@@ -14,7 +14,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CloseCircle, ArrowLeft, ArrowRight, TickCircle, Clock } from 'iconsax-react-native';
+import { CloseCircle, ArrowLeft2, ArrowRight, TickCircle, Clock } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, borderRadius } from '@/styles';
@@ -129,7 +129,7 @@ export default function TimeSlotSheet({
                   setCurrentMonth(prev);
                 }}
               >
-                <ArrowLeft size={24} color={colors.textPrimary} />
+                <ArrowLeft2 size={24} color={colors.textPrimary} />
               </TouchableOpacity>
               <Text style={styles.monthText}>
                 {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}

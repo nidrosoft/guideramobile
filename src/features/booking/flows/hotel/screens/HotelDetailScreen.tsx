@@ -22,7 +22,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, interpolate } from 'react-native-reanimated';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   Heart,
   Share,
   Star1,
@@ -118,7 +118,7 @@ export default function HotelDetailScreen({ onContinue, onBack }: HotelDetailScr
       {/* Fixed Header (visible on scroll) */}
       <Animated.View style={[localStyles.fixedHeader, { paddingTop: insets.top + spacing.xs, backgroundColor: tc.background }, headerAnimatedStyle]}>
         <TouchableOpacity style={[localStyles.headerBtn, { backgroundColor: tc.bgElevated }]} onPress={onBack}>
-          <ArrowLeft size={22} color={tc.textPrimary} />
+          <ArrowLeft2 size={22} color={tc.textPrimary} />
         </TouchableOpacity>
         <View style={localStyles.fixedHeaderActions}>
           <TouchableOpacity
@@ -190,7 +190,7 @@ export default function HotelDetailScreen({ onContinue, onBack }: HotelDetailScr
           <View style={localStyles.policiesGrid}>
             <View style={[localStyles.policyItem, { backgroundColor: `${tc.primary}08` }]}>
               <View style={[localStyles.policyIcon, { backgroundColor: `${tc.primary}15` }]}>
-                <ArrowLeft size={18} color={tc.primary} style={{ transform: [{ rotate: '45deg' }] }} />
+                <ArrowLeft2 size={18} color={tc.primary} style={{ transform: [{ rotate: '45deg' }] }} />
               </View>
               <View>
                 <Text style={[localStyles.policyLabel, { color: tc.textSecondary }]}>Check-in</Text>
@@ -201,7 +201,7 @@ export default function HotelDetailScreen({ onContinue, onBack }: HotelDetailScr
             </View>
             <View style={[localStyles.policyItem, { backgroundColor: `${tc.primary}08` }]}>
               <View style={[localStyles.policyIcon, { backgroundColor: `${tc.primary}15` }]}>
-                <ArrowLeft size={18} color={tc.primary} style={{ transform: [{ rotate: '-135deg' }] }} />
+                <ArrowLeft2 size={18} color={tc.primary} style={{ transform: [{ rotate: '-135deg' }] }} />
               </View>
               <View>
                 <Text style={[localStyles.policyLabel, { color: tc.textSecondary }]}>Check-out</Text>

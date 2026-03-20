@@ -21,7 +21,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   Star1,
   Message,
   Heart,
@@ -356,7 +356,7 @@ export default function GuideProfileScreen() {
           )}
           <View style={[styles.coverOverlay, { paddingTop: insets.top }]}>
             <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-              <ArrowLeft size={20} color={colors.white} />
+              <ArrowLeft2 size={20} color={colors.white} />
             </TouchableOpacity>
             <View style={styles.coverActions}>
               <TouchableOpacity style={styles.coverActionBtn} onPress={handleSave}>

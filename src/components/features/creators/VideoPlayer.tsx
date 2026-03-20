@@ -24,7 +24,7 @@ import {
 import { Audio, Video, ResizeMode } from 'expo-av';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Heart, MessageText, Send2, MusicPlay, Play, Pause } from 'iconsax-react-native';
+import { ArrowLeft2, Heart, MessageText, Send2, MusicPlay, Play, Pause } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { TikTokVideo } from '@/services/tiktok.service';
@@ -240,7 +240,7 @@ export default function VideoPlayer({ videos: initialVideos, initialIndex = 0, o
 
       {/* Back button */}
       <TouchableOpacity style={[styles.backButton, { top: insets.top + 10 }]} onPress={onClose} activeOpacity={0.7}>
-        <ArrowLeft size={28} color="#FFF" />
+        <ArrowLeft2 size={28} color="#FFF" />
       </TouchableOpacity>
 
       {/* Counter */}

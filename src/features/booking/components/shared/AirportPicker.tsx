@@ -26,7 +26,7 @@ import {
   Location,
   CloseCircle,
   ArrowRight2,
-  ArrowLeft,
+  ArrowLeft2,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { spacing, typography, shadows, borderRadius } from '@/styles';
@@ -113,7 +113,7 @@ export default function AirportPicker({
             onPress={handleClose}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <ArrowLeft size={24} color={colors.textPrimary} />
+            <ArrowLeft2 size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
           <View style={styles.backButton} />

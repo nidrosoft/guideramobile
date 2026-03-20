@@ -23,7 +23,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   ArrowRight2,
   Camera,
   TickCircle,
@@ -340,7 +340,7 @@ export default function CreateListingScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
-          <ArrowLeft size={20} color={colors.textPrimary} />
+          <ArrowLeft2 size={20} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Listing</Text>
         <Text style={styles.stepIndicator}>Step {step}/{TOTAL_STEPS}</Text>

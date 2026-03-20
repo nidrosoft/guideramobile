@@ -9,7 +9,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft } from 'iconsax-react-native';
+import { ArrowLeft2 } from 'iconsax-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { supabase } from '@/lib/supabase/client';
 import { invokeEdgeFn } from '@/utils/retry';
@@ -332,7 +332,7 @@ export default function DestinationDetailPage() {
           style={[styles.backBtn, { backgroundColor: PRIMARY }]}
           onPress={() => router.back()}
         >
-          <ArrowLeft size={18} color="#FFF" />
+          <ArrowLeft2 size={18} color="#FFF" />
           <Text style={styles.backBtnText}>Go Back</Text>
         </TouchableOpacity>
       </SafeAreaView>

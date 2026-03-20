@@ -15,7 +15,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import MapView, { Marker } from 'react-native-maps';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   Add,
   DocumentText,
   Gallery,
@@ -501,7 +501,7 @@ export default function EntryEditorScreen() {
         {/* Header */}
         <View style={[styles.header, { backgroundColor: tc.bgPrimary, borderBottomColor: tc.borderSubtle }]}>
           <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: tc.bgCard }]}>
-            <ArrowLeft size={24} color={tc.textPrimary} variant="Linear" />
+            <ArrowLeft2 size={24} color={tc.textPrimary} variant="Linear" />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Edit Entry</Text>
           <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>

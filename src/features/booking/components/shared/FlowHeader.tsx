@@ -32,7 +32,7 @@ import Animated, {
   FadeInDown,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, CloseCircle, Warning2 } from 'iconsax-react-native';
+import { ArrowLeft2, CloseCircle, Warning2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors as staticColors, spacing, typography, borderRadius, shadows } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -162,7 +162,7 @@ export default function FlowHeader({
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             activeOpacity={0.7}
           >
-            <ArrowLeft size={isSmallScreen ? 20 : 24} color={colors.white} />
+            <ArrowLeft2 size={isSmallScreen ? 20 : 24} color={colors.white} />
           </TouchableOpacity>
         ) : (
           <View style={styles.iconPlaceholder} />

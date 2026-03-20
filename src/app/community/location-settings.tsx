@@ -8,7 +8,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'iconsax-react-native';
+import { ArrowLeft2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing } from '@/styles';
 import LocationSharingSettings, { 
@@ -45,7 +45,7 @@ export default function LocationSettingsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft2 size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.title}>Location Settings</Text>
         <View style={styles.placeholder} />

@@ -23,7 +23,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Add, Folder2, Edit2, Trash, CloseCircle } from 'iconsax-react-native';
+import { ArrowLeft2, Add, Folder2, Edit2, Trash, CloseCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -174,7 +174,7 @@ export default function CollectionsScreen() {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: tc.textPrimary }]}>Collections</Text>
         <TouchableOpacity 

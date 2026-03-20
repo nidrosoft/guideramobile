@@ -393,202 +393,38 @@ export async function processScan(
 }
 
 // ============================================
-// OAUTH IMPORT
+// OAUTH IMPORT — DEPRECATED
 // ============================================
+// OAuth-based import (Traxo, Expedia, Booking.com) has been replaced by
+// email-based import (forward booking emails to import+{userId}@guidera.one).
+// See: src/services/emailImport.service.ts and supabase/functions/process-email-import/
+//
+// The linked_travel_accounts table still exists in the DB but is no longer used.
+// This section is intentionally empty — all OAuth functions have been removed.
 
 /**
- * Initiate OAuth connection
- */
-export async function initiateOAuthConnection(
-  userId: string,
-  provider: string
-): Promise<{ authUrl: string; state: string }> {
-  const state = generateRandomString(32);
-
-  // Store state for callback verification
-  await supabase.from('scheduled_jobs').insert({
-    job_type: 'oauth_state',
-    job_data: { userId, provider, state },
-    scheduled_for: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // Expires in 10 min
-    status: 'pending',
-  });
-
-  // Build OAuth URL based on provider
-  const authUrl = buildOAuthUrl(provider, state);
-
-  return { authUrl, state };
-}
-
-/**
- * Handle OAuth callback
- */
-export async function handleOAuthCallback(
-  code: string,
-  state: string
-): Promise<LinkedAccount> {
-  // Verify state
-  const { data: stateRecord } = await supabase
-    .from('scheduled_jobs')
-    .select('job_data')
-    .eq('job_type', 'oauth_state')
-    .eq('status', 'pending')
-    .single();
-
-  if (!stateRecord || stateRecord.job_data.state !== state) {
-    throw new Error('Invalid OAuth state');
-  }
-
-  const { userId, provider } = stateRecord.job_data;
-
-  // Exchange code for tokens (provider-specific)
-  const tokens = await exchangeOAuthCode(provider, code);
-
-  // Get account info
-  const accountInfo = await getOAuthAccountInfo(provider, tokens.access_token);
-
-  // Store linked account
-  const { data: account, error } = await supabase
-    .from('linked_travel_accounts')
-    .upsert({
-      user_id: userId,
-      provider,
-      access_token_encrypted: await encryptToken(tokens.access_token),
-      refresh_token_encrypted: tokens.refresh_token ? await encryptToken(tokens.refresh_token) : null,
-      token_expires_at: tokens.expires_at,
-      provider_account_id: accountInfo.id,
-      provider_email: accountInfo.email,
-      provider_name: accountInfo.name,
-      status: 'active',
-      next_sync_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  // Trigger initial sync
-  await syncLinkedAccount(account.id);
-
-  return account as LinkedAccount;
-}
-
-/**
- * Sync linked account
- */
-export async function syncLinkedAccount(accountId: string): Promise<{ imported: number }> {
-  const { data: account } = await supabase
-    .from('linked_travel_accounts')
-    .select('*')
-    .eq('id', accountId)
-    .single();
-
-  if (!account || account.status !== 'active') {
-    return { imported: 0 };
-  }
-
-  try {
-    // Decrypt access token
-    const accessToken = await decryptToken(account.access_token_encrypted);
-
-    // Fetch bookings from provider
-    const bookings = await fetchProviderBookings(account.provider, accessToken);
-
-    let imported = 0;
-
-    for (const booking of bookings) {
-      // Skip if already imported
-      const { data: existing } = await supabase
-        .from('trip_imports')
-        .select('id')
-        .eq('oauth_booking_id', booking.id)
-        .single();
-
-      if (existing) continue;
-
-      // Create import record
-      const { data: importRecord } = await supabase
-        .from('trip_imports')
-        .insert({
-          user_id: account.user_id,
-          import_method: `oauth_${account.provider}`,
-          oauth_provider: account.provider,
-          oauth_booking_id: booking.id,
-          parsed_data: normalizeOAuthBooking(booking, account.provider),
-          parse_status: 'parsed',
-          overall_confidence: 0.95,
-          processing_status: 'pending',
-        })
-        .select()
-        .single();
-
-      if (importRecord) {
-        await processImport(importRecord.id);
-        imported++;
-      }
-    }
-
-    // Update sync status
-    await supabase
-      .from('linked_travel_accounts')
-      .update({
-        last_sync_at: new Date().toISOString(),
-        last_sync_status: 'success',
-        bookings_imported: account.bookings_imported + imported,
-        next_sync_at: calculateNextSyncTime(account.sync_frequency),
-      })
-      .eq('id', accountId);
-
-    return { imported };
-  } catch (error: any) {
-    await supabase
-      .from('linked_travel_accounts')
-      .update({
-        last_sync_at: new Date().toISOString(),
-        last_sync_status: 'error',
-        last_sync_error: error.message,
-      })
-      .eq('id', accountId);
-
-    throw error;
-  }
-}
-
-/**
- * Disconnect linked account
- */
-export async function disconnectLinkedAccount(userId: string, accountId: string): Promise<void> {
-  await supabase
-    .from('linked_travel_accounts')
-    .update({
-      status: 'revoked',
-      access_token_encrypted: null,
-      refresh_token_encrypted: null,
-    })
-    .eq('id', accountId)
-    .eq('user_id', userId);
-}
-
-/**
- * Get user's linked accounts
+ * Get user's linked accounts (legacy — returns empty for backward compat)
  */
 export async function getLinkedAccounts(userId: string): Promise<LinkedAccount[]> {
-  const { data, error } = await supabase
-    .from('linked_travel_accounts')
-    .select('*')
-    .eq('user_id', userId)
-    .neq('status', 'revoked')
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return (data || []) as LinkedAccount[];
+  return [];
 }
 
 // ============================================
 // IMPORT PROCESSING
 // ============================================
 
+// PLACEHOLDER: syncLinkedAccount removed (was Traxo OAuth)
+// The import processing below is still used by the email import + scan flows.
+
 /**
- * Process an import (create trip/booking)
+ * Sync linked account — DEPRECATED (no-op)
+ */
+export async function syncLinkedAccount(_accountId: string): Promise<{ imported: number }> {
+  return { imported: 0 };
+}
+
+/**
+ * Process an import (create trip/booking) — used by email + scan flows
  */
 export async function processImport(importId: string): Promise<void> {
   const { data: importRecord } = await supabase
@@ -746,119 +582,6 @@ function generateRandomString(length: number): string {
   return result;
 }
 
-function buildOAuthUrl(provider: string, state: string): string {
-  // Provider-specific OAuth URLs
-  const configs: Record<string, { authUrl: string; clientId: string; scopes: string[] }> = {
-    expedia: {
-      authUrl: 'https://www.expedia.com/oauth/authorize',
-      clientId: process.env.EXPEDIA_CLIENT_ID || '',
-      scopes: ['bookings.read'],
-    },
-    booking: {
-      authUrl: 'https://account.booking.com/oauth2/authorize',
-      clientId: process.env.BOOKING_CLIENT_ID || '',
-      scopes: ['bookings.read'],
-    },
-    google: {
-      authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      scopes: ['https://www.googleapis.com/auth/gmail.readonly'],
-    },
-  };
-
-  const config = configs[provider];
-  if (!config) {
-    throw new Error(`Unknown OAuth provider: ${provider}`);
-  }
-
-  const params = new URLSearchParams({
-    client_id: config.clientId,
-    redirect_uri: `${process.env.APP_URL}/api/import/oauth/callback`,
-    response_type: 'code',
-    scope: config.scopes.join(' '),
-    state,
-  });
-
-  return `${config.authUrl}?${params.toString()}`;
-}
-
-async function exchangeOAuthCode(provider: string, code: string): Promise<{
-  access_token: string;
-  refresh_token?: string;
-  expires_at?: string;
-}> {
-  // TODO: Implement real OAuth token exchange per provider (Expedia, Booking.com, etc.)
-  // Each provider has its own token endpoint and client credentials
-  throw new Error(`OAuth token exchange not yet implemented for ${provider}. This feature is coming soon.`);
-}
-
-async function getOAuthAccountInfo(provider: string, accessToken: string): Promise<{
-  id: string;
-  email?: string;
-  name?: string;
-}> {
-  // TODO: Implement real provider user info lookup
-  throw new Error(`Provider account lookup not yet implemented for ${provider}. This feature is coming soon.`);
-}
-
-async function fetchProviderBookings(provider: string, accessToken: string): Promise<any[]> {
-  // TODO: Implement real provider bookings API integration
-  throw new Error(`Booking import not yet implemented for ${provider}. This feature is coming soon.`);
-}
-
-function normalizeOAuthBooking(booking: any, provider: string): ParsedImportData {
-  // Normalize booking data from different providers
-  return {
-    category: booking.type || 'other',
-    confidence: 0.95,
-    extracted: booking,
-    destination: booking.destination,
-    dates: {
-      start: booking.startDate,
-      end: booking.endDate,
-    },
-  };
-}
-
-function calculateNextSyncTime(frequency: string): string {
-  const now = new Date();
-  switch (frequency) {
-    case 'hourly':
-      now.setHours(now.getHours() + 1);
-      break;
-    case 'daily':
-      now.setDate(now.getDate() + 1);
-      break;
-    case 'weekly':
-      now.setDate(now.getDate() + 7);
-      break;
-    default:
-      now.setDate(now.getDate() + 1);
-  }
-  return now.toISOString();
-}
-
-// Simple obfuscation key derived from app identity — not military-grade but prevents
-// trivial Base64 reversal. For true encryption, use a server-side encrypt/decrypt flow.
-const OBFUSCATION_KEY = 'guidera:token:v1';
-
-async function encryptToken(token: string): Promise<string> {
-  // XOR with rotating key + Base64 encode — prevents trivial Base64 reversal
-  const keyBytes = OBFUSCATION_KEY.split('').map(c => c.charCodeAt(0));
-  const tokenBytes = token.split('').map(c => c.charCodeAt(0));
-  const encrypted = tokenBytes.map((b, i) => b ^ keyBytes[i % keyBytes.length]);
-  const chars = encrypted.map(b => String.fromCharCode(b)).join('');
-  return btoa(chars);
-}
-
-async function decryptToken(encrypted: string): Promise<string> {
-  const chars = atob(encrypted);
-  const keyBytes = OBFUSCATION_KEY.split('').map(c => c.charCodeAt(0));
-  const encryptedBytes = chars.split('').map(c => c.charCodeAt(0));
-  const decrypted = encryptedBytes.map((b, i) => b ^ keyBytes[i % keyBytes.length]);
-  return decrypted.map(b => String.fromCharCode(b)).join('');
-}
-
 async function findMatchingTrip(userId: string, parsed: ParsedImportData): Promise<any | null> {
   if (!parsed.destination?.name || !parsed.dates?.start) return null;
 
@@ -949,10 +672,7 @@ export const TripImportService = {
   parseEmailImport,
   submitManualEntry,
   processScan,
-  initiateOAuthConnection,
-  handleOAuthCallback,
   syncLinkedAccount,
-  disconnectLinkedAccount,
   getLinkedAccounts,
   processImport,
   submitImportCorrections,

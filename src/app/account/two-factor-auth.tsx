@@ -21,7 +21,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
-  ArrowLeft, 
+  ArrowLeft2, 
   Sms,
   Key,
   ShieldTick,
@@ -188,7 +188,7 @@ export default function TwoFactorAuthScreen() {
               Use Google Authenticator, Authy, or similar apps
             </Text>
           </View>
-          <ArrowLeft size={18} color={colors.gray400} style={{ transform: [{ rotate: '180deg' }] }} />
+          <ArrowLeft2 size={18} color={colors.gray400} style={{ transform: [{ rotate: '180deg' }] }} />
         </TouchableOpacity>
       </View>
 
@@ -319,7 +319,7 @@ export default function TwoFactorAuthScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Two-Factor Authentication</Text>
         <View style={styles.headerSpacer} />

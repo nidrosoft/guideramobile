@@ -17,7 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   Sort,
   CloseCircle,
   ArrowDown2,
@@ -257,7 +257,7 @@ export default function HotelResultsScreen({
         <View style={styles.headerOverlay} />
         <View style={styles.headerContent}>
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <ArrowLeft size={24} color={colors.white} />
+            <ArrowLeft2 size={24} color={colors.white} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.routeInfo}>
             <Text style={styles.routeText}>{searchParams.destination?.name}</Text>

@@ -35,7 +35,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   Danger,
   Call,
   Location,
@@ -903,7 +903,7 @@ export default function SafetyScreen() {
         {/* Header */}
         <View style={[s.header, { backgroundColor: themeColors.bgPrimary, borderBottomColor: themeColors.borderSubtle }]}>
           <TouchableOpacity onPress={() => router.back()} style={s.backButton}>
-            <ArrowLeft size={24} color={themeColors.textPrimary} />
+            <ArrowLeft2 size={24} color={themeColors.textPrimary} />
           </TouchableOpacity>
           <Text style={[s.headerTitle, { color: themeColors.textPrimary }]}>Safety</Text>
           <View style={s.headerRight} />

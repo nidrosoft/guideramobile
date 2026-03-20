@@ -15,7 +15,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ArrowRight, CloseCircle } from 'iconsax-react-native';
+import { ArrowLeft2, ArrowRight, CloseCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 
@@ -207,7 +207,7 @@ export default function HotelDatePickerSheet({
         {/* Month Navigation */}
         <View style={styles.monthNav}>
           <TouchableOpacity onPress={handlePrevMonth} style={styles.navButton}>
-            <ArrowLeft size={24} color={colors.textPrimary} />
+            <ArrowLeft2 size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.monthTitle}>
             {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}

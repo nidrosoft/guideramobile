@@ -32,7 +32,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
-import { ArrowLeft, Heart, ExportSquare, Clock, LanguageSquare, People, TickCircle, CloseCircle, ArrowDown2, ArrowUp2, Location, Star1 } from 'iconsax-react-native';
+import { ArrowLeft2, Heart, ExportSquare, Clock, LanguageSquare, People, TickCircle, CloseCircle, ArrowDown2, ArrowUp2, Location, Star1 } from 'iconsax-react-native';
 import { Image } from 'expo-image';
 import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -184,7 +184,7 @@ export default function DealDetailScreen() {
         <StatusBar style={isDark ? 'light' : 'dark'} />
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
           <TouchableOpacity onPress={handleBack} style={[styles.navBtn, { backgroundColor: colors.bgCard }]}>
-            <ArrowLeft size={22} color={colors.textPrimary} />
+            <ArrowLeft2 size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
         <View style={styles.center}>
@@ -289,7 +289,7 @@ export default function DealDetailScreen() {
 
             <View style={[styles.heroNav, { top: insets.top + 8 }]}>
               <TouchableOpacity onPress={handleBack} style={styles.navBtn}>
-                <ArrowLeft size={22} color="#FFF" />
+                <ArrowLeft2 size={22} color="#FFF" />
               </TouchableOpacity>
               <View style={styles.navRight}>
                 <TouchableOpacity onPress={handleSave} style={styles.navBtn}>
@@ -492,7 +492,7 @@ export default function DealDetailScreen() {
 
             <View style={[styles.heroNav, { top: insets.top + 8 }]}>
               <TouchableOpacity onPress={handleBack} style={styles.navBtn}>
-                <ArrowLeft size={22} color="#FFF" />
+                <ArrowLeft2 size={22} color="#FFF" />
               </TouchableOpacity>
               <View style={styles.navRight}>
                 <TouchableOpacity onPress={handleSave} style={styles.navBtn}>
@@ -706,7 +706,7 @@ export default function DealDetailScreen() {
           {/* Nav buttons */}
           <View style={[styles.heroNav, { top: insets.top + 8 }]}>
             <TouchableOpacity onPress={handleBack} style={styles.navBtn}>
-              <ArrowLeft size={22} color="#FFF" />
+              <ArrowLeft2 size={22} color="#FFF" />
             </TouchableOpacity>
             <View style={styles.navRight}>
               <TouchableOpacity onPress={handleSave} style={styles.navBtn}>

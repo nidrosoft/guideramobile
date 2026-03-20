@@ -20,7 +20,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-  ArrowLeft,
+  ArrowLeft2,
   SearchNormal1,
   Filter,
   CloseCircle,
@@ -329,7 +329,7 @@ export default function SearchScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top, backgroundColor: tc.bgElevated }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <ArrowLeft size={24} color={tc.textPrimary} />
+          <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         
         {/* Search Input */}

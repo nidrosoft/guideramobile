@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Add, Minus, People, Profile2User } from 'iconsax-react-native';
+import { ArrowLeft2, Add, Minus, People, Profile2User } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -151,7 +151,7 @@ export default function PassengerSelector({
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <ArrowLeft size={24} color={colors.textPrimary} />
+            <ArrowLeft2 size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Passengers</Text>
           <View style={styles.closeButton} />

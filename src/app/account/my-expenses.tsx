@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import {
-  ArrowLeft, DollarCircle, ArrowDown2, ArrowUp2,
+  ArrowLeft2, DollarCircle, ArrowDown2, ArrowUp2,
   Calendar, Receipt1,
 } from 'iconsax-react-native';
 import { useTheme } from '@/context/ThemeContext';
@@ -271,7 +271,7 @@ export default function MyExpensesScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: tc.bgSunken }]}>
-          <ArrowLeft size={20} color={tc.textPrimary} />
+          <ArrowLeft2 size={20} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>My Expenses</Text>
         <View style={{ width: 36 }} />
