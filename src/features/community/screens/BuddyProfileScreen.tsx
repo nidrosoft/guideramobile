@@ -31,12 +31,15 @@ import {
   Heart,
   Flag,
   Crown,
+  ShieldCross,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { supabase } from '@/lib/supabase/client';
 import { buddyService, groupService } from '@/services/community';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 
 interface BuddyData {
   id: string;
@@ -62,6 +65,8 @@ export default function BuddyProfileScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile: authProfile } = useAuth();
+  const { showSuccess, showError } = useToast();
+  const { colors: tc, isDark } = useTheme();
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [buddy, setBuddy] = useState<BuddyData | null>(null);
@@ -132,8 +137,8 @@ export default function BuddyProfileScreen() {
         id: profileData.id,
         firstName: profileData.first_name || '',
         lastName: profileData.last_name || '',
-        avatar: profileData.avatar_url || `https://i.pravatar.cc/300?u=${id}`,
-        coverImage: profileData.cover_photo_url || 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
+        avatar: profileData.avatar_url || '',
+        coverImage: profileData.cover_photo_url || '',
         bio: profileData.bio || '',
         location: [profileData.city, profileData.nationality].filter(Boolean).join(', ') || '',
         languages: socialData?.languages || [],
@@ -157,7 +162,7 @@ export default function BuddyProfileScreen() {
         mutualGroups,
       });
     } catch (err) {
-      console.error('Failed to fetch buddy profile:', err);
+      if (__DEV__) console.warn('Failed to fetch buddy profile:', err);
     } finally {
       setIsFetching(false);
     }
@@ -194,11 +199,11 @@ export default function BuddyProfileScreen() {
       setIsConnecting(false);
       setIsConnected(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Request Sent!', `Your connection request has been sent to ${buddy?.firstName}.`);
+      showSuccess(`Connection request sent to ${buddy?.firstName}!`);
     } catch (err: any) {
       setIsConnecting(false);
-      console.error('Failed to connect:', err);
-      Alert.alert('Error', err?.message || 'Could not send connection request.');
+      if (__DEV__) console.warn('Failed to connect:', err);
+      showError(err?.message || 'Could not send connection request');
     }
   };
   
@@ -216,7 +221,7 @@ export default function BuddyProfileScreen() {
     }
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/community/chat/${buddy.id}` as any);
+    router.push(`/community/chat/${buddy?.id}` as any);
   };
   
   const handleReport = () => {
@@ -224,40 +229,81 @@ export default function BuddyProfileScreen() {
     router.push(`/community/report?type=user&id=${buddy?.id}` as any);
   };
 
+  const handleBlock = () => {
+    Alert.alert('Block User', `Block ${buddy?.firstName}? They won't be able to see your profile or message you.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Block', style: 'destructive', onPress: async () => {
+        if (!authProfile?.id || !id) return;
+        try {
+          await supabase.from('user_blocks').insert({ blocker_id: authProfile.id, blocked_id: id });
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          showSuccess('User blocked');
+          router.back();
+        } catch { showError('Could not block user'); }
+      }},
+    ]);
+  };
+
+  const handleDisconnect = async () => {
+    if (!authProfile?.id || !id) return;
+    Alert.alert('Remove Connection', `Remove ${buddy?.firstName} as a buddy?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: async () => {
+        try {
+          await buddyService.removeBuddy(authProfile.id, id);
+          setIsConnected(false);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch (err: any) { Alert.alert('Error', err?.message || 'Could not remove buddy.'); }
+      }},
+    ]);
+  };
+
   if (isFetching || !buddy) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, { backgroundColor: tc.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={tc.primary} />
       </View>
     );
   }
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <StatusBar style="light" />
       
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Cover & Avatar */}
         <View style={styles.header}>
-          <Image source={{ uri: buddy.coverImage }} style={styles.coverImage} />
+          {buddy.coverImage ? (
+            <Image source={{ uri: buddy.coverImage }} style={styles.coverImage} />
+          ) : (
+            <View style={[styles.coverImage, { backgroundColor: tc.primary + '30' }]} />
+          )}
           <View style={styles.coverOverlay} />
           
           {/* Top Bar */}
           <View style={[styles.topBar, { paddingTop: insets.top }]}>
             <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
-              <ArrowLeft size={24} color={colors.white} />
+              <ArrowLeft size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerButton} onPress={handleReport}>
-              <More size={24} color={colors.white} />
+              <More size={24} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
           
           {/* Avatar */}
           <View style={styles.avatarContainer}>
-            <Image source={{ uri: buddy.avatar }} style={styles.avatar} />
+            {buddy.avatar ? (
+              <Image source={{ uri: buddy.avatar }} style={[styles.avatar, { borderColor: tc.background }]} />
+            ) : (
+              <View style={[styles.avatar, { borderColor: tc.background, backgroundColor: tc.primary + '30', alignItems: 'center', justifyContent: 'center' }]}>
+                <Text style={{ fontSize: 36, fontWeight: '700', color: '#FFFFFF' }}>
+                  {(buddy.firstName[0] || '?').toUpperCase()}
+                </Text>
+              </View>
+            )}
             {buddy.isPremium && (
-              <View style={styles.premiumBadge}>
-                <Crown size={14} color={colors.white} variant="Bold" />
+              <View style={[styles.premiumBadge, { borderColor: tc.background }]}>
+                <Crown size={14} color="#FFFFFF" variant="Bold" />
               </View>
             )}
           </View>
@@ -266,72 +312,82 @@ export default function BuddyProfileScreen() {
         {/* Profile Info */}
         <View style={styles.profileInfo}>
           <View style={styles.nameRow}>
-            <Text style={styles.name}>{buddy.firstName} {buddy.lastName}</Text>
+            <Text style={[styles.name, { color: tc.textPrimary }]}>{buddy.firstName} {buddy.lastName}</Text>
             {buddy.isVerified && (
-              <Verify size={20} color={colors.primary} variant="Bold" />
+              <Verify size={20} color={tc.primary} variant="Bold" />
             )}
           </View>
           
           <View style={styles.locationRow}>
-            <Location size={16} color={colors.bgElevated0} />
-            <Text style={styles.locationText}>{buddy.location}</Text>
+            <Location size={16} color={tc.textTertiary} />
+            <Text style={[styles.locationText, { color: tc.textSecondary }]}>{buddy.location}</Text>
           </View>
           
-          <Text style={styles.bio}>{buddy.bio}</Text>
+          <Text style={[styles.bio, { color: tc.textSecondary }]}>{buddy.bio}</Text>
           
           {/* Stats */}
-          <View style={styles.statsContainer}>
+          <View style={[styles.statsContainer, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{buddy.stats.tripsCompleted}</Text>
-              <Text style={styles.statLabel}>Trips</Text>
+              <Text style={[styles.statValue, { color: tc.textPrimary }]}>{buddy.stats.tripsCompleted}</Text>
+              <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Trips</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: tc.borderSubtle }]} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{buddy.stats.countriesVisited}</Text>
-              <Text style={styles.statLabel}>Countries</Text>
+              <Text style={[styles.statValue, { color: tc.textPrimary }]}>{buddy.stats.countriesVisited}</Text>
+              <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Countries</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: tc.borderSubtle }]} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{buddy.stats.buddyConnections}</Text>
-              <Text style={styles.statLabel}>Buddies</Text>
+              <Text style={[styles.statValue, { color: tc.textPrimary }]}>{buddy.stats.buddyConnections}</Text>
+              <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Buddies</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: tc.borderSubtle }]} />
             <View style={styles.statItem}>
               <View style={styles.ratingRow}>
-                <Star1 size={14} color={colors.warning} variant="Bold" />
-                <Text style={styles.statValue}>{buddy.stats.rating}</Text>
+                <Star1 size={14} color={tc.warning} variant="Bold" />
+                <Text style={[styles.statValue, { color: tc.textPrimary }]}>{buddy.stats.rating}</Text>
               </View>
-              <Text style={styles.statLabel}>Rating</Text>
+              <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Rating</Text>
             </View>
           </View>
           
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[styles.connectButton, isConnected && styles.connectedButton]}
-              onPress={handleConnect}
-              disabled={isConnecting || isConnected}
-            >
-              <UserAdd size={20} color={isConnected ? colors.success : colors.white} />
-              <Text style={[styles.connectButtonText, isConnected && styles.connectedButtonText]}>
-                {isConnecting ? 'Sending...' : isConnected ? 'Request Sent' : 'Connect'}
-              </Text>
-            </TouchableOpacity>
+            {isConnected ? (
+              <TouchableOpacity
+                style={[styles.connectButton, { backgroundColor: tc.success + '15', borderWidth: 1, borderColor: tc.success }]}
+                onPress={handleDisconnect}
+              >
+                <UserAdd size={20} color={tc.success} />
+                <Text style={[styles.connectButtonText, { color: tc.success }]}>Connected</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.connectButton, { backgroundColor: tc.primary }]}
+                onPress={handleConnect}
+                disabled={isConnecting}
+              >
+                <UserAdd size={20} color="#FFFFFF" />
+                <Text style={[styles.connectButtonText, { color: '#FFFFFF' }]}>
+                  {isConnecting ? 'Sending...' : 'Connect'}
+                </Text>
+              </TouchableOpacity>
+            )}
             
-            <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
-              <Message size={20} color={colors.primary} />
+            <TouchableOpacity style={[styles.messageButton, { backgroundColor: tc.primary + '15' }]} onPress={handleMessage}>
+              <Message size={20} color={tc.primary} />
             </TouchableOpacity>
           </View>
         </View>
         
         {/* Languages */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Languages</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Languages</Text>
           <View style={styles.tagsContainer}>
             {buddy.languages.map(lang => (
-              <View key={lang} style={styles.languageTag}>
-                <Global size={14} color={colors.primary} />
-                <Text style={styles.languageText}>{lang}</Text>
+              <View key={lang} style={[styles.languageTag, { backgroundColor: tc.primary + '15' }]}>
+                <Global size={14} color={tc.primary} />
+                <Text style={[styles.languageText, { color: tc.primary }]}>{lang}</Text>
               </View>
             ))}
           </View>
@@ -339,11 +395,11 @@ export default function BuddyProfileScreen() {
         
         {/* Travel Style */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Travel Style</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Travel Style</Text>
           <View style={styles.tagsContainer}>
             {buddy.travelStyle.map(style => (
-              <View key={style} style={styles.tag}>
-                <Text style={styles.tagText}>{style}</Text>
+              <View key={style} style={[styles.tag, { backgroundColor: tc.borderSubtle }]}>
+                <Text style={[styles.tagText, { color: tc.textSecondary }]}>{style}</Text>
               </View>
             ))}
           </View>
@@ -351,12 +407,12 @@ export default function BuddyProfileScreen() {
         
         {/* Interests */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Interests</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Interests</Text>
           <View style={styles.tagsContainer}>
             {buddy.interests.map(interest => (
-              <View key={interest} style={styles.interestTag}>
-                <Heart size={12} color={colors.error} variant="Bold" />
-                <Text style={styles.interestText}>{interest}</Text>
+              <View key={interest} style={[styles.interestTag, { backgroundColor: tc.error + '10' }]}>
+                <Heart size={12} color={tc.error} variant="Bold" />
+                <Text style={[styles.interestText, { color: tc.error }]}>{interest}</Text>
               </View>
             ))}
           </View>
@@ -364,18 +420,18 @@ export default function BuddyProfileScreen() {
         
         {/* Upcoming Trips */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Upcoming Trips</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Upcoming Trips</Text>
           {buddy.upcomingTrips.map(trip => (
-            <View key={trip.id} style={styles.tripCard}>
+            <View key={trip.id} style={[styles.tripCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
               <View style={styles.tripHeader}>
-                <Location size={18} color={colors.primary} />
-                <Text style={styles.tripDestination}>{trip.destination}</Text>
+                <Location size={18} color={tc.primary} />
+                <Text style={[styles.tripDestination, { color: tc.textPrimary }]}>{trip.destination}</Text>
               </View>
               <View style={styles.tripDates}>
-                <Calendar size={14} color={colors.bgElevated0} />
-                <Text style={styles.tripDatesText}>{trip.dates}</Text>
+                <Calendar size={14} color={tc.textTertiary} />
+                <Text style={[styles.tripDatesText, { color: tc.textTertiary }]}>{trip.dates}</Text>
               </View>
-              <Text style={styles.tripLookingFor}>{trip.lookingFor}</Text>
+              {trip.lookingFor ? <Text style={[styles.tripLookingFor, { color: tc.textSecondary }]}>{trip.lookingFor}</Text> : null}
             </View>
           ))}
         </View>
@@ -383,7 +439,7 @@ export default function BuddyProfileScreen() {
         {/* Mutual Groups */}
         {buddy.mutualGroups.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Mutual Groups</Text>
+            <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Mutual Groups</Text>
             <View style={styles.groupsContainer}>
               {buddy.mutualGroups.map(group => (
                 <TouchableOpacity
@@ -392,20 +448,26 @@ export default function BuddyProfileScreen() {
                   onPress={() => router.push(`/community/${group.id}` as any)}
                 >
                   <Image source={{ uri: group.avatar }} style={styles.groupAvatar} />
-                  <Text style={styles.groupName} numberOfLines={1}>{group.name}</Text>
+                  <Text style={[styles.groupName, { color: tc.textSecondary }]} numberOfLines={1}>{group.name}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
         )}
         
-        {/* Report Button */}
-        <TouchableOpacity style={styles.reportButton} onPress={handleReport}>
-          <Flag size={18} color={colors.error} />
-          <Text style={styles.reportText}>Report User</Text>
-        </TouchableOpacity>
+        {/* Block + Report */}
+        <View style={[styles.section, { gap: spacing.sm, marginBottom: 40 }]}>
+          <TouchableOpacity style={styles.reportButton} onPress={handleBlock}>
+            <ShieldCross size={18} color={tc.error} />
+            <Text style={[styles.reportText, { color: tc.error }]}>Block User</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.reportButton} onPress={handleReport}>
+            <Flag size={18} color={tc.error} />
+            <Text style={[styles.reportText, { color: tc.error }]}>Report User</Text>
+          </TouchableOpacity>
+        </View>
         
-        <View style={{ height: 100 }} />
+        <View style={{ height: 60 }} />
       </ScrollView>
     </View>
   );
@@ -414,7 +476,6 @@ export default function BuddyProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     height: 240,
@@ -456,7 +517,6 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     borderWidth: 4,
-    borderColor: colors.white,
   },
   premiumBadge: {
     position: 'absolute',
@@ -465,11 +525,10 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.warning,
+    backgroundColor: '#F59E0B',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: colors.white,
   },
   profileInfo: {
     paddingTop: 60,
@@ -481,9 +540,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   name: {
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
+    fontSize: 24,
+    fontWeight: '700',
   },
   locationRow: {
     flexDirection: 'row',
@@ -492,23 +550,19 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   locationText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.bgElevated0,
+    fontSize: 13,
   },
   bio: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
+    fontSize: 13,
     lineHeight: 22,
     marginTop: spacing.md,
   },
   statsContainer: {
     flexDirection: 'row',
-    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginTop: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -520,18 +574,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: '700',
   },
   statLabel: {
-    fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
+    fontSize: 11,
     marginTop: 2,
   },
   statDivider: {
     width: 1,
-    backgroundColor: colors.borderSubtle,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -548,29 +599,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.lg,
     gap: spacing.sm,
   },
-  connectedButton: {
-    backgroundColor: colors.success + '15',
-    borderWidth: 1,
-    borderColor: colors.success,
-  },
   connectButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
-  },
-  connectedButtonText: {
-    color: colors.success,
+    fontSize: 15,
+    fontWeight: '600',
   },
   messageButton: {
     width: 52,
     height: 52,
     borderRadius: borderRadius.lg,
-    backgroundColor: colors.primary + '15',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -579,9 +619,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   sectionTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '700',
     marginBottom: spacing.md,
   },
   tagsContainer: {
@@ -592,47 +631,39 @@ const styles = StyleSheet.create({
   languageTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary + '15',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
     gap: spacing.xs,
   },
   languageText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.primary,
-    fontWeight: typography.fontWeight.medium,
+    fontSize: 13,
+    fontWeight: '500',
   },
   tag: {
-    backgroundColor: colors.borderSubtle,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
   },
   tagText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
+    fontSize: 13,
   },
   interestTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.error + '10',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
     gap: spacing.xs,
   },
   interestText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.error,
+    fontSize: 13,
   },
   tripCard: {
-    backgroundColor: colors.bgElevated,
     padding: spacing.md,
     borderRadius: 20,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
   },
   tripHeader: {
     flexDirection: 'row',
@@ -640,9 +671,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   tripDestination: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '600',
   },
   tripDates: {
     flexDirection: 'row',
@@ -651,12 +681,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   tripDatesText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.bgElevated0,
+    fontSize: 13,
   },
   tripLookingFor: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
+    fontSize: 13,
     marginTop: spacing.sm,
     fontStyle: 'italic',
   },
@@ -674,8 +702,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
   },
   groupName: {
-    fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
+    fontSize: 11,
     marginTop: spacing.xs,
     textAlign: 'center',
   },
@@ -688,7 +715,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   reportText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.error,
+    fontSize: 13,
   },
 });

@@ -159,16 +159,15 @@ export interface MatchCalculation {
 // ============================================
 
 export type ActivityType = 
-  | 'coffee'
-  | 'food'
-  | 'drinks'
-  | 'sightseeing'
-  | 'walking_tour'
-  | 'museum'
+  | 'food_drink'
   | 'nightlife'
-  | 'sports'
-  | 'coworking'
-  | 'language_exchange'
+  | 'sightseeing'
+  | 'outdoor'
+  | 'entertainment'
+  | 'shopping'
+  | 'rideshare'
+  | 'wellness'
+  | 'social'
   | 'other';
 
 export type ActivityTiming = 'now' | 'today' | 'tomorrow' | 'specific';
@@ -196,8 +195,11 @@ export interface Activity {
   type: ActivityType;
   title: string;
   description?: string;
+  coverImageUrl?: string;
   locationName?: string;
   locationAddress?: string;
+  city?: string;
+  country?: string;
   latitude?: number;
   longitude?: number;
   placeId?: string;
@@ -209,6 +211,7 @@ export interface Activity {
   visibility: 'everyone' | 'buddies_only' | 'selected';
   status: ActivityStatus;
   createdAt: Date;
+  updatedAt?: Date;
   expiresAt: Date;
   creator?: UserProfile;
   participants?: ActivityParticipant[];
@@ -227,6 +230,9 @@ export interface CreateActivityInput {
   type: ActivityType;
   title: string;
   description?: string;
+  coverImageUrl?: string;
+  city?: string;
+  country?: string;
   location: {
     name: string;
     address?: string;

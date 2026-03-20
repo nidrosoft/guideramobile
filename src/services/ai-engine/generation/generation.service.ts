@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 import { contextBuilderService } from '../context';
 import { cacheService } from '../cache';
 import {
@@ -164,13 +165,11 @@ class GenerationService {
     context: TripGenerationContext
   ): Promise<{ success: boolean; data: T | null; error?: string }> {
     try {
-      const { data, error } = await supabase.functions.invoke(this.EDGE_FUNCTION_URL, {
-        body: {
+      const { data, error } = await invokeEdgeFn(supabase, this.EDGE_FUNCTION_URL, {
           action: 'generate',
           moduleType,
           context,
-        },
-      });
+      }, 'fast');
 
       if (error) {
         return {

@@ -27,6 +27,7 @@ import {
 } from 'iconsax-react-native';
 import { spacing, typography, borderRadius, colors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useToast } from '@/contexts/ToastContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import { PackingCategory, PackingItem } from '../types/packing.types';
 import AddItemBottomSheet from '../components/AddItemBottomSheet';
@@ -51,6 +52,7 @@ export default function PackingScreen() {
   const params = useLocalSearchParams();
   const tripId = params.tripId as string;
   const { colors, isDark } = useTheme();
+  const { showError } = useToast();
   const { profile } = useAuth();
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
   
@@ -140,10 +142,11 @@ export default function PackingScreen() {
     try {
       await packingService.togglePacked(itemId, newPacked);
     } catch (err) {
-      console.error('Failed to toggle packed:', err);
+      if (__DEV__) console.warn('Failed to toggle packed:', err);
       setItems(items.map(i =>
         i.id === itemId ? { ...i, isPacked: !newPacked } : i
       ));
+      showError('Failed to update item. Please try again.');
     }
   };
 
@@ -170,7 +173,8 @@ export default function PackingScreen() {
       newExpanded.add(category);
       setExpandedCategories(newExpanded);
     } catch (err) {
-      console.error('Failed to add packing item:', err);
+      if (__DEV__) console.warn('Failed to add packing item:', err);
+      showError('Failed to add item. Please try again.');
     }
   };
 

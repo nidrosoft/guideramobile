@@ -49,7 +49,7 @@ interface FilterState {
 
 const POPULAR_TAGS = ['adventure', 'foodie', 'photography', 'budget', 'luxury', 'solo', 'backpacking', 'beach', 'mountains', 'city'];
 
-const RECENT_SEARCHES = ['Tokyo groups', 'travel buddies NYC', 'hiking events'];
+const SUGGESTED_SEARCHES = ['Tokyo groups', 'travel buddies NYC', 'hiking events'];
 
 export default function SearchScreen() {
   const router = useRouter();
@@ -161,7 +161,7 @@ export default function SearchScreen() {
               id: u.id,
               type: 'buddy',
               name: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
-              avatar: u.avatar_url || `https://i.pravatar.cc/150?u=${u.id}`,
+              avatar: u.avatar_url || '',
               location: u.city || u.nationality || '',
               rating: 0,
               trips: 0,
@@ -200,7 +200,7 @@ export default function SearchScreen() {
 
       setSearchResults(results);
     } catch (err) {
-      console.error('Search failed:', err);
+      if (__DEV__) console.warn('Search failed:', err);
     } finally {
       setIsSearching(false);
     }
@@ -463,9 +463,9 @@ export default function SearchScreen() {
       >
         {searchQuery.length === 0 ? (
           <>
-            {/* Recent Searches */}
-            <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Recent Searches</Text>
-            {RECENT_SEARCHES.map((query, index) => (
+            {/* Suggested Searches */}
+            <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Suggested Searches</Text>
+            {SUGGESTED_SEARCHES.map((query, index) => (
               <TouchableOpacity
                 key={index}
                 style={styles.recentItem}
@@ -595,7 +595,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.bgElevated0,
+    color: colors.textSecondary,
   },
   tabTextActive: {
     color: colors.primary,
@@ -764,7 +764,7 @@ const styles = StyleSheet.create({
   },
   resultMeta: {
     fontSize: typography.fontSize.xs,
-    color: colors.bgElevated0,
+    color: colors.textSecondary,
   },
   resultBadge: {
     backgroundColor: colors.primary + '15',

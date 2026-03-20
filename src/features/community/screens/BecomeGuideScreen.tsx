@@ -105,7 +105,7 @@ export default function BecomeGuideScreen() {
         setAppStatus('not_applied');
       }
     } catch (error) {
-      console.error('Error checking application status:', error);
+      if (__DEV__) console.warn('Error checking application status:', error);
       setAppStatus('not_applied');
     }
   }, [profile?.id]);

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { invokeWithRetry } from '@/utils/retry';
 
 export interface ItineraryDay {
   id: string;
@@ -60,12 +61,7 @@ class PlannerService {
     activitiesGenerated?: number;
     error?: string;
   }> {
-    const { data, error } = await supabase.functions.invoke('generate-itinerary', {
-      body: { tripId },
-    });
-
-    if (error) throw new Error(`Generation failed: ${error.message}`);
-    if (data?.error) throw new Error(data.error);
+    const data = await invokeWithRetry(supabase, 'generate-itinerary', { tripId }, 'fast');
     return data;
   }
 

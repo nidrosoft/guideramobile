@@ -348,7 +348,11 @@ export function useBuddyActions(userId: string | undefined) {
 // ACTIVITY HOOKS
 // ============================================
 
-export function useNearbyActivities(userId: string | undefined, location: { lat: number; lng: number } | null) {
+export function useNearbyActivities(
+  userId: string | undefined,
+  location: { lat: number; lng: number } | null,
+  city?: string | null,
+) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -356,16 +360,30 @@ export function useNearbyActivities(userId: string | undefined, location: { lat:
     if (!userId || !location) return;
     setLoading(true);
     try {
-      const data = await activityService.getNearbyActivities(userId, location.lat, location.lng);
+      const data = await activityService.getNearbyActivities(
+        userId, location.lat, location.lng,
+        { city: city || undefined }
+      );
       setActivities(data);
     } finally {
       setLoading(false);
     }
-  }, [userId, location?.lat, location?.lng]);
+  }, [userId, location?.lat, location?.lng, city]);
 
   useEffect(() => {
     fetchActivities();
   }, [fetchActivities]);
+
+  // Realtime: auto-refresh on any activity change
+  useEffect(() => {
+    const channel = activityService.subscribeToActivities(
+      city || null,
+      () => fetchActivities(),
+      () => fetchActivities(),
+      () => fetchActivities(),
+    );
+    return () => { activityService.unsubscribe(channel); };
+  }, [city, fetchActivities]);
 
   return { activities, loading, refetch: fetchActivities };
 }
@@ -395,6 +413,19 @@ export function useActivityActions(userId: string | undefined) {
     setError(null);
     try {
       return await activityService.createActivity(userId, data);
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
+  const updateActivity = useCallback(async (activityId: string, updates: Record<string, any>) => {
+    if (!userId) throw new Error('Not authenticated');
+    setLoading(true);
+    try {
+      return await activityService.updateActivity(userId, activityId, updates);
     } catch (err: any) {
       setError(err.message);
       throw err;
@@ -442,7 +473,58 @@ export function useActivityActions(userId: string | undefined) {
     }
   }, [userId]);
 
-  return { createActivity, joinActivity, leaveActivity, cancelActivity, loading, error };
+  return { createActivity, updateActivity, joinActivity, leaveActivity, cancelActivity, loading, error };
+}
+
+/**
+ * Hook for activity comments with realtime updates.
+ */
+export function useActivityComments(activityId: string | undefined, userId: string | undefined) {
+  const [comments, setComments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchComments = useCallback(async () => {
+    if (!activityId) return;
+    setLoading(true);
+    try {
+      const data = await activityService.getComments(activityId, userId);
+      setComments(data);
+    } finally {
+      setLoading(false);
+    }
+  }, [activityId, userId]);
+
+  useEffect(() => {
+    fetchComments();
+  }, [fetchComments]);
+
+  // Realtime comment updates
+  useEffect(() => {
+    if (!activityId) return;
+    const channel = activityService.subscribeToComments(
+      activityId,
+      () => fetchComments(),
+      () => fetchComments(),
+    );
+    return () => { activityService.unsubscribe(channel); };
+  }, [activityId, fetchComments]);
+
+  const addComment = useCallback(async (content: string, parentId?: string) => {
+    if (!activityId || !userId) throw new Error('Not authenticated');
+    return activityService.addComment(activityId, userId, content, parentId);
+  }, [activityId, userId]);
+
+  const deleteComment = useCallback(async (commentId: string) => {
+    if (!userId) throw new Error('Not authenticated');
+    return activityService.deleteComment(commentId, userId);
+  }, [userId]);
+
+  const toggleLike = useCallback(async (commentId: string) => {
+    if (!userId) throw new Error('Not authenticated');
+    return activityService.toggleCommentLike(commentId, userId);
+  }, [userId]);
+
+  return { comments, loading, refetch: fetchComments, addComment, deleteComment, toggleLike };
 }
 
 // ============================================

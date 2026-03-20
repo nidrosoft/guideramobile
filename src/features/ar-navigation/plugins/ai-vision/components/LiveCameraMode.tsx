@@ -38,11 +38,12 @@ export default function LiveCameraMode({ userLanguage, onLanguageChange }: LiveC
   useEffect(() => {
     if (isActive && cameraRef.current) {
       stop();
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         if (cameraRef.current) {
           start(cameraRef.current, userLanguage);
         }
       }, 300);
+      return () => clearTimeout(timer);
     }
   }, [userLanguage]);
 

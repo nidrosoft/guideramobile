@@ -41,6 +41,7 @@ import { useAuth } from '@/context/AuthContext';
 import { CommunityType, CommunityPrivacy } from '../types/community.types';
 import { COMMUNITY_TAGS } from '../config/community.config';
 import { groupService } from '@/services/community';
+import { supabase } from '@/lib/supabase/client';
 
 interface GroupFormData {
   name: string;
@@ -116,6 +117,23 @@ export default function CreateGroupScreen() {
     }
   };
   
+  const uploadImage = async (localUri: string, folder: string): Promise<string | undefined> => {
+    try {
+      const ext = localUri.split('.').pop() || 'jpg';
+      const path = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+      const response = await fetch(localUri);
+      const blob = await response.blob();
+      const { error: uploadErr } = await supabase.storage
+        .from('community')
+        .upload(path, blob, { contentType: `image/${ext}`, upsert: true });
+      if (!uploadErr) {
+        const { data: publicUrl } = supabase.storage.from('community').getPublicUrl(path);
+        return publicUrl.publicUrl;
+      }
+    } catch { /* non-critical */ }
+    return undefined;
+  };
+
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
       Alert.alert('Required', 'Please enter a group name');
@@ -127,6 +145,16 @@ export default function CreateGroupScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     
     try {
+      // Upload images to Supabase Storage
+      let coverPhotoUrl: string | undefined;
+      let groupPhotoUrl: string | undefined;
+      if (formData.coverImage) {
+        coverPhotoUrl = await uploadImage(formData.coverImage, 'group-covers');
+      }
+      if (formData.avatar) {
+        groupPhotoUrl = await uploadImage(formData.avatar, 'group-avatars');
+      }
+
       const privacyMap: Record<string, 'public' | 'private'> = {
         public: 'public',
         private: 'private',
@@ -135,8 +163,8 @@ export default function CreateGroupScreen() {
       const created = await groupService.createGroup(profile.id, {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
-        coverPhotoUrl: formData.coverImage || undefined,
-        groupPhotoUrl: formData.avatar || undefined,
+        coverPhotoUrl,
+        groupPhotoUrl,
         destinationName: formData.destination.trim() || undefined,
         privacy: privacyMap[formData.privacy] || 'public',
         joinApproval: formData.privacy === 'public' ? 'automatic' : 'admin_approval',

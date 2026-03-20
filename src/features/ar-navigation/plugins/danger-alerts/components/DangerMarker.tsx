@@ -13,7 +13,7 @@ import {
 } from 'iconsax-react-native';
 import { colors, typography } from '@/styles';
 import { DangerZone } from '../types/dangerAlerts.types';
-import { getDangerColor } from '../data/mockDangerData';
+import { getDangerColor } from '../utils/dangerUtils';
 
 interface DangerMarkerProps {
   zone: DangerZone;

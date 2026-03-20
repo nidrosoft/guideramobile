@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 
 // ============================================
 // TYPES
@@ -274,12 +275,10 @@ class DepartureAdvisorService {
    */
   async calculate(params: CalculateParams): Promise<DepartureAdvisory> {
     try {
-      const { data, error } = await supabase.functions.invoke('departure-advisor', {
-        body: {
+      const { data, error } = await invokeEdgeFn(supabase, 'departure-advisor', {
           action: 'calculate',
           ...params,
-        },
-      });
+      }, 'fast');
 
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Calculation failed');
@@ -309,13 +308,11 @@ class DepartureAdvisorService {
     advisoryId: string,
     rating: 'perfect' | 'too_early' | 'too_late' | 'didnt_go'
   ): Promise<void> {
-    const { error } = await supabase.functions.invoke('departure-advisor', {
-      body: {
+    const { error } = await invokeEdgeFn(supabase, 'departure-advisor', {
         action: 'feedback',
         advisoryId,
         rating,
-      },
-    });
+    }, 'fast');
 
     if (error) {
       console.error('Failed to submit feedback:', error);

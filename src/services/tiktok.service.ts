@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 
 export interface TikTokVideo {
   id: string;
@@ -62,7 +63,7 @@ export interface TikTokResponse {
 
 async function callEdgeFunction(body: Record<string, any>): Promise<TikTokResponse> {
   try {
-    const { data, error } = await supabase.functions.invoke('tiktok-content', { body });
+    const { data, error } = await invokeEdgeFn(supabase, 'tiktok-content', body, 'fast');
 
     if (error) {
       if (__DEV__) console.warn('TikTok service error:', error.message);

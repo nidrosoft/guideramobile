@@ -9,7 +9,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Animated, Image, Linking, LayoutAnimation, Platform, UIManager,
+  Animated, Image, Linking, LayoutAnimation, Platform, UIManager, Dimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +19,7 @@ import {
   ArrowLeft, Airplane, Building, Building4, Star1, Calendar,
   Clock, Magicpen, MoneyRecive, ArrowDown2, ArrowUp2,
   Sun1, People, Reserve, ShieldTick, Car, Map, Wallet2, LanguageSquare,
+  Warning2, DocumentText, Wifi, Timer1, Moneys,
 } from 'iconsax-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { typography, spacing, borderRadius } from '@/styles';
@@ -32,101 +33,139 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// ─── Dynamic Loading Messages ───
+// ─── Dynamic Loading Messages (25 steps, ~3s each = ~75s coverage) ───
 
 const LOADING_STEPS = [
-  { icon: '✈️', text: 'Searching for the best flights...' },
+  { icon: '🔍', text: 'Searching for the best flights...' },
   { icon: '🏨', text: 'Finding places to stay...' },
   { icon: '🎯', text: 'Discovering top experiences...' },
   { icon: '📅', text: 'Checking local events & happenings...' },
-  { icon: '💰', text: 'Calculating your trip budget...' },
-  { icon: '🤖', text: 'Asking AI for destination insights...' },
-  { icon: '🍜', text: 'Gathering food & dining tips...' },
+  { icon: '🌍', text: 'Searching real-time travel data...' },
+  { icon: '🛂', text: 'Looking up visa & entry requirements...' },
   { icon: '🛡️', text: 'Reviewing safety information...' },
-  { icon: '🗺️', text: 'Mapping out best neighborhoods...' },
-  { icon: '🌤️', text: 'Checking weather conditions...' },
+  { icon: '⚠️', text: 'Checking for common scams & risks...' },
+  { icon: '📶', text: 'Finding eSIM & connectivity options...' },
+  { icon: '🚕', text: 'Mapping transport from airport to city...' },
+  { icon: '🗺️', text: 'Exploring best neighborhoods to stay...' },
+  { icon: '🍜', text: 'Gathering food & dining tips...' },
+  { icon: '�', text: 'Checking currency & tipping customs...' },
+  { icon: '🌤️', text: 'Checking weather for your dates...' },
+  { icon: '⏰', text: 'Finding best times to visit key spots...' },
+  { icon: '�', text: 'Calculating your trip budget...' },
+  { icon: '🤖', text: 'AI is writing your destination brief...' },
+  { icon: '🧳', text: 'Building your packing suggestions...' },
   { icon: '💡', text: 'Putting together money-saving tips...' },
+  { icon: '🗣️', text: 'Learning essential local phrases...' },
+  { icon: '📊', text: 'Comparing budget, mid-range & luxury...' },
+  { icon: '✍️', text: 'Writing personalized travel insights...' },
+  { icon: '🔒', text: 'Double-checking all information...' },
   { icon: '📦', text: 'Packaging everything together...' },
   { icon: '✨', text: 'Almost there, polishing your trip brief...' },
 ];
 
+// Patience quotes shown at the bottom during loading
+const PATIENCE_QUOTES = [
+  { text: '"The world is a book, and those who do not travel read only one page."', author: 'Saint Augustine' },
+  { text: '"Travel is the only thing you buy that makes you richer."', author: 'Anonymous' },
+  { text: '"Not all those who wander are lost."', author: 'J.R.R. Tolkien' },
+  { text: '"Life is short and the world is wide."', author: 'Simon Raven' },
+  { text: '"Adventure is worthwhile in itself."', author: 'Amelia Earhart' },
+  { text: '"To travel is to live."', author: 'Hans Christian Andersen' },
+  { text: '"The journey of a thousand miles begins with a single step."', author: 'Lao Tzu' },
+  { text: '"Travel makes one modest. You see what a tiny place you occupy in the world."', author: 'Gustave Flaubert' },
+  { text: '"Once a year, go someplace you\'ve never been before."', author: 'Dalai Lama' },
+  { text: '"Traveling — it leaves you speechless, then turns you into a storyteller."', author: 'Ibn Battuta' },
+  { text: '"The real voyage of discovery consists not in seeking new landscapes, but in having new eyes."', author: 'Marcel Proust' },
+  { text: '"We travel not to escape life, but for life not to escape us."', author: 'Anonymous' },
+];
+
 function LoadingAnimation({ destination, tc }: { destination: string; tc: any }) {
   const [stepIndex, setStepIndex] = useState(0);
+  const [quoteIndex, setQuoteIndex] = useState(() => Math.floor(Math.random() * PATIENCE_QUOTES.length));
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const quoteFadeAnim = useRef(new Animated.Value(1)).current;
 
-  // Rotate through steps every 2.2 seconds with fade transition
+  // Progress bar — fast start, slows down, stalls at ~92%
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(progressAnim, { toValue: 0.4, duration: 8000, useNativeDriver: false }),
+      Animated.timing(progressAnim, { toValue: 0.7, duration: 15000, useNativeDriver: false }),
+      Animated.timing(progressAnim, { toValue: 0.92, duration: 30000, useNativeDriver: false }),
+    ]).start();
+  }, [progressAnim]);
+
+  // Rotate through steps every 3 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      // Fade out + slide up
       Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: -8, duration: 250, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: -8, duration: 200, useNativeDriver: true }),
       ]).start(() => {
         setStepIndex((prev) => (prev + 1) % LOADING_STEPS.length);
         slideAnim.setValue(8);
-        // Fade in + slide down
         Animated.parallel([
           Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
           Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
         ]).start();
       });
-    }, 2200);
-
+    }, 3000);
     return () => clearInterval(interval);
   }, [fadeAnim, slideAnim]);
 
-  // Pulse animation on icon
+  // Rotate quotes every 8 seconds
   useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.15, duration: 1000, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-      ])
-    );
-    pulse.start();
-    return () => pulse.stop();
-  }, [pulseAnim]);
+    const interval = setInterval(() => {
+      Animated.timing(quoteFadeAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+        setQuoteIndex((prev) => (prev + 1) % PATIENCE_QUOTES.length);
+        Animated.timing(quoteFadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+      });
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [quoteFadeAnim]);
 
   const step = LOADING_STEPS[stepIndex];
+  const quote = PATIENCE_QUOTES[quoteIndex];
+
+  const TRACK_WIDTH = Dimensions.get('window').width * 0.75;
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, TRACK_WIDTH],
+  });
 
   return (
-    <View style={styles.loadingContainer}>
-      <Animated.View
-        style={[styles.loadingPulseWrap, { backgroundColor: `${tc.primary}12`, transform: [{ scale: pulseAnim }] }]}
-      >
-        <Magicpen size={32} color={tc.primary} variant="Bold" />
-      </Animated.View>
+    <View style={styles.loadingFullScreen}>
+      {/* Center content — title, progress bar, current step */}
+      <View style={styles.loadingCenterBlock}>
+        <Text style={[styles.loadingTitle, { color: tc.textPrimary }]}>
+          Analyzing {destination}
+        </Text>
 
-      <Text style={[styles.loadingTitle, { color: tc.textPrimary }]}>
-        Analyzing {destination}
-      </Text>
+        {/* Progress Bar */}
+        <View style={[styles.progressBarTrack, { width: TRACK_WIDTH, backgroundColor: '#D1D5DB' }]}>
+          <Animated.View style={[styles.progressBarFill, { backgroundColor: tc.primary, width: progressWidth }]} />
+        </View>
 
-      <View style={styles.loadingStepContainer}>
-        <Animated.View
-          style={[
-            styles.loadingStepRow,
-            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-          ]}
-        >
-          <Text style={styles.loadingStepIcon}>{step.icon}</Text>
-          <Text style={[styles.loadingStepText, { color: tc.textSecondary }]}>{step.text}</Text>
-        </Animated.View>
-      </View>
-
-      {/* Progress dots */}
-      <View style={styles.loadingDots}>
-        {LOADING_STEPS.slice(0, 6).map((_, i) => (
-          <View
-            key={i}
+        {/* Current step message */}
+        <View style={styles.loadingStepContainer}>
+          <Animated.View
             style={[
-              styles.loadingDot,
-              { backgroundColor: i <= stepIndex % 6 ? tc.primary : `${tc.textTertiary}30` },
+              styles.loadingStepRow,
+              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
             ]}
-          />
-        ))}
+          >
+            <Text style={styles.loadingStepIcon}>{step.icon}</Text>
+            <Text style={[styles.loadingStepText, { color: tc.textSecondary }]}>{step.text}</Text>
+          </Animated.View>
+        </View>
       </View>
+
+      {/* Quote pinned to bottom */}
+      <Animated.View style={[styles.quoteContainer, { opacity: quoteFadeAnim }]}>
+        <Text style={[styles.quoteText, { color: tc.textTertiary }]}>{quote.text}</Text>
+        <Text style={[styles.quoteAuthor, { color: tc.textTertiary }]}>— {quote.author}</Text>
+      </Animated.View>
     </View>
   );
 }
@@ -136,16 +175,26 @@ function LoadingAnimation({ destination, tc }: { destination: string; tc: any })
 const SECTION_ICONS: Record<string, (props: { size: number; color: string }) => React.ReactElement> = {
   sun: ({ size, color }) => <Sun1 size={size} color={color} variant="Bold" />,
   weather: ({ size, color }) => <Sun1 size={size} color={color} variant="Bold" />,
+  clock: ({ size, color }) => <Timer1 size={size} color={color} variant="Bold" />,
+  best_times: ({ size, color }) => <Timer1 size={size} color={color} variant="Bold" />,
   people: ({ size, color }) => <People size={size} color={color} variant="Bold" />,
   culture: ({ size, color }) => <People size={size} color={color} variant="Bold" />,
   food: ({ size, color }) => <Reserve size={size} color={color} variant="Bold" />,
   shield: ({ size, color }) => <ShieldTick size={size} color={color} variant="Bold" />,
   safety: ({ size, color }) => <ShieldTick size={size} color={color} variant="Bold" />,
+  warning: ({ size, color }) => <Warning2 size={size} color={color} variant="Bold" />,
+  scams: ({ size, color }) => <Warning2 size={size} color={color} variant="Bold" />,
   car: ({ size, color }) => <Car size={size} color={color} variant="Bold" />,
   transport: ({ size, color }) => <Car size={size} color={color} variant="Bold" />,
   map: ({ size, color }) => <Map size={size} color={color} variant="Bold" />,
   neighborhoods: ({ size, color }) => <Map size={size} color={color} variant="Bold" />,
+  document: ({ size, color }) => <DocumentText size={size} color={color} variant="Bold" />,
+  visa: ({ size, color }) => <DocumentText size={size} color={color} variant="Bold" />,
+  wifi: ({ size, color }) => <Wifi size={size} color={color} variant="Bold" />,
+  connectivity: ({ size, color }) => <Wifi size={size} color={color} variant="Bold" />,
   wallet: ({ size, color }) => <Wallet2 size={size} color={color} variant="Bold" />,
+  budget: ({ size, color }) => <Moneys size={size} color={color} variant="Bold" />,
+  saving: ({ size, color }) => <Wallet2 size={size} color={color} variant="Bold" />,
   money: ({ size, color }) => <Wallet2 size={size} color={color} variant="Bold" />,
   language: ({ size, color }) => <LanguageSquare size={size} color={color} variant="Bold" />,
 };
@@ -214,6 +263,7 @@ export default function TripSnapshotScreen() {
     destination: string; country: string;
     startDate: string; endDate: string;
     adults: string; children: string; infants: string;
+    originCity: string; nationality: string;
   }>();
 
   const [snapshot, setSnapshot] = useState<TripSnapshot | null>(null);
@@ -258,11 +308,20 @@ export default function TripSnapshotScreen() {
             children: parseInt(params.children || '0'),
             infants: parseInt(params.infants || '0'),
           },
+          originCity: params.originCity || undefined,
+          nationality: params.nationality || 'US citizen',
           currency: 'USD',
         });
-        if (!cancelled) setSnapshot(data);
+        if (!cancelled) {
+          setSnapshot(data);
+          // Haptic feedback when results are ready
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
       } catch (e: any) {
-        if (!cancelled) setError(e.message || 'Failed to load snapshot');
+        if (!cancelled) {
+          setError(e.message || 'Failed to load snapshot');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -370,11 +429,23 @@ export default function TripSnapshotScreen() {
           )}
           <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
           <View style={styles.breakdownGrid}>
-            {renderBreakdownRow('Flights', cost.breakdown.flights, tc)}
-            {renderBreakdownRow('Hotels', cost.breakdown.hotels, tc)}
-            {renderBreakdownRow('Experiences', cost.breakdown.experiences, tc)}
-            {renderBreakdownRow('Food & Daily', cost.breakdown.food, tc)}
+            {renderBreakdownRow('✈️  Flights (round trip)', cost.breakdown.flights, tc)}
+            {renderBreakdownRow('🏨  Hotels', cost.breakdown.hotels, tc)}
+            {renderBreakdownRow('🍜  Food & Dining', cost.breakdown.food, tc)}
+            {renderBreakdownRow('🎯  Experiences', cost.breakdown.experiences, tc)}
+            {renderBreakdownRow('🔧  Transport & Misc', cost.breakdown.miscellaneous, tc)}
           </View>
+          {cost.perDayBudget && (
+            <>
+              <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
+              <View style={styles.perDayRow}>
+                <Text style={[styles.perDayLabel, { color: tc.textSecondary }]}>Per day (excl. flights)</Text>
+                <Text style={[styles.perDayValue, { color: tc.primary }]}>
+                  ${cost.perDayBudget.low} – ${cost.perDayBudget.high}/day
+                </Text>
+              </View>
+            </>
+          )}
         </View>
 
         {/* ─── Flights Preview ─── */}
@@ -600,21 +671,39 @@ function renderHotelTier(label: string, price: number, stars: number, count: num
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-  loadingContainer: { alignItems: 'center', paddingHorizontal: spacing.xl },
-  loadingPulseWrap: {
-    width: 72, height: 72, borderRadius: 36,
-    justifyContent: 'center', alignItems: 'center', marginBottom: spacing.lg,
+  loadingFullScreen: {
+    flex: 1, justifyContent: 'space-between', alignItems: 'center',
+    paddingTop: 60, paddingBottom: 40,
   },
-  loadingTitle: { fontSize: typography.fontSize.xl, fontWeight: '700', textAlign: 'center', marginBottom: spacing.xl },
-  loadingStepContainer: { height: 40, justifyContent: 'center', alignItems: 'center' },
+  loadingCenterBlock: {
+    flex: 1, justifyContent: 'center', alignItems: 'center',
+    paddingHorizontal: spacing.xl, width: '100%',
+  },
+  loadingContainer: { alignItems: 'center', paddingHorizontal: spacing.xl },
+  loadingTitle: {
+    fontSize: typography.fontSize.xl, fontWeight: '700', textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  loadingStepContainer: { height: 40, justifyContent: 'center', alignItems: 'center', marginTop: spacing.lg },
   loadingStepRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   loadingStepIcon: { fontSize: 22 },
   loadingStepText: { fontSize: typography.fontSize.sm, fontWeight: '500' },
-  loadingDots: {
-    flexDirection: 'row', gap: 6, marginTop: spacing.xl,
+  progressBarTrack: {
+    width: '75%', height: 6, borderRadius: 3, overflow: 'hidden',
+    marginTop: spacing.sm, marginBottom: spacing.sm,
   },
-  loadingDot: {
-    width: 8, height: 8, borderRadius: 4,
+  progressBarFill: {
+    height: '100%', borderRadius: 3,
+  },
+  quoteContainer: {
+    paddingHorizontal: spacing['2xl'], alignItems: 'center', paddingBottom: spacing.md,
+  },
+  quoteText: {
+    fontSize: typography.fontSize.sm, fontStyle: 'italic', textAlign: 'center',
+    lineHeight: 22, marginBottom: 6,
+  },
+  quoteAuthor: {
+    fontSize: typography.fontSize.xs, fontWeight: '600',
   },
   retryBtn: { marginTop: spacing.lg, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: 14 },
   retryText: { color: '#FFF', fontWeight: '600', fontSize: typography.fontSize.base },
@@ -662,7 +751,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6, borderRadius: 10, marginBottom: spacing.sm,
   },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: spacing.sm },
-  breakdownGrid: { gap: 6 },
+  breakdownGrid: { gap: 8 },
+  perDayRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4 },
+  perDayLabel: { fontSize: typography.fontSize.sm },
+  perDayValue: { fontSize: typography.fontSize.sm, fontWeight: '700' },
   breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   breakdownLabel: { fontSize: typography.fontSize.sm },
   breakdownValue: { fontSize: typography.fontSize.sm, fontWeight: '600' },

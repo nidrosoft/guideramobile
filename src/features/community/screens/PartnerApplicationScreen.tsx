@@ -470,7 +470,7 @@ export default function PartnerApplicationScreen() {
       setIsVerifying(false);
     } catch (err: any) {
       setIsVerifying(false);
-      console.error('Verification session error:', err);
+      if (__DEV__) console.warn('Verification session error:', err);
       Alert.alert(
         'Verification Error',
         err.message || 'Failed to start identity verification. Please try again.',
@@ -595,7 +595,7 @@ export default function PartnerApplicationScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setIsSubmitted(true);
     } catch (err: any) {
-      console.error('Submit error:', err);
+      if (__DEV__) console.warn('Submit error:', err);
       Alert.alert('Submission Error', err.message || 'Failed to submit application. Please try again.');
     } finally {
       setIsSubmitting(false);

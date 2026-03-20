@@ -41,6 +41,7 @@ import { spacing, borderRadius } from '@/styles';
 import { styles } from './ChatScreen.styles';
 import ChatMessageBubble, { ChatMessageData } from '../components/ChatMessageBubble';
 import { chatService } from '@/services/community/chat.service';
+import { supabase } from '@/lib/supabase/client';
 
 export default function ChatScreen() {
   const router = useRouter();
@@ -140,6 +141,41 @@ export default function ChatScreen() {
     load();
     return () => { cancelled = true; };
   }, [id, profile?.id]);
+
+  // Realtime: listen for new messages in this conversation
+  useEffect(() => {
+    if (!conversationId || !profile?.id) return;
+
+    const channel = supabase
+      .channel(`dm-${conversationId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: `conversation_id=eq.${conversationId}`,
+      }, (payload) => {
+        const msg = payload.new as any;
+        // Skip messages we sent ourselves (already added optimistically)
+        if (msg.user_id === profile.id) return;
+
+        const newMsg: ChatMessageData = {
+          id: msg.id,
+          senderId: msg.user_id,
+          senderName: buddy.firstName || 'Someone',
+          senderAvatar: buddy.avatar || '',
+          type: (msg.message_type || 'text') as any,
+          content: msg.content,
+          status: 'delivered' as const,
+          createdAt: new Date(msg.created_at),
+        };
+        setMessages(prev => [...prev, newMsg]);
+        // Auto-scroll to bottom
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [conversationId, profile?.id, buddy.firstName, buddy.avatar]);
   
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

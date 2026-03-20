@@ -40,6 +40,7 @@ import { spacing, typography, borderRadius, shadows, colors } from '@/styles';
 import { supabase } from '@/lib/supabase/client';
 import { buddyService, groupService } from '@/services/community';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { TravelerProfile } from '../types/feed.types';
 
 export default function TravelerProfileScreen() {
@@ -48,6 +49,7 @@ export default function TravelerProfileScreen() {
   const { colors: tc, isDark } = useTheme();
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const { profile: authProfile } = useAuth();
+  const { showSuccess, showError } = useToast();
 
   const [profile, setProfile] = useState<TravelerProfile | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -100,7 +102,7 @@ export default function TravelerProfileScreen() {
         id: profileData.id,
         firstName: profileData.first_name || '',
         lastName: profileData.last_name || '',
-        avatar: profileData.avatar_url || `https://i.pravatar.cc/150?u=${targetId}`,
+        avatar: profileData.avatar_url || '',
         coverPhoto: profileData.cover_photo_url,
         bio: profileData.bio || '',
         city: profileData.city,
@@ -135,7 +137,7 @@ export default function TravelerProfileScreen() {
       setIsFollowing(travelerProfile.isFollowing);
       setBuddyStatus(travelerProfile.buddyStatus);
     } catch (err) {
-      console.error('Failed to fetch traveler profile:', err);
+      if (__DEV__) console.warn('Failed to fetch traveler profile:', err);
     } finally {
       setIsFetching(false);
     }
@@ -175,14 +177,16 @@ export default function TravelerProfileScreen() {
           .delete()
           .eq('follower_id', authProfile.id)
           .eq('following_id', targetId);
+        showSuccess('Unfollowed');
       } else {
         await supabase
           .from('user_follows')
           .insert({ follower_id: authProfile.id, following_id: targetId });
+        showSuccess(`Following ${profile?.firstName || 'traveler'}`);
       }
     } catch (err) {
-      // Revert on error
       setIsFollowing(wasFollowing);
+      showError('Could not update follow status');
       if (__DEV__) console.warn('Follow toggle error:', err);
     }
   };
@@ -197,7 +201,7 @@ export default function TravelerProfileScreen() {
         setBuddyStatus('pending');
       }
     } catch (err) {
-      console.error('Failed to send buddy request:', err);
+      if (__DEV__) console.warn('Failed to send buddy request:', err);
     }
   };
 
@@ -228,7 +232,7 @@ export default function TravelerProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
         {/* Cover + Avatar */}
         <ImageBackground
-          source={{ uri: profile.coverPhoto || 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?w=800' }}
+          source={{ uri: profile.coverPhoto || undefined }}
           style={styles.coverImage}
         >
           <LinearGradient

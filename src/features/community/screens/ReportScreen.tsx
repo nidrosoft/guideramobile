@@ -84,7 +84,7 @@ const REPORT_REASONS: ReportReason[] = [
 export default function ReportScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const { profile } = useAuth();
   const { type, id } = useLocalSearchParams<{ type: ReportType; id: string }>();
   
@@ -166,15 +166,15 @@ export default function ReportScreen() {
   };
   
   return (
-    <View style={styles.container}>
-      <StatusBar style="light" />
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{getTitle()}</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{getTitle()}</Text>
         <View style={{ width: 40 }} />
       </View>
       
@@ -184,18 +184,18 @@ export default function ReportScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Info Banner */}
-        <View style={styles.infoBanner}>
-          <Flag size={24} color={colors.warning} />
+        <View style={[styles.infoBanner, { backgroundColor: tc.warning + '15' }]}>
+          <Flag size={24} color={tc.warning} />
           <View style={styles.infoBannerContent}>
-            <Text style={styles.infoBannerTitle}>Help us understand the issue</Text>
-            <Text style={styles.infoBannerText}>
+            <Text style={[styles.infoBannerTitle, { color: tc.warning }]}>Help us understand the issue</Text>
+            <Text style={[styles.infoBannerText, { color: tc.textSecondary }]}>
               Your report is anonymous. The reported {type || 'content'} won't know who reported them.
             </Text>
           </View>
         </View>
         
         {/* Reasons */}
-        <Text style={styles.sectionTitle}>What's the issue?</Text>
+        <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>What's the issue?</Text>
         
         {REPORT_REASONS.map(reason => {
           const Icon = reason.icon;
@@ -204,32 +204,44 @@ export default function ReportScreen() {
           return (
             <TouchableOpacity
               key={reason.id}
-              style={[styles.reasonCard, isSelected && styles.reasonCardSelected]}
+              style={[
+                styles.reasonCard,
+                { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+                isSelected && { borderColor: tc.error, backgroundColor: tc.error + '05' },
+              ]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setSelectedReason(reason.id);
               }}
             >
-              <View style={[styles.reasonIcon, isSelected && styles.reasonIconSelected]}>
-                <Icon size={20} color={isSelected ? colors.white : tc.textTertiary} />
+              <View style={[
+                styles.reasonIcon,
+                { backgroundColor: tc.borderSubtle },
+                isSelected && { backgroundColor: tc.error },
+              ]}>
+                <Icon size={20} color={isSelected ? '#FFFFFF' : tc.textTertiary} />
               </View>
               <View style={styles.reasonContent}>
-                <Text style={[styles.reasonLabel, isSelected && styles.reasonLabelSelected]}>
+                <Text style={[
+                  styles.reasonLabel,
+                  { color: tc.textPrimary },
+                  isSelected && { color: tc.error },
+                ]}>
                   {reason.label}
                 </Text>
-                <Text style={styles.reasonDescription}>{reason.description}</Text>
+                <Text style={[styles.reasonDescription, { color: tc.textSecondary }]}>{reason.description}</Text>
               </View>
               {isSelected && (
-                <TickCircle size={24} color={colors.error} variant="Bold" />
+                <TickCircle size={24} color={tc.error} variant="Bold" />
               )}
             </TouchableOpacity>
           );
         })}
         
         {/* Additional Info */}
-        <Text style={styles.sectionTitle}>Additional details (optional)</Text>
+        <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Additional details (optional)</Text>
         <TextInput
-          style={styles.textArea}
+          style={[styles.textArea, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
           placeholder="Provide any additional context that might help us understand the issue..."
           placeholderTextColor={tc.textTertiary}
           value={additionalInfo}
@@ -239,23 +251,27 @@ export default function ReportScreen() {
           maxLength={500}
           textAlignVertical="top"
         />
-        <Text style={styles.charCount}>{additionalInfo.length}/500</Text>
+        <Text style={[styles.charCount, { color: tc.textTertiary }]}>{additionalInfo.length}/500</Text>
         
         {/* Block Option (for users) */}
         {type === 'user' && (
           <TouchableOpacity
-            style={styles.blockOption}
+            style={[styles.blockOption, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setBlockUser(!blockUser);
             }}
           >
-            <View style={[styles.checkbox, blockUser && styles.checkboxChecked]}>
-              {blockUser && <TickCircle size={16} color={colors.white} variant="Bold" />}
+            <View style={[
+              styles.checkbox,
+              { borderColor: tc.textTertiary },
+              blockUser && { backgroundColor: tc.error, borderColor: tc.error },
+            ]}>
+              {blockUser && <TickCircle size={16} color="#FFFFFF" variant="Bold" />}
             </View>
             <View style={styles.blockOptionContent}>
-              <Text style={styles.blockOptionTitle}>Also block this user</Text>
-              <Text style={styles.blockOptionDescription}>
+              <Text style={[styles.blockOptionTitle, { color: tc.textPrimary }]}>Also block this user</Text>
+              <Text style={[styles.blockOptionDescription, { color: tc.textSecondary }]}>
                 They won't be able to message you or see your profile
               </Text>
             </View>
@@ -266,9 +282,9 @@ export default function ReportScreen() {
       </ScrollView>
       
       {/* Footer */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom || spacing.md }]}>
+      <View style={[styles.footer, { paddingBottom: insets.bottom || spacing.md, backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF', borderTopColor: tc.borderSubtle }]}>
         <TouchableOpacity
-          style={[styles.submitButton, (!selectedReason || isSubmitting) && styles.submitButtonDisabled]}
+          style={[styles.submitButton, { backgroundColor: tc.error }, (!selectedReason || isSubmitting) && styles.submitButtonDisabled]}
           onPress={handleSubmit}
           disabled={!selectedReason || isSubmitting}
         >
@@ -284,7 +300,6 @@ export default function ReportScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -292,9 +307,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.bgElevated,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
   },
   backButton: {
     width: 40,
@@ -303,9 +316,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: '600',
   },
   content: {
     flex: 1,
@@ -315,7 +327,6 @@ const styles = StyleSheet.create({
   },
   infoBanner: {
     flexDirection: 'row',
-    backgroundColor: colors.warning + '15',
     padding: spacing.md,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.xl,
@@ -325,76 +336,54 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoBannerTitle: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.warning,
+    fontSize: 13,
+    fontWeight: '600',
   },
   infoBannerText: {
-    fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
+    fontSize: 12,
     marginTop: 4,
   },
   sectionTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '700',
     marginBottom: spacing.md,
   },
   reasonCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.bgElevated,
     padding: spacing.md,
     borderRadius: 20,
     marginBottom: spacing.sm,
     borderWidth: 2,
-    borderColor: colors.borderSubtle,
-  },
-  reasonCardSelected: {
-    borderColor: colors.error,
-    backgroundColor: colors.error + '05',
   },
   reasonIcon: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.borderSubtle,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  reasonIconSelected: {
-    backgroundColor: colors.error,
   },
   reasonContent: {
     flex: 1,
     marginLeft: spacing.md,
   },
   reasonLabel: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  reasonLabelSelected: {
-    color: colors.error,
+    fontSize: 15,
+    fontWeight: '600',
   },
   reasonDescription: {
-    fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
+    fontSize: 12,
     marginTop: 2,
   },
   textArea: {
-    backgroundColor: colors.bgElevated,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
-    fontSize: typography.fontSize.base,
-    color: colors.textPrimary,
+    fontSize: 15,
     height: 120,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
   },
   charCount: {
-    fontSize: typography.fontSize.xs,
-    color: colors.gray400,
+    fontSize: 12,
     textAlign: 'right',
     marginTop: spacing.xs,
     marginBottom: spacing.xl,
@@ -402,48 +391,36 @@ const styles = StyleSheet.create({
   blockOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.bgElevated,
     padding: spacing.md,
     borderRadius: 20,
     gap: spacing.md,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
   },
   checkbox: {
     width: 24,
     height: 24,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: colors.textTertiary,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: colors.error,
-    borderColor: colors.error,
   },
   blockOptionContent: {
     flex: 1,
   },
   blockOptionTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '500',
   },
   blockOptionDescription: {
-    fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
+    fontSize: 12,
     marginTop: 2,
   },
   footer: {
     padding: spacing.lg,
-    backgroundColor: colors.bgElevated,
     borderTopWidth: 1,
-    borderTopColor: colors.borderSubtle,
   },
   submitButton: {
-    backgroundColor: colors.error,
-    paddingVertical: spacing.md,
+    paddingVertical: 14,
     borderRadius: borderRadius.lg,
     alignItems: 'center',
   },
@@ -451,8 +428,8 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   submitButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

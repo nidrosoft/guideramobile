@@ -133,7 +133,9 @@ export default function Home() {
     const children = String(guests?.children || 0);
     const infants = String(guests?.infants || 0);
 
-    router.push(`/search/snapshot?destination=${encodeURIComponent(term)}&startDate=${startDate}&endDate=${endDate}&adults=${adults}&children=${children}&infants=${infants}` as any);
+    const originCity = profile?.city || '';
+    const nationality = profile?.country || 'US';
+    router.push(`/search/snapshot?destination=${encodeURIComponent(term)}&startDate=${startDate}&endDate=${endDate}&adults=${adults}&children=${children}&infants=${infants}&originCity=${encodeURIComponent(originCity)}&nationality=${encodeURIComponent(nationality)}` as any);
   };
 
   const handleCloseSearchOverlay = () => {

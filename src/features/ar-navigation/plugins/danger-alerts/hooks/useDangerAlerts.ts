@@ -17,7 +17,7 @@ import {
   DangerAlertsState,
   DangerLevel,
 } from '../types/dangerAlerts.types';
-import { DEFAULT_EMERGENCY_CONTACTS } from '../data/mockDangerData';
+import { DEFAULT_EMERGENCY_CONTACTS } from '../utils/dangerUtils';
 import { safetyIntelligenceService } from '@/services/safety/safety-intelligence.service';
 import type { SafetyAlert, SafetyZoneResult, SafetyLevel } from '@/services/safety/types/safety.types';
 

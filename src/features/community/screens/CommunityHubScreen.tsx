@@ -10,7 +10,7 @@
  * Header: title + search / Pulse map / notification icons.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -36,9 +36,11 @@ import {
   useGroups,
   useUpcomingEvents,
   usePendingBuddyRequests,
+  useNearbyActivities,
 } from '@/hooks/useCommunity';
 import { useNotifications } from '@/hooks/useNotifications';
 import { chatService } from '@/services/community/chat.service';
+import { supabase } from '@/lib/supabase/client';
 import DiscoverFeed from '../components/DiscoverFeed';
 import GroupsTabContent from '../components/GroupsTabContent';
 import EventsTabContent from '../components/EventsTabContent';
@@ -69,20 +71,76 @@ export default function CommunityHubScreen() {
   const { groups: myGroups, loading: loadingMyGroups, refetch: refetchMyGroups } = useGroups(userId);
   const { events, loading: loadingEvents, refetch: refetchEvents } = useUpcomingEvents();
   const { requests: pendingRequests } = usePendingBuddyRequests(userId);
+  const { activities: pulseActivities } = useNearbyActivities(userId, null);
 
   const { unreadCount: notificationCount } = useNotifications({ category: 'social', autoRefresh: true });
+  const pulseCount = pulseActivities.length;
 
   const [messageCount, setMessageCount] = useState(0);
   const [showGroupSheet, setShowGroupSheet] = useState(false);
   const [showEventSheet, setShowEventSheet] = useState(false);
+  const [isVerifiedGuide, setIsVerifiedGuide] = useState(false);
+  const [userCity, setUserCity] = useState<string | undefined>();
   const isPremium = true;
 
+  // Check partner/guide verification status + user city
   useEffect(() => {
     if (!userId) return;
-    chatService.getConversations(userId).then(convs => {
+    const checkStatus = async () => {
+      try {
+        const { data } = await supabase
+          .from('partner_applications')
+          .select('status, didit_verification_status')
+          .eq('user_id', userId)
+          .in('status', ['approved'])
+          .limit(1)
+          .maybeSingle();
+        if (data?.status === 'approved' || data?.didit_verification_status === 'approved') {
+          setIsVerifiedGuide(true);
+        }
+      } catch { /* ignore */ }
+      try {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('city')
+          .eq('id', userId)
+          .single();
+        if (prof?.city) setUserCity(prof.city);
+      } catch { /* ignore */ }
+    };
+    checkStatus();
+  }, [userId]);
+
+  // Fetch unread message count
+  const fetchMessageCount = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const convs = await chatService.getConversations(userId);
       const total = convs.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
       setMessageCount(total);
-    }).catch(console.warn);
+    } catch { /* ignore */ }
+  }, [userId]);
+
+  useEffect(() => { fetchMessageCount(); }, [fetchMessageCount]);
+
+  // Realtime: update message badge when new DMs arrive
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel('connect-dm-badge')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages',
+      }, (payload) => {
+        const msg = payload.new as any;
+        // Only count messages from others (not self)
+        if (msg.user_id !== userId && msg.conversation_id) {
+          setMessageCount(prev => prev + 1);
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [userId]);
 
   // Navigation handlers
@@ -158,7 +216,7 @@ export default function CommunityHubScreen() {
             onCreateGroup={handleCreateGroup}
             onSeeAllMyGroups={() => router.push('/community/my-groups' as any)}
             onRefresh={refetchMyGroups}
-            isVerifiedGuide={false}
+            isVerifiedGuide={isVerifiedGuide}
           />
         );
 
@@ -185,7 +243,7 @@ export default function CommunityHubScreen() {
             onRefresh={refetchEvents}
             onEventPress={handleEventPress}
             onCreateEvent={handleCreateEvent}
-            currentLocation="Paris"
+            currentLocation={userCity || 'Nearby'}
           />
         );
 
@@ -212,13 +270,20 @@ export default function CommunityHubScreen() {
               <SearchNormal1 size={20} color={tc.textPrimary} />
             </TouchableOpacity>
 
-            {/* Live Map Icon */}
+            {/* Live Map / Pulse Icon */}
             <TouchableOpacity
               style={[styles.headerIconButton, { backgroundColor: tc.bgElevated }]}
               onPress={handleLiveMap}
               activeOpacity={0.7}
             >
               <Map1 size={20} color={tc.textPrimary} />
+              {pulseCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>
+                    {pulseCount > 9 ? '9+' : pulseCount}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             {/* Messages */}

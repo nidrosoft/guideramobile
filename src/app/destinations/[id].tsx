@@ -12,6 +12,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft } from 'iconsax-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 import DetailPageTemplate from '@/components/templates/DetailPageTemplate/DetailPageTemplate';
 import type { CuratedDestination } from '@/hooks/useSectionDestinations';
 import { useEvents } from '@/hooks/useEvents';
@@ -198,7 +199,7 @@ function mapToDetailData(dest: CuratedDestination, similarItems: any[], poiData:
     reviews: poiData?.reviews?.length > 0 ? poiData.reviews.map((r: any, idx: number) => ({
       id: String(idx),
       userName: r.author,
-      userAvatar: r.avatar || `https://i.pravatar.cc/150?img=${idx + 1}`,
+      userAvatar: r.avatar || '',
       rating: r.rating || 5,
       date: r.time,
       reviewText: r.text,
@@ -291,9 +292,7 @@ export default function DestinationDetailPage() {
 
         // Fetch POIs from Edge Function
         try {
-          const { data: poiRes } = await supabase.functions.invoke('destination-details', {
-            body: { id: dest.id },
-          });
+          const { data: poiRes } = await invokeEdgeFn(supabase, 'destination-details', { id: dest.id }, 'fast');
           if (!cancelled && poiRes?.success) {
             setPoiData(poiRes.data);
           }

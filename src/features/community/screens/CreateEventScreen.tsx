@@ -37,6 +37,7 @@ import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { eventService } from '@/services/community';
+import { supabase } from '@/lib/supabase/client';
 
 type EventType = 'in_person' | 'virtual' | 'hybrid';
 
@@ -118,6 +119,23 @@ export default function CreateEventScreen() {
     }));
   };
   
+  const uploadImage = async (localUri: string, folder: string): Promise<string | undefined> => {
+    try {
+      const ext = localUri.split('.').pop() || 'jpg';
+      const path = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+      const response = await fetch(localUri);
+      const blob = await response.blob();
+      const { error: uploadErr } = await supabase.storage
+        .from('community')
+        .upload(path, blob, { contentType: `image/${ext}`, upsert: true });
+      if (!uploadErr) {
+        const { data: publicUrl } = supabase.storage.from('community').getPublicUrl(path);
+        return publicUrl.publicUrl;
+      }
+    } catch { /* non-critical */ }
+    return undefined;
+  };
+
   const handleSubmit = async () => {
     if (!formData.title.trim()) {
       Alert.alert('Required', 'Please enter an event title');
@@ -140,18 +158,24 @@ export default function CreateEventScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     
     try {
+      // Upload cover image to Supabase Storage
+      let coverImageUrl: string | undefined;
+      if (formData.coverImage) {
+        coverImageUrl = await uploadImage(formData.coverImage, 'event-covers');
+      }
+
       const locationTypeMap: Record<EventType, string> = {
         in_person: 'physical',
         virtual: 'virtual',
         hybrid: 'hybrid',
       };
 
-      await eventService.createEvent(profile.id, {
+      const created = await eventService.createEvent(profile.id, {
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         type: formData.type === 'in_person' ? 'meetup' : formData.type === 'virtual' ? 'virtual' : 'meetup',
         groupId: communityId || undefined,
-        coverImageUrl: formData.coverImage || undefined,
+        coverImageUrl,
         locationType: locationTypeMap[formData.type] as any,
         locationName: formData.location.trim() || undefined,
         locationAddress: formData.address.trim() || undefined,
@@ -168,7 +192,7 @@ export default function CreateEventScreen() {
         [
           {
             text: 'View Event',
-            onPress: () => router.back(),
+            onPress: () => router.replace(`/community/event/${created.id}` as any),
           },
         ]
       );
@@ -589,7 +613,7 @@ const styles = StyleSheet.create({
   typeOptionText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.bgElevated0,
+    color: colors.textSecondary,
   },
   typeOptionTextSelected: {
     color: colors.primary,

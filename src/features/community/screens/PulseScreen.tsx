@@ -27,12 +27,14 @@ import {
   Add,
   Map1,
   ArrowUp2,
+  Clock,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useNearbyActivities, useActivityActions } from '@/hooks/useCommunity';
+import { activityService } from '@/services/community/activity.service';
 import type { Activity } from '@/services/community/types/community.types';
 import {
   PulseFilterChips,
@@ -55,6 +57,7 @@ export default function PulseScreen() {
   const mapRef = useRef<MapView>(null);
 
   const [location, setLocation] = useState<LocationState | null>(null);
+  const [cityName, setCityName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
@@ -63,9 +66,10 @@ export default function PulseScreen() {
 
   const { activities, loading: loadingActivities, refetch } = useNearbyActivities(
     userId,
-    location ? { lat: location.latitude, lng: location.longitude } : null
+    location ? { lat: location.latitude, lng: location.longitude } : null,
+    cityName,
   );
-  const { joinActivity, loading: joiningActivity } = useActivityActions(userId);
+  const { joinActivity, leaveActivity, loading: joiningActivity } = useActivityActions(userId);
 
   // Request location
   useEffect(() => {
@@ -79,6 +83,11 @@ export default function PulseScreen() {
         }
         const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         setLocation({ latitude: current.coords.latitude, longitude: current.coords.longitude });
+        // Reverse geocode to get city name for city-based filtering
+        try {
+          const [geo] = await Location.reverseGeocodeAsync(current.coords);
+          if (geo?.city) setCityName(geo.city);
+        } catch { /* non-critical */ }
       } catch {
         setLocationError('Could not get your location');
       } finally {
@@ -133,9 +142,19 @@ export default function PulseScreen() {
     try {
       await joinActivity(selectedActivity.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // Update local state so card switches to "joined" view instantly
-      setSelectedActivity(prev => prev ? { ...prev, participantCount: prev.participantCount + 1 } : null);
-      refetch();
+      setSelectedActivity(null);
+      // Realtime will auto-refresh the list
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const handleLeaveActivity = async () => {
+    if (!selectedActivity) return;
+    try {
+      await leaveActivity(selectedActivity.id);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setSelectedActivity(null);
     } catch (error: any) {
       Alert.alert('Error', error.message);
     }
@@ -210,13 +229,21 @@ export default function PulseScreen() {
         <TouchableOpacity style={[styles.headerBtn, { backgroundColor: tc.bgElevated }]} onPress={() => router.back()}>
           <ArrowLeft size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Pulse</Text>
-        <TouchableOpacity
-          style={[styles.headerBtn, { backgroundColor: tc.bgElevated }]}
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowList(!showList); }}
-        >
-          {showList ? <Map1 size={22} color={tc.textPrimary} /> : <ArrowUp2 size={22} color={tc.textPrimary} />}
-        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{cityName ? `Pulse · ${cityName}` : 'Pulse'}</Text>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity
+            style={[styles.headerBtn, { backgroundColor: tc.bgElevated }]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/community/my-activities' as any); }}
+          >
+            <Clock size={20} color={tc.textPrimary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.headerBtn, { backgroundColor: tc.bgElevated }]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowList(!showList); }}
+          >
+            {showList ? <Map1 size={22} color={tc.textPrimary} /> : <ArrowUp2 size={22} color={tc.textPrimary} />}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Filter Chips */}
@@ -245,6 +272,7 @@ export default function PulseScreen() {
         <PulseActivityList
           activities={filteredActivities}
           onActivityPress={handleActivityPress}
+          onCreatorPress={(creatorId) => router.push(`/community/buddy/${creatorId}` as any)}
         />
       )}
 
@@ -256,7 +284,9 @@ export default function PulseScreen() {
           hasJoined={hasJoinedSelected}
           joining={joiningActivity}
           onJoin={handleJoinActivity}
-          onChat={() => router.push(`/community/chat/${selectedActivity.id}` as any)}
+          onLeave={handleLeaveActivity}
+          onViewDetails={() => router.push(`/community/activity/${selectedActivity.id}` as any)}
+          onChat={() => router.push(`/community/activity-chat/${selectedActivity.id}` as any)}
           onEdit={() => {
             router.push({
               pathname: '/community/create-activity' as any,

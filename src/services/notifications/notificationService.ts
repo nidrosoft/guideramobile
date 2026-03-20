@@ -552,29 +552,52 @@ class NotificationService {
     }
   }
 
+  private _userId: string | null = null;
+
+  /**
+   * Set the current user's profile UUID (from Clerk→Supabase profile sync).
+   * Called from AuthContext when profile is loaded.
+   */
+  setUserId(userId: string | null) {
+    this._userId = userId;
+    // If we have a pending push token, persist it now
+    if (userId && this.pushToken) {
+      this.upsertDeviceToken(this.pushToken).catch(() => {});
+    }
+  }
+
   private async upsertDeviceToken(token: string): Promise<void> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        logger.warn('Cannot upsert device token: no authenticated user');
+      const userId = this._userId;
+      if (!userId) {
+        logger.warn('Cannot upsert device token: no user ID set (call setUserId first)');
         return;
       }
 
-      await supabase.from('user_devices').upsert({
-        user_id: user.id,
-        device_token: token,
+      // Unique constraint is on (user_id, device_id)
+      const deviceId = `${Platform.OS}-${Device.modelName || 'unknown'}`;
+
+      const { error: upsertError } = await supabase.from('user_devices').upsert({
+        user_id: userId,
+        device_id: deviceId,
+        push_token: token,
         platform: Platform.OS as 'ios' | 'android',
         device_name: Device.deviceName || undefined,
+        device_type: Platform.OS,
         device_model: Device.modelName || undefined,
         os_version: Device.osVersion || undefined,
         is_active: true,
         push_enabled: true,
-        last_used_at: new Date().toISOString(),
+        last_active_at: new Date().toISOString(),
       }, {
-        onConflict: 'user_id,device_token',
+        onConflict: 'user_id,device_id',
       });
 
-      logger.info('Device token persisted to Supabase');
+      if (upsertError) {
+        logger.warn('Device token upsert error:', upsertError.message);
+      } else {
+        logger.info('Device token persisted to Supabase');
+      }
     } catch (error) {
       logger.warn('Failed to upsert device token to Supabase', error);
     }

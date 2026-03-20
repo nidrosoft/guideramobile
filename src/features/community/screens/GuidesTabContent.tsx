@@ -50,6 +50,7 @@ import GuideCard from '../components/GuideCard';
 import ListingCard from '../components/ListingCard';
 import PartnerInviteCard from '../components/PartnerInviteCard';
 import PartnerProgramSheet from '../components/PartnerProgramSheet';
+import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
 
 type FilterCategory = 'all' | ListingCategory;
@@ -57,6 +58,7 @@ type FilterCategory = 'all' | ListingCategory;
 export default function GuidesTabContent() {
   const router = useRouter();
   const { colors: tc } = useTheme();
+  const { profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<FilterCategory>('all');
   const [selectedExpertise, setSelectedExpertise] = useState<ExpertiseArea | null>(null);
@@ -65,8 +67,26 @@ export default function GuidesTabContent() {
   const [listings, setListings] = useState<GuideListing[]>([]);
   const [communities, setCommunities] = useState<any[]>([]);
   const [isFetching, setIsFetching] = useState(true);
+  const [isPartner, setIsPartner] = useState(false);
 
-  const isPartner = false;
+  // Check if user is an approved partner
+  useEffect(() => {
+    if (!profile?.id) return;
+    supabase
+      .from('partner_applications')
+      .select('status, didit_verification_status')
+      .eq('user_id', profile.id)
+      .in('status', ['approved', 'submitted', 'under_review'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.status === 'approved' || data?.didit_verification_status === 'approved') {
+          setIsPartner(true);
+        }
+      })
+      .catch(() => {});
+  }, [profile?.id]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -123,7 +143,7 @@ export default function GuidesTabContent() {
         })));
       }
     } catch (err) {
-      console.error('Failed to fetch guides tab data:', err);
+      if (__DEV__) console.warn('Failed to fetch guides tab data:', err);
     } finally {
       setIsFetching(false);
     }
@@ -228,7 +248,7 @@ export default function GuidesTabContent() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Featured Local Guides</Text>
-                <TouchableOpacity style={styles.seeAllBtn} onPress={() => {}}>
+                <TouchableOpacity style={styles.seeAllBtn} onPress={() => router.push('/community/trending' as any)}>
                   <Text style={[styles.seeAllText, { color: tc.primary }]}>See All</Text>
                   <ArrowRight2 size={14} color={tc.primary} />
                 </TouchableOpacity>
@@ -318,7 +338,7 @@ export default function GuidesTabContent() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Top Groups with Guides</Text>
-                <TouchableOpacity style={styles.seeAllBtn}>
+                <TouchableOpacity style={styles.seeAllBtn} onPress={() => router.push('/community/trending' as any)}>
                   <Text style={[styles.seeAllText, { color: tc.primary }]}>See All</Text>
                   <ArrowRight2 size={14} color={tc.primary} />
                 </TouchableOpacity>
@@ -326,7 +346,7 @@ export default function GuidesTabContent() {
 
               <View style={styles.sectionPadded}>
                 {communities.map(comm => (
-                  <TouchableOpacity key={comm.id} style={[styles.communityCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+                  <TouchableOpacity key={comm.id} style={[styles.communityCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]} onPress={() => router.push(`/community/${comm.id}` as any)} activeOpacity={0.7}>
                     <Image source={{ uri: comm.coverImage }} style={styles.communityCover} />
                     <View style={[styles.trustBadgeOverlay, { backgroundColor: tc.bgElevated }]}> 
                       <Star1 size={12} color="#F59E0B" variant="Bold" />

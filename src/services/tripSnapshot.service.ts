@@ -16,8 +16,10 @@ export interface TripSnapshotRequest {
   startDate: string;         // YYYY-MM-DD
   endDate: string;           // YYYY-MM-DD
   travelers: { adults: number; children: number; infants: number };
-  originAirport?: string;    // IATA code
+  originCity?: string;       // User's city for flight search
+  originAirport?: string;    // IATA code (resolved from originCity if not provided)
   currency?: string;
+  nationality?: string;      // For visa/entry requirements
   userPreferences?: {
     budgetAmount?: number;
     interests?: string[];
@@ -71,8 +73,10 @@ export interface CostEstimate {
     hotels: { low: number; high: number };
     experiences: { low: number; high: number };
     food: { low: number; high: number };
+    miscellaneous: { low: number; high: number };
   };
   currency: string;
+  perDayBudget: { low: number; high: number };
   withinBudget?: boolean;
   budgetAmount?: number;
 }
@@ -113,18 +117,56 @@ export interface TripSnapshot {
 class TripSnapshotService {
   /**
    * Generate a full trip intelligence snapshot for a destination + dates.
-   * The edge function calls Amadeus, Viator, event-discovery,
-   * and Claude Sonnet 4 / Gemini 2.5 Flash in parallel.
+   * Includes retry logic with exponential backoff for network resilience.
    */
-  async generateSnapshot(params: TripSnapshotRequest): Promise<TripSnapshot> {
-    const { data, error } = await supabase.functions.invoke('trip-snapshot', {
-      body: params,
-    });
+  async generateSnapshot(params: TripSnapshotRequest, maxRetries = 2): Promise<TripSnapshot> {
+    let lastError: Error | null = null;
 
-    if (error) throw new Error(`Snapshot failed: ${error.message}`);
-    if (data?.error) throw new Error(data.error);
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          // Exponential backoff: 2s, 4s
+          const delay = Math.pow(2, attempt) * 1000;
+          if (__DEV__) console.log(`[TripSnapshot] Retry ${attempt}/${maxRetries} after ${delay}ms`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
 
-    return data as TripSnapshot;
+        const { data, error } = await supabase.functions.invoke('trip-snapshot', {
+          body: params,
+        });
+
+        if (error) {
+          // Network errors are retryable
+          if (error.message?.includes('network') || error.message?.includes('fetch') || error.message?.includes('timeout')) {
+            lastError = new Error(`Snapshot failed: ${error.message}`);
+            continue;
+          }
+          throw new Error(`Snapshot failed: ${error.message}`);
+        }
+
+        if (data?.error) {
+          // Server 5xx errors are retryable
+          if (data.error.includes?.('500') || data.error.includes?.('timeout')) {
+            lastError = new Error(data.error);
+            continue;
+          }
+          throw new Error(data.error);
+        }
+
+        return data as TripSnapshot;
+      } catch (err: any) {
+        lastError = err;
+        // Only retry on network/timeout errors
+        const isRetryable = err.message?.includes('network') || err.message?.includes('Network') ||
+          err.message?.includes('fetch') || err.message?.includes('timeout') ||
+          err.message?.includes('non-2xx');
+        if (!isRetryable || attempt === maxRetries) {
+          throw lastError;
+        }
+      }
+    }
+
+    throw lastError || new Error('Snapshot failed after retries');
   }
 }
 

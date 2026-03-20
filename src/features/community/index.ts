@@ -16,9 +16,11 @@ export { default as CreateEventScreen } from './screens/CreateEventScreen';
 export { default as MessagesListScreen } from './screens/MessagesListScreen';
 export { default as ReportScreen } from './screens/ReportScreen';
 export { default as SearchScreen } from './screens/SearchScreen';
-export { default as LiveMapScreen } from './screens/LiveMapScreen';
 export { default as CreateActivityScreen } from './screens/CreateActivityScreen';
 export { default as ChatScreen } from './screens/ChatScreen';
+export { default as ActivityChatScreen } from './screens/ActivityChatScreen';
+export { default as ActivityDetailScreen } from './screens/ActivityDetailScreen';
+export { default as MyActivitiesScreen } from './screens/MyActivitiesScreen';
 
 // Guide Screens
 export { default as GuideProfileScreen } from './screens/GuideProfileScreen';
@@ -40,7 +42,6 @@ export { default as NearbyTravelerCard } from './components/NearbyTravelerCard';
 export { default as ChatMessageBubble } from './components/ChatMessageBubble';
 export { default as ProfileCompletenessCard } from './components/ProfileCompletenessCard';
 export { default as EventsTabContent } from './components/EventsTabContent';
-export { default as DiscoverTabContent } from './components/DiscoverTabContent';
 export { default as DiscoverFeed } from './components/DiscoverFeed';
 export { default as GroupsTabContent } from './components/GroupsTabContent';
 export { default as LocationSharingSettings } from './components/LocationSharingSettings';

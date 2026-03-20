@@ -5,7 +5,10 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from 'react-native';
+import { Camera, CloseCircle } from 'iconsax-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
 import { spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -14,6 +17,8 @@ interface StepDetailsProps {
   onTitleChange: (text: string) => void;
   description: string;
   onDescriptionChange: (text: string) => void;
+  coverImageUri?: string;
+  onCoverImageChange?: (uri: string | undefined) => void;
 }
 
 export default function StepDetails({
@@ -21,6 +26,8 @@ export default function StepDetails({
   onTitleChange,
   description,
   onDescriptionChange,
+  coverImageUri,
+  onCoverImageChange,
 }: StepDetailsProps) {
   const { colors: tc } = useTheme();
 
@@ -63,6 +70,41 @@ export default function StepDetails({
       <Text style={[styles.charCount, { color: tc.textTertiary }]}>
         {description.length}/300
       </Text>
+
+      <Text style={[styles.label, { color: tc.textPrimary }]}>
+        Cover photo (optional)
+      </Text>
+      {coverImageUri ? (
+        <View style={styles.coverPreview}>
+          <Image source={{ uri: coverImageUri }} style={styles.coverImage} />
+          <TouchableOpacity
+            style={[styles.removeCover, { backgroundColor: tc.bgElevated }]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onCoverImageChange?.(undefined); }}
+          >
+            <CloseCircle size={20} color={tc.error} variant="Bold" />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={[styles.coverPicker, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
+          onPress={async () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              aspect: [16, 9],
+              quality: 0.8,
+            });
+            if (!result.canceled && result.assets[0]) {
+              onCoverImageChange?.(result.assets[0].uri);
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <Camera size={28} color={tc.textTertiary} />
+          <Text style={[styles.coverPickerText, { color: tc.textTertiary }]}>Add a photo</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -99,5 +141,38 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'right',
     marginTop: 4,
+  },
+  coverPicker: {
+    height: 120,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  coverPickerText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  coverPreview: {
+    height: 160,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
+  },
+  removeCover: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

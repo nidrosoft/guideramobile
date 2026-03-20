@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 import { TripCoreService } from './trip-core.service';
 
 // ============================================
@@ -248,14 +249,12 @@ export async function parseEmailImport(importId: string): Promise<void> {
 
   try {
     // Call AI parsing edge function
-    const { data: parsed, error } = await supabase.functions.invoke('parse-booking-email', {
-      body: {
+    const { data: parsed, error } = await invokeEdgeFn(supabase, 'parse-booking-email', {
         from: importRecord.email_from,
         subject: importRecord.email_subject,
         body: importRecord.raw_input_data,
         attachments: importRecord.raw_input_attachments,
-      },
-    });
+    }, 'slow');
 
     if (error) throw error;
 

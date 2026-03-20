@@ -72,7 +72,7 @@ export default function ActiveSessionsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc } = useTheme();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -145,12 +145,9 @@ export default function ActiveSessionsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Supabase global signout - logs out all sessions
-              const { error } = await supabase.auth.signOut({ scope: 'global' });
-              if (error) throw error;
-              
+              // Sign out via Clerk (owns auth session) — triggers AuthContext cleanup
+              await signOut();
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              // User will be redirected to login by AuthContext
             } catch (error) {
               console.error('Error logging out all devices:', error);
               Alert.alert('Error', 'Failed to log out. Please try again.');

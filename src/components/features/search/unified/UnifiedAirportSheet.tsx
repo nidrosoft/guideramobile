@@ -30,6 +30,7 @@ import * as Haptics from 'expo-haptics';
 import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 
 export interface Airport {
   code: string;
@@ -86,13 +87,11 @@ export default function UnifiedAirportSheet({
 
     setIsSearching(true);
     try {
-      const { data, error } = await supabase.functions.invoke('places', {
-        body: {
+      const { data, error } = await invokeEdgeFn(supabase, 'places', {
           action: 'autocomplete',
           query: `${query} airport`,
           type: 'airport',
-        },
-      });
+      }, 'fast');
 
       if (error) throw error;
 

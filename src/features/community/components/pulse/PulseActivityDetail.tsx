@@ -16,7 +16,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Share,
   Alert,
@@ -27,6 +26,7 @@ import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import type { Activity } from '@/services/community/types/community.types';
 import { getActivityIcon, getTimingLabel } from './pulse.utils';
+import AvatarFallback from './AvatarFallback';
 
 interface PulseActivityDetailProps {
   activity: Activity;
@@ -34,10 +34,12 @@ interface PulseActivityDetailProps {
   hasJoined?: boolean;
   joining: boolean;
   onJoin: () => void;
+  onLeave?: () => void;
   onChat: () => void;
   onEdit?: () => void;
   onCancel?: () => void;
   onReport?: () => void;
+  onViewDetails?: () => void;
   onClose: () => void;
   bottomOffset: number;
 }
@@ -48,10 +50,12 @@ export default function PulseActivityDetail({
   hasJoined = false,
   joining,
   onJoin,
+  onLeave,
   onChat,
   onEdit,
   onCancel,
   onReport,
+  onViewDetails,
   onClose,
   bottomOffset,
 }: PulseActivityDetailProps) {
@@ -62,7 +66,7 @@ export default function PulseActivityDetail({
   const handleShare = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Share.share({
-      message: `Join ${creatorFirst} for "${activity.title}" on Guidera!`,
+      message: `Join ${creatorFirst} for "${activity.title}" on Guidera!\n\nhttps://guidera.app/pulse/${activity.id}`,
     }).catch(() => {});
   };
 
@@ -89,7 +93,7 @@ export default function PulseActivityDetail({
 
   return (
     <View style={[styles.card, { bottom: bottomOffset, backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
-      {/* Row 1: icon actions (share, report, close) — each in a circle */}
+      {/* Row 1: icon actions (share ... report, close) — each in a circle */}
       <View style={styles.topRow}>
         <TouchableOpacity
           style={[styles.iconCircle, { backgroundColor: tc.borderSubtle + '50' }]}
@@ -100,20 +104,22 @@ export default function PulseActivityDetail({
 
         <View style={styles.topSpacer} />
 
-        {!isOwner && (
+        <View style={styles.topRightGroup}>
+          {!isOwner && (
+            <TouchableOpacity
+              style={[styles.iconCircle, { backgroundColor: tc.error + '10' }]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onReport?.(); }}
+            >
+              <Flag size={16} color={tc.error} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
-            style={[styles.iconCircle, { backgroundColor: tc.error + '10' }]}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onReport?.(); }}
+            style={[styles.iconCircle, { backgroundColor: tc.borderSubtle + '50' }]}
+            onPress={onClose}
           >
-            <Flag size={16} color={tc.error} />
+            <CloseCircle size={18} color={tc.textSecondary} variant="Bold" />
           </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          style={[styles.iconCircle, { backgroundColor: tc.borderSubtle + '50' }]}
-          onPress={onClose}
-        >
-          <CloseCircle size={18} color={tc.textSecondary} variant="Bold" />
-        </TouchableOpacity>
+        </View>
       </View>
 
       {/* Activity type emoji centered */}
@@ -128,9 +134,12 @@ export default function PulseActivityDetail({
         <Text style={{ color: tc.primary, fontWeight: '700' }}>{creatorFirst}</Text>
         {isOwner ? ' — you\'re hosting' : ' is hosting'}
       </Text>
-      <Text style={[styles.activityTitle, { color: tc.textPrimary }]}>
-        {activity.title}
-      </Text>
+      <TouchableOpacity onPress={onViewDetails} activeOpacity={0.7}>
+        <Text style={[styles.activityTitle, { color: tc.textPrimary }]}>
+          {activity.title}
+        </Text>
+        <Text style={[styles.viewDetailsLink, { color: tc.primary }]}>View details & discussion</Text>
+      </TouchableOpacity>
 
       {/* Meta: time + location + going */}
       <View style={styles.metaChips}>
@@ -152,9 +161,10 @@ export default function PulseActivityDetail({
       {/* Creator row */}
       {activity.creator && (
         <View style={styles.creatorRow}>
-          <Image
-            source={{ uri: activity.creator.avatarUrl || `https://i.pravatar.cc/36?u=${activity.createdBy}` }}
-            style={styles.creatorAvatar}
+          <AvatarFallback
+            uri={activity.creator.avatarUrl}
+            name={`${activity.creator.firstName || ''} ${activity.creator.lastName || ''}`}
+            size={36}
           />
           <Text style={[styles.creatorLabel, { color: tc.textTertiary }]}>{creatorFirst}</Text>
         </View>
@@ -179,13 +189,22 @@ export default function PulseActivityDetail({
           </TouchableOpacity>
         </View>
       ) : hasJoined ? (
-        <TouchableOpacity
-          style={[styles.fullBtn, { backgroundColor: tc.primary }]}
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onChat(); }}
-        >
-          <MessageText1 size={18} color="#FFFFFF" />
-          <Text style={styles.fullBtnText}>Open Chat</Text>
-        </TouchableOpacity>
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={[styles.outlineBtn, { borderColor: tc.borderSubtle }]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onChat(); }}
+          >
+            <MessageText1 size={16} color={tc.textPrimary} />
+            <Text style={[styles.outlineBtnText, { color: tc.textPrimary }]}>Chat</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.dangerBtn, { backgroundColor: tc.error + '12' }]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onLeave?.(); }}
+          >
+            <CloseCircle size={16} color={tc.error} />
+            <Text style={[styles.dangerBtnText, { color: tc.error }]}>Leave</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <View style={styles.actions}>
           <TouchableOpacity
@@ -240,6 +259,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   topSpacer: { flex: 1 },
+  topRightGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   // Emoji
   emojiRow: { alignItems: 'center', marginBottom: spacing.sm },
   emojiCircle: {
@@ -252,7 +272,8 @@ const styles = StyleSheet.create({
   emoji: { fontSize: 24 },
   // Headline
   headline: { fontSize: 15, textAlign: 'center', marginBottom: 2 },
-  activityTitle: { fontSize: 18, fontWeight: '700', textAlign: 'center', marginBottom: spacing.md },
+  activityTitle: { fontSize: 18, fontWeight: '700', textAlign: 'center', marginBottom: 2 },
+  viewDetailsLink: { fontSize: 12, fontWeight: '500', textAlign: 'center', marginBottom: spacing.md },
   // Meta chips
   metaChips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginBottom: spacing.md },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },

@@ -137,7 +137,7 @@ export default function ListingDetailScreen() {
         }
       }
     } catch (err) {
-      console.error('Failed to fetch listing:', err);
+      if (__DEV__) console.warn('Failed to fetch listing:', err);
     } finally {
       setIsFetching(false);
     }

@@ -19,6 +19,7 @@ import * as Haptics from 'expo-haptics';
 import { spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 
 // Types
 export interface HotelDestination {
@@ -75,13 +76,11 @@ export default function HotelWhereSection({
 
     setIsSearching(true);
     try {
-      const { data, error } = await supabase.functions.invoke('places', {
-        body: {
+      const { data, error } = await invokeEdgeFn(supabase, 'places', {
           action: 'autocomplete',
           query: query,
-          type: '(cities)', // Focus on cities for hotel search
-        },
-      });
+          type: '(cities)',
+      }, 'fast');
 
       if (__DEV__) console.log('Places API response:', { data, error });
 
@@ -160,12 +159,10 @@ export default function HotelWhereSection({
 
     // Try to get place details for coordinates
     try {
-      const { data, error } = await supabase.functions.invoke('places', {
-        body: {
+      const { data, error } = await invokeEdgeFn(supabase, 'places', {
           action: 'details',
           placeId: result.placeId,
-        },
-      });
+      }, 'fast');
 
       if (!error && data?.success && data?.data?.place) {
         const place = data.data.place;

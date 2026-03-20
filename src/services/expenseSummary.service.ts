@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 
 // ─── Types ──────────────────────────────────────
 
@@ -78,9 +79,7 @@ class ExpenseSummaryService {
    * Generate or retrieve a cached expense summary for a trip.
    */
   async getSummary(tripId: string, forceRefresh = false): Promise<ExpenseSummaryResult> {
-    const { data, error } = await supabase.functions.invoke('generate-expense-summary', {
-      body: { tripId, forceRefresh },
-    });
+    const { data, error } = await invokeEdgeFn(supabase, 'generate-expense-summary', { tripId, forceRefresh }, 'fast');
 
     if (error) throw new Error(`Summary generation failed: ${error.message}`);
     if (!data?.success) throw new Error(data?.error || 'Failed to generate summary');

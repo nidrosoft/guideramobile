@@ -55,8 +55,8 @@ function mapGroupToPreview(g: any, memberGroupIds: Set<string>): CommunityPrevie
   return {
     id: g.id,
     name: g.name,
-    avatar: g.groupPhotoUrl || g.coverPhotoUrl || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=200',
-    coverImage: g.coverPhotoUrl || g.groupPhotoUrl || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
+    avatar: g.groupPhotoUrl || g.coverPhotoUrl || '',
+    coverImage: g.coverPhotoUrl || g.groupPhotoUrl || '',
     memberCount: g.memberCount || 0,
     isVerified: g.isVerified || false,
     type: (g.category as any) || 'interest',
@@ -97,7 +97,7 @@ function mapSuggestionToBuddyMatch(s: any): BuddyMatch {
     userId: s.user.id,
     firstName: s.user.firstName || '',
     lastName: s.user.lastName || '',
-    avatar: s.user.avatarUrl || 'https://i.pravatar.cc/150?img=1',
+    avatar: s.user.avatarUrl || '',
     bio: s.user.bio || '',
     matchScore: s.matchScore || 0,
     matchReasons: (s.matchReasons || []).map((r: any) => r.label || r),
@@ -193,8 +193,22 @@ export default function DiscoverFeed({
       // Upcoming events
       eventService.getUpcomingEvents({ limit: 5 }),
 
-      // Nearby meetup activities
-      userId ? activityService.getNearbyActivities(userId, 0, 0, 50) : Promise.resolve([]),
+      // Nearby meetup activities — use profile location or skip
+      (async () => {
+        if (!userId) return [];
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('latitude, longitude, city')
+          .eq('id', userId)
+          .single();
+        if (!prof?.latitude) return [];
+        return activityService.getNearbyActivities(
+          userId,
+          parseFloat(prof.latitude),
+          parseFloat(prof.longitude),
+          { city: prof.city || undefined }
+        );
+      })(),
 
       // Popular destinations from curated_destinations
       (async () => {
@@ -209,7 +223,7 @@ export default function DiscoverFeed({
           id: d.id,
           name: d.name,
           country: d.country,
-          image: d.gallery_images?.[0] || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
+          image: d.gallery_images?.[0] || '',
           travelerCount: Math.round(d.popularity_score || 0),
         }));
       })(),
@@ -355,7 +369,7 @@ export default function DiscoverFeed({
 
       <NearbyActivitiesSection
         activities={nearbyActivities}
-        onActivityPress={(id) => onEventPress(id)}
+        onActivityPress={(id) => router.push(`/community/activity/${id}` as any)}
         onSeeAll={() => router.push('/community/live-map' as any)}
       />
 

@@ -12,6 +12,20 @@ import { generateOrder } from '../services/gemini.service';
 import { speak, stopSpeaking, isSpeaking } from '../services/tts.service';
 import type { OrderItem, GeneratedOrder, OrderBuilderState } from '../types/aiVision.types';
 
+// Map common destination countries to their primary language code for TTS
+const COUNTRY_TO_LANG: Record<string, string> = {
+  france: 'fr', spain: 'es', italy: 'it', germany: 'de', portugal: 'pt',
+  brazil: 'pt', japan: 'ja', korea: 'ko', china: 'zh', thailand: 'th',
+  vietnam: 'vi', turkey: 'tr', russia: 'ru', india: 'hi', indonesia: 'id',
+  malaysia: 'ms', netherlands: 'nl', poland: 'pl', sweden: 'sv',
+  greece: 'el', israel: 'he', ukraine: 'uk', 'czech republic': 'cs',
+  mexico: 'es', colombia: 'es', argentina: 'es', peru: 'es', chile: 'es',
+  morocco: 'ar', egypt: 'ar', 'saudi arabia': 'ar', uae: 'ar',
+  cameroon: 'fr', senegal: 'fr', 'ivory coast': 'fr', belgium: 'fr',
+  switzerland: 'de', austria: 'de', canada: 'en', australia: 'en',
+  usa: 'en', uk: 'en', ireland: 'en', 'new zealand': 'en',
+};
+
 interface UseOrderBuilderReturn extends OrderBuilderState {
   addItem: (item: OrderItem) => void;
   removeItem: (id: string) => void;
@@ -88,10 +102,15 @@ export function useOrderBuilder(): UseOrderBuilderReturn {
           destinationCountry,
         );
 
+        // Determine the TTS language: use AI-returned code, or infer from destination country
+        const spokenLang = result.spokenLanguageCode
+          || COUNTRY_TO_LANG[destinationCountry.toLowerCase()]
+          || localLanguage;
+
         setGeneratedOrder({
           spokenOrder: result.spokenOrder,
           englishTranslation: result.englishTranslation,
-          localLanguage,
+          localLanguage: spokenLang,
           timestamp: Date.now(),
         });
       } catch (e: any) {
@@ -112,17 +131,29 @@ export function useOrderBuilder(): UseOrderBuilderReturn {
 
     setIsPlaying(true);
     try {
+      if (__DEV__) console.log('[OrderBuilder] Playing TTS:', {
+        lang: generatedOrder.localLanguage,
+        textLength: generatedOrder.spokenOrder.length,
+        preview: generatedOrder.spokenOrder.substring(0, 50),
+      });
+
       await speak(generatedOrder.spokenOrder, {
         language: generatedOrder.localLanguage,
         rate: 0.85, // Slightly slower for clarity
-        onDone: () => setIsPlaying(false),
-        onError: () => {
+        onDone: () => {
+          if (__DEV__) console.log('[OrderBuilder] TTS finished');
           setIsPlaying(false);
-          setError('Audio playback failed. Try again.');
+        },
+        onError: (err) => {
+          if (__DEV__) console.warn('[OrderBuilder] TTS error:', err);
+          setIsPlaying(false);
+          setError('Audio playback failed. Make sure your phone volume is up and try again.');
         },
       });
-    } catch {
+    } catch (err) {
+      if (__DEV__) console.warn('[OrderBuilder] TTS catch:', err);
       setIsPlaying(false);
+      setError('Could not play audio. Check your phone volume and silent mode switch.');
     }
   }, [generatedOrder]);
 

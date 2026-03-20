@@ -17,7 +17,7 @@ import {
 } from 'iconsax-react-native';
 import { colors, typography } from '@/styles';
 import { Incident, IncidentType } from '../types/dangerAlerts.types';
-import { getDangerColor } from '../data/mockDangerData';
+import { getDangerColor } from '../utils/dangerUtils';
 
 interface IncidentMarkerProps {
   incident: Incident;

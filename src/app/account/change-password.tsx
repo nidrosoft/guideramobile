@@ -31,7 +31,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { supabase } from '@/lib/supabase/client';
+import { useUser } from '@clerk/clerk-expo';
 
 interface PasswordRequirement {
   label: string;
@@ -50,6 +50,7 @@ export default function ChangePasswordScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc } = useTheme();
+  const { user: clerkUser } = useUser();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -102,12 +103,12 @@ export default function ChangePasswordScreen() {
 
     setIsLoading(true);
     try {
-      // Update password using Supabase
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
+      // Update password using Clerk (owns auth, not Supabase)
+      if (!clerkUser) throw new Error('Not signed in');
+      await clerkUser.updatePassword({
+        currentPassword,
+        newPassword,
       });
-
-      if (error) throw error;
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(

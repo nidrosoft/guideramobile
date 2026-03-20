@@ -13,6 +13,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Airplane, Building, Location, DirectRight, Clock, Star1, Car } from 'iconsax-react-native';
 import { spacing, typography, borderRadius, colors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useToast } from '@/contexts/ToastContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import AddActivityBottomSheet from '../components/AddActivityBottomSheet';
 import { plannerService, ItineraryDay } from '@/services/planner.service';
@@ -42,6 +43,7 @@ export default function PlannerScreen() {
   const params = useLocalSearchParams();
   const tripId = params.tripId as string;
   const { colors, isDark } = useTheme();
+  const { showError } = useToast();
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
   
   const [selectedDay, setSelectedDay] = useState(0);
@@ -173,7 +175,8 @@ export default function PlannerScreen() {
           : d
       ));
     } catch (err) {
-      console.error('Failed to add activity:', err);
+      if (__DEV__) console.warn('Failed to add activity:', err);
+      showError('Failed to add activity. Please try again.');
     }
   };
 

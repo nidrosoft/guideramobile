@@ -35,6 +35,7 @@ import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { eventService } from '@/services/community';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 
 type RSVPStatus = 'going' | 'maybe' | 'not_going' | null;
 
@@ -43,6 +44,7 @@ export default function EventDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [rsvpStatus, setRsvpStatus] = useState<RSVPStatus>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
@@ -85,7 +87,7 @@ export default function EventDetailScreen() {
         id: data.id,
         title: data.title,
         description: data.description || '',
-        coverImage: data.coverImageUrl || 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800',
+        coverImage: data.coverImageUrl || '',
         type: data.locationType === 'virtual' ? 'virtual' : 'in_person',
         location: {
           name: data.locationName || '',
@@ -113,14 +115,14 @@ export default function EventDetailScreen() {
         },
         goingUsers: goingAttendees.slice(0, 5).map(a => ({
           id: a.userId,
-          avatar: a.user?.avatarUrl || `https://i.pravatar.cc/150?u=${a.userId}`,
+          avatar: a.user?.avatarUrl || '',
         })),
         tags: data.category ? [data.category] : [],
         isFree: true,
         price: null,
       });
     } catch (err) {
-      console.error('Failed to fetch event:', err);
+      if (__DEV__) console.warn('Failed to fetch event:', err);
       Alert.alert('Error', 'Could not load event details.');
     } finally {
       setIsFetching(false);
@@ -150,8 +152,10 @@ export default function EventDetailScreen() {
         await eventService.cancelRsvp(profile.id, id);
         setRsvpStatus(null);
         fetchEvent();
+        showSuccess('RSVP cancelled');
       } catch (err) {
-        console.error('Failed to cancel RSVP:', err);
+        showError('Failed to cancel RSVP');
+        if (__DEV__) console.warn('Failed to cancel RSVP:', err);
       } finally {
         setIsLoading(false);
       }
@@ -168,10 +172,10 @@ export default function EventDetailScreen() {
       fetchEvent();
       
       if (status === 'going') {
-        Alert.alert('You\'re Going! 🎉', 'We\'ll send you a reminder before the event.');
+        showSuccess('You\'re going! We\'ll remind you before the event 🎉');
       }
     } catch (err: any) {
-      console.error('Failed to RSVP:', err);
+      if (__DEV__) console.warn('Failed to RSVP:', err);
       Alert.alert('Error', err?.message || 'Could not update RSVP.');
     } finally {
       setIsLoading(false);

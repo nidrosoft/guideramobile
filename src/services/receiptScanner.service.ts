@@ -7,6 +7,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { invokeWithRetry } from '@/utils/retry';
 import { expenseService } from '@/services/expense.service';
 import { Expense } from '@/features/trips/plugins/expenses/types/expense.types';
 
@@ -51,11 +52,7 @@ class ReceiptScannerService {
     mediaType: string = 'image/jpeg',
     currency: string = 'USD',
   ): Promise<ReceiptScanResult> {
-    const { data, error } = await supabase.functions.invoke('scan-receipt', {
-      body: { imageBase64, mediaType, currency },
-    });
-
-    if (error) throw new Error(`Receipt scan failed: ${error.message}`);
+    const data = await invokeWithRetry(supabase, 'scan-receipt', { imageBase64, mediaType, currency }, 'slow');
     if (!data?.success) throw new Error(data?.error || 'Failed to scan receipt');
 
     return data as ReceiptScanResult;

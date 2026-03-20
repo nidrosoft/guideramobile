@@ -7,7 +7,7 @@
 
 export const SITUM_CONFIG = {
   // API Key - Get from Situm Dashboard
-  API_KEY: process.env.SITUM_API_KEY || 'YOUR_SITUM_API_KEY',
+  API_KEY: process.env.SITUM_API_KEY || '',
   
   // Building IDs - Update with your actual building identifiers
   BUILDINGS: {

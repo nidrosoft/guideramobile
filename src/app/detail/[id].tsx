@@ -27,7 +27,7 @@ const MOCK_DATA = {
       {
         id: '1',
         userName: 'Sarah Johnson',
-        userAvatar: 'https://i.pravatar.cc/150?img=1',
+        userAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150?img=1',
         rating: 5,
         date: '2 weeks ago',
         reviewText: 'Paris exceeded all my expectations! The Eiffel Tower at sunset was breathtaking, and the food was incredible. Every corner of this city is Instagram-worthy. Highly recommend visiting in spring!',
@@ -40,7 +40,7 @@ const MOCK_DATA = {
       {
         id: '2',
         userName: 'Michael Chen',
-        userAvatar: 'https://i.pravatar.cc/150?img=12',
+        userAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150?img=12',
         rating: 4,
         date: '1 month ago',
         reviewText: 'Amazing city with so much history and culture. The Louvre alone could take days to explore. Only downside was it can get quite crowded during peak season.',
@@ -49,7 +49,7 @@ const MOCK_DATA = {
       {
         id: '3',
         userName: 'Emma Williams',
-        userAvatar: 'https://i.pravatar.cc/150?img=5',
+        userAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150?img=5',
         rating: 5,
         date: '2 months ago',
         reviewText: 'Absolutely magical! The architecture, the cafés, the art... Paris is a dream come true. Don\'t miss Montmartre and the Latin Quarter!',
@@ -245,7 +245,7 @@ const MOCK_DATA = {
       {
         id: '1',
         userName: 'David Kim',
-        userAvatar: 'https://i.pravatar.cc/150?img=8',
+        userAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150?img=8',
         rating: 5,
         date: '1 week ago',
         reviewText: 'Tokyo is mind-blowing! The perfect blend of tradition and innovation. The food scene is unmatched, and the people are incredibly polite and helpful.',
@@ -254,7 +254,7 @@ const MOCK_DATA = {
       {
         id: '2',
         userName: 'Lisa Anderson',
-        userAvatar: 'https://i.pravatar.cc/150?img=9',
+        userAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150?img=9',
         rating: 5,
         date: '3 weeks ago',
         reviewText: 'Best city I\'ve ever visited! From temples to tech, Tokyo has it all. The public transportation is amazing and makes getting around so easy.',
@@ -312,7 +312,7 @@ const MOCK_DATA = {
       {
         id: '1',
         userName: 'James Rodriguez',
-        userAvatar: 'https://i.pravatar.cc/150?img=13',
+        userAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150?img=13',
         rating: 5,
         date: '4 days ago',
         reviewText: 'NYC is electric! There\'s always something happening. Broadway shows were incredible, and the food diversity is unmatched. A must-visit for everyone!',
@@ -322,7 +322,7 @@ const MOCK_DATA = {
       {
         id: '2',
         userName: 'Sophie Martin',
-        userAvatar: 'https://i.pravatar.cc/150?img=10',
+        userAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150?img=10',
         rating: 4,
         date: '2 weeks ago',
         reviewText: 'Loved the energy and diversity! So many museums, parks, and neighborhoods to explore. Can be overwhelming but that\'s part of the charm.',

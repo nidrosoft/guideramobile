@@ -25,6 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 import { spacing, borderRadius } from '@/styles';
 
 export interface AIChatContext {
@@ -508,8 +509,7 @@ export default function AIChatSheet({
     scrollToBottom();
 
     try {
-      const { data, error } = await supabase.functions.invoke('chat-assistant', {
-        body: {
+      const { data, error } = await invokeEdgeFn(supabase, 'chat-assistant', {
           sessionId,
           message: trimmed,
           contextType,
@@ -523,8 +523,7 @@ export default function AIChatSheet({
             description: contextData.description,
           } : null,
           userId: profile.id,
-        },
-      });
+      }, 'fast');
 
       if (error) throw error;
 

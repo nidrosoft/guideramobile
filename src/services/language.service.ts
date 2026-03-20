@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { invokeWithRetry } from '@/utils/retry';
 import {
   LanguageKit,
   LanguagePhrase,
@@ -63,10 +64,7 @@ class LanguageService {
     modelUsed?: string;
     error?: string;
   }> {
-    const { data, error } = await supabase.functions.invoke('generate-language', {
-      body: { tripId },
-    });
-    if (error) throw new Error(`Language kit generation failed: ${error.message}`);
+    const data = await invokeWithRetry(supabase, 'generate-language', { tripId }, 'fast');
     if (data?.error) throw new Error(data.error);
     return data;
   }

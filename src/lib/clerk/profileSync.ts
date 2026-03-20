@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase/client';
+import { supabaseNoAuth as supabase } from '@/lib/supabase/client';
 import { Profile } from '@/types/auth.types';
 
 /**

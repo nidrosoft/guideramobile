@@ -8,6 +8,7 @@
 
 import type { LiveFrameResult, MenuItem } from '../types/aiVision.types';
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase/client';
+import { retryWithBackoff } from '@/utils/retry';
 
 const EDGE_FUNCTION_URL = `${supabaseUrl}/functions/v1/ai-vision`;
 
@@ -15,25 +16,27 @@ const EDGE_FUNCTION_URL = `${supabaseUrl}/functions/v1/ai-vision`;
  * Call the ai-vision edge function with the given action and body.
  */
 async function callEdgeFunction(action: string, payload: Record<string, any>): Promise<any> {
-  const res = await fetch(EDGE_FUNCTION_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${supabaseAnonKey}`,
-      'apikey': supabaseAnonKey,
-    },
-    body: JSON.stringify({ action, ...payload }),
-  });
+  return retryWithBackoff(async () => {
+    const res = await fetch(EDGE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'apikey': supabaseAnonKey,
+      },
+      body: JSON.stringify({ action, ...payload }),
+    });
 
-  if (!res.ok) {
-    const errText = await res.text();
-    if (__DEV__) console.warn('[GeminiService] Edge function error:', res.status, errText);
-    throw new Error(`AI Vision error: ${res.status}`);
-  }
+    if (!res.ok) {
+      const errText = await res.text();
+      if (__DEV__) console.warn('[GeminiService] Edge function error:', res.status, errText);
+      throw new Error(`AI Vision error: ${res.status}`);
+    }
 
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data;
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data;
+  }, 'fast', `ai-vision/${action}`);
 }
 
 /**
@@ -112,12 +115,19 @@ export async function generateOrder(
   items: Array<{ nameOriginal: string; nameTranslated: string; quantity: number; price: string }>,
   localLanguage: string,
   destinationCountry: string,
-): Promise<{ spokenOrder: string; englishTranslation: string }> {
-  return callEdgeFunction('generate-order', {
+): Promise<{ spokenOrder: string; englishTranslation: string; spokenLanguageCode?: string }> {
+  const result = await callEdgeFunction('generate-order', {
     items,
     localLanguage,
     destinationCountry,
   });
+  // The edge function may return the language code of the spoken order.
+  // If not, we infer it from the destination country or fall back to localLanguage.
+  return {
+    spokenOrder: result.spokenOrder || result.spoken_order || '',
+    englishTranslation: result.englishTranslation || result.english_translation || '',
+    spokenLanguageCode: result.spokenLanguageCode || result.spoken_language_code || undefined,
+  };
 }
 
 /**

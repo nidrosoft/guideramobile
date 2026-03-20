@@ -85,7 +85,7 @@ export default function ProfileHeader({ user, onEditPress, onAvatarPress }: Prof
         <TouchableOpacity onPress={onAvatarPress} activeOpacity={0.8}>
           <View style={styles.avatarContainer}>
             <Image
-              source={{ uri: user.avatar || 'https://i.pravatar.cc/150?img=12' }}
+              source={{ uri: user.avatar || undefined }}
               style={styles.avatar}
             />
             {user.verified?.identity && (

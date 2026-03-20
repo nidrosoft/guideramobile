@@ -84,6 +84,36 @@ class ExpenseService {
       .single();
 
     if (error) throw new Error(error.message);
+
+    // Check budget and fire warning notification if approaching/exceeded
+    try {
+      const { data: trip } = await supabase
+        .from('trips')
+        .select('title, destination, budget_amount, budget_currency')
+        .eq('id', tripId)
+        .single();
+
+      if (trip?.budget_amount && trip.budget_amount > 0) {
+        const { data: allExpenses } = await supabase
+          .from('expenses')
+          .select('amount')
+          .eq('trip_id', tripId);
+
+        const totalSpent = (allExpenses || []).reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
+        const percentUsed = Math.round((totalSpent / trip.budget_amount) * 100);
+
+        if (percentUsed >= 80) {
+          const { notifyBudgetWarning } = await import('@/services/notifications/community-notifications');
+          await notifyBudgetWarning(
+            userId, tripId,
+            trip.title || trip.destination || 'Your trip',
+            percentUsed, trip.budget_amount, totalSpent,
+            trip.budget_currency || input.currency,
+          );
+        }
+      }
+    } catch (_) {}
+
     return fromDb(data);
   }
 

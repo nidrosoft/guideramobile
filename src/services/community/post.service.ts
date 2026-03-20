@@ -58,7 +58,7 @@ class PostService {
         *,
         author:profiles(id, first_name, last_name, avatar_url)
       `)
-      .eq('status', 'active')
+      .in('status', ['published', 'active'])
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -170,7 +170,7 @@ class PostService {
         author:profiles(id, first_name, last_name, avatar_url)
       `)
       .eq('post_id', postId)
-      .eq('status', 'active')
+      .in('status', ['published', 'active'])
       .order('created_at', { ascending: true });
 
     if (error) throw new Error(error.message);
@@ -220,6 +220,48 @@ class PostService {
       }
     } catch (e) {
       if (__DEV__) console.warn('Failed to increment comment count:', e);
+    }
+
+    // Fire notification to post author (if commenter is not the author)
+    try {
+      const { data: post } = await supabase
+        .from('community_posts')
+        .select('author_id, content')
+        .eq('id', postId)
+        .single();
+
+      if (post && post.author_id !== userId) {
+        const { data: commenterProfile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', userId)
+          .single();
+
+        const commenterName = commenterProfile
+          ? `${commenterProfile.first_name || ''} ${commenterProfile.last_name || ''}`.trim() || 'Someone'
+          : 'Someone';
+
+        if (data.parentCommentId) {
+          // Reply to a comment — notify the parent comment author
+          const { data: parentComment } = await supabase
+            .from('post_comments')
+            .select('author_id')
+            .eq('id', data.parentCommentId)
+            .single();
+
+          if (parentComment && parentComment.author_id !== userId) {
+            const { notifyCommentReply } = await import('@/services/notifications/community-notifications');
+            await notifyCommentReply(parentComment.author_id, commenterName, postId, '');
+          }
+        } else {
+          // Top-level comment — notify the post author
+          const { notifyPostComment } = await import('@/services/notifications/community-notifications');
+          const postTitle = (post.content || '').substring(0, 60);
+          await notifyPostComment(post.author_id, commenterName, postTitle, postId, '');
+        }
+      }
+    } catch (notifErr) {
+      if (__DEV__) console.warn('[PostService] Comment notification error:', notifErr);
     }
 
     return this.mapComment(comment);
@@ -341,6 +383,31 @@ class PostService {
     if (error) throw new Error(error.message);
 
     await this.updateReactionsCount(postId, reactionType, 1);
+
+    // Notify post author about the reaction
+    try {
+      const { data: post } = await supabase
+        .from('community_posts')
+        .select('author_id')
+        .eq('id', postId)
+        .single();
+
+      if (post && post.author_id !== userId) {
+        const { data: reactorProfile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', userId)
+          .single();
+
+        const reactorName = reactorProfile
+          ? `${reactorProfile.first_name || ''} ${reactorProfile.last_name || ''}`.trim() || 'Someone'
+          : 'Someone';
+
+        const { notifyPostReaction } = await import('@/services/notifications/community-notifications');
+        await notifyPostReaction(post.author_id, reactorName, reactionType, postId, '');
+      }
+    } catch (_) {}
+
     return true;
   }
 
@@ -502,7 +569,7 @@ class PostService {
         *,
         author:profiles(id, first_name, last_name, avatar_url)
       `)
-      .eq('status', 'active')
+      .in('status', ['published', 'active'])
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 

@@ -61,7 +61,7 @@ export default function GroupAdminScreen() {
     id: id || '',
     name: '',
     description: '',
-    privacy: 'private' as const,
+    privacy: 'private' as 'public' | 'private',
     allowMemberPosts: true,
     allowMemberEvents: false,
     requireApproval: true,
@@ -95,7 +95,7 @@ export default function GroupAdminScreen() {
       setMembers(memberData.map(m => ({
         id: m.userId,
         name: m.user ? `${m.user.firstName} ${m.user.lastName}` : 'Unknown',
-        avatar: m.user?.avatarUrl || `https://i.pravatar.cc/150?u=${m.userId}`,
+        avatar: m.user?.avatarUrl || '',
         role: m.role,
         joinedAt: m.joinedAt.toISOString().split('T')[0],
       })));
@@ -103,12 +103,12 @@ export default function GroupAdminScreen() {
       setRequests(requestData.map(r => ({
         id: r.id,
         name: r.user ? `${r.user.firstName} ${r.user.lastName}` : 'Unknown',
-        avatar: r.user?.avatarUrl || `https://i.pravatar.cc/150?u=${r.userId}`,
+        avatar: r.user?.avatarUrl || '',
         requestedAt: r.requestedAt.toISOString().split('T')[0],
         message: r.message || '',
       })));
     } catch (err) {
-      console.error('Failed to fetch group admin data:', err);
+      if (__DEV__) console.warn('Failed to fetch group admin data:', err);
     } finally {
       setIsFetching(false);
     }
@@ -136,7 +136,7 @@ export default function GroupAdminScreen() {
       }
       fetchData();
     } catch (err: any) {
-      console.error('Failed to approve request:', err);
+      if (__DEV__) console.warn('Failed to approve request:', err);
       Alert.alert('Error', err?.message || 'Could not approve request.');
     }
   };
@@ -152,7 +152,7 @@ export default function GroupAdminScreen() {
         notifyJoinDenied(request.id, groupSettings.name, id || '').catch(() => {});
       }
     } catch (err: any) {
-      console.error('Failed to deny request:', err);
+      if (__DEV__) console.warn('Failed to deny request:', err);
       Alert.alert('Error', err?.message || 'Could not deny request.');
     }
   };
@@ -173,7 +173,7 @@ export default function GroupAdminScreen() {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               setMembers(prev => prev.filter(m => m.id !== memberId));
             } catch (err: any) {
-              console.error('Failed to remove member:', err);
+              if (__DEV__) console.warn('Failed to remove member:', err);
               Alert.alert('Error', err?.message || 'Could not remove member.');
             }
           },
@@ -199,7 +199,7 @@ export default function GroupAdminScreen() {
                 m.id === memberId ? { ...m, role: 'moderator' } : m
               ));
             } catch (err: any) {
-              console.error('Failed to promote member:', err);
+              if (__DEV__) console.warn('Failed to promote member:', err);
               Alert.alert('Error', err?.message || 'Could not promote member.');
             }
           },

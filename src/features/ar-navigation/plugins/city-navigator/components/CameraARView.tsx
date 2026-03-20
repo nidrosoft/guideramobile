@@ -15,7 +15,7 @@ import {
 } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
 import { POI, Coordinates } from '../types/cityNavigator.types';
-import { getCategoryColor } from '../data/mockPOIs';
+import { getCategoryColor } from '../utils/categoryUtils';
 
 const { width, height } = Dimensions.get('window');
 

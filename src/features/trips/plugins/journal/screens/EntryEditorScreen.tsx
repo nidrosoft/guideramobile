@@ -31,6 +31,7 @@ import * as FileSystem from 'expo-file-system';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import { colors, spacing, typography } from '@/styles';
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 import { useTheme } from '@/context/ThemeContext';
 import { BlockType, BlockSize, ContentBlock, LayoutType } from '../types/journal.types';
 import { useToast } from '@/contexts/ToastContext';
@@ -353,9 +354,7 @@ export default function EntryEditorScreen() {
         encoding: 'base64' as any,
       });
 
-      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-        body: { audioBase64: base64, mimeType: 'audio/m4a' },
-      });
+      const { data, error } = await invokeEdgeFn(supabase, 'transcribe-audio', { audioBase64: base64, mimeType: 'audio/m4a' }, 'slow');
 
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
@@ -465,7 +464,7 @@ export default function EntryEditorScreen() {
       showSuccess('Journal entry saved!');
       router.back();
     } catch (err: any) {
-      console.error('Failed to save journal entry:', err);
+      if (__DEV__) console.warn('Failed to save journal entry:', err);
       showError('Failed to save entry. Please try again.');
     } finally {
       setSaving(false);

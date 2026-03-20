@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 
 // ─── Types ──────────────────────────────────────
 
@@ -77,8 +78,7 @@ class LocalExperiencesService {
     start?: number;
     sortBy?: 'default' | 'price' | 'rating';
   }): Promise<{ experiences: LocalExperience[]; total: number; searchedCity: string; usedFallback: boolean }> {
-    const { data, error } = await supabase.functions.invoke('local-experiences', {
-      body: {
+    const { data, error } = await invokeEdgeFn(supabase, 'local-experiences', {
         action: 'search',
         city: params.city,
         lat: params.lat,
@@ -87,8 +87,7 @@ class LocalExperiencesService {
         limit: params.limit || 15,
         start: params.start || 1,
         sortBy: params.sortBy || 'default',
-      },
-    });
+    }, 'fast');
 
     if (error) throw error;
     if (!data?.success) throw new Error(data?.error || 'Search failed');
@@ -117,9 +116,7 @@ class LocalExperiencesService {
   async getCategories(): Promise<ExperienceCategory[]> {
     if (this.categoriesCache) return this.categoriesCache;
 
-    const { data, error } = await supabase.functions.invoke('local-experiences', {
-      body: { action: 'categories' },
-    });
+    const { data, error } = await invokeEdgeFn(supabase, 'local-experiences', { action: 'categories' }, 'fast');
 
     if (error) {
       if (__DEV__) console.warn('Failed to fetch categories:', error);
@@ -144,11 +141,9 @@ class LocalExperiencesService {
 
     try {
       // Always try API for the richest data (all images, full descriptions)
-      const { data, error } = await supabase.functions.invoke('local-experiences', {
-        body: { action: 'detail', productCode },
-      });
+      const { data, error: detailError } = await invokeEdgeFn(supabase, 'local-experiences', { action: 'detail', productCode }, 'fast');
 
-      if (!error && data?.experience) {
+      if (!detailError && data?.experience) {
         const experience = data.experience;
         this.experienceCache.set(experience.productCode, experience);
         return experience;

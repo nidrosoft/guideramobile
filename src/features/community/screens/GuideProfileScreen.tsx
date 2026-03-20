@@ -128,7 +128,7 @@ export default function GuideProfileScreen() {
       if (reviewsRes.data) setReviews(reviewsRes.data as any);
       if (vouchesRes.data) setVouches(vouchesRes.data as any);
     } catch (err) {
-      console.error('Failed to fetch guide profile:', err);
+      if (__DEV__) console.warn('Failed to fetch guide profile:', err);
     } finally {
       setIsFetching(false);
     }

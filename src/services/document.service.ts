@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 import {
   DocumentChecklist,
   DocumentItem,
@@ -68,9 +69,7 @@ class DocumentService {
     modelUsed?: string;
     error?: string;
   }> {
-    const { data, error } = await supabase.functions.invoke('generate-documents', {
-      body: { tripId },
-    });
+    const { data, error } = await invokeEdgeFn(supabase, 'generate-documents', { tripId }, 'fast');
     if (error) throw new Error(`Document generation failed: ${error.message}`);
     if (data?.error) throw new Error(data.error);
     return data;

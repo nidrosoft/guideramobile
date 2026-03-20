@@ -14,7 +14,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Image,
   TextInput,
   ScrollView,
 } from 'react-native';
@@ -24,15 +23,17 @@ import { spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import type { Activity } from '@/services/community/types/community.types';
 import { getActivityIcon, getTimingLabel, ACTIVITY_CATEGORIES } from './pulse.utils';
+import AvatarFallback from './AvatarFallback';
 
 interface PulseActivityListProps {
   activities: Activity[];
   onActivityPress: (activity: Activity) => void;
+  onCreatorPress?: (userId: string) => void;
 }
 
 const POPULAR_THRESHOLD = 3;
 
-export default function PulseActivityList({ activities, onActivityPress }: PulseActivityListProps) {
+export default function PulseActivityList({ activities, onActivityPress, onCreatorPress }: PulseActivityListProps) {
   const { colors: tc } = useTheme();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('all');
@@ -139,11 +140,23 @@ export default function PulseActivityList({ activities, onActivityPress }: Pulse
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onActivityPress(item); }}
               activeOpacity={0.7}
             >
-              {/* Creator avatar */}
-              <Image
-                source={{ uri: item.creator?.avatarUrl || `https://i.pravatar.cc/40?u=${item.createdBy}` }}
-                style={styles.creatorAvatar}
-              />
+              {/* Creator avatar — tap to view profile */}
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  if (item.createdBy && onCreatorPress) {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    onCreatorPress(item.createdBy);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <AvatarFallback
+                  uri={item.creator?.avatarUrl}
+                  name={`${item.creator?.firstName || ''} ${item.creator?.lastName || ''}`}
+                  size={40}
+                />
+              </TouchableOpacity>
               <View style={styles.cardBody}>
                 <Text style={[styles.cardTitle, { color: tc.textPrimary }]} numberOfLines={1}>
                   {item.title}
@@ -159,9 +172,11 @@ export default function PulseActivityList({ activities, onActivityPress }: Pulse
               <View style={styles.cardRight}>
                 <View style={styles.attendeeAvatars}>
                   {item.participants?.slice(0, 2).map((p, i) => (
-                    <Image
+                    <AvatarFallback
                       key={p.id || String(i)}
-                      source={{ uri: p.user?.avatarUrl || `https://i.pravatar.cc/24?u=${p.userId}` }}
+                      uri={p.user?.avatarUrl}
+                      name={`${p.user?.firstName || ''} ${p.user?.lastName || ''}`}
+                      size={20}
                       style={[styles.attendeeAvatar, { marginLeft: i > 0 ? -6 : 0, borderColor: tc.background }]}
                     />
                   ))}

@@ -32,6 +32,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { spacing, typography, borderRadius } from '@/styles';
 import { chatService } from '@/services/community/chat.service';
+import { supabase } from '@/lib/supabase/client';
 
 interface Conversation {
   id: string;
@@ -61,9 +62,10 @@ export default function MessagesListScreen() {
   const fetchConversations = useCallback(async () => {
     if (!profile?.id) return;
     try {
-      const [dmConversations, groupChats] = await Promise.all([
+      const [dmConversations, groupChats, activityChats] = await Promise.all([
         chatService.getConversations(profile.id),
         chatService.getGroupChats(profile.id),
+        chatService.getActivityChats(profile.id),
       ]);
 
       const dmMapped: Conversation[] = dmConversations.map(c => ({
@@ -81,13 +83,23 @@ export default function MessagesListScreen() {
         id: g.id,
         type: 'group' as const,
         name: g.name,
-        avatar: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200',
+        avatar: '',
         lastMessage: g.lastMessage || '',
         lastMessageTime: g.lastMessageAt ? new Date(g.lastMessageAt) : new Date(),
         unreadCount: 0,
       }));
 
-      const combined = [...dmMapped, ...groupMapped].sort(
+      const activityMapped: Conversation[] = activityChats.map(g => ({
+        id: g.referenceId,
+        type: 'group' as const,
+        name: `${String.fromCodePoint(0x1F4CD)} ${g.name}`,
+        avatar: '',
+        lastMessage: g.lastMessage || '',
+        lastMessageTime: g.lastMessageAt ? new Date(g.lastMessageAt) : new Date(),
+        unreadCount: 0,
+      }));
+
+      const combined = [...dmMapped, ...groupMapped, ...activityMapped].sort(
         (a, b) => b.lastMessageTime.getTime() - a.lastMessageTime.getTime()
       );
       setConversations(combined);
@@ -101,6 +113,23 @@ export default function MessagesListScreen() {
   useEffect(() => {
     fetchConversations();
   }, [fetchConversations]);
+
+  // Realtime: refresh conversation list when new messages arrive
+  useEffect(() => {
+    if (!profile?.id) return;
+    const channel = supabase
+      .channel('messages-list-live')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages',
+      }, () => {
+        // Re-fetch the full conversation list to get updated previews + counts
+        fetchConversations();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [profile?.id, fetchConversations]);
   
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -116,7 +145,12 @@ export default function MessagesListScreen() {
   const handleConversationPress = (conversation: Conversation) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (conversation.type === 'group') {
-      router.push(`/community/${conversation.id}` as any);
+      // Activity chats have a pin emoji prefix — route to activity chat
+      if (conversation.name.startsWith(String.fromCodePoint(0x1F4CD))) {
+        router.push(`/community/activity-chat/${conversation.id}` as any);
+      } else {
+        router.push(`/community/${conversation.id}` as any);
+      }
     } else {
       router.push(`/community/chat/${conversation.id}` as any);
     }

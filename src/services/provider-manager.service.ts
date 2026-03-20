@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 import {
   UnifiedFlight,
   UnifiedHotel,
@@ -90,6 +91,14 @@ export interface ProviderManagerResponse<T> {
 
 class ProviderManagerService {
   private readonly functionName = 'provider-manager';
+  private _userId: string | null = null;
+
+  /**
+   * Set the current user's profile UUID (from Clerk→Supabase profile sync).
+   */
+  setUserId(userId: string | null) {
+    this._userId = userId;
+  }
 
   // ═══════════════════════════════════════════════════════════════════
   // SEARCH METHODS
@@ -159,8 +168,6 @@ class ProviderManagerService {
     options?: SearchOptions,
     preferences?: UserSearchPreferences
   ): Promise<SearchResult<T>> {
-    const { data: { user } } = await supabase.auth.getUser();
-
     const response = await this.invokeFunction<ProviderManagerResponse<T>>({
       action: 'search',
       category,
@@ -168,7 +175,7 @@ class ProviderManagerService {
         ...params,
         ...options,
       },
-      userId: user?.id,
+      userId: this._userId ?? undefined,
       preferences,
     });
 
@@ -268,9 +275,7 @@ class ProviderManagerService {
    * Create a booking
    */
   async createBooking(request: BookingRequest): Promise<BookingConfirmation> {
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
+    if (!this._userId) {
       throw new ProviderManagerError('UNAUTHORIZED', 'User must be logged in to book');
     }
 
@@ -282,7 +287,7 @@ class ProviderManagerService {
       action: 'book',
       category: request.category,
       params: request as unknown as Record<string, unknown>,
-      userId: user.id,
+      userId: this._userId,
     });
 
     if (!response.success || !response.data) {
@@ -375,9 +380,7 @@ class ProviderManagerService {
   }): Promise<T> {
     if (__DEV__) console.log('Provider Manager Request:', JSON.stringify(body).substring(0, 500));
     
-    const { data, error } = await supabase.functions.invoke(this.functionName, {
-      body,
-    });
+    const { data, error } = await invokeEdgeFn(supabase, this.functionName, body, 'fast');
 
     if (error) {
       console.error('Provider Manager Error:', error);

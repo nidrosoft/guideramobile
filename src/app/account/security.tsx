@@ -59,7 +59,7 @@ export default function SecuritySettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
-  const { profile } = useAuth();
+  const { profile, signOut } = useAuth();
   const [settings, setSettings] = useState<SecuritySettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -223,12 +223,9 @@ export default function SecuritySettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Supabase global signout - logs out all sessions
-              const { error } = await supabase.auth.signOut({ scope: 'global' });
-              if (error) throw error;
-              
+              // Sign out via Clerk (owns auth session) — triggers AuthContext cleanup
+              await signOut();
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              // User will be redirected to login by AuthContext
             } catch (error) {
               console.error('Error logging out all devices:', error);
               Alert.alert('Error', 'Failed to log out. Please try again.');

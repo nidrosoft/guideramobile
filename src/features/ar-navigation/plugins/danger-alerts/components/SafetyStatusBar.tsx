@@ -15,7 +15,7 @@ import {
 } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
 import { SafetyStatus } from '../types/dangerAlerts.types';
-import { getDangerColor, getDangerGradient } from '../data/mockDangerData';
+import { getDangerColor, getDangerGradient } from '../utils/dangerUtils';
 
 interface SafetyStatusBarProps {
   safetyStatus: SafetyStatus;

@@ -55,14 +55,14 @@ export default function MyGroupsScreen() {
       setGroups(data.map(item => ({
         id: item.group.id,
         name: item.group.name,
-        groupPhotoUrl: item.group.groupPhotoUrl || item.group.coverPhotoUrl || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
+        groupPhotoUrl: item.group.groupPhotoUrl || item.group.coverPhotoUrl || '',
         memberCount: item.group.memberCount || 0,
         isVerified: item.group.isVerified || false,
         role: item.role,
         tags: item.group.tags || [],
       })));
     } catch (err) {
-      console.error('Failed to fetch user groups:', err);
+      if (__DEV__) console.warn('Failed to fetch user groups:', err);
     } finally {
       setIsFetching(false);
     }

@@ -113,6 +113,45 @@ class ChatService {
     return this.mapConversation(created, userId);
   }
 
+  /**
+   * Get or verify the chat room for an activity.
+   */
+  async getActivityChatRoom(activityId: string): Promise<GroupChat | null> {
+    const { data, error } = await supabase
+      .from('chat_rooms')
+      .select('*')
+      .eq('type', 'activity')
+      .eq('reference_id', activityId)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return this.mapGroupChat(data);
+  }
+
+  /**
+   * Get activity chat rooms the user is participating in.
+   */
+  async getActivityChats(userId: string): Promise<GroupChat[]> {
+    // Get activities the user has joined
+    const { data: participations } = await supabase
+      .from('activity_participants')
+      .select('activity_id')
+      .eq('user_id', userId);
+
+    const activityIds = (participations || []).map((p: any) => p.activity_id);
+    if (activityIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('chat_rooms')
+      .select('*')
+      .eq('type', 'activity')
+      .in('reference_id', activityIds)
+      .order('last_message_at', { ascending: false, nullsFirst: false });
+
+    if (error) throw new Error(error.message);
+    return (data || []).map(this.mapGroupChat);
+  }
+
   // ============================================
   // GROUP CHATS
   // ============================================
@@ -208,7 +247,7 @@ class ChatService {
     if (room) {
       const { data: roomData } = await supabase
         .from('chat_rooms')
-        .select('message_count')
+        .select('message_count, name, reference_id, type')
         .eq('id', conversationId)
         .single();
 
@@ -219,10 +258,15 @@ class ChatService {
           message_count: (roomData?.message_count || 0) + 1,
         })
         .eq('id', conversationId);
+
+      // B6: Notify other participants about new message (activity group chats)
+      if (roomData?.type === 'activity' && roomData?.reference_id) {
+        this.notifyGroupChatMessage(roomData.reference_id, userId, roomData.name || 'Activity', content).catch(() => {});
+      }
     } else {
       const { data: convData } = await supabase
         .from('direct_conversations')
-        .select('message_count')
+        .select('message_count, user_id_1, user_id_2')
         .eq('id', conversationId)
         .single();
 
@@ -233,6 +277,12 @@ class ChatService {
           message_count: (convData?.message_count || 0) + 1,
         })
         .eq('id', conversationId);
+
+      // Create alert for the other user so it shows on badges + notifications
+      if (convData) {
+        const recipientId = convData.user_id_1 === userId ? convData.user_id_2 : convData.user_id_1;
+        this.notifyDmMessage(recipientId, userId, content).catch(() => {});
+      }
     }
 
     return this.mapMessage(conversationId, message);
@@ -241,6 +291,82 @@ class ChatService {
   // ============================================
   // MAPPERS
   // ============================================
+
+  /**
+   * Notify recipient of a new DM message via alerts table.
+   */
+  private async notifyDmMessage(
+    recipientId: string,
+    senderId: string,
+    content: string,
+  ): Promise<void> {
+    try {
+      const { data: senderProfile } = await supabase
+        .from('profiles')
+        .select('first_name')
+        .eq('id', senderId)
+        .single();
+
+      const senderName = senderProfile?.first_name || 'Someone';
+
+      await supabase.from('alerts').insert({
+        user_id: recipientId,
+        category_code: 'social',
+        alert_type_code: 'dm_message',
+        title: `${senderName} sent you a message`,
+        body: content.length > 80 ? content.substring(0, 80) + '...' : content,
+        context: { senderId, senderName },
+        action_url: `/community/chat/${senderId}`,
+        status: 'delivered',
+      });
+    } catch (err) {
+      if (__DEV__) console.warn('notifyDmMessage error:', err);
+    }
+  }
+
+  /**
+   * B6: Notify other activity participants about a new chat message.
+   */
+  private async notifyGroupChatMessage(
+    activityId: string,
+    senderId: string,
+    activityName: string,
+    content: string,
+  ): Promise<void> {
+    try {
+      const { data: senderProfile } = await supabase
+        .from('profiles')
+        .select('first_name')
+        .eq('id', senderId)
+        .single();
+
+      const senderName = senderProfile?.first_name || 'Someone';
+
+      // Get all participants except sender
+      const { data: participants } = await supabase
+        .from('activity_participants')
+        .select('user_id')
+        .eq('activity_id', activityId)
+        .neq('user_id', senderId);
+
+      if (!participants?.length) return;
+
+      const alerts = participants.map((p: any) => ({
+        user_id: p.user_id,
+        category_code: 'social',
+        alert_type_code: 'activity_message',
+        title: `${senderName} in "${activityName}"`,
+        body: content.length > 80 ? content.substring(0, 80) + '...' : content,
+        context: { activityId, senderId, senderName },
+        action_url: `/community/activity-chat/${activityId}`,
+        status: 'delivered',
+      }));
+
+      await supabase.from('alerts').insert(alerts);
+    } catch (err) {
+      if (__DEV__) console.warn('notifyGroupChatMessage error:', err);
+    }
+  }
 
   private mapConversation(data: any, currentUserId: string): Conversation {
     const isUser1 = data.user_id_1 === currentUserId;

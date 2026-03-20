@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { invokeWithRetry } from '@/utils/retry';
 import {
   Claim,
   ClaimStats,
@@ -305,10 +306,7 @@ class CompensationService {
     modelUsed?: string;
     error?: string;
   }> {
-    const { data, error } = await supabase.functions.invoke('generate-compensation', {
-      body: { claimId },
-    });
-    if (error) throw new Error(`Compensation analysis failed: ${error.message}`);
+    const data = await invokeWithRetry(supabase, 'generate-compensation', { claimId }, 'fast');
     if (data?.error) throw new Error(data.error);
     return data;
   }

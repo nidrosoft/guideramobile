@@ -18,7 +18,7 @@ import {
 import { colors, spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { POI } from '../types/cityNavigator.types';
-import { getCategoryColor } from '../data/mockPOIs';
+import { getCategoryColor } from '../utils/categoryUtils';
 
 interface POICardProps {
   poi: POI;

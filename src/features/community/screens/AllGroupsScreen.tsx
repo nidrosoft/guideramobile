@@ -48,8 +48,8 @@ function mapGroupToPreview(g: any, myGroupIds: Set<string>): CommunityPreview {
   return {
     id: g.id,
     name: g.name,
-    avatar: g.groupPhotoUrl || g.coverPhotoUrl || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=200',
-    coverImage: g.coverPhotoUrl || g.groupPhotoUrl || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
+    avatar: g.groupPhotoUrl || g.coverPhotoUrl || '',
+    coverImage: g.coverPhotoUrl || g.groupPhotoUrl || '',
     memberCount: g.memberCount || 0,
     isVerified: g.isVerified || false,
     type: (g.category as any) || 'interest',

@@ -77,7 +77,22 @@ export default function NotificationsSettingsScreen() {
         {
           key: 'tripReminders',
           title: 'Trip Reminders',
-          description: 'Receive reminders before your trips',
+          description: 'Reminders at 7 days, 3 days, and 1 day before your trip',
+        },
+        {
+          key: 'packingReminders',
+          title: 'Packing Reminders',
+          description: 'Reminders to pack and check your packing list',
+        },
+        {
+          key: 'departureAdvisor',
+          title: 'Departure Advisor',
+          description: '"Time to leave" alerts so you never miss a flight',
+        },
+        {
+          key: 'flightTracking',
+          title: 'Flight Status',
+          description: 'Delays, gate changes, and cancellations for your flights',
         },
       ],
     },
@@ -91,6 +106,11 @@ export default function NotificationsSettingsScreen() {
           key: 'safetyAlerts',
           title: 'Safety Alerts',
           description: 'Travel advisories and safety updates for your destinations',
+        },
+        {
+          key: 'weatherAlerts',
+          title: 'Weather Alerts',
+          description: 'Severe weather warnings at your destination',
         },
       ],
     },
@@ -109,6 +129,24 @@ export default function NotificationsSettingsScreen() {
           key: 'promotional',
           title: 'Promotions & Offers',
           description: 'Exclusive deals, offers, and travel inspiration',
+        },
+      ],
+    },
+    {
+      id: 'community',
+      title: 'Community & Social',
+      description: 'Stay connected with fellow travelers',
+      icon: <People size={20} color={tc.info || '#6366F1'} variant="Bold" />,
+      items: [
+        {
+          key: 'communityMessages',
+          title: 'Messages',
+          description: 'Direct messages and group chat notifications',
+        },
+        {
+          key: 'communityEvents',
+          title: 'Events & Activities',
+          description: 'New events, activities, and group updates',
         },
       ],
     },

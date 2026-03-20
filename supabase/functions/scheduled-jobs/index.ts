@@ -84,6 +84,9 @@ serve(async (req: Request) => {
       case 'monitor_flights':
         results.push(await monitorFlights());
         break;
+      case 'expire_activities':
+        results.push(await expireActivities());
+        break;
       case 'all':
       default:
         results.push(await scanDeals());
@@ -91,6 +94,7 @@ serve(async (req: Request) => {
         results.push(await processTripTransitions());
         results.push(await updateSavedDeals());
         results.push(await monitorFlights());
+        results.push(await expireActivities());
         break;
     }
 
@@ -826,6 +830,28 @@ async function gilDispatchNotifications(): Promise<JobResult> {
     errors.push(err.message);
     return { job: 'gil_dispatch_notifications', success: false, processed: 0, errors };
   }
+}
+
+// ============================================
+// EXPIRE ACTIVITIES — Mark expired Pulse activities as completed
+// ============================================
+
+async function expireActivities(): Promise<JobResult> {
+  const errors: string[] = [];
+  let processed = 0;
+
+  try {
+    const { data, error } = await supabase.rpc('expire_old_activities');
+    if (error) {
+      errors.push(error.message);
+    } else {
+      processed = data || 0;
+    }
+  } catch (err: any) {
+    errors.push(err.message);
+  }
+
+  return { job: 'expire_activities', success: errors.length === 0, processed, errors };
 }
 
 function shouldSendAlert(alert: any, currentPrice: number): boolean {

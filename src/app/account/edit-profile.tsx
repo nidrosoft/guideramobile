@@ -359,7 +359,7 @@ export default function EditProfileScreen() {
           <View style={[styles.cardHeaderBg, { backgroundColor: isDark ? '#252525' : '#F0FBF7' }]}>
             <View style={styles.cardHeaderContent}>
               <Image
-                source={{ uri: avatarUrl || 'https://i.pravatar.cc/150?img=12' }}
+                source={{ uri: avatarUrl || undefined }}
                 style={styles.cardAvatar}
               />
               {isVerified && (
@@ -512,7 +512,7 @@ export default function EditProfileScreen() {
       <View style={styles.avatarSection}>
         <TouchableOpacity onPress={handleChangePhoto} disabled={isSaving}>
           <Image
-            source={{ uri: avatarUrl || 'https://i.pravatar.cc/150?img=12' }}
+            source={{ uri: avatarUrl || undefined }}
             style={[styles.avatar, { borderColor: tc.primary }]}
           />
           <View style={[styles.cameraButton, { backgroundColor: tc.primary }]}>

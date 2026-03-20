@@ -6,8 +6,10 @@ import {
   getProfileByClerkId, 
   updateSupabaseProfile 
 } from '@/lib/clerk/profileSync';
-import { supabase } from '@/lib/supabase/client';
+import { supabase, setClerkTokenGetter } from '@/lib/supabase/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { notificationService } from '@/services/notifications';
+import { providerManagerService } from '@/services/provider-manager.service';
 
 const initialState: AuthContextType = {
   user: null,
@@ -30,7 +32,7 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
-  const { isSignedIn, isLoaded: isAuthLoaded } = useClerkAuth();
+  const { isSignedIn, isLoaded: isAuthLoaded, getToken } = useClerkAuth();
   const { signOut: clerkSignOut } = useClerk();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
@@ -54,6 +56,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
       hasCompletedOnboarding,
     });
   }
+
+  // ─── Clerk↔Supabase Native Third-Party Auth ─────────────────────────────
+  // Supabase validates Clerk session tokens via JWKS (no shared secret).
+  // We pass Clerk's native session token (no JWT template needed) to the
+  // Supabase client's accessToken callback.
+  const stableGetToken = useCallback(
+    async () => getToken(),
+    [getToken]
+  );
+
+  useEffect(() => {
+    if (isSignedIn) {
+      setClerkTokenGetter(stableGetToken);
+      if (__DEV__) console.log('[Auth] Clerk→Supabase native auth bridge activated');
+    } else {
+      setClerkTokenGetter(null);
+      if (__DEV__) console.log('[Auth] Clerk→Supabase native auth bridge cleared');
+    }
+    return () => setClerkTokenGetter(null);
+  }, [isSignedIn, stableGetToken]);
 
   // Sync Clerk user to Supabase profile when user signs in
   useEffect(() => {
@@ -82,13 +104,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (isMounted) {
           if (profileData) {
             if (__DEV__) console.log('[Auth] Profile synced OK:', profileData.id, 'onboarding:', profileData.onboarding_completed);
+            // Wire profile UUID to services that need it
+            notificationService.setUserId(profileData.id);
+            providerManagerService.setUserId(profileData.id);
           } else {
             if (__DEV__) console.warn('[Auth] Profile sync returned null — profile creation may have failed');
+            notificationService.setUserId(null);
+            providerManagerService.setUserId(null);
           }
           setProfile(profileData);
         }
       } catch (error) {
-        console.error('[Auth] Error syncing profile:', error);
+        if (__DEV__) console.warn('[Auth] Error syncing profile:', error);
         // Even on error, stop loading so AuthGuard can proceed
         if (isMounted) {
           setProfile(null);
@@ -130,9 +157,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       setProfile(null);
       setIsProfileLoading(true);
+      notificationService.setUserId(null);
+      providerManagerService.setUserId(null);
       await clerkSignOut();
     } catch (error) {
-      console.error('Error signing out:', error);
+      if (__DEV__) console.warn('Error signing out:', error);
     }
   };
 
@@ -164,7 +193,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       setProfile(prev => prev ? { ...prev, onboarding_step: step } : null);
     } catch (error) {
-      console.error('Error updating onboarding step:', error);
+      if (__DEV__) console.warn('Error updating onboarding step:', error);
     }
   };
 
@@ -183,7 +212,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       setProfile(prev => prev ? { ...prev, onboarding_completed: true, onboarding_step: 10 } : null);
     } catch (error) {
-      console.error('Error completing onboarding:', error);
+      if (__DEV__) console.warn('Error completing onboarding:', error);
     }
   };
 

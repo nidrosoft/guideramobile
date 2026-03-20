@@ -53,6 +53,10 @@ export default function EmailSignUp() {
       setError('Password must be at least 8 characters');
       return false;
     }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      setError('Password must include uppercase, lowercase, and a number');
+      return false;
+    }
     setError('');
     return true;
   };

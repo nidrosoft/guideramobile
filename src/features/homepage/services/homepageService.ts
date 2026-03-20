@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client'
+import { invokeEdgeFn } from '@/utils/retry'
 import type { 
   HomepageResponse, 
   HomepageSection, 
@@ -44,32 +45,22 @@ class HomepageService {
         queryParams.set('categories', params.categories.join(','))
       }
 
-      // Try Edge Function first
-      const { data: session } = await supabase.auth.getSession()
-      const accessToken = session?.session?.access_token
+      // Try Edge Function first (deployed with verify_jwt: false, no auth token needed)
+      try {
+        const { data, error } = await invokeEdgeFn(supabase, EDGE_FUNCTION_NAME, {
+            user_id: params.userId,
+            lat: params.latitude?.toString(),
+            lng: params.longitude?.toString(),
+            timezone: params.timezone,
+            refresh: params.refresh || false,
+            categories: params.categories,
+        }, 'fast')
 
-      if (accessToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke(EDGE_FUNCTION_NAME, {
-            body: {
-              user_id: params.userId,
-              lat: params.latitude?.toString(),
-              lng: params.longitude?.toString(),
-              timezone: params.timezone,
-              refresh: params.refresh || false,
-              categories: params.categories,
-            },
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          })
-
-          if (!error && data?.success) {
-            return data as HomepageResponse
-          }
-        } catch (edgeFunctionError) {
-          if (__DEV__) console.warn('Edge Function unavailable, falling back to direct query:', edgeFunctionError)
+        if (!error && data?.success) {
+          return data as HomepageResponse
         }
+      } catch (edgeFunctionError) {
+        if (__DEV__) console.warn('Edge Function unavailable, falling back to direct query:', edgeFunctionError)
       }
 
       // Fallback: Direct database query

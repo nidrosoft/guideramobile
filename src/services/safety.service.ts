@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { invokeWithRetry } from '@/utils/retry';
 import {
   SafetyAlert,
   CheckIn,
@@ -151,10 +152,7 @@ class SafetyService {
     modelUsed?: string;
     error?: string;
   }> {
-    const { data, error } = await supabase.functions.invoke('generate-safety', {
-      body: { tripId },
-    });
-    if (error) throw new Error(`Safety profile generation failed: ${error.message}`);
+    const data = await invokeWithRetry(supabase, 'generate-safety', { tripId }, 'fast');
     if (data?.error) throw new Error(data.error);
     return data;
   }
@@ -176,10 +174,7 @@ class SafetyService {
     tipsGenerated?: number;
     error?: string;
   }> {
-    const { data, error } = await supabase.functions.invoke('generate-dos-donts', {
-      body: { tripId },
-    });
-    if (error) throw new Error(`Do's & Don'ts generation failed: ${error.message}`);
+    const data = await invokeWithRetry(supabase, 'generate-dos-donts', { tripId }, 'fast');
     if (data?.error) throw new Error(data.error);
     return data;
   }

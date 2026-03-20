@@ -23,7 +23,7 @@ import {
 import { colors, spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { DangerZone, Incident } from '../types/dangerAlerts.types';
-import { getDangerColor, getDangerGradient, getIncidentLabel } from '../data/mockDangerData';
+import { getDangerColor, getDangerGradient, getIncidentLabel } from '../utils/dangerUtils';
 
 interface DangerDetailSheetProps {
   zone?: DangerZone | null;

@@ -17,7 +17,7 @@ import {
   CityNavigatorState,
   DangerZone,
 } from '../types/cityNavigator.types';
-import { generatePOIsAroundLocation, generateDangerZonesAroundLocation } from '../data/mockPOIs';
+import { getCategoryColor } from '../utils/categoryUtils';
 import { mapboxService, MapboxService } from '../../../services/mapbox.service';
 import type { POICategory } from '../types/cityNavigator.types';
 
@@ -137,17 +137,12 @@ export function useCityNavigator() {
     }
   }, [state.userLocation]);
 
-  // Load danger zones around user's location
+  // Load danger zones — real data comes from safety intelligence service
   const loadDangerZones = useCallback(() => {
     if (!state.userLocation) return;
-    
-    const zones = generateDangerZonesAroundLocation(state.userLocation);
-    setState(prev => ({
-      ...prev,
-      dangerZones: zones,
-    }));
-    
-    if (__DEV__) console.log('⚠️ Loaded', zones.length, 'danger zones');
+    // Danger zones are loaded by the danger-alerts plugin via safetyIntelligenceService.
+    // This hook no longer generates mock zones — keep dangerZones empty here.
+    setState(prev => ({ ...prev, dangerZones: [] }));
   }, [state.userLocation]);
 
   // Toggle view mode

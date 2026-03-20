@@ -93,7 +93,7 @@ export default function Setup() {
       resetOnboarding();
       setHasSavedProfile(true); // Only mark as saved after full success
     } catch (error) {
-      console.error('Error saving profile:', error);
+      if (__DEV__) console.warn('Error saving profile:', error);
       // Don't set hasSavedProfile — allow retry on next attempt
     }
   };
@@ -110,15 +110,20 @@ export default function Setup() {
         if (currentStep < setupSteps.length - 1) {
           setCurrentStep(currentStep + 1);
         } else {
-          saveProfileData();
-          
-          setTimeout(() => {
-            confettiRef.current?.start();
-          }, 300);
-          
-          setTimeout(() => {
-            router.replace('/(tabs)');
-          }, 3000);
+          // Save profile, then celebrate + navigate only on success
+          saveProfileData().then(() => {
+            setTimeout(() => {
+              confettiRef.current?.start();
+            }, 300);
+            setTimeout(() => {
+              router.replace('/(tabs)');
+            }, 3000);
+          }).catch(() => {
+            // Save failed — still redirect after delay but no confetti
+            setTimeout(() => {
+              router.replace('/(tabs)');
+            }, 2000);
+          });
         }
       }, setupSteps[currentStep].duration);
 

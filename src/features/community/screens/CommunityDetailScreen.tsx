@@ -32,6 +32,7 @@ import * as Haptics from 'expo-haptics';
 import { spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { ReactionType, FeedPost } from '../types/feed.types';
 import { groupService, eventService } from '@/services/community';
 import { postService } from '@/services/community/post.service';
@@ -85,6 +86,7 @@ export default function CommunityDetailScreen() {
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
   const { profile } = useAuth();
+  const { showSuccess, showError, showInfo } = useToast();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [activeTab, setActiveTab] = useState<TabType>('feed');
@@ -202,13 +204,18 @@ export default function CommunityDetailScreen() {
       if (group.isMember) {
         await groupService.leaveGroup(profile.id, id);
         setGroup(prev => ({ ...prev, isMember: false, memberCount: Math.max(0, prev.memberCount - 1) }));
+        showSuccess(`Left ${group.name}`);
       } else {
         const result = await groupService.joinGroup(profile.id, id);
         if (result.status === 'joined') {
           setGroup(prev => ({ ...prev, isMember: true, memberCount: prev.memberCount + 1 }));
+          showSuccess(`Joined ${group.name}!`);
+        } else {
+          showInfo('Join request sent!');
         }
       }
     } catch (err) {
+      showError('Could not update membership');
       if (__DEV__) console.warn('Join/leave error:', err);
     }
   }, [profile?.id, id, group.isMember]);

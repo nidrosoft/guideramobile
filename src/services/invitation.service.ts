@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 
 export interface TripInvitation {
   id: string;
@@ -60,9 +61,7 @@ class InvitationService {
     tripId: string,
     invitees: { name?: string; email: string }[],
   ): Promise<SendInviteResult> {
-    const { data, error } = await supabase.functions.invoke('send-trip-invite', {
-      body: { tripId, invitees },
-    });
+    const { data, error } = await invokeEdgeFn(supabase, 'send-trip-invite', { tripId, invitees }, 'fast');
 
     if (error) throw new Error(`Failed to send invitations: ${error.message}`);
     if (data?.error) throw new Error(data.error);

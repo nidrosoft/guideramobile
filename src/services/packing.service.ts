@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 import { PackingItem } from '@/features/trips/plugins/packing/types/packing.types';
 
 interface PackingProgress {
@@ -47,9 +48,7 @@ class PackingService {
     itemsGenerated?: number;
     error?: string;
   }> {
-    const { data, error } = await supabase.functions.invoke('generate-packing', {
-      body: { tripId },
-    });
+    const { data, error } = await invokeEdgeFn(supabase, 'generate-packing', { tripId }, 'fast');
 
     if (error) throw new Error(`Packing generation failed: ${error.message}`);
     if (data?.error) throw new Error(data.error);

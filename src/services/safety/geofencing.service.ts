@@ -22,6 +22,12 @@ const CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes between checks
 let lastCheckTime = 0;
 let lastCheckCoords = { lat: 0, lng: 0 };
 
+// Clerk auth: userId must be set externally since supabase.auth.getUser() is empty
+let _geofenceUserId: string | null = null;
+export function setGeofenceUserId(userId: string | null) {
+  _geofenceUserId = userId;
+}
+
 /**
  * Define the background geofence task.
  * Must be called at module level (outside component).
@@ -89,11 +95,10 @@ async function checkSafetyForZone(lat: number, lng: number, zoneId: string) {
  */
 async function saveSafetyAlert(lat: number, lng: number, result: SafetyZoneResult) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!_geofenceUserId) return;
 
     await supabase.from('safety_zone_alerts').insert({
-      user_id: user.id,
+      user_id: _geofenceUserId,
       latitude: lat,
       longitude: lng,
       radius_meters: ONE_MILE_METERS,

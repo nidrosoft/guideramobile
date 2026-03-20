@@ -11,7 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ShieldTick, ShieldCross } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
 import { DangerLevel, SafetyStatus } from '../types/dangerAlerts.types';
-import { getDangerColor, getDangerGradient } from '../data/mockDangerData';
+import { getDangerColor, getDangerGradient } from '../utils/dangerUtils';
 
 interface SafetyRadarProps {
   safetyStatus: SafetyStatus;

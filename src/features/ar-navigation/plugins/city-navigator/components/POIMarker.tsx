@@ -23,7 +23,7 @@ import {
 } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
 import { POI, POICategory } from '../types/cityNavigator.types';
-import { getCategoryColor } from '../data/mockPOIs';
+import { getCategoryColor } from '../utils/categoryUtils';
 
 interface POIMarkerProps {
   poi: POI;

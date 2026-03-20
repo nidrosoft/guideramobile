@@ -13,6 +13,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 
 // ============================================
 // TYPES
@@ -246,9 +247,7 @@ class TripImportEngineService {
    * Call the edge function with userId included in every request
    */
   private async callEngine(action: string, params: Record<string, any> = {}): Promise<any> {
-    const { data, error } = await supabase.functions.invoke(this.EDGE_FUNCTION, {
-      body: { action, userId: this._userId, ...params },
-    });
+    const { data, error } = await invokeEdgeFn(supabase, this.EDGE_FUNCTION, { action, userId: this._userId, ...params }, 'slow');
 
     if (error) {
       throw new Error(error.message || `Import engine error: ${action}`);
@@ -440,9 +439,7 @@ class TripImportEngineService {
     confidence?: number;
     error?: string;
   }> {
-    const { data, error } = await supabase.functions.invoke('scan-ticket', {
-      body: { imageBase64, mediaType, userId },
-    });
+    const { data, error } = await invokeEdgeFn(supabase, 'scan-ticket', { imageBase64, mediaType, userId }, 'slow');
 
     if (error) throw new Error(error.message || 'Scan failed');
     return data;

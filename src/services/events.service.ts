@@ -7,6 +7,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { invokeWithRetry } from '@/utils/retry';
 
 // ─── Types ──────────────────────────────────────
 
@@ -82,21 +83,14 @@ class EventsService {
    */
   async discoverEvents(params: DiscoverEventsParams): Promise<DiscoveredEvent[]> {
     try {
-      const { data, error } = await supabase.functions.invoke('event-discovery', {
-        body: {
+      const data = await invokeWithRetry(supabase, 'event-discovery', {
           action: params.forceRefresh ? 'refresh' : 'discover',
           city: params.city,
           country: params.country,
           category: params.category,
           month: params.month,
           metro_area: params.metro_area,
-        },
-      });
-
-      if (error) {
-        console.error('[EventsService] Edge function error:', error);
-        return [];
-      }
+      }, 'fast');
 
       const response = data as EventDiscoveryResponse;
       if (!response.success) {
@@ -116,19 +110,12 @@ class EventsService {
    */
   async getCachedEvents(city: string, country: string, category?: string): Promise<DiscoveredEvent[]> {
     try {
-      const { data, error } = await supabase.functions.invoke('event-discovery', {
-        body: {
+      const data = await invokeWithRetry(supabase, 'event-discovery', {
           action: 'get',
           city,
           country,
           category,
-        },
-      });
-
-      if (error) {
-        console.error('[EventsService] getCachedEvents error:', error);
-        return [];
-      }
+      }, 'fast');
 
       const response = data as EventDiscoveryResponse;
       return response.events || [];

@@ -7,6 +7,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 
 export interface EmailImport {
   id: string;
@@ -56,9 +57,7 @@ class EmailImportService {
    * The app polls this after the user forwards an email.
    */
   async checkImports(userId: string): Promise<EmailImport[]> {
-    const { data, error } = await supabase.functions.invoke('process-email-import', {
-      body: { action: 'check-imports', userId },
-    });
+    const { data, error } = await invokeEdgeFn(supabase, 'process-email-import', { action: 'check-imports', userId }, 'slow');
 
     if (error) throw new Error(error.message);
     return (data?.imports || []).map(mapImport);
@@ -68,9 +67,7 @@ class EmailImportService {
    * Import a parsed booking into a new trip.
    */
   async importBooking(userId: string, importId: string): Promise<{ tripId: string; title: string }> {
-    const { data, error } = await supabase.functions.invoke('process-email-import', {
-      body: { action: 'import-booking', userId, importId },
-    });
+    const { data, error } = await invokeEdgeFn(supabase, 'process-email-import', { action: 'import-booking', userId, importId }, 'slow');
 
     if (error) throw new Error(error.message);
     if (data?.error) throw new Error(data.error);

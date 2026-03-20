@@ -29,6 +29,8 @@ import { spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useActivityActions } from '@/hooks/useCommunity';
+import { activityService } from '@/services/community/activity.service';
+import { supabase } from '@/lib/supabase/client';
 import { StepType, StepDetails, StepLocation, StepWhen, StepWho } from '../components/pulse/steps';
 import type { ActivityType, ActivityTiming } from '@/services/community/types/community.types';
 
@@ -41,7 +43,7 @@ export default function CreateActivityScreen() {
   const { colors: tc } = useTheme();
   const { profile } = useAuth();
   const userId = profile?.id;
-  const { createActivity, loading } = useActivityActions(userId);
+  const { createActivity, updateActivity, loading } = useActivityActions(userId);
   const params = useLocalSearchParams<{
     editId?: string; editTitle?: string; editType?: string;
     editDescription?: string; editLocationName?: string;
@@ -67,6 +69,9 @@ export default function CreateActivityScreen() {
   const [isFlexibleTime, setIsFlexibleTime] = useState(true);
   const [visibility, setVisibility] = useState<'everyone' | 'selected'>('everyone');
   const [maxParticipants, setMaxParticipants] = useState<string>('');
+  const [cityName, setCityName] = useState<string>('');
+  const [countryName, setCountryName] = useState<string>('');
+  const [coverImageUri, setCoverImageUri] = useState<string | undefined>(undefined);
 
   // Auto-detect location on mount
   useEffect(() => {
@@ -80,6 +85,8 @@ export default function CreateActivityScreen() {
         if (geo) {
           const parts = [geo.name, geo.city].filter(Boolean);
           if (parts.length > 0) setLocationName(parts.join(', '));
+          if (geo.city) setCityName(geo.city);
+          if (geo.country) setCountryName(geo.country);
         }
       } catch { /* non-critical */ }
     })();
@@ -131,20 +138,59 @@ export default function CreateActivityScreen() {
         scheduledFor.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
       }
 
-      await createActivity({
-        type: activityType as ActivityType,
-        title: title.trim(),
-        description: description.trim() || undefined,
-        location: {
-          name: locationName.trim(),
-          latitude: locationCoords?.latitude || 0,
-          longitude: locationCoords?.longitude || 0,
-        },
-        timing,
-        scheduledFor: timing === 'specific' ? scheduledFor : undefined,
-        maxParticipants: maxParticipants ? parseInt(maxParticipants, 10) : undefined,
-        visibility,
-      });
+      // Upload cover image if selected
+      let coverImageUrl: string | undefined;
+      if (coverImageUri) {
+        try {
+          const ext = coverImageUri.split('.').pop() || 'jpg';
+          const path = `activity-covers/${Date.now()}.${ext}`;
+          const response = await fetch(coverImageUri);
+          const blob = await response.blob();
+          const { error: uploadErr } = await supabase.storage
+            .from('community')
+            .upload(path, blob, { contentType: `image/${ext}`, upsert: true });
+          if (!uploadErr) {
+            const { data: publicUrl } = supabase.storage.from('community').getPublicUrl(path);
+            coverImageUrl = publicUrl.publicUrl;
+          }
+        } catch { /* non-critical — activity still creates without image */ }
+      }
+
+      if (isEditing && params.editId) {
+        // Update existing activity
+        await updateActivity(params.editId, {
+          ...( coverImageUrl ? { coverImageUrl } : {}),
+          title: title.trim(),
+          description: description.trim() || undefined,
+          locationName: locationName.trim(),
+          city: cityName || undefined,
+          country: countryName || undefined,
+          latitude: locationCoords?.latitude,
+          longitude: locationCoords?.longitude,
+          timing,
+          scheduledFor: timing === 'specific' ? scheduledFor : undefined,
+          maxParticipants: maxParticipants ? parseInt(maxParticipants, 10) : undefined,
+          visibility,
+        });
+      } else {
+        await createActivity({
+          type: activityType as ActivityType,
+          title: title.trim(),
+          description: description.trim() || undefined,
+          coverImageUrl,
+          city: cityName || undefined,
+          country: countryName || undefined,
+          location: {
+            name: locationName.trim(),
+            latitude: locationCoords?.latitude || 0,
+            longitude: locationCoords?.longitude || 0,
+          },
+          timing,
+          scheduledFor: timing === 'specific' ? scheduledFor : undefined,
+          maxParticipants: maxParticipants ? parseInt(maxParticipants, 10) : undefined,
+          visibility,
+        });
+      }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
@@ -164,6 +210,8 @@ export default function CreateActivityScreen() {
             onTitleChange={setTitle}
             description={description}
             onDescriptionChange={setDescription}
+            coverImageUri={coverImageUri}
+            onCoverImageChange={setCoverImageUri}
           />
         );
       case 3:

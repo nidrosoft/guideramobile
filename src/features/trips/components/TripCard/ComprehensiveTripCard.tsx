@@ -256,6 +256,12 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
           .map(m => m.detail)
           .join(' + ');
         showSuccess(`Trip plan ready! ${summary}`);
+
+        // Fire notification for Smart Plan completion
+        try {
+          const { notifySmartPlanComplete } = await import('@/services/notifications/community-notifications');
+          await notifySmartPlanComplete(currentUserId, trip.id, trip.title || trip.destination || 'Your trip', finalDone);
+        } catch (_) {}
         router.push({ pathname: '/planner/[tripId]', params: { tripId: trip.id } } as any);
       } else {
         throw new Error('All modules failed to generate');

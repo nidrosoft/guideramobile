@@ -84,5 +84,5 @@ export function useSaveDestination(destinationId: string | null) {
     }
   }, [profile?.id, destinationId, isSaved, isLoading]);
 
-  return { isSaved, isLoading, toggleSave };
+  return { isSaved, isLoading, toggleSave, wasSavedRef: isSaved };
 }
