@@ -8,6 +8,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '@/styles';
 import type { DealBadge as DealBadgeType } from '@/services/deal';
 
 interface DealBadgeProps {
@@ -23,43 +24,43 @@ const BADGE_CONFIG: Record<
     label: 'Best Price',
     icon: 'trophy',
     bg: '#10B981',
-    text: '#FFFFFF',
+    text: colors.white,
   },
   price_drop: {
     label: 'Price Drop',
     icon: 'trending-down',
     bg: '#EF4444',
-    text: '#FFFFFF',
+    text: colors.white,
   },
   near_record_low: {
     label: 'Near Record Low',
     icon: 'flame',
     bg: '#F59E0B',
-    text: '#FFFFFF',
+    text: colors.white,
   },
   record_low: {
     label: 'Record Low',
     icon: 'flash',
     bg: '#8B5CF6',
-    text: '#FFFFFF',
+    text: colors.white,
   },
   trending: {
     label: 'Trending',
     icon: 'trending-up',
     bg: '#3B82F6',
-    text: '#FFFFFF',
+    text: colors.white,
   },
   limited_availability: {
     label: 'Limited',
     icon: 'time',
     bg: '#F97316',
-    text: '#FFFFFF',
+    text: colors.white,
   },
   editors_pick: {
     label: "Editor's Pick",
     icon: 'star',
     bg: '#6366F1',
-    text: '#FFFFFF',
+    text: colors.white,
   },
 };
 

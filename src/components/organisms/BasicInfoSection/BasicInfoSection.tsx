@@ -20,8 +20,6 @@ interface BasicInfoSectionProps {
   budget?: string;
 }
 
-const PRIMARY = '#3FC39E';
-
 export default function BasicInfoSection({
   name,
   location,
@@ -58,8 +56,8 @@ export default function BasicInfoSection({
       <View style={[styles.infoCardsRow, { borderColor: colors.borderMedium }]}>
         {/* Visitors */}
         <View style={styles.infoItem}>
-          <View style={[styles.iconContainer, { backgroundColor: `${PRIMARY}15` }]}>
-            <People size={20} color={PRIMARY} variant="Bold" />
+          <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
+            <People size={20} color={colors.primary} variant="Bold" />
           </View>
           <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Visitors</Text>
           <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{visitors}</Text>
@@ -67,8 +65,8 @@ export default function BasicInfoSection({
 
         {/* Best Time */}
         <View style={styles.infoItem}>
-          <View style={[styles.iconContainer, { backgroundColor: `${PRIMARY}15` }]}>
-            <Calendar size={20} color={PRIMARY} variant="Bold" />
+          <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
+            <Calendar size={20} color={colors.primary} variant="Bold" />
           </View>
           <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Best Time</Text>
           <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{bestTime}</Text>
@@ -76,8 +74,8 @@ export default function BasicInfoSection({
 
         {/* Budget */}
         <View style={styles.infoItem}>
-          <View style={[styles.iconContainer, { backgroundColor: `${PRIMARY}15` }]}>
-            <DollarCircle size={20} color={PRIMARY} variant="Bold" />
+          <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
+            <DollarCircle size={20} color={colors.primary} variant="Bold" />
           </View>
           <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Budget</Text>
           <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{budget}</Text>

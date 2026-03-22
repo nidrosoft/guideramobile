@@ -167,9 +167,10 @@ export default function Home() {
             <Image
               source={{ uri: profile.avatar_url }}
               style={styles.profileImage}
+              accessibilityLabel="Profile photo"
             />
           ) : (
-            <View style={[styles.profileImage, styles.avatarFallback, { backgroundColor: colors.primary }]}>
+            <View style={[styles.profileImage, styles.avatarFallback, { backgroundColor: colors.primary }]} accessibilityLabel="Profile avatar">
               <Text style={styles.avatarInitial}>
                 {(profile?.first_name?.[0] || 'T').toUpperCase()}
               </Text>
@@ -183,6 +184,8 @@ export default function Home() {
               style={styles.locationRow}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/account/location-settings' as any); }}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Change location settings"
             >
               <Location size={14} color={colors.textSecondary} variant="Bold" />
               <Text style={[styles.locationText, dynamicStyles.locationText]} numberOfLines={1}>
@@ -195,6 +198,8 @@ export default function Home() {
               style={[styles.headerActionBtn, { backgroundColor: colors.bgCard }]}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/deals/saved' as any); }}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Saved deals"
             >
               <Archive size={20} color={colors.textPrimary} variant="Bold" />
             </TouchableOpacity>
@@ -205,10 +210,13 @@ export default function Home() {
         </View>
 
         {/* Search Bar - Tapping opens full-screen search overlay */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.searchBarFull, dynamicStyles.searchBar]}
           activeOpacity={0.8}
           onPress={handleSearchPress}
+          accessibilityRole="search"
+          accessibilityLabel="Search destinations"
+          accessibilityHint="Opens the search overlay"
         >
           <SearchNormal1 size={20} color={colors.textSecondary} />
           <Text style={[styles.searchPlaceholder, { color: colors.textSecondary }]}>
@@ -226,10 +234,12 @@ export default function Home() {
           {categories.map((category) => {
             const Icon = category.icon;
             return (
-              <TouchableOpacity 
-                key={category.id} 
+              <TouchableOpacity
+                key={category.id}
                 style={styles.categoryItem}
                 onPress={() => handleCategoryPress(category.name)}
+                accessibilityRole="button"
+                accessibilityLabel={`${category.name} category`}
               >
                 <View style={[
                   styles.categoryCircle,
@@ -245,14 +255,17 @@ export default function Home() {
 
         {/* Trip Reminder — only shows if user has an upcoming trip */}
         {nearestTrip && (() => {
-          const firstFlight = nearestTrip.bookings?.find(b => b.type === 'flight');
-          const flightDetails = firstFlight?.details as any;
+          // Get flight data directly from trip DB fields (bookings array is not populated at list level)
+          const dbFields = (nearestTrip as any)._db;
+          const flightNumber = dbFields?.flightNumber;
+          const route = dbFields?.route; // e.g. "LAX → CDG"
+          const departureAirport = route ? route.split('→')[0]?.trim().split('–')[0]?.trim().split(' ')[0] : undefined;
           return (
             <TripReminder 
               destination={nearestTrip.destination?.city || nearestTrip.title} 
               tripDate={nearestTrip.startDate instanceof Date ? nearestTrip.startDate : new Date(nearestTrip.startDate)}
-              flightNumber={flightDetails?.flightNumber}
-              departureAirport={flightDetails?.departure?.airport}
+              flightNumber={flightNumber}
+              departureAirport={departureAirport}
               isInternational={true}
               tripId={nearestTrip.id}
             />
@@ -370,9 +383,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerActionBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },

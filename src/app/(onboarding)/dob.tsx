@@ -6,11 +6,12 @@ export default function DOBScreen() {
     <PreferenceScreen
       icon={Calendar}
       title="When's your birthday?"
-      description="We need this to personalize your experience"
+      description="Your age helps us tailor trip recommendations, safety tips, and activity suggestions to suit you best"
       inputType="date"
       currentStep={2}
       totalSteps={10}
       nextRoute="/(onboarding)/gender"
+      showBackButton={true}
       fieldName="dateOfBirth"
     />
   );

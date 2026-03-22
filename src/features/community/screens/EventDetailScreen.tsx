@@ -123,7 +123,7 @@ export default function EventDetailScreen() {
       });
     } catch (err) {
       if (__DEV__) console.warn('Failed to fetch event:', err);
-      Alert.alert('Error', 'Could not load event details.');
+      showError('Could not load event details.');
     } finally {
       setIsFetching(false);
     }
@@ -176,7 +176,7 @@ export default function EventDetailScreen() {
       }
     } catch (err: any) {
       if (__DEV__) console.warn('Failed to RSVP:', err);
-      Alert.alert('Error', err?.message || 'Could not update RSVP.');
+      showError(err?.message || 'Could not update RSVP.');
     } finally {
       setIsLoading(false);
     }
@@ -244,11 +244,11 @@ export default function EventDetailScreen() {
         {/* Content */}
         <View style={styles.content}>
           {/* Title & Community */}
-          <Text style={styles.title}>{event.title}</Text>
+          <Text style={styles.title} numberOfLines={3} ellipsizeMode="tail">{event.title}</Text>
           
           <TouchableOpacity 
             style={styles.communityRow}
-            onPress={() => router.push(`/community/${event.community.id}` as any)}
+            onPress={() => router.push(`/community/${event.community.id}`)}
           >
             <Image source={{ uri: event.community.avatar }} style={styles.communityAvatar} />
             <Text style={styles.communityName}>{event.community.name}</Text>
@@ -299,7 +299,7 @@ export default function EventDetailScreen() {
             <Text style={styles.sectionTitle}>Hosted by</Text>
             <TouchableOpacity 
               style={styles.hostCard}
-              onPress={() => router.push(`/community/buddy/${event.host.id}` as any)}
+              onPress={() => router.push(`/community/buddy/${event.host.id}`)}
             >
               <Image source={{ uri: event.host.avatar }} style={styles.hostAvatar} />
               <View style={styles.hostInfo}>
@@ -372,7 +372,7 @@ export default function EventDetailScreen() {
           </View>
         </View>
         
-        <View style={{ height: 120 }} />
+        <View style={{ height: 100 + (insets.bottom || 20) }} />
       </ScrollView>
       
       {/* RSVP Footer */}

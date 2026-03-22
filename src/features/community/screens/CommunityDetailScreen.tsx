@@ -162,7 +162,7 @@ export default function CommunityDetailScreen() {
             ]);
             feedPosts = feedPosts.map(p => ({
               ...p,
-              myReaction: (reactionsMap[p.id] as any) || null,
+              myReaction: (reactionsMap[p.id]) || null,
               isSaved: savedIds.has(p.id),
             }));
           } catch { /* non-critical — posts still show without user state */ }
@@ -230,15 +230,15 @@ export default function CommunityDetailScreen() {
 
   const handleCreatePost = useCallback((type?: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({ pathname: '/community/create-post' as any, params: { groupId: group.id, postType: type || 'general' } });
+    router.push({ pathname: '/community/create-post', params: { groupId: group.id, postType: type || 'general' } });
   }, [router, group.id]);
 
   const handlePostPress = useCallback((postId: string) => {
-    router.push({ pathname: '/community/post-detail' as any, params: { postId } });
+    router.push({ pathname: '/community/post-detail', params: { postId } });
   }, [router]);
 
   const handleAuthorPress = useCallback((authorId: string) => {
-    router.push({ pathname: '/community/traveler-profile' as any, params: { userId: authorId } });
+    router.push({ pathname: '/community/traveler-profile', params: { userId: authorId } });
   }, [router]);
 
   const handleReact = useCallback((postId: string, type: ReactionType) => {
@@ -260,7 +260,7 @@ export default function CommunityDetailScreen() {
   }, [profile?.id]);
 
   const handleComment = useCallback((postId: string) => {
-    router.push({ pathname: '/community/post-detail' as any, params: { postId, focusComment: 'true' } });
+    router.push({ pathname: '/community/post-detail', params: { postId, focusComment: 'true' } });
   }, [router]);
 
   const handleSharePost = useCallback((postId: string) => {
@@ -279,9 +279,9 @@ export default function CommunityDetailScreen() {
     if (!post) return;
     // Optimistic toggle
     setPosts(prev => prev.map(p =>
-      p.id === postId ? { ...p, isSaved: !(p as any).isSaved } : p
+      p.id === postId ? { ...p, isSaved: !(p).isSaved } : p
     ));
-    const wasSaved = (post as any).isSaved;
+    const wasSaved = (post).isSaved;
     if (wasSaved) {
       postService.unsavePost(postId, profile.id).catch(console.warn);
     } else {
@@ -310,14 +310,14 @@ export default function CommunityDetailScreen() {
               {
                 text: 'Delete', style: 'destructive',
                 onPress: () => {
-                  postService.deletePost(postId).then(() => {
+                  postService.deletePost(postId, profile!.id).then(() => {
                     setPosts(prev => prev.filter(p => p.id !== postId));
                   }).catch(console.warn);
                 },
               },
             ]);
           } else if (index === 0 && !isAuthor) {
-            router.push(`/community/report?type=post&id=${postId}` as any);
+            router.push(`/community/report?type=post&id=${postId}`);
           }
         }
       );
@@ -327,12 +327,12 @@ export default function CommunityDetailScreen() {
           ? {
               text: 'Delete Post', style: 'destructive',
               onPress: () => {
-                postService.deletePost(postId).then(() => {
+                postService.deletePost(postId, profile!.id).then(() => {
                   setPosts(prev => prev.filter(p => p.id !== postId));
                 }).catch(console.warn);
               },
             }
-          : { text: 'Report Post', onPress: () => router.push(`/community/report?type=post&id=${postId}` as any) },
+          : { text: 'Report Post', onPress: () => router.push(`/community/report?type=post&id=${postId}`) },
         { text: 'Cancel', style: 'cancel' },
       ]);
     }
@@ -340,11 +340,11 @@ export default function CommunityDetailScreen() {
 
   const handleEventPress = useCallback((eventId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/community/event/${eventId}` as any);
+    router.push(`/community/event/${eventId}`);
   }, [router]);
 
   const handleMemberPress = useCallback((memberId: string) => {
-    router.push({ pathname: '/community/traveler-profile' as any, params: { userId: memberId } });
+    router.push({ pathname: '/community/traveler-profile', params: { userId: memberId } });
   }, [router]);
 
   const renderEventsTab = () => (

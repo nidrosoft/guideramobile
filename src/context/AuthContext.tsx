@@ -8,8 +8,10 @@ import {
 } from '@/lib/clerk/profileSync';
 import { supabase, setClerkTokenGetter } from '@/lib/supabase/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { notificationService } from '@/services/notifications';
 import { providerManagerService } from '@/services/provider-manager.service';
+import { cacheService } from '@/services/cache/cacheService';
 
 const initialState: AuthContextType = {
   user: null,
@@ -147,14 +149,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const signOut = async () => {
     try {
-      // Clear cached data before signing out
-      const keysToPreserve = ['@guidera_theme_mode', '@guidera_theme_user_chosen'];
-      const allKeys = await AsyncStorage.getAllKeys();
-      const keysToRemove = allKeys.filter((k: string) => !keysToPreserve.includes(k));
-      if (keysToRemove.length > 0) {
-        await AsyncStorage.multiRemove(keysToRemove);
-      }
-      
+      // Clear sensitive tokens from SecureStore
+      await SecureStore.deleteItemAsync('@guidera_push_token').catch(() => {});
+
+      // Clear known app cache keys directly instead of scanning all keys with getAllKeys() (O(n))
+      // Preserves: @guidera_theme_mode, @guidera_theme_user_chosen (user preferences that survive sign-out)
+      const keysToRemove = [
+        // User/session data (push_token now in SecureStore, but remove legacy AsyncStorage key too)
+        '@guidera_push_token',
+        '@guidera_notification_prefs',
+        '@guidera_biometric_enabled',
+        '@guidera_profile_cache',
+        // Search & sync
+        '@guidera_recent_searches',
+        '@guidera_sync_queue',
+        '@guidera_deferred_deeplink',
+        // AI Vision / TTS
+        '@guidera_translation_cache',
+        '@guidera_tts_voice_gender',
+        '@guidera_tts_voice_id',
+        '@guidera_tts_speed',
+        '@guidera_voice_setup_done',
+        '@guidera_vision_language',
+        // Updates
+        '@guidera_update_last_check',
+        '@guidera_update_skipped',
+        '@guidera_whats_new_seen',
+      ];
+      await AsyncStorage.multiRemove(keysToRemove);
+      // Also clear the cache service (memory + @guidera_cache_* storage keys)
+      await cacheService.clear();
+
       setProfile(null);
       setIsProfileLoading(true);
       notificationService.setUserId(null);

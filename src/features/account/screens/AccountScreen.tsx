@@ -23,9 +23,11 @@ import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { spacing, typography, borderRadius } from '@/styles';
 import { Logout } from 'iconsax-react-native';
 import { useTheme } from '@/context/ThemeContext';
+import DSButton from '@/components/ds/DSButton';
 import { UserProfile } from '../types/account.types';
 import { ACCOUNT_SECTIONS } from '../config/accountSections.config';
 import ProfileHeader from '../components/ProfileHeader';
@@ -74,6 +76,7 @@ export default function AccountScreen() {
   const insets = useSafeAreaInsets();
   const { profile, refreshProfile, signOut, user: authUser } = useAuth();
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
   const [scrollY] = useState(new Animated.Value(0));
   const [isHeaderLight, setIsHeaderLight] = useState(false);
@@ -219,14 +222,14 @@ export default function AccountScreen() {
   // Handle edit profile
   const handleEditProfile = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/account/edit-profile' as any);
+    router.push('/account/edit-profile');
   }, [router]);
-  
-  // Handle avatar press
+
+  // Handle avatar press — navigate to edit-profile which handles avatar changes
   const handleAvatarPress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // TODO: Implement avatar options modal
-  }, []);
+    router.push('/account/edit-profile');
+  }, [router]);
 
   // Handle logout
   const handleLogout = useCallback(async () => {
@@ -234,7 +237,7 @@ export default function AccountScreen() {
     try {
       await signOut();
       setShowLogoutModal(false);
-      router.replace('/(auth)/landing' as any);
+      router.replace('/(auth)/landing');
     } catch (error) {
       console.error('Error signing out:', error);
     } finally {
@@ -356,34 +359,31 @@ export default function AccountScreen() {
                 <View style={styles.modalIcon}>
                   <Logout size={32} color={colors.error} variant="Bold" />
                 </View>
-                <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Log Out?</Text>
+                <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t('account.logout.title')}</Text>
                 <Text style={[styles.modalMessage, { color: colors.textSecondary }]}>
-                  Are you sure you want to log out of your account?
+                  {t('account.logout.message')}
                 </Text>
                 <View style={styles.modalButtons}>
-                  <TouchableOpacity
-                    style={[styles.modalButton, styles.modalButtonCancel, { backgroundColor: colors.gray100 }]}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setShowLogoutModal(false);
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.modalButtonText, { color: colors.textPrimary }]}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.modalButton, styles.modalButtonLogout]}
+                  <DSButton
+                    title={t('common.cancel')}
+                    onPress={() => setShowLogoutModal(false)}
+                    variant="secondary"
+                    size="lg"
+                    style={{ flex: 1 }}
+                  />
+                  <DSButton
+                    title={isLoggingOut ? t('account.logout.loggingOut') : t('account.logout.logOut')}
                     onPress={() => {
                       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                       handleLogout();
                     }}
+                    variant="primary"
+                    size="lg"
                     disabled={isLoggingOut}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.modalButtonTextLogout}>
-                      {isLoggingOut ? 'Logging out...' : 'Log Out'}
-                    </Text>
-                  </TouchableOpacity>
+                    loading={isLoggingOut}
+                    style={{ flex: 1, backgroundColor: '#EF4444' }}
+                    textStyle={{ color: '#FFFFFF' }}
+                  />
                 </View>
               </View>
             </TouchableWithoutFeedback>

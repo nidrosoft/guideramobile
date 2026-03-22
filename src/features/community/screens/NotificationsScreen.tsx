@@ -5,12 +5,12 @@
  * Row-based layout, grouped by date, icon circle + content + unread dot.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
@@ -129,6 +129,19 @@ export default function NotificationsScreen() {
 
   const grouped = groupByDate(notifications);
 
+  // Flatten grouped data for FlatList: interleave section headers with notification items
+  type FlatItem = { type: 'header'; title: string } | { type: 'notif'; data: AppNotification };
+  const flatData = useMemo<FlatItem[]>(() => {
+    const items: FlatItem[] = [];
+    for (const group of grouped) {
+      items.push({ type: 'header', title: group.title });
+      for (const notif of group.data) {
+        items.push({ type: 'notif', data: notif });
+      }
+    }
+    return items;
+  }, [grouped]);
+
   return (
     <View style={[styles.screen, { backgroundColor: tc.bgPrimary, paddingTop: insets.top }]}>
       {/* Header — matches homepage notification center */}
@@ -147,33 +160,25 @@ export default function NotificationsScreen() {
       </View>
 
       {/* Content */}
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tc.primary} />}
-      >
-        {isLoading && notifications.length === 0 && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={tc.primary} />
-          </View>
-        )}
-
-        {!isLoading && notifications.length === 0 && (
-          <View style={styles.emptyContainer}>
-            <Notification size={48} color={tc.textTertiary} variant="Linear" />
-            <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No notifications</Text>
-            <Text style={[styles.emptySubtitle, { color: tc.textTertiary }]}>
-              You're all caught up! Activity from your network will appear here.
-            </Text>
-          </View>
-        )}
-
-        {grouped.map((group) => (
-          <View key={group.title} style={styles.group}>
-            <Text style={[styles.groupTitle, { color: tc.textTertiary }]}>{group.title}</Text>
-            {group.data.map((notif) => (
+      {isLoading && notifications.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={tc.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={flatData}
+          keyExtractor={(item, index) =>
+            item.type === 'header' ? `header-${item.title}` : `notif-${item.data.id}`
+          }
+          renderItem={({ item }) => {
+            if (item.type === 'header') {
+              return (
+                <Text style={[styles.groupTitle, { color: tc.textTertiary }]}>{item.title}</Text>
+              );
+            }
+            const notif = item.data;
+            return (
               <TouchableOpacity
-                key={notif.id}
                 style={[
                   styles.notifRow,
                   { backgroundColor: notif.isRead ? 'transparent' : `${tc.primary}05`, borderBottomColor: tc.borderSubtle },
@@ -199,12 +204,23 @@ export default function NotificationsScreen() {
                   <View style={[styles.unreadDot, { backgroundColor: tc.primary }]} />
                 )}
               </TouchableOpacity>
-            ))}
-          </View>
-        ))}
-
-        <View style={{ height: insets.bottom + 20 }} />
-      </ScrollView>
+            );
+          }}
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tc.primary} />}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Notification size={48} color={tc.textTertiary} variant="Linear" />
+              <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No notifications</Text>
+              <Text style={[styles.emptySubtitle, { color: tc.textTertiary }]}>
+                You're all caught up! Activity from your network will appear here.
+              </Text>
+            </View>
+          }
+          ListFooterComponent={<View style={{ height: insets.bottom + 20 }} />}
+        />
+      )}
     </View>
   );
 }

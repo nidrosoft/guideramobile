@@ -14,9 +14,9 @@ import {
   Modal,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
   Platform,
   Animated as RNAnimated,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -31,9 +31,9 @@ import {
   Flash,
   ArrowRight2,
 } from 'iconsax-react-native';
+import { colors } from '@/styles';
 
-const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
-const SHEET_HEIGHT = SCREEN_HEIGHT * 0.92;
+// SCREEN_HEIGHT, SCREEN_WIDTH, SHEET_HEIGHT computed inside component via useWindowDimensions
 
 // Color palette
 const COLORS = {
@@ -42,13 +42,13 @@ const COLORS = {
     secondary: '#0F172A',
   },
   text: {
-    primary: '#FFFFFF',
+    primary: colors.white,
     secondary: '#94A3B8',
     tertiary: '#64748B',
   },
   accent: {
-    blue: '#3B82F6',
-    green: '#10B981',
+    blue: colors.info,
+    green: colors.success,
     greenDark: '#059669',
   },
   border: 'rgba(255, 255, 255, 0.1)',
@@ -93,6 +93,8 @@ export default function FlightDetailSheetDark({
   flightInfo,
 }: FlightDetailSheetDarkProps) {
   const insets = useSafeAreaInsets();
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
+  const SHEET_HEIGHT = SCREEN_HEIGHT * 0.92;
   const slideAnim = useRef(new RNAnimated.Value(SCREEN_HEIGHT)).current;
   const fadeAnim = useRef(new RNAnimated.Value(0)).current;
 
@@ -170,6 +172,7 @@ export default function FlightDetailSheetDark({
         style={[
           styles.sheetContainer,
           {
+            height: SHEET_HEIGHT,
             transform: [{ translateY: slideAnim }],
           },
         ]}
@@ -411,7 +414,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: SHEET_HEIGHT,
+    // height applied inline with SHEET_HEIGHT from useWindowDimensions
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     overflow: 'hidden',

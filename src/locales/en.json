@@ -21,7 +21,62 @@
     "explore": "Explore",
     "trips": "Trips",
     "community": "Community",
+    "connect": "Connect",
     "profile": "Profile"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Welcome back",
+      "subtitle": "Sign in with your email or phone number",
+      "emailOrPhone": "Email or Phone",
+      "emailPlaceholder": "you@example.com or +1234567890",
+      "password": "Password",
+      "passwordPlaceholder": "Enter your password",
+      "forgot": "Forgot?",
+      "phoneHint": "We'll send you a verification code via SMS",
+      "signInButton": "Sign In",
+      "sendCode": "Send Code",
+      "or": "or",
+      "continueWith": "Continue with",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign Up"
+    },
+    "signUp": {
+      "title": "Create your account",
+      "subtitle": "Just an email and password to get started. We'll personalize your experience next.",
+      "email": "Email",
+      "emailPlaceholder": "you@example.com",
+      "password": "Password",
+      "passwordPlaceholder": "At least 8 characters",
+      "createAccount": "Create Account",
+      "or": "or",
+      "continueWithGoogle": "Continue with Google",
+      "hasAccount": "Already have an account?",
+      "signIn": "Sign In",
+      "checkEmail": "Check your email",
+      "verificationSent": "We sent a verification code to",
+      "codePlaceholder": "Enter 6-digit code",
+      "verifyAndContinue": "Verify & Continue"
+    },
+    "forgotPassword": {
+      "title": "Forgot password?",
+      "subtitle": "Enter your email address and we'll send you instructions to reset your password.",
+      "email": "Email",
+      "emailPlaceholder": "you@example.com",
+      "sendResetLink": "Send Reset Link",
+      "rememberPassword": "Remember your password?",
+      "signIn": "Sign In",
+      "resetTitle": "Reset your password",
+      "resetSubtitle": "Enter the code sent to {{email}} and your new password.",
+      "verificationCode": "Verification Code",
+      "codePlaceholder": "Enter 6-digit code",
+      "newPassword": "New Password",
+      "passwordPlaceholder": "At least 8 characters",
+      "resetButton": "Reset Password",
+      "successTitle": "Password reset!",
+      "successText": "Your password has been successfully reset. You can now sign in with your new password.",
+      "backToSignIn": "Back to Sign In"
+    }
   },
   "home": {
     "welcomeUser": "Welcome, {{name}} 👋",
@@ -62,7 +117,41 @@
       "startPlanning": "Start planning your next adventure",
       "createTrip": "Create a trip to get started"
     },
-    "createTrip": "Create Trip"
+    "createTrip": "Create Trip",
+    "detail": {
+      "notFound": "Trip not found",
+      "notFoundDesc": "This trip may have been deleted or is no longer available.",
+      "tripPlan": "Trip Plan",
+      "bookings": "Bookings",
+      "packingList": "Packing List",
+      "noItems": "No items",
+      "tripSummary": "Trip Summary",
+      "tripHub": "Trip Hub",
+      "tripPlanner": "Trip Planner",
+      "tripPlannerDesc": "Plan your days & activities",
+      "packing": "Packing",
+      "journal": "Journal",
+      "expenseTracker": "Expense Tracker",
+      "expenseTrackerDesc": "Track spending & budget",
+      "compensation": "Compensation",
+      "dosDonts": "Do's & Don'ts",
+      "safety": "Safety",
+      "language": "Language",
+      "documents": "Documents",
+      "documentsDesc": "Passport, visa & travel docs",
+      "invite": "+ Invite",
+      "owner": "Owner",
+      "noTravelers": "No travelers yet. Tap + Invite to add companions."
+    }
+  },
+  "connect": {
+    "title": "Connect",
+    "tabs": {
+      "discover": "Discover",
+      "guides": "Guides",
+      "groups": "Groups",
+      "events": "Events"
+    }
   },
   "community": {
     "title": "Community",
@@ -77,7 +166,246 @@
       "activities": "Activities",
       "waiting": "Waiting"
     },
-    "searchPlaceholder": "Search communities..."
+    "searchPlaceholder": "Search communities...",
+    "chat": {
+      "placeholder": "Type a message..."
+    },
+    "messages": {
+      "title": "Messages",
+      "searchPlaceholder": "Search conversations...",
+      "all": "All",
+      "groups": "Groups",
+      "direct": "Direct",
+      "noConversations": "No conversations",
+      "startChatting": "Start chatting with travel buddies"
+    },
+    "search": {
+      "placeholder": "Search groups, buddies, events...",
+      "all": "All",
+      "groups": "Groups",
+      "buddies": "Buddies",
+      "events": "Events",
+      "privacy": "Privacy",
+      "groupSize": "Group Size",
+      "tags": "Tags",
+      "clearFilters": "Clear all filters",
+      "suggestedSearches": "Suggested Searches",
+      "popularTags": "Popular Tags",
+      "noResults": "No results found",
+      "tryDifferent": "Try different keywords or filters"
+    }
+  },
+  "account": {
+    "logout": {
+      "title": "Log Out?",
+      "message": "Are you sure you want to log out of your account?",
+      "logOut": "Log Out",
+      "loggingOut": "Logging out..."
+    },
+    "editProfile": {
+      "title": "Edit Profile",
+      "changePhoto": "Change Photo",
+      "personalInfo": "Personal Information",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "bio": "Bio",
+      "phone": "Phone",
+      "location": "Location",
+      "travelStyle": "Travel Style",
+      "languages": "Languages",
+      "visibilitySettings": "Visibility Settings"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "enableNotifications": "Enable Notifications",
+      "allNotifications": "All Notifications"
+    },
+    "privacy": {
+      "title": "Privacy Settings",
+      "profileVisibility": "Profile Visibility",
+      "profileVisibilityDesc": "Control who can see your profile and activity",
+      "sharing": "Sharing",
+      "sharingDesc": "Manage how your content is shared",
+      "dataPersonalization": "Data & Personalization",
+      "dataPersonalizationDesc": "Control how your data is used"
+    },
+    "membership": {
+      "title": "Membership",
+      "comingSoon": "Coming Soon",
+      "comingSoonMessage": "{{tierName}} membership will be available soon! We're finalizing pricing based on early user feedback. Stay tuned.",
+      "freeMember": "Free Member",
+      "premiumMember": "Premium Member",
+      "points": "points",
+      "yourBenefits": "Your Benefits",
+      "upgradeExperience": "Upgrade Your Experience",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "save17": "Save 17%",
+      "pointsMultiplier": "Points Multiplier",
+      "perMonth": "/month",
+      "perYear": "/year",
+      "pointsOnBookings": "{{multiplier}}x points on all bookings",
+      "moreBenefits": "+{{count}} more benefits",
+      "upgradeTo": "Upgrade to {{tierName}}"
+    },
+    "rewards": {
+      "title": "Rewards Points",
+      "availablePoints": "Available Points",
+      "approxValue": "≈ ${{value}} value",
+      "totalEarned": "Total Earned",
+      "redeemed": "Redeemed",
+      "expiringSoon": "Expiring Soon",
+      "waysToEarn": "Ways to Earn",
+      "bookFlights": "Book Flights",
+      "earnPerDollarFlights": "Earn 1 point per $1 spent",
+      "bookHotels": "Book Hotels",
+      "earnPerDollarHotels": "Earn 2 points per $1 spent",
+      "referFriends": "Refer Friends",
+      "earnPerReferral": "Earn 500 points per referral",
+      "writeReviews": "Write Reviews",
+      "earnPerReview": "Earn 50 points per review",
+      "pointsHistory": "Points History",
+      "noPointsYet": "No points yet",
+      "startEarning": "Start earning points by making bookings"
+    },
+    "referrals": {
+      "title": "Refer Friends",
+      "earnPerFriend": "Earn $20 for each friend",
+      "shareAndEarn": "Share your code and earn rewards when friends book",
+      "share": "Share",
+      "codeCopied": "Referral code copied to clipboard",
+      "shareMessage": "Join me on Guidera and get $20 off your first booking! Use my referral code: {{code}}\n\nDownload now: https://guidera.app/invite/{{code}}",
+      "shareTitle": "Join Guidera",
+      "inviteFailed": "Failed to send invite. Please try again.",
+      "inviteSent": "Invitation sent to {{email}}!",
+      "somethingWrong": "Something went wrong. Please try again.",
+      "totalInvites": "Total Invites",
+      "completed": "Completed",
+      "pointsEarned": "Points Earned",
+      "howItWorks": "How It Works",
+      "step1Title": "Share your code",
+      "step1Desc": "Send your unique referral code to friends",
+      "step2Title": "Friend signs up",
+      "step2Desc": "They create an account using your code",
+      "step3Title": "Friend books",
+      "step3Desc": "They complete their first booking",
+      "step4Title": "You both earn",
+      "step4Desc": "Get 500 points ($20 value) each!",
+      "inviteByEmail": "Invite by Email",
+      "yourReferrals": "Your Referrals",
+      "noReferralsYet": "No referrals yet",
+      "shareToEarn": "Share your code to start earning rewards",
+      "inviteAFriend": "Invite a Friend",
+      "friendName": "Friend's Name (optional)",
+      "emailAddress": "Email Address",
+      "sendInvite": "Send Invite"
+    },
+    "expenses": {
+      "title": "My Expenses",
+      "totalSpending": "Total Spending",
+      "expenses": "expenses",
+      "months": "months",
+      "top": "top",
+      "noExpensesYet": "No Expenses Yet",
+      "emptyDescription": "Scan a receipt or add expenses from your trip to see them here"
+    },
+    "appearance": {
+      "title": "Appearance",
+      "light": "Light",
+      "lightDesc": "Always use light mode",
+      "dark": "Dark",
+      "darkDesc": "Always use dark mode",
+      "system": "System",
+      "systemDesc": "Follow your device settings",
+      "preview": "Preview",
+      "seeHowLooks": "See how the app will look",
+      "themeMode": "Theme Mode",
+      "choosePreferred": "Choose your preferred appearance",
+      "deviceUsing": "Your device is currently using",
+      "mode": "mode",
+      "aboutDarkMode": "About Dark Mode",
+      "aboutDarkModeDesc": "Dark mode provides a comfortable viewing experience in low-light environments while reducing eye strain and battery consumption on OLED screens."
+    },
+    "deleteAccount": {
+      "title": "Delete Account",
+      "finalConfirmation": "Final Confirmation",
+      "cannotBeUndone": "This action cannot be undone. Your account and all associated data will be permanently deleted.",
+      "deleteForever": "Delete Forever",
+      "deleteFailed": "Failed to delete account. Please contact support at support@guidera.app",
+      "warningTitle": "Delete Your Account?",
+      "warningText": "This action is permanent and cannot be undone. All your data will be permanently removed.",
+      "whatDeleted": "What will be deleted:",
+      "deleteItem1": "• Your profile and personal information",
+      "deleteItem2": "• All your trips and itineraries",
+      "deleteItem3": "• Your saved items and collections",
+      "deleteItem4": "• Community posts, reviews, and comments",
+      "deleteItem5": "• Booking history and preferences",
+      "deleteItem6": "• All connected accounts and data",
+      "whatNotDeleted": "What will NOT be deleted:",
+      "keepItem1": "• Active bookings (contact providers directly)",
+      "keepItem2": "• Transaction records (required by law)",
+      "understandPermanent": "I understand that this action is permanent and all my data will be deleted.",
+      "typeToConfirm": "Type",
+      "toConfirm": "to confirm",
+      "deleteMyAccount": "Delete My Account",
+      "cancelKeep": "Cancel and keep my account"
+    },
+    "changePassword": {
+      "title": "Change Password",
+      "currentPassword": "Current Password",
+      "enterCurrent": "Enter current password",
+      "newPassword": "New Password",
+      "enterNew": "Enter new password",
+      "confirmNewPassword": "Confirm New Password",
+      "confirmPlaceholder": "Confirm new password",
+      "requirements": "Password Requirements",
+      "passwordsMatch": "Passwords match",
+      "updatePassword": "Update Password",
+      "forgotCurrent": "Forgot your current password?",
+      "currentRequired": "Current password is required",
+      "newRequired": "New password is required",
+      "doesNotMeetRequirements": "Password does not meet requirements",
+      "confirmRequired": "Please confirm your new password",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "mustBeDifferent": "New password must be different from current password",
+      "passwordChanged": "Password Changed",
+      "passwordUpdated": "Your password has been updated successfully.",
+      "currentIncorrect": "Current password is incorrect"
+    },
+    "travelPreferences": {
+      "title": "Travel Profile",
+      "yourProfile": "Your Travel Profile",
+      "description": "These settings personalize your trip plans, packing lists, and recommendations. You can always customize them for each trip.",
+      "travelStyle": "Travel Style",
+      "travelStyleSub": "Companion, trip styles & pace",
+      "budget": "Budget & Spending",
+      "budgetSub": "Default budget & spending style",
+      "interests": "Interests",
+      "interestsSub": "What you love to do",
+      "accommodation": "Accommodation",
+      "accommodationSub": "Where you like to stay",
+      "transportation": "Transportation",
+      "transportationSub": "How you like to travel",
+      "foodHealth": "Food, Health & Access",
+      "foodHealthSub": "Diet, medical, skin, hair & vision",
+      "lifestyle": "Lifestyle & Identity",
+      "lifestyleSub": "Activity, sustainability & more",
+      "completeProfile": "Complete Your Profile",
+      "completeProfileDesc": "Fill in your preferences to get personalized trip recommendations and faster planning."
+    },
+    "bookings": {
+      "title": "My Deals",
+      "saved": "Saved",
+      "recent": "Recent",
+      "noSavedDeals": "No saved deals",
+      "savedDealsAppear": "Deals you save will appear here",
+      "noRecentActivity": "No recent activity",
+      "clickedDealsAppear": "Deals you click will appear here"
+    },
+    "language": {
+      "aboutTitle": "About Language Settings",
+      "aboutDescription": "Changing the language will update all text throughout the app. Some content from external sources may still appear in its original language."
+    }
   },
   "profile": {
     "title": "Profile",
@@ -133,6 +461,62 @@
       "flightAlerts": "Flight Alerts",
       "priceAlerts": "Price Alerts",
       "deals": "Deals & Offers"
+    }
+  },
+  "sections": {
+    "deals": {
+      "title": "See Our Deals",
+      "description": "Exclusive offers just for you"
+    },
+    "destinations": {
+      "title": "Popular Destinations",
+      "description": "Trending places to visit"
+    },
+    "places": {
+      "title": "Popular Places",
+      "description": "Most visited attractions"
+    },
+    "events": {
+      "title": "Events You May Like",
+      "description": "Upcoming events near you"
+    },
+    "mustSee": {
+      "title": "You Must See",
+      "description": "Iconic landmarks worldwide"
+    },
+    "editorChoices": {
+      "title": "Editor's Choices",
+      "description": "Handpicked by our experts"
+    },
+    "trending": {
+      "title": "Trending Locations",
+      "description": "Hot spots right now"
+    },
+    "bestDiscover": {
+      "title": "Best Discover",
+      "description": "Hidden gems to explore"
+    },
+    "budgetFriendly": {
+      "title": "Budget Friendly",
+      "description": "Affordable travel options"
+    },
+    "luxuryEscapes": {
+      "title": "Luxury Escapes",
+      "description": "Premium experiences"
+    },
+    "localExperiences": {
+      "title": "Local Experiences",
+      "description": "Authentic local activities"
+    },
+    "familyFriendly": {
+      "title": "Family Friendly",
+      "description": "Perfect for all ages"
+    }
+  },
+  "search": {
+    "results": {
+      "searching": "Searching...",
+      "resultsFound": "{{count}} results found"
     }
   },
   "booking": {

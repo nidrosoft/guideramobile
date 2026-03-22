@@ -1,8 +1,12 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
-import { typography, spacing } from '@/styles';
+import { typography, spacing, borderRadius } from '@/styles';
+
+const { width: screenWidth } = Dimensions.get('window');
+const CARD_WIDTH = screenWidth * 0.87;
 import { useTheme } from '@/context/ThemeContext';
-import { Star1, Location, People, TickCircle, ArrowRight } from 'iconsax-react-native';
+import { Star1, Location, People, TickCircle } from 'iconsax-react-native';
 import SaveButton from '@/components/common/SaveButton';
 
 interface FamilyFriendlyCardProps {
@@ -33,11 +37,12 @@ export default function FamilyFriendlyCard({
   index
 }: FamilyFriendlyCardProps) {
   const { colors } = useTheme();
+  const { height: screenHeight } = useWindowDimensions();
   return (
     <View style={styles.container}>
-      <View style={styles.card}>
+      <View style={[styles.card, { height: Math.min(480, screenHeight * 0.6) }]}>
         {/* Background Image */}
-        <Image source={{ uri: imageUrl }} style={styles.backgroundImage} />
+        <Image source={imageUrl} style={styles.backgroundImage} contentFit="cover" transition={200} />
         
         {/* Top Section */}
         <View style={styles.topSection}>
@@ -57,7 +62,7 @@ export default function FamilyFriendlyCard({
             <Text style={styles.locationText}>{location}</Text>
             
             {/* Name */}
-            <Text style={styles.name}>{name}</Text>
+            <Text style={styles.name} numberOfLines={2} ellipsizeMode="tail">{name}</Text>
             
             {/* Details Row */}
             <View style={styles.detailsRow}>
@@ -95,10 +100,6 @@ export default function FamilyFriendlyCard({
               </View>
             </View>
 
-            {/* Arrow Button */}
-            <TouchableOpacity style={styles.arrowButton}>
-              <ArrowRight size={20} color="#1a1a1a" variant="Outline" />
-            </TouchableOpacity>
           </BlurView>
         </View>
       </View>
@@ -111,9 +112,8 @@ const styles = StyleSheet.create({
     marginRight: spacing.lg,
   },
   card: {
-    width: 340,
-    height: 480,
-    borderRadius: 32,
+    width: CARD_WIDTH,
+    borderRadius: borderRadius['3xl'],
     overflow: 'hidden',
     position: 'relative',
     borderWidth: 1,
@@ -147,24 +147,16 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.semibold,
     color: '#1a1a1a',
   },
-  bookmarkButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   bottomContainer: {
     position: 'absolute',
     bottom: spacing.lg,
     left: spacing.lg,
     right: spacing.lg,
-    borderRadius: 24,
+    borderRadius: borderRadius.xl,
     overflow: 'hidden',
   },
   blurContainer: {
-    borderRadius: 24,
+    borderRadius: borderRadius.xl,
     padding: spacing.lg,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
@@ -213,14 +205,5 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xs,
     color: '#FFFFFF',
     fontWeight: typography.fontWeight.medium,
-  },
-  arrowButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
   },
 });

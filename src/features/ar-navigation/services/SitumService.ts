@@ -5,7 +5,12 @@
  * Handles location updates, route calculation, and POI management.
  */
 
-import Situm from '@situm/react-native';
+let Situm: any = null;
+try {
+  Situm = require('@situm/react-native').default;
+} catch (e) {
+  // Situm native module not available
+}
 
 export interface SitumLocation {
   latitude: number;
@@ -52,6 +57,10 @@ class SitumService {
    * Initialize Situm SDK
    */
   async initialize(apiKey: string): Promise<void> {
+    if (!Situm) {
+      if (__DEV__) console.warn('Situm native module not available');
+      return;
+    }
     try {
       await Situm.init();
       await Situm.setApiKey(apiKey);
@@ -77,6 +86,7 @@ class SitumService {
     buildingIdentifier: string,
     onLocationUpdate: (location: SitumLocation) => void
   ): Promise<void> {
+    if (!Situm) return;
     if (!this.isInitialized) {
       throw new Error('Situm not initialized. Call initialize() first.');
     }
@@ -121,6 +131,7 @@ class SitumService {
    * Stop location updates
    */
   async stopPositioning(): Promise<void> {
+    if (!Situm) return;
     try {
       await Situm.removeUpdates();
       this.locationCallback = null;
@@ -134,6 +145,9 @@ class SitumService {
    * Get current location (one-time)
    */
   async getCurrentLocation(buildingIdentifier: string): Promise<SitumLocation> {
+    if (!Situm) {
+      throw new Error('Situm native module not available');
+    }
     return new Promise((resolve, reject) => {
       Situm.requestLocationUpdates(
         {
@@ -170,6 +184,9 @@ class SitumService {
     to: { latitude: number; longitude: number; floorIdentifier: string },
     accessible: boolean = false
   ): Promise<SitumRoute> {
+    if (!Situm) {
+      throw new Error('Situm native module not available');
+    }
     if (!this.isInitialized) {
       throw new Error('Situm not initialized. Call initialize() first.');
     }
@@ -205,6 +222,7 @@ class SitumService {
    * Get all POIs in a building
    */
   async getPOIs(buildingIdentifier: string): Promise<SitumPOI[]> {
+    if (!Situm) return [];
     if (!this.isInitialized) {
       throw new Error('Situm not initialized. Call initialize() first.');
     }

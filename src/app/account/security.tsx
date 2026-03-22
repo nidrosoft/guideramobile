@@ -37,6 +37,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { supabase } from '@/lib/supabase/client';
 
 const BIOMETRIC_ENABLED_KEY = '@guidera_biometric_enabled';
@@ -60,6 +61,7 @@ export default function SecuritySettingsScreen() {
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
   const { profile, signOut } = useAuth();
+  const { showError } = useToast();
   const [settings, setSettings] = useState<SecuritySettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -132,7 +134,7 @@ export default function SecuritySettingsScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error('Error saving security settings:', error);
-      Alert.alert('Error', 'Failed to save settings. Please try again.');
+      showError('Failed to save settings. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -145,7 +147,7 @@ export default function SecuritySettingsScreen() {
 
   const handleChangePassword = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/account/change-password' as any);
+    router.push('/account/change-password');
   };
 
   const handleSetup2FA = () => {
@@ -168,7 +170,7 @@ export default function SecuritySettingsScreen() {
         ]
       );
     } else {
-      router.push('/account/two-factor-auth' as any);
+      router.push('/account/two-factor-auth');
     }
   };
 
@@ -208,7 +210,7 @@ export default function SecuritySettingsScreen() {
 
   const handleActiveSessions = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/account/active-sessions' as any);
+    router.push('/account/active-sessions');
   };
 
   const handleLogoutAllDevices = () => {
@@ -228,7 +230,7 @@ export default function SecuritySettingsScreen() {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } catch (error) {
               console.error('Error logging out all devices:', error);
-              Alert.alert('Error', 'Failed to log out. Please try again.');
+              showError('Failed to log out. Please try again.');
             }
           }
         },
@@ -336,6 +338,8 @@ export default function SecuritySettingsScreen() {
                   onValueChange={handleBiometricToggle}
                   trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
                   thumbColor={settings.biometric_enabled ? tc.primary : isDark ? '#666' : colors.gray400}
+                  accessibilityRole="switch"
+                  accessibilityLabel={biometricType}
                 />
               </View>
             </View>
@@ -376,6 +380,8 @@ export default function SecuritySettingsScreen() {
                 onValueChange={handleLoginAlertsToggle}
                 trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
                 thumbColor={settings.login_alerts ? tc.primary : isDark ? '#666' : colors.gray400}
+                accessibilityRole="switch"
+                accessibilityLabel="Login alerts"
               />
             </View>
 

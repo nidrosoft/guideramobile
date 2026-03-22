@@ -7,8 +7,8 @@ import {
   ScrollView,
   SafeAreaView,
   StatusBar,
-  Dimensions,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -44,8 +44,6 @@ import { useAuth } from '@/context/AuthContext';
 import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
 import PluginErrorState from '@/features/trips/components/PluginErrorState';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-
 // Category configuration
 const CATEGORIES: CategoryInfo[] = [
   { id: ExpenseCategory.FOOD, name: 'Food & Dining', icon: 'restaurant', color: colors.success, emoji: '🍔' },
@@ -63,6 +61,7 @@ const CATEGORIES: CategoryInfo[] = [
 export default function ExpensesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
   const { colors, isDark } = useTheme();
   const { profile } = useAuth();
   const tripId = params.tripId as string;
@@ -373,7 +372,7 @@ export default function ExpensesScreen() {
           <View style={styles.headerActions}>
             <TouchableOpacity
               style={styles.scanButton}
-              onPress={() => router.push({ pathname: '/expenses/scan-receipt', params: { tripId } } as any)}
+              onPress={() => router.push({ pathname: '/expenses/scan-receipt', params: { tripId } })}
             >
               <Receipt1 size={20} color={colors.primary} variant="Bold" />
             </TouchableOpacity>

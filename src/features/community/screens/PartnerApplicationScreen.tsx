@@ -48,11 +48,12 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { spacing, borderRadius } from '@/styles';
+import { spacing, borderRadius, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { partnerService } from '@/services/community/partner.service';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import * as ImagePicker from 'expo-image-picker';
 import {
   SERVICE_CATEGORIES,
@@ -87,6 +88,7 @@ export default function PartnerApplicationScreen() {
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
   const { profile } = useAuth();
+  const { showSuccess, showError, showWarning } = useToast();
 
   const [step, setStep] = useState(1);
   const [applicationId, setApplicationId] = useState<string | null>(null);
@@ -158,7 +160,7 @@ export default function PartnerApplicationScreen() {
         }
 
         if (savedApp.nationality) setNationality(savedApp.nationality);
-        else if ((profile as any).nationality) setNationality((profile as any).nationality);
+        else if ((profile).nationality) setNationality((profile).nationality);
 
         // Location fields
         if (savedApp.city) setCity(savedApp.city);
@@ -174,7 +176,7 @@ export default function PartnerApplicationScreen() {
 
         // Languages
         if (savedApp.languages?.length > 0) setSelectedLanguages(savedApp.languages);
-        else if ((profile as any).languages_spoken?.length > 0) setSelectedLanguages((profile as any).languages_spoken);
+        else if ((profile).languages_spoken?.length > 0) setSelectedLanguages((profile).languages_spoken);
 
         // Step 3 fields
         if (savedApp.service_categories?.length > 0) setServiceCategories(savedApp.service_categories);
@@ -236,7 +238,7 @@ export default function PartnerApplicationScreen() {
         }
       } catch (err: any) {
         if (__DEV__) console.warn('Failed to init partner application:', err);
-        Alert.alert('Initialization Error', err?.message || 'Failed to start application. Please try again.');
+        showError(err?.message || 'Failed to start application. Please try again.');
       }
     })();
     return () => {
@@ -318,13 +320,13 @@ export default function PartnerApplicationScreen() {
       }
     } catch (err) {
       if (__DEV__) console.warn('Image picker error:', err);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      showError('Failed to pick image. Please try again.');
     }
   };
 
   const handlePortfolioAdd = async () => {
     if (portfolioPhotoUris.length >= 6) {
-      Alert.alert('Maximum reached', 'You can upload up to 6 portfolio photos.');
+      showWarning('You can upload up to 6 portfolio photos.');
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -340,7 +342,7 @@ export default function PartnerApplicationScreen() {
       }
     } catch (err) {
       if (__DEV__) console.warn('Image picker error:', err);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      showError('Failed to pick image. Please try again.');
     }
   };
 
@@ -404,11 +406,11 @@ export default function PartnerApplicationScreen() {
 
   const handleStartVerification = async () => {
     if (!idType) {
-      Alert.alert('Select ID Type', 'Please select your ID type before verifying.');
+      showWarning('Please select your ID type before verifying.');
       return;
     }
     if (!applicationId) {
-      Alert.alert('Error', 'Application not initialized. Please try again.');
+      showError('Application not initialized. Please try again.');
       return;
     }
 
@@ -471,10 +473,7 @@ export default function PartnerApplicationScreen() {
     } catch (err: any) {
       setIsVerifying(false);
       if (__DEV__) console.warn('Verification session error:', err);
-      Alert.alert(
-        'Verification Error',
-        err.message || 'Failed to start identity verification. Please try again.',
-      );
+      showError(err.message || 'Failed to start identity verification. Please try again.');
     }
   };
 
@@ -496,10 +495,7 @@ export default function PartnerApplicationScreen() {
             pollIntervalRef.current = null;
           }
         } else if (result.verification_status === 'declined') {
-          Alert.alert(
-            'Verification Declined',
-            'Your identity verification was not successful. You can try again.',
-          );
+          showError('Your identity verification was not successful. You can try again.');
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
             pollIntervalRef.current = null;
@@ -596,7 +592,7 @@ export default function PartnerApplicationScreen() {
       setIsSubmitted(true);
     } catch (err: any) {
       if (__DEV__) console.warn('Submit error:', err);
-      Alert.alert('Submission Error', err.message || 'Failed to submit application. Please try again.');
+      showError(err.message || 'Failed to submit application. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -635,8 +631,8 @@ export default function PartnerApplicationScreen() {
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 32, paddingBottom: insets.bottom + 40 }}
       >
         <View style={{ alignItems: 'center', marginBottom: 32 }}>
-          <View style={[successStyles.iconCircle, { backgroundColor: '#22C55E15' }]}>
-            <ShieldTick size={56} color="#22C55E" variant="Bold" />
+          <View style={[successStyles.iconCircle, { backgroundColor: `${tc.success}15` }]}>
+            <ShieldTick size={56} color={tc.success} variant="Bold" />
           </View>
           <Text style={[successStyles.title, { color: tc.textPrimary }]}>
             You're All Set!
@@ -721,7 +717,7 @@ export default function PartnerApplicationScreen() {
         {/* Buttons */}
         <TouchableOpacity
           style={[successStyles.primaryBtn, { backgroundColor: tc.primary }]}
-          onPress={() => router.replace('/community' as any)}
+          onPress={() => router.replace('/community')}
           activeOpacity={0.8}
         >
           <Text style={successStyles.primaryBtnText}>Back to Community</Text>
@@ -729,7 +725,7 @@ export default function PartnerApplicationScreen() {
 
         <TouchableOpacity
           style={[successStyles.secondaryBtn, { borderColor: tc.borderSubtle }]}
-          onPress={() => router.replace('/(tabs)' as any)}
+          onPress={() => router.replace('/(tabs)')}
           activeOpacity={0.8}
         >
           <Text style={[successStyles.secondaryBtnText, { color: tc.textSecondary }]}>Go to Home</Text>
@@ -1022,7 +1018,7 @@ export default function PartnerApplicationScreen() {
               style={styles.portfolioRemove}
               onPress={() => handlePortfolioRemove(index)}
             >
-              <CloseCircle size={20} color="#FFFFFF" variant="Bold" />
+              <CloseCircle size={20} color={tc.white} variant="Bold" />
             </TouchableOpacity>
           </View>
         ))}
@@ -1066,8 +1062,8 @@ export default function PartnerApplicationScreen() {
       {/* Already verified as traveler — skip Didit entirely */}
       {profile?.is_verified ? (
         <View style={[styles.verificationCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
-          <View style={[styles.verificationIcon, { backgroundColor: '#22C55E' + '15' }]}>
-            <ShieldTick size={40} color="#22C55E" variant="Bold" />
+          <View style={[styles.verificationIcon, { backgroundColor: `${tc.success}15` }]}>
+            <ShieldTick size={40} color={tc.success} variant="Bold" />
           </View>
           <View style={styles.verifiedState}>
             <Text style={styles.verifiedTitle}>Already Verified</Text>
@@ -1084,7 +1080,7 @@ export default function PartnerApplicationScreen() {
           {/* Verification Card */}
           <View style={[styles.verificationCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             <View style={[styles.verificationIcon, { backgroundColor: tc.primary + '10' }]}>
-              <ShieldTick size={40} color={verificationDone ? '#22C55E' : tc.primary} variant="Bold" />
+              <ShieldTick size={40} color={verificationDone ? tc.success : tc.primary} variant="Bold" />
             </View>
 
             {!isVerifying && !verificationDone && (
@@ -1189,7 +1185,7 @@ export default function PartnerApplicationScreen() {
               }}
             >
               <View style={[styles.checkbox, { borderColor: tc.borderSubtle }, agreedToTerms && { backgroundColor: tc.primary, borderColor: tc.primary }]}>
-                {agreedToTerms && <TickCircle size={16} color="#FFFFFF" variant="Bold" />}
+                {agreedToTerms && <TickCircle size={16} color={tc.white} variant="Bold" />}
               </View>
               <Text style={[styles.termsText, { color: tc.textSecondary }]}>
                 I agree to the Guidera Partner Program Terms & Conditions and Privacy Policy
@@ -1203,7 +1199,7 @@ export default function PartnerApplicationScreen() {
               activeOpacity={0.8}
             >
               {isSubmitting ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={tc.white} />
               ) : (
                 <Text style={styles.submitButtonText}>Submit Application</Text>
               )}
@@ -1258,10 +1254,10 @@ export default function PartnerApplicationScreen() {
             }}>
               <ShieldTick size={40} color={tc.primary} variant="Bold" />
             </View>
-            <Text style={{ fontSize: 22, fontWeight: '700', color: tc.primary, marginBottom: 4, textAlign: 'center' as const }}>
+            <Text style={{ fontSize: typography.fontSize.heading1, fontWeight: typography.fontWeight.bold, color: tc.primary, marginBottom: 4, textAlign: 'center' as const }}>
               Verified Local Guide
             </Text>
-            <Text style={{ fontSize: 14, color: tc.textSecondary, textAlign: 'center' as const, lineHeight: 20 }}>
+            <Text style={{ fontSize: typography.fontSize.bodyLg, color: tc.textSecondary, textAlign: 'center' as const, lineHeight: 20 }}>
               You are an approved Guidera partner — start accepting bookings and earning
             </Text>
             {approvedAt && (
@@ -1269,7 +1265,7 @@ export default function PartnerApplicationScreen() {
                 marginTop: 12, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20,
                 backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
               }}>
-                <Text style={{ fontSize: 12, color: tc.textTertiary }}>
+                <Text style={{ fontSize: typography.fontSize.bodySm, color: tc.textTertiary }}>
                   Approved on {new Date(approvedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                 </Text>
               </View>
@@ -1277,7 +1273,7 @@ export default function PartnerApplicationScreen() {
           </View>
 
           {/* Perks */}
-          <Text style={{ fontSize: 16, fontWeight: '700', color: tc.textPrimary, marginBottom: 12 }}>Your Partner Perks</Text>
+          <Text style={{ fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, color: tc.textPrimary, marginBottom: 12 }}>Your Partner Perks</Text>
           {GUIDE_PERKS.map((perk, index) => (
             <View key={index} style={{
               flexDirection: 'row' as const, alignItems: 'center' as const, borderRadius: 16, padding: 14,
@@ -1290,20 +1286,20 @@ export default function PartnerApplicationScreen() {
                 <TickCircle size={20} color={tc.primary} variant="Bold" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: tc.textPrimary }}>{perk.title}</Text>
-                <Text style={{ fontSize: 12, color: tc.textSecondary, marginTop: 2, lineHeight: 16 }}>{perk.desc}</Text>
+                <Text style={{ fontSize: typography.fontSize.bodyLg, fontWeight: typography.fontWeight.semibold, color: tc.textPrimary }}>{perk.title}</Text>
+                <Text style={{ fontSize: typography.fontSize.bodySm, color: tc.textSecondary, marginTop: 2, lineHeight: 16 }}>{perk.desc}</Text>
               </View>
-              <TickCircle size={16} color="#16A34A" variant="Bold" />
+              <TickCircle size={16} color={tc.success} variant="Bold" />
             </View>
           ))}
 
           {/* CTA */}
           <TouchableOpacity
             style={{ borderRadius: 16, height: 52, justifyContent: 'center' as const, alignItems: 'center' as const, marginTop: 16, backgroundColor: tc.primary }}
-            onPress={() => router.replace('/community' as any)}
+            onPress={() => router.replace('/community')}
             activeOpacity={0.8}
           >
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>Go to Community</Text>
+            <Text style={{ fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold, color: tc.white }}>Go to Community</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -1349,7 +1345,7 @@ export default function PartnerApplicationScreen() {
 
       {/* Bottom Button */}
       {step < TOTAL_STEPS && (
-        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderTopColor: tc.borderSubtle }]}>
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: isDark ? tc.bgSecondary : tc.white, borderTopColor: tc.borderSubtle }]}>
           <TouchableOpacity
             style={[
               styles.nextButton,
@@ -1367,7 +1363,7 @@ export default function PartnerApplicationScreen() {
             >
               {step === 4 ? 'Skip & Continue' : 'Continue'}
             </Text>
-            <ArrowRight2 size={18} color={canProceed() ? '#FFFFFF' : tc.textTertiary} />
+            <ArrowRight2 size={18} color={canProceed() ? tc.white : tc.textTertiary} />
           </TouchableOpacity>
         </View>
       )}
@@ -1447,7 +1443,7 @@ function SummaryRow({
       <Text
         style={[
           summaryStyles.value,
-          { color: highlight ? '#22C55E' : tc.textPrimary },
+          { color: highlight ? tc.success : tc.textPrimary },
         ]}
         numberOfLines={2}
       >
@@ -1465,13 +1461,13 @@ const summaryStyles = StyleSheet.create({
     paddingVertical: 10,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.medium,
     minWidth: 80,
   },
   value: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.semibold,
     flex: 1,
     textAlign: 'right',
     marginLeft: 12,
@@ -1493,12 +1489,12 @@ const successStyles = StyleSheet.create({
   },
   title: {
     fontSize: 26,
-    fontWeight: '800',
+    fontWeight: typography.fontWeight.bold,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: typography.fontSize.heading3,
     lineHeight: 22,
     textAlign: 'center',
     paddingHorizontal: 8,
@@ -1522,8 +1518,8 @@ const successStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepNumber: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.bold,
     color: '#FFFFFF',
   },
   timelineLine: {
@@ -1537,12 +1533,12 @@ const successStyles = StyleSheet.create({
     paddingBottom: 20,
   },
   timelineTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     marginBottom: 4,
   },
   timelineDesc: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     lineHeight: 19,
   },
   infoCard: {
@@ -1552,12 +1548,12 @@ const successStyles = StyleSheet.create({
     borderWidth: 1,
   },
   infoTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: typography.fontSize.heading3,
+    fontWeight: typography.fontWeight.bold,
     marginBottom: 8,
   },
   infoText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     lineHeight: 22,
   },
   primaryBtn: {
@@ -1567,8 +1563,8 @@ const successStyles = StyleSheet.create({
     marginBottom: 12,
   },
   primaryBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     color: '#FFFFFF',
   },
   secondaryBtn: {
@@ -1578,8 +1574,8 @@ const successStyles = StyleSheet.create({
     borderWidth: 1,
   },
   secondaryBtnText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
   },
 });
 
@@ -1611,16 +1607,16 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: typography.fontWeight.bold,
   },
   stepLabel: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: typography.fontSize.bodySm,
+    fontWeight: typography.fontWeight.medium,
     marginTop: 2,
   },
   stepIndicator: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.medium,
     minWidth: 40,
     textAlign: 'right',
   },
@@ -1643,11 +1639,11 @@ const styles = StyleSheet.create({
   },
   stepTitle: {
     fontSize: 24,
-    fontWeight: '800',
+    fontWeight: typography.fontWeight.bold,
     marginBottom: 6,
   },
   stepSubtitle: {
-    fontSize: 14,
+    fontSize: typography.fontSize.bodyLg,
     lineHeight: 20,
     marginBottom: 24,
   },
@@ -1657,18 +1653,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.semibold,
     marginBottom: 6,
   },
   inputHint: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     marginBottom: 8,
   },
   textInput: {
     borderRadius: 12,
     padding: 14,
-    fontSize: 15,
+    fontSize: typography.fontSize.heading3,
     borderWidth: 1,
   },
   textArea: {
@@ -1676,7 +1672,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   charCount: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     textAlign: 'right',
     marginTop: -12,
     marginBottom: 8,
@@ -1710,8 +1706,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   chipText: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.medium,
   },
 
   // Dropdowns
@@ -1727,8 +1723,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   dropdownChipText: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.medium,
   },
 
   // Services
@@ -1753,12 +1749,12 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   serviceLabel: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.medium,
     flex: 1,
   },
   serviceDesc: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     width: '100%',
     marginTop: 4,
     paddingLeft: 36,
@@ -1791,8 +1787,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   uploadText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.semibold,
     marginTop: 8,
   },
   uploadedPhoto: {
@@ -1842,8 +1838,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   portfolioAddText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodySm,
+    fontWeight: typography.fontWeight.semibold,
   },
 
   // Skip note
@@ -1853,14 +1849,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   skipNoteText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     lineHeight: 18,
   },
 
   // Section label
   sectionLabel: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     marginBottom: spacing.md,
   },
 
@@ -1885,8 +1881,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   verificationTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: typography.fontSize.heading2,
+    fontWeight: typography.fontWeight.bold,
     marginBottom: 16,
   },
   verificationSteps: {
@@ -1894,7 +1890,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   verificationStep: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     lineHeight: 24,
     paddingLeft: 4,
   },
@@ -1905,24 +1901,24 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   verifyButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: typography.fontSize.heading3,
+    fontWeight: typography.fontWeight.bold,
     color: '#FFFFFF',
   },
   verificationNote: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     textAlign: 'center',
   },
   verifyingState: {
     alignItems: 'center',
   },
   verifyingText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
     marginBottom: 6,
   },
   verifyingSubtext: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     marginBottom: 16,
   },
   loadingDots: {
@@ -1938,13 +1934,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   verifiedTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: typography.fontSize.heading2,
+    fontWeight: typography.fontWeight.bold,
     color: '#22C55E',
     marginBottom: 6,
   },
   verifiedSubtext: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     textAlign: 'center',
   },
 
@@ -1968,11 +1964,11 @@ const styles = StyleSheet.create({
   },
   completionTitle: {
     fontSize: 24,
-    fontWeight: '800',
+    fontWeight: typography.fontWeight.bold,
     marginBottom: 6,
   },
   completionSubtitle: {
-    fontSize: 15,
+    fontSize: typography.fontSize.heading3,
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -2008,7 +2004,7 @@ const styles = StyleSheet.create({
   },
   termsText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     lineHeight: 18,
   },
   submitButton: {
@@ -2019,12 +2015,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   submitButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     color: '#FFFFFF',
   },
   reviewNote: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     textAlign: 'center',
     lineHeight: 18,
   },
@@ -2048,8 +2044,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   nextButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     color: '#FFFFFF',
   },
 
@@ -2067,7 +2063,7 @@ const styles = StyleSheet.create({
   },
   webViewTitle: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: typography.fontWeight.bold,
     textAlign: 'center',
   },
   webViewLoading: {
@@ -2076,7 +2072,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   webViewLoadingText: {
-    fontSize: 14,
+    fontSize: typography.fontSize.bodyLg,
     marginTop: 12,
   },
 });

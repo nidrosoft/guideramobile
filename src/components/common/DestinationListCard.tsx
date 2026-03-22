@@ -9,11 +9,9 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { Star1, Location, DollarCircle, TrendUp, Crown, Bookmark } from 'iconsax-react-native';
-import { typography, spacing } from '@/styles';
+import { typography, spacing, fontFamily } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import type { CuratedDestination } from '@/hooks/useSectionDestinations';
-
-const PRIMARY = '#3FC39E';
 
 const BUDGET_LABELS: Record<number, string> = {
   1: 'Budget',
@@ -94,16 +92,16 @@ export default function DestinationListCard({ destination, onPress, onBookmark }
 
           {/* Budget */}
           <View style={[styles.budgetPill, { backgroundColor: isDark ? 'rgba(63,195,158,0.15)' : 'rgba(63,195,158,0.1)' }]}>
-            <DollarCircle size={12} color={PRIMARY} variant="Bold" />
-            <Text style={[styles.budgetText, { color: PRIMARY }]}>
+            <DollarCircle size={12} color={colors.primary} variant="Bold" />
+            <Text style={[styles.budgetText, { color: colors.primary }]}>
               {destination.estimated_daily_budget_usd ? `$${destination.estimated_daily_budget_usd}/day` : budgetLabel}
             </Text>
           </View>
 
-          <View style={{ flex: 1 }} />
+          <View style={styles.spacer} />
 
           {/* Explore button */}
-          <View style={[styles.exploreBtn, { backgroundColor: PRIMARY }]}>
+          <View style={[styles.exploreBtn, { backgroundColor: colors.primary }]}>
             <Text style={styles.exploreBtnText}>Explore</Text>
           </View>
         </View>
@@ -149,7 +147,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.92)',
   },
   trendingText: {
-    fontFamily: 'Rubik-Bold',
+    fontFamily: fontFamily.bold,
     fontSize: 8,
     color: '#4CAF50',
     letterSpacing: 0.3,
@@ -167,7 +165,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.7)',
   },
   featuredText: {
-    fontFamily: 'Rubik-Bold',
+    fontFamily: fontFamily.bold,
     fontSize: 8,
     color: '#FFD700',
     letterSpacing: 0.3,
@@ -184,18 +182,18 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   locationText: {
-    fontFamily: 'Rubik-Regular',
+    fontFamily: fontFamily.regular,
     fontSize: 11,
     flex: 1,
   },
   title: {
-    fontFamily: 'Rubik-SemiBold',
+    fontFamily: fontFamily.semibold,
     fontSize: 14,
     lineHeight: 19,
     marginBottom: 2,
   },
   subtitle: {
-    fontFamily: 'Rubik-Regular',
+    fontFamily: fontFamily.regular,
     fontSize: 12,
     marginBottom: 6,
   },
@@ -210,7 +208,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   ratingText: {
-    fontFamily: 'Rubik-SemiBold',
+    fontFamily: fontFamily.semibold,
     fontSize: 12,
   },
   budgetPill: {
@@ -222,7 +220,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   budgetText: {
-    fontFamily: 'Rubik-Medium',
+    fontFamily: fontFamily.medium,
     fontSize: 10,
   },
   exploreBtn: {
@@ -231,9 +229,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   exploreBtnText: {
-    fontFamily: 'Rubik-Bold',
+    fontFamily: fontFamily.bold,
     fontSize: 12,
     color: '#FFFFFF',
+  },
+  spacer: {
+    flex: 1,
   },
   bookmarkBtn: {
     position: 'absolute',

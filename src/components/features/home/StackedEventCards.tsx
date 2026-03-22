@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
@@ -19,9 +19,6 @@ import { useHomepageDataSafe, filterByCategory, useSectionVisibility } from '@/f
 import { Clock, Location, People, Ticket, Calendar } from 'iconsax-react-native';
 import { SkeletonStackedEvents } from '@/components/common/SkeletonLoader';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH - 48;
-const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 const SWIPE_VELOCITY_THRESHOLD = 500;
 const MAX_ROTATION = 10;
 
@@ -46,6 +43,9 @@ interface StackedEventCardsProps {
 
 export default function StackedEventCards({ events = [], loading = false }: StackedEventCardsProps) {
   const { colors, isDark } = useTheme();
+  const { width: SCREEN_WIDTH, height: screenHeight } = useWindowDimensions();
+  const CARD_WIDTH = SCREEN_WIDTH - 48;
+  const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const homepageData = useHomepageDataSafe();
@@ -174,7 +174,7 @@ export default function StackedEventCards({ events = [], loading = false }: Stac
     .sort((a, b) => b!.position - a!.position) as { event: EventCardData; index: number; position: number }[];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { height: Math.min(520, screenHeight * 0.65) }]}>
       {visibleCards.map(({ event, index, position }) => {
         const cardContent = (key: string) => (
           <Animated.View
@@ -182,7 +182,8 @@ export default function StackedEventCards({ events = [], loading = false }: Stac
             style={[
               styles.card,
               {
-                backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF',
+                width: CARD_WIDTH,
+                backgroundColor: isDark ? colors.bgSecondary : colors.white,
                 borderColor: colors.borderSubtle,
                 zIndex: filteredEvents.length - position,
               },
@@ -204,7 +205,7 @@ export default function StackedEventCards({ events = [], loading = false }: Stac
 
             {/* Event Info Section */}
             <View style={styles.eventInfoSection}>
-              <Text style={[styles.eventName, { color: colors.textPrimary }]}>{event.eventName}</Text>
+              <Text style={[styles.eventName, { color: colors.textPrimary }]} numberOfLines={2} ellipsizeMode="tail">{event.eventName}</Text>
               
               <View style={styles.venueRow}>
                 <Location size={16} color={colors.textSecondary} variant="Bold" />
@@ -263,7 +264,6 @@ export default function StackedEventCards({ events = [], loading = false }: Stac
 
 const styles = StyleSheet.create({
   container: {
-    height: 520,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xl,
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   },
   card: {
     position: 'absolute',
-    width: CARD_WIDTH,
+    // width applied inline with CARD_WIDTH from useWindowDimensions
     borderRadius: 24,
     padding: spacing.lg,
     overflow: 'hidden',

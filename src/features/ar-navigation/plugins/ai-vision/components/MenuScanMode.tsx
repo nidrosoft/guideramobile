@@ -16,7 +16,9 @@ import {
   ActivityIndicator,
   Image,
   SectionList,
+  Dimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
@@ -53,6 +55,7 @@ export default function MenuScanMode({
   onBuildOrder,
   initialBase64,
 }: MenuScanModeProps) {
+  const insets = useSafeAreaInsets();
   const cameraRef = useRef<any>(null);
   const [showCamera, setShowCamera] = useState(!initialBase64);
   const [capturedPages, setCapturedPages] = useState<{ uri: string; base64: string }[]>([]);
@@ -222,7 +225,7 @@ export default function MenuScanMode({
       <View style={styles.container}>
         <CameraView ref={cameraRef} style={styles.camera} facing="back" />
 
-        <View style={styles.topBar}>
+        <View style={[styles.topBar, { top: insets.top + 8 }]}>
           <View style={styles.modeLabel}>
             <Receipt21 size={16} color="#EC4899" variant="Bold" />
             <Text style={styles.modeLabelText}>
@@ -285,7 +288,7 @@ export default function MenuScanMode({
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.menuHeader}>
+      <View style={[styles.menuHeader, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.backBtn} onPress={handleReset} activeOpacity={0.7}>
           <ArrowLeft2 size={20} color="#FFFFFF" variant="Bold" />
           <Text style={styles.backText}>New Scan</Text>
@@ -412,6 +415,8 @@ export default function MenuScanMode({
   );
 }
 
+const { width: _menuScreenW } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#111' },
   camera: { flex: 1 },
@@ -425,7 +430,7 @@ const styles = StyleSheet.create({
   },
   modeLabelText: { fontSize: 13, fontWeight: '600', color: '#FFFFFF' },
   scanFrame: {
-    position: 'absolute', top: '25%', alignSelf: 'center', width: 300, height: 260,
+    position: 'absolute', top: '25%', alignSelf: 'center', width: Math.min(300, _menuScreenW * 0.8), height: Math.min(260, _menuScreenW * 0.7),
     justifyContent: 'center', alignItems: 'center',
   },
   corner: { position: 'absolute', width: 28, height: 28, borderColor: '#EC4899' },

@@ -39,7 +39,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '@/styles';
+import { colors, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { partnerService } from '@/services/community/partner.service';
@@ -315,7 +315,7 @@ export default function BecomeGuideScreen() {
 
       <View style={styles.verificationCard}>
         <View style={styles.verificationIcon}>
-          <ShieldTick size={40} color={verificationDone ? '#22C55E' : colors.primary} variant="Bold" />
+          <ShieldTick size={40} color={verificationDone ? themeColors.success : themeColors.primary} variant="Bold" />
         </View>
 
         {!isVerifying && !verificationDone && (
@@ -368,7 +368,7 @@ export default function BecomeGuideScreen() {
           style={styles.completionGradient}
         >
           <View style={styles.completionIcon}>
-            <ShieldTick size={48} color="#22C55E" variant="Bold" />
+            <ShieldTick size={48} color={themeColors.success} variant="Bold" />
           </View>
           <Text style={styles.completionTitle}>You're Ready!</Text>
           <Text style={styles.completionSubtitle}>
@@ -392,7 +392,7 @@ export default function BecomeGuideScreen() {
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Verification</Text>
-              <Text style={[styles.summaryValue, { color: '#22C55E' }]}>✓ Identity Verified</Text>
+              <Text style={[styles.summaryValue, { color: themeColors.success }]}>✓ Identity Verified</Text>
             </View>
           </View>
 
@@ -473,7 +473,7 @@ export default function BecomeGuideScreen() {
         <ScrollView contentContainerStyle={styles.statusScrollContent}>
           <View style={[styles.statusCard, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle }]}>
             <View style={[styles.statusIconCircle, { backgroundColor: '#FFF8E1' }]}>
-              <Clock size={40} color="#F59E0B" variant="Bold" />
+              <Clock size={40} color={colors.warning} variant="Bold" />
             </View>
             <Text style={[styles.statusTitle, { color: themeColors.textPrimary }]}>Application Under Review</Text>
             <Text style={[styles.statusSubtitle, { color: themeColors.textSecondary }]}>
@@ -523,7 +523,7 @@ export default function BecomeGuideScreen() {
         <ScrollView contentContainerStyle={styles.statusScrollContent}>
           <View style={[styles.statusCard, { backgroundColor: themeColors.bgElevated, borderColor: themeColors.borderSubtle }]}>
             <View style={[styles.statusIconCircle, { backgroundColor: '#FFEBEE' }]}>
-              <ShieldTick size={40} color="#EF4444" variant="Bold" />
+              <ShieldTick size={40} color={colors.error} variant="Bold" />
             </View>
             <Text style={[styles.statusTitle, { color: themeColors.textPrimary }]}>Verification Declined</Text>
             <Text style={[styles.statusSubtitle, { color: themeColors.textSecondary }]}>
@@ -574,7 +574,7 @@ export default function BecomeGuideScreen() {
 
       {/* Bottom Button */}
       {step < TOTAL_STEPS && (
-        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: isDark ? '#1A1A1A' : themeColors.white }]}>
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: isDark ? themeColors.bgSecondary : themeColors.white }]}>
           <TouchableOpacity
             style={[styles.nextButton, !canProceed() && styles.nextButtonDisabled]}
             onPress={handleNext}
@@ -614,14 +614,14 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
     textAlign: 'center',
   },
   stepIndicator: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textTertiary,
-    fontWeight: '500',
+    fontWeight: typography.fontWeight.medium,
     minWidth: 40,
     textAlign: 'right',
   },
@@ -652,24 +652,24 @@ const styles = StyleSheet.create({
   },
   stepTitle: {
     fontSize: 24,
-    fontWeight: '800',
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
     marginBottom: 6,
   },
   stepSubtitle: {
-    fontSize: 14,
+    fontSize: typography.fontSize.bodyLg,
     color: colors.textSecondary,
     lineHeight: 20,
     marginBottom: 24,
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
     marginBottom: 6,
   },
   inputHint: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textTertiary,
     marginBottom: 8,
   },
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated,
     borderRadius: 12,
     padding: 14,
-    fontSize: 15,
+    fontSize: typography.fontSize.heading3,
     color: colors.textPrimary,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
@@ -688,7 +688,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   charCount: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     color: colors.textTertiary,
     textAlign: 'right',
     marginTop: -12,
@@ -712,13 +712,13 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   chipText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textSecondary,
-    fontWeight: '500',
+    fontWeight: typography.fontWeight.medium,
   },
   chipTextSelected: {
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: typography.fontWeight.semibold,
   },
 
   // Expertise
@@ -739,18 +739,18 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   expertiseEmoji: {
-    fontSize: 20,
+    fontSize: typography.fontSize.kpiValue,
     marginRight: 12,
   },
   expertiseLabel: {
     flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.medium,
     color: colors.textPrimary,
   },
   expertiseLabelSelected: {
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: typography.fontWeight.semibold,
   },
   expertiseCheck: {
     marginLeft: 8,
@@ -768,13 +768,13 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   uploadText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.primary,
     marginTop: 10,
   },
   uploadHint: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textTertiary,
     marginTop: 4,
   },
@@ -796,7 +796,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   skipNoteText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: '#92400E',
     lineHeight: 18,
   },
@@ -809,7 +809,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    shadowColor: '#000',
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
@@ -825,8 +825,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   verificationTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: typography.fontSize.heading2,
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
     marginBottom: 16,
   },
@@ -835,7 +835,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   verificationStep: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textSecondary,
     lineHeight: 24,
     paddingLeft: 4,
@@ -848,12 +848,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   verifyButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: typography.fontSize.heading3,
+    fontWeight: typography.fontWeight.bold,
     color: colors.white,
   },
   verificationNote: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textTertiary,
     textAlign: 'center',
   },
@@ -861,13 +861,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   verifyingText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
     marginBottom: 6,
   },
   verifyingSubtext: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textTertiary,
     marginBottom: 16,
   },
@@ -885,13 +885,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   verifiedTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#22C55E',
+    fontSize: typography.fontSize.heading2,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.success,
     marginBottom: 6,
   },
   verifiedSubtext: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textSecondary,
     textAlign: 'center',
   },
@@ -916,12 +916,12 @@ const styles = StyleSheet.create({
   },
   completionTitle: {
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
     marginBottom: 6,
   },
   completionSubtitle: {
-    fontSize: 15,
+    fontSize: typography.fontSize.heading3,
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
@@ -934,7 +934,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    shadowColor: '#000',
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
@@ -949,34 +949,34 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.borderSubtle,
   },
   summaryLabel: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textTertiary,
-    fontWeight: '500',
+    fontWeight: typography.fontWeight.medium,
   },
   summaryValue: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textPrimary,
-    fontWeight: '600',
+    fontWeight: typography.fontWeight.semibold,
     flex: 1,
     textAlign: 'right',
     marginLeft: 16,
   },
   completionNote: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 24,
   },
   completeButton: {
-    backgroundColor: '#22C55E',
+    backgroundColor: colors.success,
     borderRadius: 14,
     paddingVertical: 16,
     paddingHorizontal: 40,
   },
   completeButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     color: colors.white,
   },
 
@@ -1005,8 +1005,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.borderSubtle,
   },
   nextButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     color: colors.white,
   },
   nextButtonTextDisabled: {
@@ -1039,13 +1039,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   statusTitle: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: typography.fontSize.heading1,
+    fontWeight: typography.fontWeight.bold,
     textAlign: 'center',
     marginBottom: 8,
   },
   statusSubtitle: {
-    fontSize: 14,
+    fontSize: typography.fontSize.bodyLg,
     lineHeight: 20,
     textAlign: 'center',
   },
@@ -1058,8 +1058,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   statusActionButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     color: colors.white,
   },
   statusStepsCard: {
@@ -1069,8 +1069,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   statusStepsTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     marginBottom: 16,
   },
   statusStepRow: {
@@ -1087,7 +1087,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statusStepLabel: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: typography.fontSize.heading3,
+    fontWeight: typography.fontWeight.medium,
   },
 });

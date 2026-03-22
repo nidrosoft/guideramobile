@@ -28,6 +28,7 @@ import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { savedService, SavedCollection } from '@/services/saved.service';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -38,6 +39,7 @@ export default function CollectionsScreen() {
   const router = useRouter();
   const { colors: tc } = useTheme();
   const { profile } = useAuth();
+  const { showError } = useToast();
   const [collections, setCollections] = useState<SavedCollection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -92,7 +94,7 @@ export default function CollectionsScreen() {
       });
       
       if (error) {
-        Alert.alert('Error', 'Failed to create collection. Please try again.');
+        showError('Failed to create collection. Please try again.');
         return;
       }
       
@@ -106,7 +108,7 @@ export default function CollectionsScreen() {
       setNewCollectionDescription('');
     } catch (error) {
       console.error('Error creating collection:', error);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      if (__DEV__) console.warn('Collection error');
     } finally {
       setIsCreating(false);
     }

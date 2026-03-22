@@ -1,9 +1,11 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Sms, Eye, EyeSlash } from 'iconsax-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import CloseIcon from '@/components/common/icons/CloseIcon';
 import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -25,6 +27,8 @@ export default function EmailSignUp() {
   useWarmUpBrowser();
   const router = useRouter();
   const { colors: tc, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { isLoaded, signUp, setActive } = useSignUp();
   const { startSSOFlow } = useSSO();
   const [email, setEmail] = useState('');
@@ -97,7 +101,7 @@ export default function EmailSignUp() {
         await setActive({ session: signUpAttempt.createdSessionId });
         router.replace('/(onboarding)/intro');
       } else {
-        console.error('[EmailSignup] Status:', JSON.stringify(signUpAttempt, null, 2));
+        if (__DEV__) console.error('[EmailSignup] Status:', JSON.stringify(signUpAttempt, null, 2));
         setError('Verification incomplete. Please try again.');
       }
     } catch (err: any) {
@@ -112,12 +116,20 @@ export default function EmailSignUp() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setError('');
     try {
-      const { createdSessionId, setActive: ssoSetActive } = await startSSOFlow({
+      const { createdSessionId, setActive: ssoSetActive, signUp: ssoSignUp } = await startSSOFlow({
         strategy: 'oauth_google',
         redirectUrl: AuthSession.makeRedirectUri(),
       });
       if (createdSessionId && ssoSetActive) {
         await ssoSetActive({ session: createdSessionId });
+        // Navigate after successful SSO
+        const isNewUser = ssoSignUp?.status === 'complete';
+        if (isNewUser) {
+          router.replace('/(onboarding)/intro');
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 300));
+          router.replace('/(tabs)');
+        }
       }
     } catch (err: any) {
       const msg = err?.errors?.[0]?.longMessage || err?.message || 'Google sign up failed';
@@ -136,49 +148,58 @@ export default function EmailSignUp() {
       >
         <StatusBar style={isDark ? 'light' : 'dark'} />
         
-        <TouchableOpacity style={styles.closeButton} onPress={handleBack}>
+        <TouchableOpacity style={[styles.closeButton, { top: insets.top + 10 }]} onPress={handleBack} accessibilityRole="button" accessibilityLabel="Close">
           <CloseIcon size={24} color={tc.textPrimary} />
         </TouchableOpacity>
 
-        <View style={styles.content}>
-          <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
-            <Sms size={32} color={tc.textPrimary} variant="Outline" />
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.content, { paddingTop: insets.top + 60 }]}>
+            <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
+              <Sms size={32} color={tc.textPrimary} variant="Outline" />
+            </View>
+
+            <Text style={[styles.title, { color: tc.textPrimary }]}>{t('auth.signUp.checkEmail')}</Text>
+            <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
+              {t('auth.signUp.verificationSent')}{'\n'}
+              <Text style={{ fontWeight: typography.fontWeight.semibold, color: tc.textPrimary }}>{email}</Text>
+            </Text>
+
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
+                placeholder={t('auth.signUp.codePlaceholder')}
+                placeholderTextColor={tc.textTertiary}
+                keyboardType="number-pad"
+                accessibilityLabel="Verification code"
+                value={code}
+                onChangeText={(text) => { setCode(text); setError(''); }}
+                autoFocus
+                maxLength={6}
+              />
+            </View>
+
+            {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
+
+            <TouchableOpacity
+              style={[styles.primaryButton, { backgroundColor: tc.primary }, (!code || isLoading) && { opacity: 0.5 }]}
+              onPress={handleVerifyEmail}
+              disabled={!code || isLoading}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Verify and continue"
+            >
+              {isLoading ? (
+                <ActivityIndicator color={tc.white} />
+              ) : (
+                <Text style={[styles.primaryButtonText, { color: tc.white }]}>{t('auth.signUp.verifyAndContinue')}</Text>
+              )}
+            </TouchableOpacity>
           </View>
-
-          <Text style={[styles.title, { color: tc.textPrimary }]}>Check your email</Text>
-          <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
-            We sent a verification code to{'\n'}
-            <Text style={{ fontWeight: typography.fontWeight.semibold, color: tc.textPrimary }}>{email}</Text>
-          </Text>
-
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
-              placeholder="Enter 6-digit code"
-              placeholderTextColor={tc.textTertiary}
-              keyboardType="number-pad"
-              value={code}
-              onChangeText={(text) => { setCode(text); setError(''); }}
-              autoFocus
-              maxLength={6}
-            />
-          </View>
-
-          {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
-
-          <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: tc.primary }, (!code || isLoading) && { opacity: 0.5 }]}
-            onPress={handleVerifyEmail}
-            disabled={!code || isLoading}
-            activeOpacity={0.8}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={tc.white} />
-            ) : (
-              <Text style={[styles.primaryButtonText, { color: tc.white }]}>Verify & Continue</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     );
   }
@@ -191,102 +212,116 @@ export default function EmailSignUp() {
     >
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
-      <TouchableOpacity style={styles.closeButton} onPress={handleBack}>
+      <TouchableOpacity style={[styles.closeButton, { top: insets.top + 10 }]} onPress={handleBack} accessibilityRole="button" accessibilityLabel="Close">
         <CloseIcon size={24} color={tc.textPrimary} />
       </TouchableOpacity>
 
-      <View style={styles.content}>
-        <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
-          <Sms size={32} color={tc.textPrimary} variant="Outline" />
-        </View>
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.content, { paddingTop: insets.top + 60 }]}>
+          <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
+            <Sms size={32} color={tc.textPrimary} variant="Outline" />
+          </View>
 
-        <Text style={[styles.title, { color: tc.textPrimary }]}>Create your account</Text>
-        <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
-          Just an email and password to get started. We'll personalize your experience next.
-        </Text>
+          <Text style={[styles.title, { color: tc.textPrimary }]}>{t('auth.signUp.title')}</Text>
+          <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
+            {t('auth.signUp.subtitle')}
+          </Text>
 
-        {/* Email */}
-        <View style={styles.inputContainer}>
-          <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Email</Text>
-          <TextInput
-            style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
-            placeholder="you@example.com"
-            placeholderTextColor={tc.textTertiary}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            value={email}
-            onChangeText={(text) => { setEmail(text); setError(''); }}
-            autoFocus
-          />
-        </View>
-
-        {/* Password with show/hide */}
-        <View style={styles.inputContainer}>
-          <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Password</Text>
-          <View style={[styles.passwordRow, { borderColor: tc.borderMedium, backgroundColor: tc.bgElevated }]}>
+          {/* Email */}
+          <View style={styles.inputContainer}>
+            <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>{t('auth.signUp.email')}</Text>
             <TextInput
-              style={[styles.passwordInput, { color: tc.textPrimary }]}
-              placeholder="At least 8 characters"
+              style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
+              placeholder={t('auth.signUp.emailPlaceholder')}
               placeholderTextColor={tc.textTertiary}
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={(text) => { setPassword(text); setError(''); }}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              accessibilityLabel="Email address"
+              value={email}
+              onChangeText={(text) => { setEmail(text); setError(''); }}
+              autoFocus
             />
-            <TouchableOpacity
-              style={styles.eyeButton}
-              onPress={() => setShowPassword(!showPassword)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              {showPassword ? (
-                <EyeSlash size={20} color={tc.textTertiary} variant="Outline" />
-              ) : (
-                <Eye size={20} color={tc.textTertiary} variant="Outline" />
-              )}
+          </View>
+
+          {/* Password with show/hide */}
+          <View style={styles.inputContainer}>
+            <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>{t('auth.signUp.password')}</Text>
+            <View style={[styles.passwordRow, { borderColor: tc.borderMedium, backgroundColor: tc.bgElevated }]}>
+              <TextInput
+                style={[styles.passwordInput, { color: tc.textPrimary }]}
+                placeholder={t('auth.signUp.passwordPlaceholder')}
+                placeholderTextColor={tc.textTertiary}
+                secureTextEntry={!showPassword}
+                accessibilityLabel="Password"
+                value={password}
+                onChangeText={(text) => { setPassword(text); setError(''); }}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword(!showPassword)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeSlash size={20} color={tc.textTertiary} variant="Outline" />
+                ) : (
+                  <Eye size={20} color={tc.textTertiary} variant="Outline" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
+
+          {/* Create Account Button */}
+          <TouchableOpacity
+            style={[styles.primaryButton, { backgroundColor: tc.primary }, (!isFormValid || isLoading) && { opacity: 0.5 }]}
+            onPress={handleSignUp}
+            disabled={!isFormValid || isLoading}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Create account"
+          >
+            {isLoading ? (
+              <ActivityIndicator color={tc.white} />
+            ) : (
+              <Text style={[styles.primaryButtonText, { color: tc.white }]}>{t('auth.signUp.createAccount')}</Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
+            <Text style={[styles.dividerText, { color: tc.textTertiary }]}>{t('auth.signUp.or')}</Text>
+            <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
+          </View>
+
+          {/* Google Sign Up */}
+          <TouchableOpacity
+            style={[styles.secondaryButton, { backgroundColor: tc.bgElevated, borderColor: tc.borderMedium }]}
+            onPress={handleGoogleSignUp}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Continue with Google"
+          >
+            <Text style={[styles.secondaryButtonText, { color: tc.textPrimary }]}>{t('auth.signUp.continueWithGoogle')}</Text>
+          </TouchableOpacity>
+
+          {/* Sign In Link */}
+          <View style={styles.footer}>
+            <Text style={[styles.footerText, { color: tc.textSecondary }]}>{t('auth.signUp.hasAccount')} </Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/sign-in')} accessibilityRole="button" accessibilityLabel="Sign in">
+              <Text style={[styles.footerLink, { color: tc.primary }]}>{t('auth.signUp.signIn')}</Text>
             </TouchableOpacity>
           </View>
         </View>
-
-        {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
-
-        {/* Create Account Button */}
-        <TouchableOpacity
-          style={[styles.primaryButton, { backgroundColor: tc.primary }, (!isFormValid || isLoading) && { opacity: 0.5 }]}
-          onPress={handleSignUp}
-          disabled={!isFormValid || isLoading}
-          activeOpacity={0.8}
-        >
-          {isLoading ? (
-            <ActivityIndicator color={tc.white} />
-          ) : (
-            <Text style={[styles.primaryButtonText, { color: tc.white }]}>Create Account</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Divider */}
-        <View style={styles.divider}>
-          <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
-          <Text style={[styles.dividerText, { color: tc.textTertiary }]}>or</Text>
-          <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
-        </View>
-
-        {/* Google Sign Up */}
-        <TouchableOpacity
-          style={[styles.secondaryButton, { backgroundColor: tc.bgElevated, borderColor: tc.borderMedium }]}
-          onPress={handleGoogleSignUp}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.secondaryButtonText, { color: tc.textPrimary }]}>Continue with Google</Text>
-        </TouchableOpacity>
-
-        {/* Sign In Link */}
-        <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: tc.textSecondary }]}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => router.push('/(auth)/sign-in')}>
-            <Text style={[styles.footerLink, { color: tc.primary }]}>Sign In</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }

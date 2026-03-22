@@ -26,7 +26,7 @@ import {
   DollarCircle,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { spacing } from '@/styles';
+import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 
 interface PartnerProgramSheetProps {
@@ -200,13 +200,13 @@ const styles = StyleSheet.create({
 
   // Title & Description
   title: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: typography.fontSize.heading1,
+    fontWeight: typography.fontWeight.bold,
     textAlign: 'center',
     marginBottom: 10,
   },
   description: {
-    fontSize: 14,
+    fontSize: typography.fontSize.bodyLg,
     lineHeight: 21,
     textAlign: 'center',
     marginBottom: 28,
@@ -232,8 +232,8 @@ const styles = StyleSheet.create({
   },
   bulletText: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: typography.fontSize.heading3,
+    fontWeight: typography.fontWeight.semibold,
   },
 
   // CTA Button
@@ -246,8 +246,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   ctaText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     color: '#FFFFFF',
   },
 
@@ -256,8 +256,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   maybeLaterText: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: typography.fontSize.heading3,
+    fontWeight: typography.fontWeight.medium,
     textAlign: 'center',
   },
 });

@@ -1,12 +1,5 @@
-import { View, StyleSheet } from 'react-native';
+import { MessagesListScreen } from '@/features/community';
 
 export default function Inbox() {
-  return <View style={styles.container} />;
+  return <MessagesListScreen />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-});

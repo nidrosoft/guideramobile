@@ -155,6 +155,9 @@ interface TripStore {
   trips: Trip[];
   currentTrip: Trip | null;
   isLoading: boolean;
+  isCreating: boolean;
+  isUpdating: boolean;
+  isDeleting: boolean;
   error: string | null;
   hasMore: boolean;
   
@@ -186,6 +189,9 @@ export const useTripStore = create<TripStore>((set, get) => ({
   trips: [],
   currentTrip: null,
   isLoading: false,
+  isCreating: false,
+  isUpdating: false,
+  isDeleting: false,
   error: null,
   hasMore: false,
   
@@ -291,7 +297,7 @@ export const useTripStore = create<TripStore>((set, get) => ({
   
   // Create new trip
   createTrip: async (data: CreateTripData) => {
-    set({ isLoading: true, error: null });
+    set({ isCreating: true, error: null });
     try {
       const insertPayload: Record<string, any> = {
         user_id: data.userId,
@@ -331,19 +337,19 @@ export const useTripStore = create<TripStore>((set, get) => ({
 
       set(state => ({
         trips: [newTrip, ...state.trips],
-        isLoading: false,
+        isCreating: false,
       }));
 
       return newTrip;
     } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
+      set({ error: (error as Error).message, isCreating: false });
       throw error;
     }
   },
   
   // Update trip
   updateTrip: async (id: string, data: UpdateTripData) => {
-    set({ isLoading: true, error: null });
+    set({ isUpdating: true, error: null });
     try {
       const updatePayload: Record<string, any> = {
         updated_at: new Date().toISOString(),
@@ -390,16 +396,16 @@ export const useTripStore = create<TripStore>((set, get) => ({
 
       set(state => ({
         trips: state.trips.map(trip => trip.id === id ? updatedTrip : trip),
-        isLoading: false,
+        isUpdating: false,
       }));
     } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
+      set({ error: (error as Error).message, isUpdating: false });
     }
   },
   
   // Delete trip (soft delete)
   deleteTrip: async (id: string) => {
-    set({ isLoading: true, error: null });
+    set({ isDeleting: true, error: null });
     try {
       const { error: dbError } = await supabase
         .from('trips')
@@ -411,10 +417,10 @@ export const useTripStore = create<TripStore>((set, get) => ({
       set(state => ({
         trips: state.trips.filter(trip => trip.id !== id),
         currentTrip: state.currentTrip?.id === id ? null : state.currentTrip,
-        isLoading: false,
+        isDeleting: false,
       }));
     } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
+      set({ error: (error as Error).message, isDeleting: false });
     }
   },
   
@@ -578,6 +584,9 @@ export const useTripStore = create<TripStore>((set, get) => ({
       trips: [],
       currentTrip: null,
       isLoading: false,
+      isCreating: false,
+      isUpdating: false,
+      isDeleting: false,
       error: null,
     });
   },

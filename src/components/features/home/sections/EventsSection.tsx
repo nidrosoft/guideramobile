@@ -14,8 +14,8 @@ import { useEvents } from '@/hooks/useEvents';
 import { eventsService, DiscoveredEvent } from '@/services/events.service';
 import { useAuth } from '@/context/AuthContext';
 
-const DEFAULT_CITY = 'San Diego';
-const DEFAULT_COUNTRY = 'United States';
+const DEFAULT_CITY = '';
+const DEFAULT_COUNTRY = '';
 
 // Map suburbs/small cities to their nearest major metro area (~30mi radius)
 // This ensures broader event coverage instead of hyper-local results
@@ -53,6 +53,59 @@ const METRO_AREA_MAP: Record<string, string> = {
   'Pembroke Pines': 'Miami', 'Hialeah': 'Miami', 'Fort Lauderdale': 'Miami',
   'Hollywood': 'Miami', 'Coral Gables': 'Miami', 'Miami Beach': 'Miami',
   'Cambridge': 'Boston', 'Somerville': 'Boston', 'Brookline': 'Boston',
+  // ─── International metro areas ───────────────────────────────────────
+  // United Kingdom
+  'Croydon': 'London', 'Camden': 'London', 'Westminster': 'London',
+  'Greenwich': 'London', 'Hackney': 'London', 'Islington': 'London',
+  'Brixton': 'London', 'Richmond': 'London', 'Wimbledon': 'London',
+  'Salford': 'Manchester', 'Stockport': 'Manchester', 'Bolton': 'Manchester',
+  'Leith': 'Edinburgh', 'Portobello': 'Edinburgh',
+  // France
+  'Boulogne-Billancourt': 'Paris', 'Saint-Denis': 'Paris', 'Neuilly-sur-Seine': 'Paris',
+  'Vincennes': 'Paris', 'Versailles': 'Paris', 'Montreuil': 'Paris',
+  'Villeurbanne': 'Lyon', 'Vénissieux': 'Lyon',
+  // Germany
+  'Charlottenburg': 'Berlin', 'Kreuzberg': 'Berlin', 'Neukölln': 'Berlin',
+  'Schwabing': 'Munich', 'Garching': 'Munich',
+  // Spain
+  'L\'Hospitalet': 'Barcelona', 'Badalona': 'Barcelona',
+  'Getafe': 'Madrid', 'Alcalá de Henares': 'Madrid', 'Leganés': 'Madrid',
+  // Italy
+  'Fiumicino': 'Rome', 'Tivoli': 'Rome',
+  'Monza': 'Milan', 'Sesto San Giovanni': 'Milan',
+  // Japan
+  'Shibuya': 'Tokyo', 'Shinjuku': 'Tokyo', 'Minato': 'Tokyo',
+  'Setagaya': 'Tokyo', 'Chiyoda': 'Tokyo', 'Machida': 'Tokyo',
+  'Sakai': 'Osaka', 'Suita': 'Osaka',
+  // Australia
+  'Parramatta': 'Sydney', 'Bondi': 'Sydney', 'Manly': 'Sydney',
+  'North Sydney': 'Sydney', 'Chatswood': 'Sydney',
+  'St Kilda': 'Melbourne', 'Fitzroy': 'Melbourne', 'South Yarra': 'Melbourne',
+  // Canada
+  'Mississauga': 'Toronto', 'Brampton': 'Toronto', 'Markham': 'Toronto',
+  'Scarborough': 'Toronto', 'North York': 'Toronto',
+  'Burnaby': 'Vancouver', 'Surrey': 'Vancouver', 'Richmond Hill': 'Vancouver',
+  'Laval': 'Montreal', 'Longueuil': 'Montreal',
+  // India
+  'Gurgaon': 'Delhi', 'Noida': 'Delhi', 'Faridabad': 'Delhi', 'Ghaziabad': 'Delhi',
+  'Thane': 'Mumbai', 'Navi Mumbai': 'Mumbai',
+  'Whitefield': 'Bangalore', 'Electronic City': 'Bangalore',
+  // UAE
+  'Sharjah': 'Dubai', 'Ajman': 'Dubai', 'Deira': 'Dubai',
+  'Al Ain': 'Abu Dhabi',
+  // South Korea
+  'Incheon': 'Seoul', 'Seongnam': 'Seoul', 'Suwon': 'Seoul',
+  // Singapore (districts → Singapore)
+  'Sentosa': 'Singapore', 'Jurong': 'Singapore',
+  // Brazil
+  'Guarulhos': 'São Paulo', 'Santo André': 'São Paulo',
+  'Niterói': 'Rio de Janeiro', 'São Gonçalo': 'Rio de Janeiro',
+  // Mexico
+  'Coyoacán': 'Mexico City', 'Tlalpan': 'Mexico City',
+  'Zapopan': 'Guadalajara', 'Tlaquepaque': 'Guadalajara',
+  // South Africa
+  'Sandton': 'Johannesburg', 'Soweto': 'Johannesburg',
+  'Sea Point': 'Cape Town', 'Stellenbosch': 'Cape Town',
 };
 
 function resolveMetroArea(city: string): string | undefined {
@@ -93,11 +146,12 @@ export default function EventsSection() {
   }, [profile?.city, profile?.country]);
 
   const metroArea = resolveMetroArea(city);
+  const hasCity = city.length > 0;
 
   const { events: discoveredEvents, loading } = useEvents({
-    city: metroArea || city,
-    country,
-    enabled: true,
+    city: metroArea || city || 'New York',
+    country: country || 'United States',
+    enabled: hasCity,
   });
 
   const eventCards: EventCardData[] = useMemo(() => {

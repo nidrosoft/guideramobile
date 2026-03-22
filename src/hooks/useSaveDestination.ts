@@ -60,7 +60,7 @@ export function useSaveDestination(destinationId: string | null) {
             interaction_type: 'unsave',
             source: 'detail_page',
           });
-        } catch (_) {}
+        } catch (e) { if (__DEV__) console.warn('Operation failed:', e); }
       } else {
         await supabase.from('user_saved_items').insert({
           user_id: profile.id,
@@ -74,7 +74,7 @@ export function useSaveDestination(destinationId: string | null) {
             interaction_type: 'save',
             source: 'detail_page',
           });
-        } catch (_) {}
+        } catch (e) { if (__DEV__) console.warn('Operation failed:', e); }
       }
     } catch (error) {
       console.error('Save toggle error:', error);

@@ -289,22 +289,22 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   typeText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodySm,
+    fontWeight: typography.fontWeight.semibold,
   },
   timeLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodySm,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.primary,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   description: {
-    fontSize: 14,
+    fontSize: typography.fontSize.bodyLg,
     color: colors.textSecondary,
     marginBottom: spacing.sm,
     lineHeight: 20,
@@ -316,11 +316,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   infoText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textSecondary,
   },
   distanceText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.gray400,
   },
   footer: {
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   creatorName: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textSecondary,
   },
   actions: {
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   participantText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textSecondary,
   },
   joinButton: {
@@ -367,8 +367,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   joinButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.white,
   },
   joinedBadge: {
@@ -378,8 +378,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   joinedText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodySm,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.success,
   },
   fullBadge: {
@@ -389,8 +389,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   fullText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodySm,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.bgElevated0,
   },
   spotsWarning: {
@@ -402,8 +402,8 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   spotsText: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: typography.fontSize.bodySm,
+    fontWeight: typography.fontWeight.medium,
     color: colors.warning,
   },
   iconBadge: {
@@ -418,12 +418,12 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
   compactTitle: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.medium,
     color: colors.textPrimary,
   },
   compactMeta: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textSecondary,
     marginTop: 2,
   },

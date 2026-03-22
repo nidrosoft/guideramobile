@@ -1,12 +1,9 @@
-import { View, StyleSheet } from 'react-native';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 
 export default function SafetyMap() {
-  return <View style={styles.container} />;
+  const router = useRouter();
+  useEffect(() => { router.back(); }, []);
+  return null;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-});
+// Safety map is handled within the DangerAlerts AR plugin

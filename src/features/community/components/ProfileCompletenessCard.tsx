@@ -16,7 +16,7 @@ import {
   Location,
   ArrowRight2,
 } from 'iconsax-react-native';
-import { colors, spacing, borderRadius } from '@/styles';
+import { colors, spacing, borderRadius, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 
 export interface ProfileSection {
@@ -214,13 +214,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.medium,
     marginTop: 2,
   },
   scoreContainer: {
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   },
   score: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: typography.fontWeight.bold,
   },
   progressBar: {
     height: 8,
@@ -271,12 +271,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.success + '20',
   },
   sectionLabel: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textSecondary,
   },
   sectionLabelComplete: {
     color: colors.success,
-    fontWeight: '500',
+    fontWeight: typography.fontWeight.medium,
   },
   suggestions: {
     backgroundColor: colors.primary + '08',
@@ -285,13 +285,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   suggestionsTitle: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   suggestionText: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textSecondary,
     lineHeight: 18,
   },
@@ -305,8 +305,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   ctaText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.white,
   },
   // Compact variant
@@ -336,19 +336,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   progressText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.bold,
   },
   compactContent: {
     flex: 1,
   },
   compactTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
   },
   compactSubtitle: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textSecondary,
     marginTop: 2,
   },

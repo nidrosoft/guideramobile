@@ -19,7 +19,9 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
@@ -53,6 +55,7 @@ export default function SnapshotMode({
   onLanguageChange,
   onSwitchToMenu,
 }: SnapshotModeProps) {
+  const insets = useSafeAreaInsets();
   const cameraRef = useRef<any>(null);
   const { ocrResult, isProcessing: isOCRProcessing, error: ocrError, extractText, clear: clearOCR } = useVisionOCR();
   const { translation, isTranslating, error: transError, translate, clear: clearTrans } = useTranslation();
@@ -171,7 +174,7 @@ export default function SnapshotMode({
         <CameraView ref={cameraRef} style={styles.camera} facing="back" />
 
         {/* Top bar */}
-        <View style={styles.topBar}>
+        <View style={[styles.topBar, { top: insets.top + 8 }]}>
           <View style={styles.modeLabel}>
             <Camera size={16} color="#3FC39E" variant="Bold" />
             <Text style={styles.modeLabelText}>Translate Text</Text>
@@ -216,7 +219,7 @@ export default function SnapshotMode({
         showsVerticalScrollIndicator={false}
       >
         {/* Back / retake */}
-        <TouchableOpacity style={styles.backBtn} onPress={handleReset} activeOpacity={0.7}>
+        <TouchableOpacity style={[styles.backBtn, { paddingTop: insets.top + 8 }]} onPress={handleReset} activeOpacity={0.7}>
           <ArrowLeft2 size={20} color="#FFFFFF" variant="Bold" />
           <Text style={styles.backText}>New Scan</Text>
         </TouchableOpacity>
@@ -328,6 +331,8 @@ export default function SnapshotMode({
   );
 }
 
+const { width: _snapScreenW } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   camera: { flex: 1 },
@@ -355,8 +360,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '30%',
     alignSelf: 'center',
-    width: 280,
-    height: 200,
+    width: Math.min(280, _snapScreenW * 0.75),
+    height: Math.min(200, _snapScreenW * 0.53),
     justifyContent: 'center',
     alignItems: 'center',
   },

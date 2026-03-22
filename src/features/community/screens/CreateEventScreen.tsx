@@ -15,9 +15,11 @@ import {
   Image,
   Alert,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useToast } from '@/contexts/ToastContext';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   ArrowLeft2,
@@ -69,6 +71,7 @@ export default function CreateEventScreen() {
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
   const { profile } = useAuth();
+  const { showWarning, showError } = useToast();
   const { communityId } = useLocalSearchParams<{ communityId: string }>();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -138,17 +141,17 @@ export default function CreateEventScreen() {
 
   const handleSubmit = async () => {
     if (!formData.title.trim()) {
-      Alert.alert('Required', 'Please enter an event title');
+      showWarning('Please enter an event title');
       return;
     }
     
     if (formData.type !== 'virtual' && !formData.location.trim()) {
-      Alert.alert('Required', 'Please enter a location');
+      showWarning('Please enter a location');
       return;
     }
     
     if (formData.type !== 'in_person' && !formData.virtualLink.trim()) {
-      Alert.alert('Required', 'Please enter a virtual meeting link');
+      showWarning('Please enter a virtual meeting link');
       return;
     }
 
@@ -199,7 +202,7 @@ export default function CreateEventScreen() {
     } catch (err) {
       if (__DEV__) console.warn('Create event error:', err);
       setIsSubmitting(false);
-      Alert.alert('Error', 'Failed to create event. Please try again.');
+      showError('Failed to create event. Please try again.');
     }
   };
   
@@ -220,9 +223,12 @@ export default function CreateEventScreen() {
   };
   
   return (
-    <View style={[styles.container, { backgroundColor: tc.background }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: tc.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      
+
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -231,7 +237,7 @@ export default function CreateEventScreen() {
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Create Event</Text>
         <View style={{ width: 40 }} />
       </View>
-      
+
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -478,7 +484,7 @@ export default function CreateEventScreen() {
           }}
         />
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

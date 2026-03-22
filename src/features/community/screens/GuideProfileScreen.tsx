@@ -36,7 +36,7 @@ import {
   Verify,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/styles';
+import { colors, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import {
   GuideProfile,
@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
     right: 2,
   },
   displayName: {
-    fontSize: 22,
+    fontSize: typography.fontSize.heading1,
     fontWeight: '800',
     color: colors.textPrimary,
     marginBottom: 4,
@@ -547,7 +547,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   locationText: {
-    fontSize: 14,
+    fontSize: typography.fontSize.bodyLg,
     color: colors.textSecondary,
   },
   statsRow: {
@@ -566,12 +566,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   statValue: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textSecondary,
   },
   statDivider: {
@@ -594,8 +594,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   availText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.semibold,
   },
   actionButtons: {
     flexDirection: 'row',
@@ -615,8 +615,8 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   messageButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: typography.fontSize.heading3,
+    fontWeight: typography.fontWeight.bold,
     color: colors.white,
   },
   saveButton: {
@@ -652,13 +652,13 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.primary,
   },
   tabLabel: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.medium,
     color: colors.textTertiary,
   },
   tabLabelActive: {
     color: colors.primary,
-    fontWeight: '700',
+    fontWeight: typography.fontWeight.bold,
   },
   tabBadge: {
     backgroundColor: colors.borderSubtle,
@@ -670,8 +670,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary + '15',
   },
   tabBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: typography.fontSize.caption,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textTertiary,
   },
   tabBadgeTextActive: {
@@ -686,13 +686,13 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
     marginBottom: 10,
   },
   bioText: {
-    fontSize: 14,
+    fontSize: typography.fontSize.bodyLg,
     color: colors.textSecondary,
     lineHeight: 22,
   },
@@ -713,11 +713,11 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSubtle,
   },
   expertiseEmoji: {
-    fontSize: 16,
+    fontSize: typography.fontSize.base,
   },
   expertiseLabel: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.medium,
     color: colors.textPrimary,
   },
 
@@ -738,15 +738,15 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   trustCheckIcon: {
-    fontSize: 14,
+    fontSize: typography.fontSize.bodyLg,
   },
   trustCheckDone: {
     // default
   },
   trustCheckText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textPrimary,
-    fontWeight: '500',
+    fontWeight: typography.fontWeight.medium,
   },
   trustCheckPending: {
     color: colors.textTertiary,
@@ -768,9 +768,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   langChipText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.primary,
-    fontWeight: '500',
+    fontWeight: typography.fontWeight.medium,
   },
 
   // Credentials
@@ -781,9 +781,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   credText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textPrimary,
-    fontWeight: '500',
+    fontWeight: typography.fontWeight.medium,
   },
 
   // Portfolio
@@ -808,12 +808,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   communityName: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
   },
   communityMembers: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textTertiary,
   },
 
@@ -836,7 +836,7 @@ const styles = StyleSheet.create({
     marginVertical: 6,
   },
   ratingCount: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textSecondary,
   },
 
@@ -854,13 +854,13 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   vouchLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
     marginTop: 4,
   },
   vouchExplain: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textTertiary,
     textAlign: 'center',
     marginTop: 6,
@@ -868,7 +868,7 @@ const styles = StyleSheet.create({
   },
 
   emptyText: {
-    fontSize: 14,
+    fontSize: typography.fontSize.bodyLg,
     color: colors.textTertiary,
     textAlign: 'center',
     paddingVertical: 40,

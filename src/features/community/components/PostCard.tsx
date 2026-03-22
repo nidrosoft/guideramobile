@@ -60,7 +60,7 @@ export default function PostCard({ post, onPress, onAuthorPress, onComment, onFl
         <Image source={{ uri: post.authorAvatar }} style={styles.avatar} />
         <View style={styles.headerInfo}>
           <View style={styles.nameRow}>
-            <Text style={styles.authorName}>{post.authorName}</Text>
+            <Text style={styles.authorName} numberOfLines={1} ellipsizeMode="tail">{post.authorName}</Text>
             {post.authorTrustTier && (
               <TrustBadge tier={post.authorTrustTier} size="small" showLabel={false} />
             )}
@@ -107,7 +107,7 @@ export default function PostCard({ post, onPress, onAuthorPress, onComment, onFl
             style={[styles.voteBtn, myVote === 'up' && styles.voteBtnActive]}
             onPress={() => handleVote('up')}
           >
-            <ArrowUp size={16} color={myVote === 'up' ? '#22C55E' : colors.textTertiary} variant={myVote === 'up' ? 'Bold' : 'Linear'} />
+            <ArrowUp size={16} color={myVote === 'up' ? tc.success : colors.textTertiary} variant={myVote === 'up' ? 'Bold' : 'Linear'} />
           </TouchableOpacity>
           <Text style={[styles.scoreText, score > 0 && styles.scorePositive, score < 0 && styles.scoreNegative]}>
             {score}
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   voteBtn: {
-    padding: 6,
+    padding: 10,
     borderRadius: 8,
   },
   voteBtnActive: {
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    padding: 6,
+    padding: 10,
   },
   actionText: {
     fontSize: 13,

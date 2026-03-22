@@ -132,13 +132,13 @@ export default function DangerAlertsOverlay({ arContext }: DangerAlertsOverlayPr
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary }]} onPress={handleReport}>
-            <Flag size={20} color="#FFFFFF" variant="Bold" />
+            <Flag size={20} color={colors.white} variant="Bold" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#EF4444' }]} onPress={handleSOS}>
-            <Call size={20} color="#FFFFFF" variant="Bold" />
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.error }]} onPress={handleSOS}>
+            <Call size={20} color={colors.white} variant="Bold" />
           </TouchableOpacity>
-          <Text style={[styles.actionLabel, { color: '#EF4444' }]}>SOS</Text>
+          <Text style={[styles.actionLabel, { color: colors.error }]}>SOS</Text>
         </View>
       )}
 
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgSecondary,
   },
   // Status card
   statusCard: {
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: 14,
     gap: spacing.sm,
-    shadowColor: '#000',
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -226,8 +226,8 @@ const styles = StyleSheet.create({
   radarCenter: {
     width: 4, height: 4, borderRadius: 2,
   },
-  statusTitle: { fontSize: 12, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5 },
-  statusMessage: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  statusTitle: { fontSize: 12, fontWeight: '700', color: colors.white, letterSpacing: 0.5 },
+  statusMessage: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
   // Actions
   actionCol: {
     position: 'absolute',
@@ -238,11 +238,11 @@ const styles = StyleSheet.create({
   actionBtn: {
     width: 52, height: 52, borderRadius: 26,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 8,
+    shadowColor: colors.black, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 8,
     marginBottom: 4,
   },
   actionLabel: {
-    fontSize: 11, fontWeight: '600', color: '#FFFFFF', marginBottom: spacing.md,
+    fontSize: 11, fontWeight: '600', color: colors.white, marginBottom: spacing.md,
   },
   // Legend
   legend: {
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
   },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 11, color: '#FFFFFF', fontWeight: '500' },
+  legendText: { fontSize: 11, color: colors.white, fontWeight: '500' },
   // Detail sheet
   sheetContainer: {
     position: 'absolute',

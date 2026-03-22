@@ -231,14 +231,26 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // ── Place Photo URL ──
+    // ── Place Photo (proxied to hide API key) ──
     if (action === "place_photo") {
       const { photoReference, maxWidth } = body;
       if (!photoReference) return Response.json({ error: "Missing photoReference" }, { status: 400, headers: corsHeaders });
-      return Response.json(
-        { url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth || 800}&photo_reference=${photoReference}&key=${GOOGLE_API_KEY}` },
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      try {
+        const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth || 800}&photo_reference=${photoReference}&key=${GOOGLE_API_KEY}`;
+        const photoResp = await fetch(photoUrl, { redirect: 'follow' });
+        if (!photoResp.ok) {
+          return Response.json({ error: "Failed to fetch photo" }, { status: 502, headers: corsHeaders });
+        }
+        const imageData = await photoResp.arrayBuffer();
+        const contentType = photoResp.headers.get('content-type') || 'image/jpeg';
+        return new Response(imageData, {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': contentType, 'Cache-Control': 'public, max-age=86400' },
+        });
+      } catch (photoErr) {
+        console.error("[google-api-proxy] Photo proxy error:", photoErr);
+        return Response.json({ error: "Photo proxy failed" }, { status: 500, headers: corsHeaders });
+      }
     }
 
     return Response.json(

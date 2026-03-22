@@ -83,7 +83,7 @@ export default function SafetyReportSheet({ visible, userLocation, onClose, onSu
       return;
     }
     if (!userLocation) {
-      Alert.alert('Location Required', 'Could not determine your location.');
+      toast.showError('Could not determine your location.');
       return;
     }
 
@@ -137,7 +137,7 @@ export default function SafetyReportSheet({ visible, userLocation, onClose, onSu
       setNote('');
       onSubmit();
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Could not submit report. Try again.');
+      toast.showError(err?.message || 'Could not submit report. Try again.');
     } finally {
       setSubmitting(false);
     }

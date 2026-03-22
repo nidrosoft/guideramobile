@@ -147,7 +147,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     index: t('tabs.explore'),
     trips: t('tabs.trips'),
     ar: '',
-    community: 'Connect',
+    community: t('tabs.connect'),
     account: t('tabs.profile'),
   };
 
@@ -198,6 +198,9 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                   style={styles.tabItemInner}
                   onPress={onPress}
                   activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open actions menu"
+                  accessibilityHint="Opens scan, AI, and navigation options"
                 >
                   <View style={styles.launcherContainer}>
                     <View style={[styles.launcherButton, dynamicStyles.launcherButton]}>
@@ -223,6 +226,9 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 style={styles.tabItemInner}
                 onPress={onPress}
                 activeOpacity={0.7}
+                accessibilityRole="tab"
+                accessibilityLabel={labels[route.name]}
+                accessibilityState={{ selected: isFocused }}
               >
                 <View style={styles.iconContainer}>
                   {icons[route.name]?.(color, isFocused)}
@@ -259,7 +265,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         onClose={() => setShowImportFlow(false)}
         onComplete={() => {
           setShowImportFlow(false);
-          router.push('/(tabs)/trips' as any);
+          router.push('/(tabs)/trips');
         }}
         initialMethod="scan"
       />

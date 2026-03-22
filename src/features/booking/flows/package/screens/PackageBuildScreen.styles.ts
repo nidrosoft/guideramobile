@@ -172,7 +172,7 @@ export const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   resultTitleSelected: {
-    color: '#FFFFFF',
+    color: colors.white,
   },
   resultSubtitle: {
     fontSize: typography.fontSize.sm,
@@ -188,7 +188,7 @@ export const styles = StyleSheet.create({
     color: colors.primary,
   },
   priceTextSelected: {
-    color: '#FFFFFF',
+    color: colors.white,
   },
   priceUnit: {
     fontSize: typography.fontSize.xs,

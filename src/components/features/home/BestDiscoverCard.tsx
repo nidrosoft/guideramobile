@@ -1,5 +1,9 @@
-import { View, Text, StyleSheet, Image } from 'react-native';
-import { typography, spacing } from '@/styles';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { Image } from 'expo-image';
+import { typography, spacing, borderRadius } from '@/styles';
+
+const { width: screenWidth } = Dimensions.get('window');
+const CARD_WIDTH = screenWidth * 0.77;
 import { useTheme } from '@/context/ThemeContext';
 import { Star1, Clock, Ticket } from 'iconsax-react-native';
 import SaveButton from '@/components/common/SaveButton';
@@ -32,7 +36,7 @@ export default function BestDiscoverCard({
     <View style={[styles.container, { backgroundColor: colors.bgCard }]}>
       {/* Image Container */}
       <View style={styles.imageContainer}>
-        <Image source={{ uri: imageUrl }} style={styles.image} />
+        <Image source={imageUrl} style={styles.image} contentFit="cover" transition={200} />
         
         {/* Best For Badge */}
         <View style={styles.bestForBadge}>
@@ -75,8 +79,8 @@ export default function BestDiscoverCard({
 
 const styles = StyleSheet.create({
   container: {
-    width: 300,
-    borderRadius: 24,
+    width: CARD_WIDTH,
+    borderRadius: borderRadius.xl,
     padding: spacing.sm,
     marginRight: spacing.md,
     borderWidth: 1,
@@ -85,7 +89,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     width: '100%',
     height: 200,
-    borderRadius: 20,
+    borderRadius: borderRadius.xl,
     overflow: 'hidden',
     position: 'relative',
     marginBottom: spacing.md,
@@ -107,17 +111,6 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
     color: '#FFFFFF',
-  },
-  heartButton: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   infoContainer: {
     paddingHorizontal: spacing.sm,

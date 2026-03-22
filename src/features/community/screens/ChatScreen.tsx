@@ -34,12 +34,14 @@ import {
   EmojiHappy,
   AttachCircle,
 } from 'iconsax-react-native';
+// Accessibility labels added to interactive elements below
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { spacing, borderRadius } from '@/styles';
 import { styles } from './ChatScreen.styles';
 import ChatMessageBubble, { ChatMessageData } from '../components/ChatMessageBubble';
+import { useTranslation } from 'react-i18next';
 import { chatService } from '@/services/community/chat.service';
 import { supabase } from '@/lib/supabase/client';
 
@@ -48,6 +50,7 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors: tc, isDark } = useTheme();
+  const { t } = useTranslation();
   const { profile } = useAuth();
   const flatListRef = useRef<FlatList>(null);
   
@@ -216,8 +219,11 @@ export default function ChatScreen() {
     }
   }, [inputText, profile, id, conversationId, currentUserId]);
   
-  const handleReaction = useCallback((messageId: string, emoji: string) => {
+  const handleReaction = useCallback(async (messageId: string, emoji: string) => {
+    if (!currentUserId) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Optimistic UI update
     setMessages(prev => prev.map(m => {
       if (m.id !== messageId) return m;
       
@@ -227,7 +233,6 @@ export default function ChatScreen() {
       if (existingIndex >= 0) {
         const existing = reactions[existingIndex];
         if (existing.userReacted) {
-          // Remove reaction
           if (existing.count === 1) {
             return { ...m, reactions: reactions.filter((_, i) => i !== existingIndex) };
           }
@@ -238,7 +243,6 @@ export default function ChatScreen() {
             ),
           };
         } else {
-          // Add to existing
           return {
             ...m,
             reactions: reactions.map((r, i) => 
@@ -247,11 +251,33 @@ export default function ChatScreen() {
           };
         }
       } else {
-        // New reaction
         return { ...m, reactions: [...reactions, { emoji, count: 1, userReacted: true }] };
       }
     }));
-  }, []);
+
+    // COMM-03: Persist reaction to message_reactions table
+    try {
+      const { data: existing } = await supabase
+        .from('message_reactions')
+        .select('id')
+        .eq('message_id', messageId)
+        .eq('user_id', currentUserId)
+        .eq('emoji', emoji)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase.from('message_reactions').delete().eq('id', existing.id);
+      } else {
+        await supabase.from('message_reactions').insert({
+          message_id: messageId,
+          user_id: currentUserId,
+          emoji,
+        });
+      }
+    } catch (err) {
+      if (__DEV__) console.warn('Failed to persist reaction:', err);
+    }
+  }, [currentUserId]);
   
   const formatLastSeen = (date: Date) => {
     const now = new Date();
@@ -303,25 +329,21 @@ export default function ChatScreen() {
       
       {/* Header */}
       <View style={[styles.header, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Go back">
           <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.profileInfo} activeOpacity={0.7}>
+
+        <TouchableOpacity style={styles.profileInfo} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`${buddy.firstName} ${buddy.lastName} profile`}>
           <View style={styles.avatarContainer}>
             <Image source={{ uri: buddy.avatar }} style={styles.avatar} />
-            {buddy.isOnline && <View style={[styles.onlineIndicator, { backgroundColor: tc.success, borderColor: tc.background }]} />}
           </View>
           <View style={styles.nameContainer}>
             <Text style={[styles.name, { color: tc.textPrimary }]}>{buddy.firstName} {buddy.lastName}</Text>
-            <Text style={[styles.status, { color: buddy.isOnline ? tc.success : tc.textTertiary }]}>
-              {buddy.isOnline ? 'Online' : `Last seen ${formatLastSeen(buddy.lastSeen)}`}
-            </Text>
           </View>
         </TouchableOpacity>
         
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerButton}>
+          <TouchableOpacity style={styles.headerButton} accessibilityRole="button" accessibilityLabel="More options">
             <More size={22} color={tc.textPrimary} />
           </TouchableOpacity>
         </View>
@@ -330,7 +352,7 @@ export default function ChatScreen() {
       {/* Messages */}
       <KeyboardAvoidingView 
         style={styles.messagesContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={insets.top + 60}
       >
         <FlatList
@@ -359,27 +381,14 @@ export default function ChatScreen() {
         
         {/* Input */}
         <View style={[styles.inputContainer, { backgroundColor: tc.bgElevated, borderTopColor: tc.borderSubtle, paddingBottom: insets.bottom || spacing.md }]}>
-          {showAttachments && (
-            <View style={[styles.attachmentOptions, { borderBottomColor: tc.borderSubtle }]}>
-              <TouchableOpacity style={styles.attachmentButton}>
-                <Camera size={22} color={tc.primary} />
-                <Text style={[styles.attachmentLabel, { color: tc.textSecondary }]}>Camera</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.attachmentButton}>
-                <ImageIcon size={22} color={tc.primary} />
-                <Text style={[styles.attachmentLabel, { color: tc.textSecondary }]}>Gallery</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.attachmentButton}>
-                <Location size={22} color={tc.primary} />
-                <Text style={[styles.attachmentLabel, { color: tc.textSecondary }]}>Location</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          {/* Attachments hidden until implemented — Camera, Gallery, Location buttons had no onPress handlers */}
           
           <View style={styles.inputRow}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.attachButton}
               onPress={() => setShowAttachments(!showAttachments)}
+              accessibilityRole="button"
+              accessibilityLabel="Attach file"
             >
               <AttachCircle size={24} color={tc.textTertiary} />
             </TouchableOpacity>
@@ -387,29 +396,28 @@ export default function ChatScreen() {
             <View style={[styles.textInputContainer, { backgroundColor: tc.bgInput || tc.bgCard }]}>
               <TextInput
                 style={[styles.textInput, { color: tc.textPrimary }]}
-                placeholder="Type a message..."
+                placeholder={t('community.chat.placeholder')}
                 placeholderTextColor={tc.textTertiary}
+                accessibilityLabel="Message input"
                 value={inputText}
                 onChangeText={setInputText}
                 multiline
                 maxLength={1000}
               />
-              <TouchableOpacity style={styles.emojiButton}>
-                <EmojiHappy size={22} color={tc.textTertiary} />
-              </TouchableOpacity>
+              {/* Emoji picker hidden until implemented */}
             </View>
             
             {inputText.trim() ? (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.sendButton, { backgroundColor: tc.primary }]}
                 onPress={handleSend}
+                accessibilityRole="button"
+                accessibilityLabel="Send message"
               >
                 <Send2 size={22} color="#FFFFFF" variant="Bold" />
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={[styles.micButton, { backgroundColor: tc.primary + '15' }]}>
-                <Microphone2 size={22} color={tc.primary} />
-              </TouchableOpacity>
+              <View style={{ width: 44 }} />
             )}
           </View>
         </View>

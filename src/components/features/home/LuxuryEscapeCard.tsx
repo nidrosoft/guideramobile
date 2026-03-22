@@ -1,6 +1,10 @@
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { typography, spacing } from '@/styles';
+import { typography, spacing, borderRadius, shadows } from '@/styles';
+
+const { width: screenWidth } = Dimensions.get('window');
+const CARD_WIDTH = screenWidth * 0.82;
 import { useTheme } from '@/context/ThemeContext';
 import { Crown, Star1, Location, Calendar } from 'iconsax-react-native';
 import SaveButton from '@/components/common/SaveButton';
@@ -27,12 +31,13 @@ export default function LuxuryEscapeCard({
   imageUrl 
 }: LuxuryEscapeCardProps) {
   const { colors } = useTheme();
+  const { height: screenHeight } = useWindowDimensions();
   return (
     <View style={styles.container}>
       {/* Card with shadow */}
-      <View style={styles.card}>
+      <View style={[styles.card, { height: Math.min(420, screenHeight * 0.55) }]}>
         {/* Background Image */}
-        <Image source={{ uri: imageUrl }} style={styles.backgroundImage} />
+        <Image source={imageUrl} style={styles.backgroundImage} contentFit="cover" transition={200} />
         
         {/* Dark Gradient Overlay */}
         <LinearGradient
@@ -58,7 +63,7 @@ export default function LuxuryEscapeCard({
           </View>
 
           {/* Name */}
-          <Text style={styles.name}>{name}</Text>
+          <Text style={styles.name} numberOfLines={2} ellipsizeMode="tail">{name}</Text>
 
           {/* Category */}
           <Text style={styles.category}>{category}</Text>
@@ -97,21 +102,12 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
   },
   card: {
-    width: 320,
-    height: 420,
-    borderRadius: 28,
+    width: CARD_WIDTH,
+    borderRadius: borderRadius['2xl'],
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
-    // Premium shadow
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 12,
+    ...shadows.cardHover,
   },
   backgroundImage: {
     width: '100%',

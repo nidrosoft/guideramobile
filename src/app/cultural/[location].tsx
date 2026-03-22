@@ -1,12 +1,9 @@
-import { View, StyleSheet } from 'react-native';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 
 export default function CulturalGuide() {
-  return <View style={styles.container} />;
+  const router = useRouter();
+  useEffect(() => { router.back(); }, []);
+  return null;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-});
+// Cultural guide is handled within the DosDonts plugin on trip detail

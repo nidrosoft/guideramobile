@@ -34,8 +34,9 @@ import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
-import { 
-  preferencesService, 
+import { useTranslation } from 'react-i18next';
+import {
+  preferencesService,
   TravelPreferences,
   PREFERENCE_OPTIONS,
 } from '@/services/preferences.service';
@@ -76,6 +77,7 @@ export default function TravelPreferencesScreen() {
   const { profile } = useAuth();
   const insets = useSafeAreaInsets();
   const { colors: tc } = useTheme();
+  const { t } = useTranslation();
   const [preferences, setPreferences] = useState<TravelPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -209,7 +211,7 @@ export default function TravelPreferencesScreen() {
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Travel Profile</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{t('account.travelPreferences.title')}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -227,9 +229,9 @@ export default function TravelPreferencesScreen() {
       >
         {/* Description */}
         <View style={[styles.descriptionCard, { backgroundColor: `${tc.primary}10` }]}>
-          <Text style={[styles.descriptionTitle, { color: tc.primary }]}>Your Travel Profile</Text>
+          <Text style={[styles.descriptionTitle, { color: tc.primary }]}>{t('account.travelPreferences.yourProfile')}</Text>
           <Text style={[styles.descriptionText, { color: tc.textSecondary }]}>
-            These settings personalize your trip plans, packing lists, and recommendations. You can always customize them for each trip.
+            {t('account.travelPreferences.description')}
           </Text>
         </View>
 
@@ -238,8 +240,8 @@ export default function TravelPreferencesScreen() {
           <PreferenceSection
             tc={tc}
             icon={<People size={22} color={tc.primary} variant="Bold" />}
-            title="Travel Style"
-            subtitle="Companion, trip styles & pace"
+            title={t('account.travelPreferences.travelStyle')}
+            subtitle={t('account.travelPreferences.travelStyleSub')}
             value={getTravelStyleValue()}
             onPress={() => navigateToSection('travel-style')}
             isComplete={isTravelStyleComplete}
@@ -248,8 +250,8 @@ export default function TravelPreferencesScreen() {
           <PreferenceSection
             tc={tc}
             icon={<Wallet2 size={22} color={tc.warning} variant="Bold" />}
-            title="Budget & Spending"
-            subtitle="Default budget & spending style"
+            title={t('account.travelPreferences.budget')}
+            subtitle={t('account.travelPreferences.budgetSub')}
             value={getBudgetValue()}
             onPress={() => navigateToSection('budget')}
             isComplete={true}
@@ -258,8 +260,8 @@ export default function TravelPreferencesScreen() {
           <PreferenceSection
             tc={tc}
             icon={<Heart size={22} color={tc.error} variant="Bold" />}
-            title="Interests"
-            subtitle="What you love to do"
+            title={t('account.travelPreferences.interests')}
+            subtitle={t('account.travelPreferences.interestsSub')}
             value={getInterestsValue()}
             onPress={() => navigateToSection('interests')}
             isComplete={isInterestsComplete}
@@ -268,8 +270,8 @@ export default function TravelPreferencesScreen() {
           <PreferenceSection
             tc={tc}
             icon={<Building size={22} color={tc.info} variant="Bold" />}
-            title="Accommodation"
-            subtitle="Where you like to stay"
+            title={t('account.travelPreferences.accommodation')}
+            subtitle={t('account.travelPreferences.accommodationSub')}
             value={getAccommodationValue()}
             onPress={() => navigateToSection('accommodation')}
             isComplete={isAccommodationComplete}
@@ -278,8 +280,8 @@ export default function TravelPreferencesScreen() {
           <PreferenceSection
             tc={tc}
             icon={<Car size={22} color={tc.success} variant="Bold" />}
-            title="Transportation"
-            subtitle="How you like to travel"
+            title={t('account.travelPreferences.transportation')}
+            subtitle={t('account.travelPreferences.transportationSub')}
             value={getTransportationValue()}
             onPress={() => navigateToSection('transportation')}
             isComplete={isTransportationComplete}
@@ -288,8 +290,8 @@ export default function TravelPreferencesScreen() {
           <PreferenceSection
             tc={tc}
             icon={<Health size={22} color={tc.purple} variant="Bold" />}
-            title="Food, Health & Access"
-            subtitle="Diet, medical, skin, hair & vision"
+            title={t('account.travelPreferences.foodHealth')}
+            subtitle={t('account.travelPreferences.foodHealthSub')}
             value={getAccessibilityValue()}
             onPress={() => navigateToSection('accessibility')}
             isComplete={true}
@@ -298,8 +300,8 @@ export default function TravelPreferencesScreen() {
           <PreferenceSection
             tc={tc}
             icon={<Activity size={22} color={tc.warning} variant="Bold" />}
-            title="Lifestyle & Identity"
-            subtitle="Activity, sustainability & more"
+            title={t('account.travelPreferences.lifestyle')}
+            subtitle={t('account.travelPreferences.lifestyleSub')}
             value={getLifestyleValue()}
             onPress={() => navigateToSection('lifestyle')}
             isComplete={preferences?.activityLevel !== undefined}
@@ -309,9 +311,9 @@ export default function TravelPreferencesScreen() {
         {/* Completion Status */}
         {preferences && !preferences.preferencesCompleted && (
           <View style={[styles.completionCard, { backgroundColor: `${tc.warning}15`, borderColor: `${tc.warning}30` }]}>
-            <Text style={[styles.completionTitle, { color: tc.warning }]}>Complete Your Profile</Text>
+            <Text style={[styles.completionTitle, { color: tc.warning }]}>{t('account.travelPreferences.completeProfile')}</Text>
             <Text style={[styles.completionText, { color: tc.textSecondary }]}>
-              Fill in your preferences to get personalized trip recommendations and faster planning.
+              {t('account.travelPreferences.completeProfileDesc')}
             </Text>
           </View>
         )}

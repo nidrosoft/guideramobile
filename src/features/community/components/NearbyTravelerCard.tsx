@@ -268,8 +268,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   name: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
   },
   matchBadge: {
@@ -279,8 +279,8 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   matchText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: typography.fontSize.caption,
+    fontWeight: typography.fontWeight.semibold,
   },
   statusRow: {
     flexDirection: 'row',
@@ -302,12 +302,12 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   statusText: {
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: typography.fontSize.caption,
+    fontWeight: typography.fontWeight.medium,
   },
   statusMessage: {
     flex: 1,
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textSecondary,
     fontStyle: 'italic',
   },
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   locationText: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textSecondary,
   },
   interestsRow: {
@@ -334,12 +334,12 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   interestText: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     color: colors.primary,
-    fontWeight: '500',
+    fontWeight: typography.fontWeight.medium,
   },
   moreInterests: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     color: colors.textSecondary,
   },
   actions: {
@@ -391,12 +391,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   mapName: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodySm,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
   },
   mapDistance: {
-    fontSize: 10,
+    fontSize: typography.fontSize.captionSm,
     color: colors.textSecondary,
   },
 });

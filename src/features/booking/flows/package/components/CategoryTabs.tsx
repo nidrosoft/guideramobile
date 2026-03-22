@@ -101,7 +101,7 @@ export default function CategoryTabs({
                 <Text style={[
                   styles.tabLabel,
                   { color: tc.textSecondary },
-                  isActive && { color: '#FFFFFF', fontWeight: typography.fontWeight.semibold },
+                  isActive && { color: tc.white, fontWeight: typography.fontWeight.semibold },
                   isComplete && { color: tc.success },
                 ]}>
                   {category.label}
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   tabLabelActive: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontWeight: typography.fontWeight.semibold,
   },
   tabLabelComplete: {

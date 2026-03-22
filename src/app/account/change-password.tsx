@@ -31,6 +31,8 @@ import {
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useToast } from '@/contexts/ToastContext';
+import { useTranslation } from 'react-i18next';
 import { useUser } from '@clerk/clerk-expo';
 
 interface PasswordRequirement {
@@ -47,9 +49,11 @@ const PASSWORD_REQUIREMENTS: PasswordRequirement[] = [
 ];
 
 export default function ChangePasswordScreen() {
+  const { showSuccess, showError } = useToast();
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const { user: clerkUser } = useUser();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -69,26 +73,26 @@ export default function ChangePasswordScreen() {
     const newErrors: typeof errors = {};
 
     if (!currentPassword) {
-      newErrors.current = 'Current password is required';
+      newErrors.current = t('account.changePassword.currentRequired');
     }
 
     if (!newPassword) {
-      newErrors.new = 'New password is required';
+      newErrors.new = t('account.changePassword.newRequired');
     } else {
       const failedRequirements = PASSWORD_REQUIREMENTS.filter(req => !req.test(newPassword));
       if (failedRequirements.length > 0) {
-        newErrors.new = 'Password does not meet requirements';
+        newErrors.new = t('account.changePassword.doesNotMeetRequirements');
       }
     }
 
     if (!confirmPassword) {
-      newErrors.confirm = 'Please confirm your new password';
+      newErrors.confirm = t('account.changePassword.confirmRequired');
     } else if (newPassword !== confirmPassword) {
-      newErrors.confirm = 'Passwords do not match';
+      newErrors.confirm = t('account.changePassword.passwordsDoNotMatch');
     }
 
     if (currentPassword === newPassword) {
-      newErrors.new = 'New password must be different from current password';
+      newErrors.new = t('account.changePassword.mustBeDifferent');
     }
 
     setErrors(newErrors);
@@ -112,18 +116,18 @@ export default function ChangePasswordScreen() {
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
-        'Password Changed',
-        'Your password has been updated successfully.',
-        [{ text: 'OK', onPress: () => router.back() }]
+        t('account.changePassword.passwordChanged'),
+        t('account.changePassword.passwordUpdated'),
+        [{ text: t('common.done'), onPress: () => router.back() }]
       );
     } catch (error: any) {
       console.error('Error changing password:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       
       if (error.message?.includes('incorrect') || error.message?.includes('Invalid')) {
-        setErrors({ current: 'Current password is incorrect' });
+        setErrors({ current: t('account.changePassword.currentIncorrect') });
       } else {
-        Alert.alert('Error', error.message || 'Failed to change password. Please try again.');
+        showError(error.message || 'Failed to change password. Please try again.');
       }
     } finally {
       setIsLoading(false);
@@ -136,14 +140,14 @@ export default function ChangePasswordScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
-      
+      <StatusBar style={isDark ? "light" : "dark"} />
+
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Change Password</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{t('account.changePassword.title')}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -159,65 +163,65 @@ export default function ChangePasswordScreen() {
         >
           {/* Current Password */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Current Password</Text>
-            <View style={[styles.inputContainer, errors.current && styles.inputError]}>
-              <Lock size={20} color={colors.gray400} variant="Bold" />
+            <Text style={[styles.inputLabel, { color: tc.textPrimary }]}>{t('account.changePassword.currentPassword')}</Text>
+            <View style={[styles.inputContainer, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }, errors.current && styles.inputError]}>
+              <Lock size={20} color={tc.textTertiary} variant="Bold" />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: tc.textPrimary }]}
                 value={currentPassword}
                 onChangeText={(text) => {
                   setCurrentPassword(text);
                   if (errors.current) setErrors({ ...errors, current: undefined });
                 }}
-                placeholder="Enter current password"
-                placeholderTextColor={colors.gray400}
+                placeholder={t('account.changePassword.enterCurrent')}
+                placeholderTextColor={tc.textTertiary}
                 secureTextEntry={!showCurrentPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
               <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
                 {showCurrentPassword ? (
-                  <EyeSlash size={20} color={colors.gray400} />
+                  <EyeSlash size={20} color={tc.textTertiary} />
                 ) : (
-                  <Eye size={20} color={colors.gray400} />
+                  <Eye size={20} color={tc.textTertiary} />
                 )}
               </TouchableOpacity>
             </View>
-            {errors.current && <Text style={styles.errorText}>{errors.current}</Text>}
+            {errors.current && <Text style={[styles.errorText, { color: tc.error }]}>{errors.current}</Text>}
           </View>
 
           {/* New Password */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>New Password</Text>
-            <View style={[styles.inputContainer, errors.new && styles.inputError]}>
-              <Lock size={20} color={colors.gray400} variant="Bold" />
+            <Text style={[styles.inputLabel, { color: tc.textPrimary }]}>{t('account.changePassword.newPassword')}</Text>
+            <View style={[styles.inputContainer, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }, errors.new && styles.inputError]}>
+              <Lock size={20} color={tc.textTertiary} variant="Bold" />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: tc.textPrimary }]}
                 value={newPassword}
                 onChangeText={(text) => {
                   setNewPassword(text);
                   if (errors.new) setErrors({ ...errors, new: undefined });
                 }}
-                placeholder="Enter new password"
-                placeholderTextColor={colors.gray400}
+                placeholder={t('account.changePassword.enterNew')}
+                placeholderTextColor={tc.textTertiary}
                 secureTextEntry={!showNewPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
               <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
                 {showNewPassword ? (
-                  <EyeSlash size={20} color={colors.gray400} />
+                  <EyeSlash size={20} color={tc.textTertiary} />
                 ) : (
-                  <Eye size={20} color={colors.gray400} />
+                  <Eye size={20} color={tc.textTertiary} />
                 )}
               </TouchableOpacity>
             </View>
-            {errors.new && <Text style={styles.errorText}>{errors.new}</Text>}
+            {errors.new && <Text style={[styles.errorText, { color: tc.error }]}>{errors.new}</Text>}
           </View>
 
           {/* Password Requirements */}
-          <View style={styles.requirementsCard}>
-            <Text style={styles.requirementsTitle}>Password Requirements</Text>
+          <View style={[styles.requirementsCard, { backgroundColor: isDark ? tc.bgElevated : colors.gray50 }]}>
+            <Text style={[styles.requirementsTitle, { color: tc.textPrimary }]}>{t('account.changePassword.requirements')}</Text>
             {PASSWORD_REQUIREMENTS.map((req, index) => {
               const isMet = req.test(newPassword);
               return (
@@ -225,9 +229,9 @@ export default function ChangePasswordScreen() {
                   {isMet ? (
                     <TickCircle size={16} color={colors.success} variant="Bold" />
                   ) : (
-                    <CloseCircle size={16} color={colors.gray300} variant="Bold" />
+                    <CloseCircle size={16} color={tc.textTertiary} variant="Bold" />
                   )}
-                  <Text style={[styles.requirementText, isMet && styles.requirementMet]}>
+                  <Text style={[styles.requirementText, { color: tc.textSecondary }, isMet && styles.requirementMet]}>
                     {req.label}
                   </Text>
                 </View>
@@ -237,42 +241,42 @@ export default function ChangePasswordScreen() {
 
           {/* Confirm Password */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Confirm New Password</Text>
-            <View style={[styles.inputContainer, errors.confirm && styles.inputError]}>
-              <Lock size={20} color={colors.gray400} variant="Bold" />
+            <Text style={[styles.inputLabel, { color: tc.textPrimary }]}>{t('account.changePassword.confirmNewPassword')}</Text>
+            <View style={[styles.inputContainer, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }, errors.confirm && styles.inputError]}>
+              <Lock size={20} color={tc.textTertiary} variant="Bold" />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: tc.textPrimary }]}
                 value={confirmPassword}
                 onChangeText={(text) => {
                   setConfirmPassword(text);
                   if (errors.confirm) setErrors({ ...errors, confirm: undefined });
                 }}
-                placeholder="Confirm new password"
-                placeholderTextColor={colors.gray400}
+                placeholder={t('account.changePassword.confirmPlaceholder')}
+                placeholderTextColor={tc.textTertiary}
                 secureTextEntry={!showConfirmPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
               <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
                 {showConfirmPassword ? (
-                  <EyeSlash size={20} color={colors.gray400} />
+                  <EyeSlash size={20} color={tc.textTertiary} />
                 ) : (
-                  <Eye size={20} color={colors.gray400} />
+                  <Eye size={20} color={tc.textTertiary} />
                 )}
               </TouchableOpacity>
             </View>
-            {errors.confirm && <Text style={styles.errorText}>{errors.confirm}</Text>}
+            {errors.confirm && <Text style={[styles.errorText, { color: tc.error }]}>{errors.confirm}</Text>}
             {confirmPassword && newPassword === confirmPassword && (
               <View style={styles.matchIndicator}>
                 <TickCircle size={14} color={colors.success} variant="Bold" />
-                <Text style={styles.matchText}>Passwords match</Text>
+                <Text style={styles.matchText}>{t('account.changePassword.passwordsMatch')}</Text>
               </View>
             )}
           </View>
 
           {/* Submit Button */}
           <TouchableOpacity
-            style={[styles.submitButton, !isFormValid && styles.submitButtonDisabled]}
+            style={[styles.submitButton, { backgroundColor: tc.primary }, !isFormValid && { backgroundColor: tc.textTertiary }]}
             onPress={handleChangePassword}
             disabled={!isFormValid || isLoading}
             activeOpacity={0.8}
@@ -280,19 +284,19 @@ export default function ChangePasswordScreen() {
             {isLoading ? (
               <ActivityIndicator color={colors.white} />
             ) : (
-              <Text style={styles.submitButtonText}>Update Password</Text>
+              <Text style={styles.submitButtonText}>{t('account.changePassword.updatePassword')}</Text>
             )}
           </TouchableOpacity>
 
           {/* Forgot Password Link */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.forgotLink}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push('/(auth)/forgot-password' as any);
             }}
           >
-            <Text style={styles.forgotLinkText}>Forgot your current password?</Text>
+            <Text style={[styles.forgotLinkText, { color: tc.primary }]}>{t('account.changePassword.forgotCurrent')}</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

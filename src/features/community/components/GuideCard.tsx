@@ -170,12 +170,12 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   name: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
   },
   location: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 8,
@@ -188,12 +188,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   rating: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
   },
   reviews: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textSecondary,
   },
   dot: {
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
   },
   vouches: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textSecondary,
   },
   tagsRow: {
@@ -218,9 +218,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   tagText: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     color: colors.primary,
-    fontWeight: '500',
+    fontWeight: typography.fontWeight.medium,
   },
   metaRow: {
     flexDirection: 'row',
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   metaText: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     color: colors.textTertiary,
   },
   langRow: {
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   langText: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     color: colors.textTertiary,
   },
   messageBtn: {
@@ -268,8 +268,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   messageBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.white,
   },
 
@@ -306,8 +306,8 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   hName: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
   },
   hRatingRow: {
@@ -317,8 +317,8 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   hRating: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodySm,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
   },
   hReviews: {
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   hExpertise: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     color: colors.textTertiary,
   },
   hMessageBtn: {

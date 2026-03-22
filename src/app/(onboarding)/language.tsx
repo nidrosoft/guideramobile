@@ -9,25 +9,45 @@ export default function LanguageScreen() {
       description="Select all languages you're comfortable with"
       inputType="multiselect"
       options={[
+        'Arabic',
+        'Bengali',
+        'Chinese',
+        'Czech',
+        'Danish',
+        'Dutch',
         'English',
-        'Spanish',
+        'Finnish',
         'French',
         'German',
+        'Greek',
+        'Hebrew',
+        'Hindi',
+        'Hungarian',
+        'Indonesian',
         'Italian',
-        'Portuguese',
-        'Chinese',
         'Japanese',
         'Korean',
-        'Arabic',
-        'Hindi',
-        'Swahili',
+        'Malay',
+        'Norwegian',
+        'Persian (Farsi)',
+        'Polish',
+        'Portuguese',
+        'Romanian',
         'Russian',
-        'Dutch',
+        'Spanish',
+        'Swahili',
+        'Swedish',
+        'Tagalog',
+        'Thai',
+        'Turkish',
+        'Ukrainian',
+        'Vietnamese',
       ]}
       minSelections={1}
       currentStep={6}
       totalSteps={10}
       nextRoute="/(onboarding)/emergency-contact"
+      showBackButton={true}
       fieldName="languages"
     />
   );

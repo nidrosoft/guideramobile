@@ -1,6 +1,10 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { typography, spacing } from '@/styles';
-import { Location, Star1, ArrowRight, Award } from 'iconsax-react-native';
+import { View, Text, StyleSheet, Dimensions, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
+import { typography, spacing, borderRadius } from '@/styles';
+
+const { width: screenWidth } = Dimensions.get('window');
+const CARD_WIDTH = screenWidth * 0.82;
+import { Location, Star1, Award } from 'iconsax-react-native';
 import SaveButton from '@/components/common/SaveButton';
 
 interface EditorChoiceCardProps {
@@ -13,10 +17,11 @@ interface EditorChoiceCardProps {
 }
 
 export default function EditorChoiceCard({ id, name, location, reason, rating, imageUrl }: EditorChoiceCardProps) {
+  const { height: screenHeight } = useWindowDimensions();
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { height: Math.min(420, screenHeight * 0.55) }]}>
       {/* Background Image */}
-      <Image source={{ uri: imageUrl }} style={styles.backgroundImage} />
+      <Image source={imageUrl} style={styles.backgroundImage} contentFit="cover" transition={200} />
       
       {/* Gradient Overlay */}
       <View style={styles.overlay} />
@@ -41,12 +46,12 @@ export default function EditorChoiceCard({ id, name, location, reason, rating, i
         </View>
         
         {/* Place Name */}
-        <Text style={styles.placeName}>{name}</Text>
+        <Text style={styles.placeName} numberOfLines={1} ellipsizeMode="tail">{name}</Text>
         
         {/* Why Editor's Choice */}
         <View style={styles.reasonContainer}>
           <Text style={styles.reasonLabel}>Why we love it:</Text>
-          <Text style={styles.reasonText}>{reason}</Text>
+          <Text style={styles.reasonText} numberOfLines={3} ellipsizeMode="tail">{reason}</Text>
         </View>
         
         {/* Rating */}
@@ -55,10 +60,6 @@ export default function EditorChoiceCard({ id, name, location, reason, rating, i
           <Text style={styles.ratingText}>{rating} Exceptional</Text>
         </View>
         
-        {/* Swipe Button */}
-        <TouchableOpacity style={styles.swipeButton}>
-          <ArrowRight size={24} color="#1a1a1a" variant="Outline" />
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -66,9 +67,8 @@ export default function EditorChoiceCard({ id, name, location, reason, rating, i
 
 const styles = StyleSheet.create({
   container: {
-    width: 320,
-    height: 420,
-    borderRadius: 32,
+    width: CARD_WIDTH,
+    borderRadius: borderRadius['3xl'],
     overflow: 'hidden',
     marginRight: spacing.md,
     position: 'relative',
@@ -161,14 +161,5 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: '#FFFFFF',
     fontWeight: typography.fontWeight.semibold,
-  },
-  swipeButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
   },
 });

@@ -38,6 +38,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { CommunityType, CommunityPrivacy } from '../types/community.types';
 import { COMMUNITY_TAGS } from '../config/community.config';
 import { groupService } from '@/services/community';
@@ -78,6 +79,7 @@ export default function CreateGroupScreen() {
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
   const { profile } = useAuth();
+  const { showWarning, showError } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   
@@ -106,7 +108,7 @@ export default function CreateGroupScreen() {
     
     // Validate current step
     if (currentStep === 1 && !formData.name.trim()) {
-      Alert.alert('Required', 'Please enter a group name');
+      showWarning('Please enter a group name');
       return;
     }
     
@@ -136,7 +138,7 @@ export default function CreateGroupScreen() {
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
-      Alert.alert('Required', 'Please enter a group name');
+      showWarning('Please enter a group name');
       return;
     }
     if (!profile?.id) return;
@@ -185,7 +187,7 @@ export default function CreateGroupScreen() {
     } catch (err) {
       if (__DEV__) console.warn('Create group error:', err);
       setIsSubmitting(false);
-      Alert.alert('Error', 'Failed to create group. Please try again.');
+      showError('Failed to create group. Please try again.');
     }
   };
   
@@ -451,7 +453,7 @@ export default function CreateGroupScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: tc.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar style={isDark ? 'light' : 'dark'} />
       

@@ -148,7 +148,7 @@ export default function ExperienceCard({
             >
               <Heart
                 size={18}
-                color={isFavorite ? '#FF4757' : colors.white}
+                color={isFavorite ? tc.error : colors.white}
                 variant={isFavorite ? 'Bold' : 'Linear'}
               />
             </TouchableOpacity>

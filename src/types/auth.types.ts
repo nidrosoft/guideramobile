@@ -130,23 +130,6 @@ export interface ProfileVisibility {
   show_member_since: boolean;
 }
 
-export interface SignUpWithEmailParams {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName?: string;
-}
-
-export interface SignInWithEmailParams {
-  email: string;
-  password: string;
-}
-
-export interface SignUpWithPhoneParams {
-  phone: string;
-  countryCode: string;
-}
-
 export interface AuthState {
   user: AuthUser | null;
   profile: Profile | null;

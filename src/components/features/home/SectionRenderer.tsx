@@ -8,6 +8,7 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { typography, spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useHomepageDataSafe } from '@/features/homepage';
@@ -34,12 +35,13 @@ interface SectionRendererProps {
 export default function SectionRenderer({ section }: SectionRendererProps) {
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const homepageData = useHomepageDataSafe();
   const activeCategory = homepageData?.activeCategory ?? 'all';
 
   const handleViewAll = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(section.viewAllRoute as any);
+    router.push(section.viewAllRoute);
   };
 
   // Render the appropriate section component based on type
@@ -100,8 +102,8 @@ export default function SectionRenderer({ section }: SectionRendererProps) {
       {/* Section Header */}
       <View style={styles.sectionHeader}>
         <View style={styles.sectionTitleContainer}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{section.title}</Text>
-          <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>{section.description}</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{t(section.titleKey, section.title)}</Text>
+          <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>{t(section.descriptionKey, section.description)}</Text>
         </View>
         {showViewAll ? (
           <TouchableOpacity 

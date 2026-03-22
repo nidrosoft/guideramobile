@@ -1,9 +1,10 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState, useRef, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import { ShieldTick } from 'iconsax-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CloseIcon from '@/components/common/icons/CloseIcon';
 import { colors, typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -12,6 +13,7 @@ import { useSignUp, useSignIn } from '@clerk/clerk-expo';
 export default function VerifyOTP() {
   const router = useRouter();
   const { colors: tc, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ phone: string; mode: 'signup' | 'signin' }>();
   const { isLoaded: isSignUpLoaded, signUp, setActive: setSignUpActive } = useSignUp();
   const { isLoaded: isSignInLoaded, signIn, setActive: setSignInActive } = useSignIn();
@@ -109,7 +111,7 @@ export default function VerifyOTP() {
           setError('Sign up incomplete. Please try signing up with email instead.');
         } else {
           setError('Verification incomplete. Please try again.');
-          console.error(JSON.stringify(attempt, null, 2));
+          if (__DEV__) console.error(JSON.stringify(attempt, null, 2));
         }
       } else if (mode === 'signin' && isSignInLoaded) {
         const attempt = await signIn.attemptFirstFactor({
@@ -123,7 +125,7 @@ export default function VerifyOTP() {
           return;
         } else {
           setError('Verification incomplete. Please try again.');
-          console.error(JSON.stringify(attempt, null, 2));
+          if (__DEV__) console.error(JSON.stringify(attempt, null, 2));
         }
       }
     } catch (err: any) {
@@ -174,84 +176,95 @@ export default function VerifyOTP() {
   const isComplete = otp.every(digit => digit !== '');
 
   return (
-    <View style={[styles.container, { backgroundColor: tc.background }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: tc.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      
+
       {/* Close Button */}
-      <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+      <TouchableOpacity style={[styles.closeButton, { top: insets.top + 10 }]} onPress={handleClose} accessibilityRole="button" accessibilityLabel="Close">
         <CloseIcon size={24} color={tc.textPrimary} />
       </TouchableOpacity>
 
-      <View style={styles.content}>
-        {/* Security Icon */}
-        <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
-          <ShieldTick size={32} color={tc.textPrimary} variant="Outline" />
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.content, { paddingTop: insets.top + 80 }]}>
+          {/* Security Icon */}
+          <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
+            <ShieldTick size={32} color={tc.textPrimary} variant="Outline" />
+          </View>
+
+          {/* Header */}
+          <Text style={[styles.title, { color: tc.textPrimary }]}>Enter your verification code</Text>
+
+          {/* Phone Number with Edit */}
+          <View style={styles.phoneContainer}>
+            <Text style={[styles.phoneText, { color: tc.textSecondary }]}>Sent to {phoneNumber}</Text>
+          </View>
+
+          {/* OTP Input - Inline */}
+          <View style={styles.otpContainer}>
+            {otp.map((digit, index) => (
+              <View key={index} style={[styles.otpInputWrapper, { borderBottomColor: tc.borderMedium }]}>
+                <TextInput
+                  ref={(ref) => { inputRefs.current[index] = ref; }}
+                  style={[styles.otpInput, { color: tc.textPrimary }]}
+                  value={digit}
+                  onChangeText={(value) => handleOtpChange(value, index)}
+                  onKeyPress={(e) => handleKeyPress(e, index)}
+                  keyboardType="number-pad"
+                  maxLength={index === 0 ? 6 : 1}
+                  selectTextOnFocus
+                  accessibilityLabel={`Digit ${index + 1} of 6`}
+                  textContentType={index === 0 ? 'oneTimeCode' : 'none'}
+                  autoComplete={index === 0 ? 'sms-otp' : 'off'}
+                />
+              </View>
+            ))}
+          </View>
+
+          {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
+
+          {/* Timer */}
+          <View style={styles.timerContainer}>
+            <Text style={[styles.timerText, { color: tc.textSecondary }]}>Didn't get a code?</Text>
+            {timer > 0 ? (
+              <Text style={[styles.timerCount, { color: tc.error }]}> ⏱ {timer}s</Text>
+            ) : (
+              <TouchableOpacity onPress={handleResend} accessibilityRole="button" accessibilityLabel="Resend code">
+                <Text style={[styles.resendText, { color: tc.primary }]}> Resend</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Verify Button - Always Visible */}
+          <TouchableOpacity
+            style={[
+              styles.verifyButton,
+              { backgroundColor: isDark ? tc.white : tc.black },
+              (!isComplete || isVerifying) && { backgroundColor: tc.bgElevated, borderWidth: 1, borderColor: tc.borderMedium },
+            ]}
+            onPress={handleVerify}
+            disabled={!isComplete || isVerifying}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Verify code"
+          >
+            {isVerifying ? (
+              <ActivityIndicator color={isDark ? tc.black : tc.white} size="small" />
+            ) : (
+              <Text style={[styles.verifyButtonText, { color: isDark ? tc.black : tc.white }, !isComplete && { color: tc.textTertiary }]}>
+                →
+              </Text>
+            )}
+          </TouchableOpacity>
         </View>
-
-        {/* Header */}
-        <Text style={[styles.title, { color: tc.textPrimary }]}>Enter your verification code</Text>
-        
-        {/* Phone Number with Edit */}
-        <View style={styles.phoneContainer}>
-          <Text style={[styles.phoneText, { color: tc.textSecondary }]}>Sent to {phoneNumber}</Text>
-          <Text style={[styles.editText, { color: tc.textPrimary }]}> · Edit</Text>
-        </View>
-
-        {/* OTP Input - Inline */}
-        <View style={styles.otpContainer}>
-          {otp.map((digit, index) => (
-            <View key={index} style={[styles.otpInputWrapper, { borderBottomColor: tc.borderMedium }]}>
-              <TextInput
-                ref={(ref) => { inputRefs.current[index] = ref; }}
-                style={[styles.otpInput, { color: tc.textPrimary }]}
-                value={digit}
-                onChangeText={(value) => handleOtpChange(value, index)}
-                onKeyPress={(e) => handleKeyPress(e, index)}
-                keyboardType="number-pad"
-                maxLength={index === 0 ? 6 : 1}
-                selectTextOnFocus
-                textContentType={index === 0 ? 'oneTimeCode' : 'none'}
-                autoComplete={index === 0 ? 'sms-otp' : 'off'}
-              />
-            </View>
-          ))}
-        </View>
-
-        {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
-
-        {/* Timer */}
-        <View style={styles.timerContainer}>
-          <Text style={[styles.timerText, { color: tc.textSecondary }]}>Didn't get a code?</Text>
-          {timer > 0 ? (
-            <Text style={[styles.timerCount, { color: tc.error }]}> ⏱ {timer}s</Text>
-          ) : (
-            <TouchableOpacity onPress={handleResend}>
-              <Text style={[styles.resendText, { color: tc.primary }]}> Resend</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Verify Button - Always Visible */}
-        <TouchableOpacity
-          style={[
-            styles.verifyButton,
-            { backgroundColor: isDark ? tc.white : tc.black },
-            (!isComplete || isVerifying) && { backgroundColor: tc.bgElevated, borderWidth: 1, borderColor: tc.borderMedium },
-          ]}
-          onPress={handleVerify}
-          disabled={!isComplete || isVerifying}
-          activeOpacity={0.8}
-        >
-          {isVerifying ? (
-            <ActivityIndicator color={isDark ? tc.black : tc.white} size="small" />
-          ) : (
-            <Text style={[styles.verifyButtonText, { color: isDark ? tc.black : tc.white }, !isComplete && { color: tc.textTertiary }]}>
-              →
-            </Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

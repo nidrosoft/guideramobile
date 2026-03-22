@@ -8,8 +8,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
-import { colors } from '@/styles/colors';
+import { useTheme } from '@/context/ThemeContext';
 import { fontFamily } from '@/styles/typography';
+import { ColorScheme } from '@/styles/colors';
 
 type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 type StatusType = 'online' | 'offline' | 'away' | 'busy';
@@ -26,12 +27,14 @@ const SIZE_MAP = { xs: 24, sm: 32, md: 40, lg: 48, xl: 56, '2xl': 72 };
 const FONT_MAP = { xs: 10, sm: 12, md: 14, lg: 16, xl: 18, '2xl': 22 };
 const DOT_MAP = { xs: 6, sm: 8, md: 10, lg: 12, xl: 14, '2xl': 16 };
 
-const STATUS_COLORS: Record<StatusType, string> = {
-  online: colors.success,
-  offline: colors.gray400,
-  away: colors.warning,
-  busy: colors.error,
-};
+function getStatusColors(colors: ColorScheme): Record<StatusType, string> {
+  return {
+    online: colors.success,
+    offline: colors.gray400,
+    away: colors.warning,
+    busy: colors.error,
+  };
+}
 
 function getInitials(name?: string): string {
   if (!name) return '?';
@@ -51,9 +54,11 @@ export default function DSAvatar({
   status,
   style,
 }: DSAvatarProps) {
+  const { colors } = useTheme();
   const dim = SIZE_MAP[size];
   const fontSize = FONT_MAP[size];
   const dotSize = DOT_MAP[size];
+  const statusColors = getStatusColors(colors);
 
   return (
     <View style={[{ width: dim, height: dim }, style]}>
@@ -72,10 +77,16 @@ export default function DSAvatar({
         <View
           style={[
             styles.fallback,
-            { width: dim, height: dim, borderRadius: dim / 2 },
+            {
+              width: dim,
+              height: dim,
+              borderRadius: dim / 2,
+              backgroundColor: colors.primarySubtle,
+              borderColor: colors.primaryBorderSubtle,
+            },
           ]}
         >
-          <Text style={[styles.initials, { fontSize }]}>
+          <Text style={[styles.initials, { fontSize, color: colors.primary }]}>
             {getInitials(name)}
           </Text>
         </View>
@@ -88,7 +99,7 @@ export default function DSAvatar({
               width: dotSize,
               height: dotSize,
               borderRadius: dotSize / 2,
-              backgroundColor: STATUS_COLORS[status],
+              backgroundColor: statusColors[status],
               borderWidth: 2,
               borderColor: colors.bgPrimary,
             },
@@ -101,16 +112,13 @@ export default function DSAvatar({
 
 const styles = StyleSheet.create({
   fallback: {
-    backgroundColor: colors.primarySubtle,
     borderWidth: 1,
-    borderColor: colors.primaryBorderSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
   initials: {
     fontFamily: fontFamily.semibold,
     fontWeight: '600',
-    color: colors.primary,
   },
   statusDot: {
     position: 'absolute',

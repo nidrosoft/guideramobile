@@ -7,10 +7,10 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  StyleSheet,
   ScrollView,
   TouchableOpacity,
   Image,
@@ -18,10 +18,13 @@ import {
   Alert,
   ActivityIndicator,
   Switch,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useToast } from '@/contexts/ToastContext';
 import {
   ArrowLeft2,
   Camera,
@@ -50,6 +53,7 @@ import Animated, {
   interpolate,
   Easing,
 } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { profileService, UpdateProfileInput } from '@/services/profile.service';
@@ -83,7 +87,9 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { t } = useTranslation();
   const { profile, refreshProfile, user } = useAuth();
+  const { showSuccess, showError } = useToast();
   
   // Form state
   const [firstName, setFirstName] = useState('');
@@ -173,8 +179,15 @@ export default function EditProfileScreen() {
     if (!profile?.id) return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Validate phone number if provided
+    if (phone.trim() && !/^[\d\s\-+()]{7,20}$/.test(phone.trim())) {
+      showError('Please enter a valid phone number (7-20 characters, digits and +/-/() only).');
+      return;
+    }
+
     setIsSaving(true);
-    
+
     try {
       const updates: UpdateProfileInput = {
         first_name: firstName.trim(),
@@ -196,7 +209,7 @@ export default function EditProfileScreen() {
       const { error } = await profileService.updateProfile(profile.id, updates);
       
       if (error) {
-        Alert.alert('Error', 'Failed to update profile. Please try again.');
+        showError('Failed to update profile. Please try again.');
         return;
       }
       
@@ -205,7 +218,7 @@ export default function EditProfileScreen() {
       router.back();
     } catch (error) {
       console.error('Error saving profile:', error);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      showError('Something went wrong. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -220,7 +233,7 @@ export default function EditProfileScreen() {
         onPress: async () => {
           const { status } = await ImagePicker.requestCameraPermissionsAsync();
           if (status !== 'granted') {
-            Alert.alert('Permission needed', 'Camera permission is required.');
+            showError('Camera permission is required. Please enable it in Settings.');
             return;
           }
           const result = await ImagePicker.launchCameraAsync({
@@ -237,7 +250,7 @@ export default function EditProfileScreen() {
         onPress: async () => {
           const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
           if (status !== 'granted') {
-            Alert.alert('Permission needed', 'Photo library permission is required.');
+            showError('Photo library permission is required. Please enable it in Settings.');
             return;
           }
           const result = await ImagePicker.launchImageLibraryAsync({
@@ -259,14 +272,14 @@ export default function EditProfileScreen() {
     try {
       const { url, error } = await profileService.uploadAvatar(profile.id, base64Data, fileExt);
       if (error || !url) {
-        Alert.alert('Error', 'Failed to upload photo. Please try again.');
+        showError('Failed to upload photo. Please try again.');
         return;
       }
       setAvatarUrl(url);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error('Error uploading photo:', error);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      showError('Something went wrong. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -278,7 +291,7 @@ export default function EditProfileScreen() {
     try {
       const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Location permission is required.');
+        showError('Location permission is required. Please enable it in Settings.');
         return;
       }
       const location = await ExpoLocation.getCurrentPositionAsync({ accuracy: ExpoLocation.Accuracy.Balanced });
@@ -292,7 +305,7 @@ export default function EditProfileScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (error) {
-      Alert.alert('Error', 'Could not detect your location. Please enter manually.');
+      showError('Could not detect your location. Please enter manually.');
     } finally {
       setIsLoadingLocation(false);
     }
@@ -328,6 +341,8 @@ export default function EditProfileScreen() {
         onValueChange={() => toggleVisibility(field)}
         trackColor={{ false: tc.borderSubtle, true: tc.primary + '50' }}
         thumbColor={visibility[field] ? tc.primary : isDark ? '#666' : '#ccc'}
+        accessibilityRole="switch"
+        accessibilityLabel={`Show ${label}`}
       />
     </View>
   );
@@ -364,7 +379,7 @@ export default function EditProfileScreen() {
               />
               {isVerified && (
                 <View style={styles.cardVerifiedBadge}>
-                  <Verify size={18} color="#FFFFFF" variant="Bold" />
+                  <Verify size={18} color={tc.white} variant="Bold" />
                 </View>
               )}
             </View>
@@ -481,8 +496,8 @@ export default function EditProfileScreen() {
           {isVerified && (
             <View style={[styles.cardVerifiedSection, { borderTopColor: tc.borderSubtle }]}>
               <View style={[styles.cardVerifiedPill, { backgroundColor: 'rgba(22,163,74,0.08)' }]}>
-                <TickCircle size={14} color="#16A34A" variant="Bold" />
-                <Text style={[styles.cardVerifiedText, { color: '#16A34A' }]}>Identity Verified</Text>
+                <TickCircle size={14} color={tc.success} variant="Bold" />
+                <Text style={[styles.cardVerifiedText, { color: tc.success }]}>Identity Verified</Text>
               </View>
               {partnerVerified && (
                 <View style={[styles.cardVerifiedPill, { backgroundColor: tc.primary + '12' }]}>
@@ -516,48 +531,51 @@ export default function EditProfileScreen() {
             style={[styles.avatar, { borderColor: tc.primary }]}
           />
           <View style={[styles.cameraButton, { backgroundColor: tc.primary }]}>
-            <Camera size={16} color="#FFFFFF" variant="Bold" />
+            <Camera size={16} color={tc.white} variant="Bold" />
           </View>
         </TouchableOpacity>
         <TouchableOpacity onPress={handleChangePhoto} disabled={isSaving}>
-          <Text style={[styles.changePhotoText, { color: tc.primary }]}>Change Photo</Text>
+          <Text style={[styles.changePhotoText, { color: tc.primary }]}>{t('account.editProfile.changePhoto')}</Text>
         </TouchableOpacity>
       </View>
       
       {/* === PERSONAL INFO === */}
-      <SectionHeader title="Personal Information" icon={People} />
+      <SectionHeader title={t('account.editProfile.personalInfo')} icon={People} />
       
       <View style={styles.rowInputs}>
         <View style={[styles.inputGroup, { flex: 1 }]}>
-          <Text style={[styles.label, { color: tc.textSecondary }]}>First Name</Text>
+          <Text style={[styles.label, { color: tc.textSecondary }]}>{t('account.editProfile.firstName')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
             value={firstName}
             onChangeText={setFirstName}
             placeholder="First name"
             placeholderTextColor={tc.textTertiary}
+            accessibilityLabel="First name"
           />
         </View>
         <View style={[styles.inputGroup, { flex: 1 }]}>
-          <Text style={[styles.label, { color: tc.textSecondary }]}>Last Name</Text>
+          <Text style={[styles.label, { color: tc.textSecondary }]}>{t('account.editProfile.lastName')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
             value={lastName}
             onChangeText={setLastName}
             placeholder="Last name"
             placeholderTextColor={tc.textTertiary}
+            accessibilityLabel="Last name"
           />
         </View>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: tc.textSecondary }]}>Bio</Text>
+        <Text style={[styles.label, { color: tc.textSecondary }]}>{t('account.editProfile.bio')}</Text>
         <TextInput
           style={[styles.input, styles.textArea, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
           value={bio}
           onChangeText={setBio}
           placeholder="Adventure seeker | Coffee lover | 12 countries..."
           placeholderTextColor={tc.textTertiary}
+          accessibilityLabel="Bio"
           multiline
           maxLength={150}
           textAlignVertical="top"
@@ -566,7 +584,7 @@ export default function EditProfileScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: tc.textSecondary }]}>Phone</Text>
+        <Text style={[styles.label, { color: tc.textSecondary }]}>{t('account.editProfile.phone')}</Text>
         <TextInput
           style={[styles.input, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
           value={phone}
@@ -574,11 +592,12 @@ export default function EditProfileScreen() {
           placeholder="+1 (555) 123-4567"
           placeholderTextColor={tc.textTertiary}
           keyboardType="phone-pad"
+          accessibilityLabel="Phone number"
         />
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: tc.textSecondary }]}>Location</Text>
+        <Text style={[styles.label, { color: tc.textSecondary }]}>{t('account.editProfile.location')}</Text>
         <View style={styles.locationInputContainer}>
           <TextInput
             style={[styles.input, { flex: 1, backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
@@ -591,6 +610,8 @@ export default function EditProfileScreen() {
             style={[styles.detectLocationButton, { backgroundColor: tc.primary + '15', borderColor: tc.primary + '30' }]}
             onPress={handleDetectLocation}
             disabled={isLoadingLocation}
+            accessibilityRole="button"
+            accessibilityLabel="Detect my location"
           >
             {isLoadingLocation ? (
               <ActivityIndicator size="small" color={tc.primary} />
@@ -602,7 +623,7 @@ export default function EditProfileScreen() {
       </View>
 
       {/* === TRAVEL STYLE === */}
-      <SectionHeader title="Travel Style" icon={Map1} />
+      <SectionHeader title={t('account.editProfile.travelStyle')} icon={Map1} />
       <View style={styles.chipContainer}>
         {TRAVEL_STYLES.map(style => (
           <TouchableOpacity
@@ -627,7 +648,7 @@ export default function EditProfileScreen() {
       </View>
 
       {/* === LANGUAGES === */}
-      <SectionHeader title="Languages" icon={Global} />
+      <SectionHeader title={t('account.editProfile.languages')} icon={Global} />
       {selectedLanguages.length > 0 && (
         <View style={styles.selectedLangsRow}>
           {selectedLanguages.map(lang => (
@@ -668,7 +689,7 @@ export default function EditProfileScreen() {
       )}
 
       {/* === VISIBILITY SETTINGS === */}
-      <SectionHeader title="Visibility Settings" icon={Eye} />
+      <SectionHeader title={t('account.editProfile.visibilitySettings')} icon={Eye} />
       <View style={[styles.visibilityCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
         <Text style={[styles.visibilityHint, { color: tc.textTertiary }]}>
           Control what others can see on your Travel Card
@@ -686,34 +707,39 @@ export default function EditProfileScreen() {
   );
   
   return (
-    <View style={[styles.screen, { backgroundColor: tc.background }]}>
+    <KeyboardAvoidingView
+      style={[styles.screen, { backgroundColor: tc.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      
+
       {/* Header */}
-      <View style={[styles.header, { 
+      <View style={[styles.header, {
         paddingTop: insets.top + 8,
-        backgroundColor: isDark ? '#1A1A1A' : tc.white,
+        backgroundColor: isDark ? tc.bgModal : tc.white,
         borderBottomColor: tc.borderSubtle,
       }]}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Go back">
           <ArrowLeft2 size={22} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Edit Profile</Text>
-        <TouchableOpacity onPress={handleSave} disabled={isSaving} style={styles.saveButton}>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{t('account.editProfile.title')}</Text>
+        <TouchableOpacity onPress={handleSave} disabled={isSaving} style={styles.saveButton} accessibilityRole="button" accessibilityLabel="Save profile">
           {isSaving ? (
             <ActivityIndicator size="small" color={tc.primary} />
           ) : (
-            <Text style={[styles.saveText, { color: tc.primary }]}>Save</Text>
+            <Text style={[styles.saveText, { color: tc.primary }]}>{t('common.save')}</Text>
           )}
         </TouchableOpacity>
       </View>
 
       {/* Flip Toggle */}
-      <View style={[styles.flipToggleContainer, { backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
+      <View style={[styles.flipToggleContainer, { backgroundColor: isDark ? tc.bgModal : tc.white, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity
           style={[styles.flipToggle, { backgroundColor: tc.primary + '10', borderColor: tc.primary + '25' }]}
           onPress={handleFlip}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Flip to preview travel card"
         >
           <Repeat size={18} color={tc.primary} variant="Bold" />
           <Text style={[styles.flipToggleText, { color: tc.primary }]}>Flip to Preview</Text>
@@ -729,7 +755,7 @@ export default function EditProfileScreen() {
           {renderTravelCard()}
         </Animated.View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

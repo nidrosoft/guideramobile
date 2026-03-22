@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { CloseCircle, Calendar } from 'iconsax-react-native';
-import { spacing, typography } from '@/styles';
+import { spacing, typography, colors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -345,7 +345,7 @@ export default function AddClaimBottomSheet({ visible, onClose, onSubmit }: AddC
               }
             >
               {isSubmitting ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={tc.white} />
               ) : (
                 <Text style={styles.nextButtonText}>
                   {currentStep === 2 ? 'Submit Claim' : 'Next'}
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
   datePickerDoneText: {
     fontSize: typography.fontSize.sm,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.white,
   },
   selectedTypeBadge: {
     flexDirection: 'row',
@@ -564,6 +564,6 @@ const styles = StyleSheet.create({
   nextButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.white,
   },
 });

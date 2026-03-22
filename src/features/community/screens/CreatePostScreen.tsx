@@ -34,6 +34,7 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { spacing, typography, borderRadius } from '@/styles';
 import { PostType, POST_TYPE_CONFIGS } from '../types/feed.types';
 import { postService } from '@/services/community/post.service';
@@ -43,6 +44,7 @@ export default function CreatePostScreen() {
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
   const { profile } = useAuth();
+  const { showError } = useToast();
   const { groupId, postType: initialType } = useLocalSearchParams<{ groupId: string; postType: string }>();
 
   const [content, setContent] = useState('');
@@ -90,7 +92,7 @@ export default function CreatePostScreen() {
       router.back();
     } catch (err) {
       if (__DEV__) console.warn('Create post error:', err);
-      Alert.alert('Error', 'Failed to create post. Please try again.');
+      showError('Failed to create post. Please try again.');
     } finally {
       setIsPosting(false);
     }
@@ -143,7 +145,7 @@ export default function CreatePostScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: tc.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Animated.View style={[styles.inner, { opacity: fadeAnim }]}>

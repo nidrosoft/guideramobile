@@ -112,7 +112,7 @@ class ExpenseService {
           );
         }
       }
-    } catch (_) {}
+    } catch (e) { if (__DEV__) console.warn('Operation failed:', e); }
 
     return fromDb(data);
   }

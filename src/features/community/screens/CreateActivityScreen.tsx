@@ -28,6 +28,7 @@ import * as ExpoLocation from 'expo-location';
 import { spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { useActivityActions } from '@/hooks/useCommunity';
 import { activityService } from '@/services/community/activity.service';
 import { supabase } from '@/lib/supabase/client';
@@ -42,6 +43,7 @@ export default function CreateActivityScreen() {
   const insets = useSafeAreaInsets();
   const { colors: tc } = useTheme();
   const { profile } = useAuth();
+  const { showError } = useToast();
   const userId = profile?.id;
   const { createActivity, updateActivity, loading } = useActivityActions(userId);
   const params = useLocalSearchParams<{
@@ -195,7 +197,7 @@ export default function CreateActivityScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      showError(error.message || 'Failed to create activity');
     }
   };
 

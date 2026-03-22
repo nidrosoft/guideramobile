@@ -6,15 +6,15 @@
  * Each deal card navigates to the deal detail screen.
  */
 
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { ArrowLeft2, Star1 } from 'iconsax-react-native';
-import { typography, spacing } from '@/styles';
+import { typography, spacing, fontFamily } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useGilDeals } from '@/hooks/useDeals';
 import type { PersonalizedDeal, DealType } from '@/services/deal';
@@ -63,30 +63,47 @@ export default function ViewAllDeals() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const PAGE_SIZE = 20;
   const { deals, isLoading } = useGilDeals(undefined, 50);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const filteredDeals = useMemo(() => {
     if (selectedCategory === 'all') return deals;
     return deals.filter(d => d.deal_type === selectedCategory);
   }, [deals, selectedCategory]);
 
-  const handleBack = () => {
+  const paginatedDeals = useMemo(() => {
+    return filteredDeals.slice(0, visibleCount);
+  }, [filteredDeals, visibleCount]);
+
+  const handleLoadMore = useCallback(() => {
+    if (loadingMore || visibleCount >= filteredDeals.length) return;
+    setLoadingMore(true);
+    setTimeout(() => {
+      setVisibleCount(prev => Math.min(prev + PAGE_SIZE, filteredDeals.length));
+      setLoadingMore(false);
+    }, 300);
+  }, [loadingMore, visibleCount, filteredDeals.length]);
+
+  const handleBack = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.back();
-  };
+  }, [router]);
 
-  const handleCategoryPress = (id: string) => {
+  const handleCategoryPress = useCallback((id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedCategory(id);
-  };
+    setVisibleCount(PAGE_SIZE);
+  }, []);
 
-  const handleDealPress = (deal: PersonalizedDeal) => {
+  const handleDealPress = useCallback((deal: PersonalizedDeal) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push({
       pathname: '/deals/[id]' as any,
       params: { id: deal.deal_cache_id || deal.id, title: deal.deal_title, type: deal.deal_type },
     });
-  };
+  }, [router]);
 
   // Count per category
   const counts = useMemo(() => {
@@ -119,18 +136,18 @@ export default function ViewAllDeals() {
               key={cat.id}
               style={[
                 styles.tab,
-                { backgroundColor: isActive ? PRIMARY : (isDark ? colors.bgCard : '#F1F5F9'), borderColor: isActive ? PRIMARY : colors.borderSubtle },
+                { backgroundColor: isActive ? colors.primary : (isDark ? colors.bgCard : '#F1F5F9'), borderColor: isActive ? colors.primary : colors.borderSubtle },
               ]}
               onPress={() => handleCategoryPress(cat.id)}
               activeOpacity={0.7}
             >
               <Ionicons name={cat.icon as any} size={16} color={isActive ? '#FFFFFF' : colors.textSecondary} />
-              <Text style={[styles.tabText, { color: isActive ? '#FFFFFF' : colors.textPrimary }]}>
+              <Text style={[styles.tabText, { color: isActive ? colors.white : colors.textPrimary }]}>
                 {cat.label}
               </Text>
               {count > 0 && (
                 <View style={[styles.countBadge, { backgroundColor: isActive ? 'rgba(255,255,255,0.3)' : colors.borderSubtle }]}>
-                  <Text style={[styles.countText, { color: isActive ? '#FFFFFF' : colors.textSecondary }]}>{count}</Text>
+                  <Text style={[styles.countText, { color: isActive ? colors.white : colors.textSecondary }]}>{count}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -144,20 +161,35 @@ export default function ViewAllDeals() {
         <ScrollView style={styles.dealsList} showsVerticalScrollIndicator={false}>
           <SkeletonDealListCards />
         </ScrollView>
-      ) : filteredDeals.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="search-outline" size={48} color={colors.textTertiary} />
-          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No deals found</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            {selectedCategory === 'all' ? 'Check back soon for new deals' : `No ${selectedCategory} deals right now`}
-          </Text>
-        </View>
       ) : (
-        <ScrollView style={styles.dealsList} contentContainerStyle={styles.dealsContent} showsVerticalScrollIndicator={false}>
-          {filteredDeals.map((deal) => (
-            <DealListCard key={deal.id} deal={deal} colors={colors} isDark={isDark} onPress={() => handleDealPress(deal)} />
-          ))}
-        </ScrollView>
+        <FlatList
+          data={paginatedDeals}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <DealListCard deal={item} colors={colors} isDark={isDark} onPress={() => handleDealPress(item)} />
+          )}
+          style={styles.dealsList}
+          contentContainerStyle={styles.dealsContent}
+          showsVerticalScrollIndicator={false}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="search-outline" size={48} color={colors.textTertiary} />
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No deals found</Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+                {selectedCategory === 'all' ? 'Check back soon for new deals' : `No ${selectedCategory} deals right now`}
+              </Text>
+            </View>
+          }
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : null
+          }
+        />
       )}
     </SafeAreaView>
   );
@@ -176,7 +208,7 @@ function DealListCard({ deal, colors, isDark, onPress }: { deal: PersonalizedDea
         <Image source={imageUrl} style={styles.cardImage} contentFit="cover" />
         {/* Type badge on image */}
         <View style={[styles.cardTypeBadge, { backgroundColor: typeColor }]}>
-          <Ionicons name={typeIcon as any} size={11} color="#FFF" />
+          <Ionicons name={typeIcon as any} size={11} color={colors.white} />
           <Text style={styles.cardTypeText}>{deal.deal_type.toUpperCase()}</Text>
         </View>
       </View>
@@ -211,9 +243,9 @@ function DealListCard({ deal, colors, isDark, onPress }: { deal: PersonalizedDea
             {deal.deal_type === 'hotel' ? '/night' : deal.deal_type === 'experience' ? '/person' : ' RT'}
           </Text>
           <View style={{ flex: 1 }} />
-          <View style={[styles.viewDealBtn, { backgroundColor: PRIMARY }]}>
+          <View style={[styles.viewDealBtn, { backgroundColor: colors.primary }]}>
             <Text style={styles.viewDealText}>View</Text>
-            <Ionicons name="arrow-forward" size={12} color="#FFF" />
+            <Ionicons name="arrow-forward" size={12} color={colors.white} />
           </View>
         </View>
       </View>
@@ -227,8 +259,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingVertical: 12,
   },
-  backBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontFamily: 'Rubik-Bold', fontSize: 20 },
+  backBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.kpiValue },
 
   // Category tabs
   tabsWrapper: { height: 52, marginBottom: 4 },
@@ -237,16 +269,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 6, height: 38,
     paddingHorizontal: 14, borderRadius: 20, borderWidth: 1,
   },
-  tabText: { fontFamily: 'Rubik-SemiBold', fontSize: 13 },
+  tabText: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.body },
   countBadge: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 10, minWidth: 22, alignItems: 'center' },
-  countText: { fontFamily: 'Rubik-Medium', fontSize: 11 },
+  countText: { fontFamily: fontFamily.medium, fontSize: typography.fontSize.caption },
 
   // Loading / Empty
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  loadingText: { fontFamily: 'Rubik-Regular', fontSize: 14 },
+  loadingText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodyLg },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8, paddingBottom: 60 },
-  emptyTitle: { fontFamily: 'Rubik-SemiBold', fontSize: 18 },
-  emptySubtitle: { fontFamily: 'Rubik-Regular', fontSize: 14 },
+  emptyTitle: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.heading2 },
+  emptySubtitle: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodyLg },
 
   // Deal list
   dealsList: { flex: 1 },
@@ -263,19 +295,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 3,
     paddingHorizontal: 6, paddingVertical: 3, borderRadius: 8,
   },
-  cardTypeText: { fontFamily: 'Rubik-Bold', fontSize: 8, color: '#FFF', letterSpacing: 0.5 },
+  cardTypeText: { fontFamily: fontFamily.bold, fontSize: 8, color: '#FFF', letterSpacing: 0.5 },
 
   cardContent: { flex: 1, padding: 12, justifyContent: 'space-between' },
   cardBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginBottom: 4 },
-  cardBadgeText: { fontFamily: 'Rubik-Bold', fontSize: 9, letterSpacing: 0.6 },
-  cardTitle: { fontFamily: 'Rubik-SemiBold', fontSize: 14, lineHeight: 19, marginBottom: 2 },
-  cardSubtitle: { fontFamily: 'Rubik-Regular', fontSize: 12, marginBottom: 6 },
+  cardBadgeText: { fontFamily: fontFamily.bold, fontSize: 9, letterSpacing: 0.6 },
+  cardTitle: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.bodyLg, lineHeight: 19, marginBottom: 2 },
+  cardSubtitle: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodySm, marginBottom: 6 },
   cardBottom: { flexDirection: 'row', alignItems: 'baseline' },
-  cardPrice: { fontFamily: 'HostGrotesk-Bold', fontSize: 20 },
-  cardPriceLabel: { fontFamily: 'Rubik-Regular', fontSize: 11, marginLeft: 2 },
+  cardPrice: { fontFamily: fontFamily.display, fontSize: typography.fontSize.kpiValue },
+  cardPriceLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.caption, marginLeft: 2 },
   viewDealBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14,
   },
-  viewDealText: { fontFamily: 'Rubik-Bold', fontSize: 12, color: '#FFF' },
+  viewDealText: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.bodySm, color: '#FFF' },
 });

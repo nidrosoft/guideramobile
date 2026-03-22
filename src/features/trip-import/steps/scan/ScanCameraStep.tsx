@@ -10,12 +10,14 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } fr
 import { Scan, Gallery, InfoCircle, Camera } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useToast } from '@/contexts/ToastContext';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { StepComponentProps } from '../../types/import-flow.types';
 
 export default function ScanCameraStep({ onNext }: StepComponentProps) {
   const { colors: tc, isDark } = useTheme();
+  const { showError } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
 
   const processResult = (result: ImagePicker.ImagePickerResult) => {
@@ -23,7 +25,7 @@ export default function ScanCameraStep({ onNext }: StepComponentProps) {
 
     const asset = result.assets[0];
     if (!asset.base64) {
-      Alert.alert('Error', 'Failed to read the image. Please try again.');
+      showError('Failed to read the image. Please try again.');
       return;
     }
 

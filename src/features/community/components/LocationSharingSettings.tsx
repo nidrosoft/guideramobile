@@ -23,7 +23,7 @@ import {
   ShieldTick,
   InfoCircle,
 } from 'iconsax-react-native';
-import { colors, spacing, borderRadius } from '@/styles';
+import { colors, spacing, borderRadius, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 
 export type LocationVisibility = 'everyone' | 'buddies_only' | 'nobody';
@@ -274,8 +274,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textSecondary,
     marginBottom: spacing.md,
     textTransform: 'uppercase',
@@ -303,12 +303,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   toggleTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
   },
   toggleDescription: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textSecondary,
     marginTop: 2,
   },
@@ -342,15 +342,15 @@ const styles = StyleSheet.create({
     marginLeft: spacing.md,
   },
   optionLabel: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: typography.fontSize.heading3,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
   },
   optionLabelSelected: {
     color: colors.primary,
   },
   optionDescription: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textSecondary,
     marginTop: 2,
   },
@@ -394,8 +394,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   statusLabel: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.medium,
     color: colors.textSecondary,
   },
   settingRow: {
@@ -414,12 +414,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   settingLabel: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: typography.fontSize.heading3,
+    fontWeight: typography.fontWeight.medium,
     color: colors.textPrimary,
   },
   settingDescription: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textSecondary,
     marginTop: 2,
   },
@@ -439,8 +439,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   autoDisableText: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.medium,
     color: colors.textSecondary,
   },
   autoDisableTextSelected: {
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.primary,
     lineHeight: 18,
   },

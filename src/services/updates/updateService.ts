@@ -221,15 +221,22 @@ class UpdateService {
   }
 
   /**
-   * Get release notes for current update
+   * Get release notes for current update.
+   * Reads from the manifest metadata if available, otherwise returns a
+   * generic fallback message.
    */
   getReleaseNotes(): string[] {
-    // In a real app, this would come from the manifest metadata
-    // For now, return placeholder
-    return [
-      'Bug fixes and performance improvements',
-      'New features and enhancements',
-    ];
+    try {
+      const manifest = Updates.manifest as any;
+      const metadata = manifest?.metadata ?? manifest?.extra;
+      if (metadata?.releaseNotes) {
+        const notes = metadata.releaseNotes;
+        return Array.isArray(notes) ? notes : [String(notes)];
+      }
+    } catch {
+      // Manifest may not be available in all contexts
+    }
+    return ['Bug fixes and improvements'];
   }
 
   /**

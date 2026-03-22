@@ -34,7 +34,7 @@ import {
   Notepad2,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { spacing } from '@/styles';
+import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 
 interface SmartPlanBottomSheetProps {
@@ -412,14 +412,14 @@ const styles = StyleSheet.create({
 
   // Title & Description
   title: {
-    fontSize: 22,
+    fontSize: typography.fontSize.heading1,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 8,
     lineHeight: 28,
   },
   description: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     lineHeight: 20,
     textAlign: 'center',
     marginBottom: 16,
@@ -437,14 +437,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   premiumText: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.bold,
   },
 
   // Section Label
   sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: typography.fontSize.caption,
+    fontWeight: typography.fontWeight.bold,
     letterSpacing: 1.2,
     marginBottom: 12,
   },
@@ -472,12 +472,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   featureTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: typography.fontSize.heading3,
+    fontWeight: typography.fontWeight.bold,
     marginBottom: 3,
   },
   featureDesc: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     lineHeight: 19,
   },
 
@@ -494,8 +494,8 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   learnMoreText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.semibold,
   },
 
   // CTA Button
@@ -510,8 +510,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   ctaText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     color: '#FFFFFF',
   },
 
@@ -520,8 +520,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   maybeLaterText: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: typography.fontSize.heading3,
+    fontWeight: typography.fontWeight.medium,
     textAlign: 'center',
   },
 
@@ -544,14 +544,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   detailTitle: {
-    fontSize: 22,
+    fontSize: typography.fontSize.heading1,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 10,
     lineHeight: 28,
   },
   detailSubtitle: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     lineHeight: 20,
     textAlign: 'center',
   },
@@ -573,12 +573,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   detailFeatureTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     marginBottom: 6,
   },
   detailFeatureDesc: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     lineHeight: 20,
   },
 });

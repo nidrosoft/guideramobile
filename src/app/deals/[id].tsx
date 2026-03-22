@@ -26,6 +26,7 @@ import {
   Modal,
   FlatList,
   Animated,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -34,7 +35,7 @@ import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { ArrowLeft2, Heart, ExportSquare, Clock, LanguageSquare, People, TickCircle, CloseCircle, ArrowDown2, ArrowUp2, Location, Star1 } from 'iconsax-react-native';
 import { Image } from 'expo-image';
-import { spacing, typography } from '@/styles';
+import { spacing, typography, fontFamily } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
@@ -43,8 +44,7 @@ import { SkeletonDetailPage } from '@/components/common/SkeletonLoader';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PHOTO_WIDTH = SCREEN_WIDTH;
-const PHOTO_HEIGHT = 340;
-const PRIMARY = '#3FC39E';
+// Use colors.primary from theme for dynamic theming
 
 const BADGE_STYLES: Record<string, { text: string; bg: string; fg: string }> = {
   record_low: { text: 'LOWEST EVER', bg: '#FEE2E2', fg: '#DC2626' },
@@ -64,6 +64,8 @@ const PLACEHOLDER_IMAGES: Record<string, string> = {
 
 export default function DealDetailScreen() {
   const router = useRouter();
+  const { height: screenHeight } = useWindowDimensions();
+  const PHOTO_HEIGHT = Math.min(340, screenHeight * 0.4);
   const { user, profile } = useAuth();
   const params = useLocalSearchParams<{ id: string; title?: string; type?: string }>();
   const { colors, isDark } = useTheme();
@@ -272,12 +274,12 @@ export default function DealDetailScreen() {
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {/* Hero photo gallery */}
-          <View style={styles.photoContainer}>
+          <View style={[styles.photoContainer, { height: PHOTO_HEIGHT }]}>
             <FlatList
               data={photos}
               renderItem={({ item, index }) => (
                 <TouchableOpacity activeOpacity={0.9} onPress={() => openCarousel(index)}>
-                  <Image source={item} style={styles.photo} contentFit="cover" />
+                  <Image source={item} style={[styles.photo, { height: PHOTO_HEIGHT }]} contentFit="cover" />
                 </TouchableOpacity>
               )}
               keyExtractor={(_, i) => i.toString()}
@@ -289,16 +291,16 @@ export default function DealDetailScreen() {
 
             <View style={[styles.heroNav, { top: insets.top + 8 }]}>
               <TouchableOpacity onPress={handleBack} style={styles.navBtn}>
-                <ArrowLeft2 size={22} color="#FFF" />
+                <ArrowLeft2 size={22} color={colors.white} />
               </TouchableOpacity>
               <View style={styles.navRight}>
                 <TouchableOpacity onPress={handleSave} style={styles.navBtn}>
                   <Animated.View style={{ transform: [{ scale: saveAnim }] }}>
-                    <Heart size={22} color={isSaved ? '#EF4444' : '#FFF'} variant={isSaved ? 'Bold' : 'Linear'} />
+                    <Heart size={22} color={isSaved ? colors.error : colors.white} variant={isSaved ? 'Bold' : 'Linear'} />
                   </Animated.View>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleShare} style={styles.navBtn}>
-                  <ExportSquare size={20} color="#FFF" />
+                  <ExportSquare size={20} color={colors.white} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -324,7 +326,7 @@ export default function DealDetailScreen() {
             {/* Photo count badge */}
             {photos.length > 1 && (
               <TouchableOpacity style={styles.photoCountBadge} onPress={() => openCarousel(activePhoto)}>
-                <Ionicons name="images-outline" size={14} color="#FFF" />
+                <Ionicons name="images-outline" size={14} color={colors.white} />
                 <Text style={styles.photoCountText}>{photos.length}</Text>
               </TouchableOpacity>
             )}
@@ -344,7 +346,7 @@ export default function DealDetailScreen() {
                     <Text style={flightStyles.priceRangeLow}>${Math.round(price)} is low</Text>
                   </View>
                   <View style={[flightStyles.priceRangePill, { backgroundColor: '#FEE2E2' }]}>
-                    <Text style={[flightStyles.priceRangeLow, { color: '#DC2626' }]}>${Math.round(originalPrice)}</Text>
+                    <Text style={[flightStyles.priceRangeLow, { color: colors.error }]}>${Math.round(originalPrice)}</Text>
                   </View>
                 </View>
                 <View style={flightStyles.priceBar}>
@@ -359,7 +361,7 @@ export default function DealDetailScreen() {
             {/* Savings callout */}
             {savings > 0 && (
               <View style={[flightStyles.savingsCard, { backgroundColor: isDark ? '#064E3B' : '#ECFDF5', borderColor: isDark ? '#065F46' : '#A7F3D0' }]}>
-                <Text style={[flightStyles.savingsText, { color: isDark ? '#6EE7B7' : '#059669' }]}>
+                <Text style={[flightStyles.savingsText, { color: isDark ? '#6EE7B7' : colors.success }]}>
                   You save ${Math.round(savings)} on this deal
                 </Text>
               </View>
@@ -372,7 +374,7 @@ export default function DealDetailScreen() {
             <Text style={[flightStyles.sectionTitle, { color: colors.textPrimary }]}>Travel Plan</Text>
 
             {/* Leaving */}
-            <Text style={[flightStyles.legLabel, { color: PRIMARY }]}>Leaving</Text>
+            <Text style={[flightStyles.legLabel, { color: colors.primary }]}>Leaving</Text>
             <View style={flightStyles.timeline}>
               <View style={flightStyles.timelineDot} />
               <View style={[flightStyles.timelineLine, { backgroundColor: colors.borderSubtle }]} />
@@ -428,7 +430,7 @@ export default function DealDetailScreen() {
 
             {/* Partner note */}
             <View style={[styles.partnerNote, { backgroundColor: isDark ? colors.bgCard : '#F8FAFC' }]}>
-              <Ionicons name="shield-checkmark" size={16} color={PRIMARY} />
+              <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
               <Text style={[styles.partnerText, { color: colors.textSecondary }]}>
                 Secure booking through our trusted partner. You'll be taken directly to the booking page.
               </Text>
@@ -444,7 +446,7 @@ export default function DealDetailScreen() {
           </View>
           <TouchableOpacity style={styles.ctaBtn} onPress={handleGetDeal} activeOpacity={0.85}>
             <Text style={styles.ctaTxt}>Book</Text>
-            <ExportSquare size={18} color="#FFFFFF" />
+            <ExportSquare size={18} color={colors.white} />
           </TouchableOpacity>
         </View>
       </View>
@@ -475,12 +477,12 @@ export default function DealDetailScreen() {
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {/* Hotel Hero */}
-          <View style={styles.photoContainer}>
+          <View style={[styles.photoContainer, { height: PHOTO_HEIGHT }]}>
             <FlatList
               data={photos}
               renderItem={({ item, index }) => (
                 <TouchableOpacity activeOpacity={0.9} onPress={() => openCarousel(index)}>
-                  <Image source={item} style={styles.photo} contentFit="cover" />
+                  <Image source={item} style={[styles.photo, { height: PHOTO_HEIGHT }]} contentFit="cover" />
                 </TouchableOpacity>
               )}
               keyExtractor={(_, i) => i.toString()}
@@ -492,16 +494,16 @@ export default function DealDetailScreen() {
 
             <View style={[styles.heroNav, { top: insets.top + 8 }]}>
               <TouchableOpacity onPress={handleBack} style={styles.navBtn}>
-                <ArrowLeft2 size={22} color="#FFF" />
+                <ArrowLeft2 size={22} color={colors.white} />
               </TouchableOpacity>
               <View style={styles.navRight}>
                 <TouchableOpacity onPress={handleSave} style={styles.navBtn}>
                   <Animated.View style={{ transform: [{ scale: saveAnim }] }}>
-                    <Heart size={22} color={isSaved ? '#EF4444' : '#FFF'} variant={isSaved ? 'Bold' : 'Linear'} />
+                    <Heart size={22} color={isSaved ? colors.error : colors.white} variant={isSaved ? 'Bold' : 'Linear'} />
                   </Animated.View>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleShare} style={styles.navBtn}>
-                  <ExportSquare size={20} color="#FFF" />
+                  <ExportSquare size={20} color={colors.white} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -516,7 +518,7 @@ export default function DealDetailScreen() {
 
             {photos.length > 1 && (
               <TouchableOpacity style={styles.photoCountBadge} onPress={() => openCarousel(activePhoto)}>
-                <Ionicons name="images-outline" size={14} color="#FFF" />
+                <Ionicons name="images-outline" size={14} color={colors.white} />
                 <Text style={styles.photoCountText}>{photos.length}</Text>
               </TouchableOpacity>
             )}
@@ -551,7 +553,7 @@ export default function DealDetailScreen() {
             {/* Location */}
             {(d.city || neighborhood) && (
               <View style={hotelStyles.locationRow}>
-                <Location size={16} color={PRIMARY} variant="Bold" />
+                <Location size={16} color={colors.primary} variant="Bold" />
                 <Text style={[hotelStyles.locationText, { color: colors.textSecondary }]}>
                   {neighborhood ? `${neighborhood}, ` : ''}{d.city || ''}{d.country ? `, ${d.country}` : ''}
                 </Text>
@@ -605,7 +607,7 @@ export default function DealDetailScreen() {
                 <View style={hotelStyles.amenitiesGrid}>
                   {amenities.slice(0, 8).map((a: string, i: number) => (
                     <View key={i} style={[hotelStyles.amenityChip, { backgroundColor: isDark ? colors.bgCard : '#F0F9FF', borderColor: isDark ? colors.borderSubtle : '#BAE6FD' }]}>
-                      <TickCircle size={14} color={PRIMARY} variant="Bold" />
+                      <TickCircle size={14} color={colors.primary} variant="Bold" />
                       <Text style={[hotelStyles.amenityText, { color: colors.textPrimary }]}>{a}</Text>
                     </View>
                   ))}
@@ -635,7 +637,7 @@ export default function DealDetailScreen() {
               >
                 {highlights.map((h: string, i: number) => (
                   <View key={i} style={styles.listItem}>
-                    <TickCircle size={18} color={PRIMARY} variant="Bold" />
+                    <TickCircle size={18} color={colors.primary} variant="Bold" />
                     <Text style={[styles.listText, { color: colors.textSecondary }]}>{h}</Text>
                   </View>
                 ))}
@@ -645,7 +647,7 @@ export default function DealDetailScreen() {
             {/* Cancellation */}
             {cancellation ? (
               <View style={[styles.policyCard, { backgroundColor: isDark ? colors.bgCard : '#F0FDF4', borderColor: isDark ? colors.borderSubtle : '#BBF7D0' }]}>
-                <TickCircle size={20} color="#059669" variant="Bold" />
+                <TickCircle size={20} color={colors.success} variant="Bold" />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.policyTitle, { color: colors.textPrimary }]}>Cancellation Policy</Text>
                   <Text style={[styles.policyBody, { color: colors.textSecondary }]}>{cancellation}</Text>
@@ -655,7 +657,7 @@ export default function DealDetailScreen() {
 
             {/* Partner note */}
             <View style={[styles.partnerNote, { backgroundColor: isDark ? colors.bgCard : '#F8FAFC' }]}>
-              <Ionicons name="shield-checkmark" size={16} color={PRIMARY} />
+              <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
               <Text style={[styles.partnerText, { color: colors.textSecondary }]}>
                 Secure booking through our trusted partner. You'll be taken directly to the booking page.
               </Text>
@@ -667,11 +669,11 @@ export default function DealDetailScreen() {
         <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.borderSubtle, paddingBottom: insets.bottom + 10 }]}>
           <View>
             <Text style={[styles.btmLabel, { color: colors.textSecondary }]}>From</Text>
-            <Text style={[styles.btmPrice, { color: colors.textPrimary }]}>${Math.round(price)}<Text style={{ fontSize: 14, fontFamily: 'Rubik-Regular' }}>/night</Text></Text>
+            <Text style={[styles.btmPrice, { color: colors.textPrimary }]}>${Math.round(price)}<Text style={{ fontSize: 14, fontFamily: fontFamily.regular }}>/night</Text></Text>
           </View>
           <TouchableOpacity style={styles.ctaBtn} onPress={handleGetDeal} activeOpacity={0.85}>
             <Text style={styles.ctaTxt}>Book Now</Text>
-            <ExportSquare size={18} color="#FFFFFF" />
+            <ExportSquare size={18} color={colors.white} />
           </TouchableOpacity>
         </View>
       </View>
@@ -688,12 +690,12 @@ export default function DealDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* ─── Photo Gallery ─── */}
-        <View style={styles.photoContainer}>
+        <View style={[styles.photoContainer, { height: PHOTO_HEIGHT }]}>
           <FlatList
             data={photos}
             renderItem={({ item, index }) => (
               <TouchableOpacity activeOpacity={0.9} onPress={() => openCarousel(index)}>
-                <Image source={item} style={styles.photo} contentFit="cover" />
+                <Image source={item} style={[styles.photo, { height: PHOTO_HEIGHT }]} contentFit="cover" />
               </TouchableOpacity>
             )}
             keyExtractor={(_, i) => i.toString()}
@@ -706,16 +708,16 @@ export default function DealDetailScreen() {
           {/* Nav buttons */}
           <View style={[styles.heroNav, { top: insets.top + 8 }]}>
             <TouchableOpacity onPress={handleBack} style={styles.navBtn}>
-              <ArrowLeft2 size={22} color="#FFF" />
+              <ArrowLeft2 size={22} color={colors.white} />
             </TouchableOpacity>
             <View style={styles.navRight}>
               <TouchableOpacity onPress={handleSave} style={styles.navBtn}>
                 <Animated.View style={{ transform: [{ scale: saveAnim }] }}>
-                  <Heart size={22} color={isSaved ? '#EF4444' : '#FFF'} variant={isSaved ? 'Bold' : 'Linear'} />
+                  <Heart size={22} color={isSaved ? colors.error : colors.white} variant={isSaved ? 'Bold' : 'Linear'} />
                 </Animated.View>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleShare} style={styles.navBtn}>
-                <ExportSquare size={20} color="#FFF" />
+                <ExportSquare size={20} color={colors.white} />
               </TouchableOpacity>
             </View>
           </View>
@@ -732,7 +734,7 @@ export default function DealDetailScreen() {
           {/* Photo count badge */}
           {photos.length > 1 && (
             <TouchableOpacity style={styles.photoCountBadge} onPress={() => openCarousel(activePhoto)}>
-              <Ionicons name="images-outline" size={14} color="#FFF" />
+              <Ionicons name="images-outline" size={14} color={colors.white} />
               <Text style={styles.photoCountText}>{photos.length}</Text>
             </TouchableOpacity>
           )}
@@ -753,7 +755,7 @@ export default function DealDetailScreen() {
               })}
               {cancellation ? (
                 <View style={[styles.badge, { backgroundColor: '#ECFDF5' }]}>
-                  <Text style={[styles.badgeTxt, { color: '#059669' }]}>FREE CANCELLATION</Text>
+                  <Text style={[styles.badgeTxt, { color: colors.success }]}>FREE CANCELLATION</Text>
                 </View>
               ) : null}
             </View>
@@ -792,7 +794,7 @@ export default function DealDetailScreen() {
                 const Icon = item.icon;
                 return (
                   <View key={i} style={[styles.infoItem, i < quickInfo.length - 1 && styles.infoItemBorder]}>
-                    <Icon size={18} color={PRIMARY} variant="Bold" />
+                    <Icon size={18} color={colors.primary} variant="Bold" />
                     <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{item.label}</Text>
                     <Text style={[styles.infoValue, { color: colors.textPrimary }]} numberOfLines={1}>{item.value}</Text>
                   </View>
@@ -823,7 +825,7 @@ export default function DealDetailScreen() {
             >
               {highlights.map((h: string, i: number) => (
                 <View key={i} style={styles.listItem}>
-                  <TickCircle size={18} color={PRIMARY} variant="Bold" />
+                  <TickCircle size={18} color={colors.primary} variant="Bold" />
                   <Text style={[styles.listText, { color: colors.textSecondary }]}>{h}</Text>
                 </View>
               ))}
@@ -840,7 +842,7 @@ export default function DealDetailScreen() {
             >
               {whatsIncluded.map((item: string, i: number) => (
                 <View key={i} style={styles.listItem}>
-                  <TickCircle size={16} color="#059669" variant="Bold" />
+                  <TickCircle size={16} color={colors.success} variant="Bold" />
                   <Text style={[styles.listText, { color: colors.textSecondary }]}>{item}</Text>
                 </View>
               ))}
@@ -850,7 +852,7 @@ export default function DealDetailScreen() {
                   <Text style={[styles.subHeading, { color: colors.textPrimary }]}>Not Included</Text>
                   {whatsNotIncluded.map((item: string, i: number) => (
                     <View key={i} style={styles.listItem}>
-                      <CloseCircle size={16} color="#EF4444" variant="Bold" />
+                      <CloseCircle size={16} color={colors.error} variant="Bold" />
                       <Text style={[styles.listText, { color: colors.textSecondary }]}>{item}</Text>
                     </View>
                   ))}
@@ -862,7 +864,7 @@ export default function DealDetailScreen() {
           {/* ─── Cancellation Policy ─── */}
           {cancellation ? (
             <View style={[styles.policyCard, { backgroundColor: isDark ? colors.bgCard : '#F0FDF4', borderColor: isDark ? colors.borderSubtle : '#BBF7D0' }]}>
-              <TickCircle size={20} color="#059669" variant="Bold" />
+              <TickCircle size={20} color={colors.success} variant="Bold" />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.policyTitle, { color: colors.textPrimary }]}>Cancellation Policy</Text>
                 <Text style={[styles.policyBody, { color: colors.textSecondary }]}>{cancellation}</Text>
@@ -872,7 +874,7 @@ export default function DealDetailScreen() {
 
           {/* ─── Partner note ─── */}
           <View style={[styles.partnerNote, { backgroundColor: isDark ? colors.bgCard : '#F8FAFC' }]}>
-            <Ionicons name="shield-checkmark" size={16} color={PRIMARY} />
+            <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
             <Text style={[styles.partnerText, { color: colors.textSecondary }]}>
               Secure booking through our trusted partner. You'll be taken directly to the booking page.
             </Text>
@@ -886,14 +888,14 @@ export default function DealDetailScreen() {
           <Text style={[styles.btmLabel, { color: colors.textSecondary }]}>From</Text>
           <Text style={[styles.btmPrice, { color: colors.textPrimary }]}>
             ${Math.round(price)}
-            <Text style={{ fontSize: 14, fontFamily: 'Rubik-Regular' }}>
+            <Text style={{ fontSize: 14, fontFamily: fontFamily.regular }}>
               {dealType === 'experience' ? ' /per person' : ''}
             </Text>
           </Text>
         </View>
         <TouchableOpacity style={styles.ctaBtn} onPress={handleGetDeal} activeOpacity={0.85}>
           <Text style={styles.ctaTxt}>Get This Deal</Text>
-          <ExportSquare size={18} color="#FFFFFF" />
+          <ExportSquare size={18} color={colors.white} />
         </TouchableOpacity>
       </View>
     </View>
@@ -951,7 +953,7 @@ function FullScreenCarousel({ photos, visible, initialIndex, onClose }: {
       <View style={carouselStyles.overlay}>
         {/* Close button */}
         <TouchableOpacity style={carouselStyles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-          <Ionicons name="close" size={28} color="#FFF" />
+          <Ionicons name="close" size={28} color={colors.white} />
         </TouchableOpacity>
 
         {/* Photo counter */}
@@ -989,7 +991,7 @@ const carouselStyles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: '#000' },
   closeBtn: { position: 'absolute', top: 54, right: 20, zIndex: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   counter: { position: 'absolute', top: 60, alignSelf: 'center', zIndex: 10, backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 14, paddingVertical: 5, borderRadius: 12 },
-  counterText: { fontFamily: 'Rubik-Medium', fontSize: 14, color: '#FFF' },
+  counterText: { fontFamily: fontFamily.medium, fontSize: typography.fontSize.bodyLg, color: '#FFF' },
   dotsRow: { position: 'absolute', bottom: 50, alignSelf: 'center', flexDirection: 'row', gap: 6 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.35)' },
   dotActive: { backgroundColor: '#FFFFFF', width: 20 },
@@ -999,71 +1001,71 @@ const carouselStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  errorTxt: { fontSize: 16, fontFamily: 'Rubik-Medium' },
+  errorTxt: { fontSize: typography.fontSize.base, fontFamily: fontFamily.medium },
   scrollContent: { paddingBottom: 110 },
 
   // Photo gallery
-  photoContainer: { width: SCREEN_WIDTH, height: PHOTO_HEIGHT, position: 'relative' },
-  photo: { width: PHOTO_WIDTH, height: PHOTO_HEIGHT },
+  photoContainer: { width: SCREEN_WIDTH, position: 'relative' },
+  photo: { width: PHOTO_WIDTH },
   photoOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.15)' },
   heroNav: { position: 'absolute', top: 12, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' },
   navRight: { flexDirection: 'row', gap: 10 },
-  navBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center' },
+  navBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center' },
   dots: { position: 'absolute', bottom: 14, alignSelf: 'center', flexDirection: 'row', gap: 6 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.45)' },
   dotActive: { backgroundColor: '#FFFFFF', width: 20 },
   photoCountBadge: { position: 'absolute', bottom: 14, right: 16, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
-  photoCountText: { fontFamily: 'Rubik-Medium', fontSize: 12, color: '#FFF' },
+  photoCountText: { fontFamily: fontFamily.medium, fontSize: typography.fontSize.bodySm, color: '#FFF' },
 
   // Content
   content: { paddingHorizontal: spacing.lg, paddingTop: 18 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
   badge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10 },
-  badgeTxt: { fontFamily: 'Rubik-Bold', fontSize: 9, letterSpacing: 0.7 },
-  title: { fontFamily: 'Rubik-Bold', fontSize: 22, lineHeight: 28, marginBottom: 8 },
+  badgeTxt: { fontFamily: fontFamily.bold, fontSize: 9, letterSpacing: 0.7 },
+  title: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.heading1, lineHeight: 28, marginBottom: 8 },
   ratingBar: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 12 },
-  ratingText: { fontFamily: 'Rubik-Bold', fontSize: 15 },
-  ratingCount: { fontFamily: 'Rubik-Regular', fontSize: 13 },
+  ratingText: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.heading3 },
+  ratingCount: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body },
   recommendedPill: { backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginLeft: 4 },
-  recommendedText: { fontFamily: 'Rubik-Medium', fontSize: 11, color: '#92400E' },
+  recommendedText: { fontFamily: fontFamily.medium, fontSize: typography.fontSize.caption, color: '#92400E' },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 16 },
-  priceLabel: { fontFamily: 'Rubik-Regular', fontSize: 13 },
-  price: { fontFamily: 'HostGrotesk-Bold', fontSize: 36 },
-  currency: { fontFamily: 'Rubik-Medium', fontSize: 14 },
+  priceLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body },
+  price: { fontFamily: fontFamily.display, fontSize: 36 },
+  currency: { fontFamily: fontFamily.medium, fontSize: typography.fontSize.bodyLg },
 
   // Quick info bar
   infoBar: { flexDirection: 'row', borderRadius: 16, borderWidth: 1, padding: 14, marginBottom: 8, gap: 0 },
   infoItem: { flex: 1, alignItems: 'center', gap: 4 },
   infoItemBorder: { borderRightWidth: 1, borderRightColor: 'rgba(0,0,0,0.06)' },
-  infoLabel: { fontFamily: 'Rubik-Regular', fontSize: 10, textAlign: 'center' },
-  infoValue: { fontFamily: 'Rubik-SemiBold', fontSize: 12, textAlign: 'center' },
+  infoLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.captionSm, textAlign: 'center' },
+  infoValue: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.bodySm, textAlign: 'center' },
 
   // Collapsible sections
   section: { borderBottomWidth: 1, paddingVertical: 14 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { fontFamily: 'Rubik-Bold', fontSize: 16 },
+  sectionTitle: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.base },
   sectionBody: { marginTop: 12 },
-  bodyText: { fontFamily: 'Rubik-Regular', fontSize: 14, lineHeight: 22 },
+  bodyText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodyLg, lineHeight: 22 },
   listItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
-  listText: { fontFamily: 'Rubik-Regular', fontSize: 14, lineHeight: 20, flex: 1 },
+  listText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodyLg, lineHeight: 20, flex: 1 },
   miniDivider: { height: 1, marginVertical: 12 },
-  subHeading: { fontFamily: 'Rubik-SemiBold', fontSize: 14, marginBottom: 10 },
+  subHeading: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.bodyLg, marginBottom: 10 },
 
   // Policy card
   policyCard: { flexDirection: 'row', gap: 12, padding: 16, borderRadius: 16, borderWidth: 1, marginTop: 16, alignItems: 'flex-start' },
-  policyTitle: { fontFamily: 'Rubik-SemiBold', fontSize: 14, marginBottom: 2 },
-  policyBody: { fontFamily: 'Rubik-Regular', fontSize: 13, lineHeight: 19 },
+  policyTitle: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.bodyLg, marginBottom: 2 },
+  policyBody: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body, lineHeight: 19 },
 
   // Partner note
   partnerNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 14, borderRadius: 14, marginTop: 16 },
-  partnerText: { fontFamily: 'Rubik-Regular', fontSize: 12, lineHeight: 17, flex: 1 },
+  partnerText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodySm, lineHeight: 17, flex: 1 },
 
   // Bottom CTA
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: 14, borderTopWidth: 1 },
-  btmLabel: { fontFamily: 'Rubik-Regular', fontSize: 12 },
-  btmPrice: { fontFamily: 'HostGrotesk-Bold', fontSize: 26 },
-  ctaBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: PRIMARY, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 24 },
-  ctaTxt: { fontFamily: 'Rubik-Bold', fontSize: 16, color: '#FFFFFF' },
+  btmLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodySm },
+  btmPrice: { fontFamily: fontFamily.display, fontSize: 26 },
+  ctaBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#3FC39E', paddingHorizontal: 28, paddingVertical: 14, borderRadius: 24 },
+  ctaTxt: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.base, color: '#FFFFFF' },
 });
 
 // ─── Flight Detail Styles ───
@@ -1075,19 +1077,19 @@ const flightStyles = StyleSheet.create({
     shadowOpacity: 0.12, shadowRadius: 12, elevation: 6,
     flexDirection: 'row', gap: 8,
   },
-  heroPriceOld: { fontFamily: 'Rubik-Regular', fontSize: 16, color: '#EF4444', textDecorationLine: 'line-through' },
-  heroPriceCurrent: { fontFamily: 'HostGrotesk-Bold', fontSize: 26, color: '#1A1A1A' },
-  heroPriceLabel: { fontFamily: 'Rubik-Regular', fontSize: 12, color: '#6B7280', marginLeft: -4 },
+  heroPriceOld: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.base, color: '#EF4444', textDecorationLine: 'line-through' },
+  heroPriceCurrent: { fontFamily: fontFamily.display, fontSize: 26, color: '#1A1A1A' },
+  heroPriceLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodySm, color: '#6B7280', marginLeft: -4 },
 
-  destName: { fontFamily: 'Rubik-Bold', fontSize: 28, marginTop: 28, marginBottom: 2 },
-  destCountry: { fontFamily: 'Rubik-Regular', fontSize: 15, marginBottom: 4 },
-  dateRange: { fontFamily: 'Rubik-Regular', fontSize: 13, marginBottom: 16 },
+  destName: { fontFamily: fontFamily.bold, fontSize: 28, marginTop: 28, marginBottom: 2 },
+  destCountry: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.heading3, marginBottom: 4 },
+  dateRange: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body, marginBottom: 16 },
 
   // Price range bar
   priceRangeContainer: { marginBottom: 12 },
   priceRangeLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   priceRangePill: { backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  priceRangeLow: { fontFamily: 'Rubik-SemiBold', fontSize: 12, color: '#059669' },
+  priceRangeLow: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.bodySm, color: '#059669' },
   priceBar: { height: 6, borderRadius: 3, backgroundColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center', overflow: 'visible' },
   priceBarLow: { height: 6, borderRadius: 3, backgroundColor: '#3FC39E' },
   priceBarDotLow: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#3FC39E', marginLeft: -6, borderWidth: 2, borderColor: '#FFFFFF' },
@@ -1095,51 +1097,51 @@ const flightStyles = StyleSheet.create({
 
   // Savings
   savingsCard: { padding: 14, borderRadius: 14, borderWidth: 1, marginBottom: 4, alignItems: 'center' },
-  savingsText: { fontFamily: 'Rubik-SemiBold', fontSize: 14 },
+  savingsText: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.bodyLg },
 
-  sectionTitle: { fontFamily: 'Rubik-Bold', fontSize: 18, marginBottom: 14 },
+  sectionTitle: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.heading2, marginBottom: 14 },
 
   // Travel plan timeline
-  legLabel: { fontFamily: 'Rubik-SemiBold', fontSize: 14, marginBottom: 14 },
+  legLabel: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.bodyLg, marginBottom: 14 },
   timeline: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 4 },
   timelineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#3B82F6', marginTop: 5 },
   timelineLine: { position: 'absolute', left: 4, top: 15, width: 2, height: 40 },
   timelineContent: { flex: 1 },
-  airportName: { fontFamily: 'Rubik-SemiBold', fontSize: 15, lineHeight: 20 },
-  airportCode: { fontFamily: 'Rubik-Regular', fontSize: 13, marginTop: 1 },
+  airportName: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.heading3, lineHeight: 20 },
+  airportCode: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body, marginTop: 1 },
   durationBadge: { marginLeft: 24, marginBottom: 14, marginTop: 4 },
-  durationText: { fontFamily: 'Rubik-Regular', fontSize: 13 },
+  durationText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body },
 
   // Airline
   airlineCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1, marginBottom: 8 },
   airlineLogo: { width: 28, height: 28, borderRadius: 6 },
-  airlineName: { fontFamily: 'Rubik-SemiBold', fontSize: 15 },
+  airlineName: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.heading3 },
 });
 
 // ─── Hotel Detail Styles ───
 const hotelStyles = StyleSheet.create({
   starsRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
-  starLabel: { fontFamily: 'Rubik-Medium', fontSize: 13, marginLeft: 4 },
+  starLabel: { fontFamily: fontFamily.medium, fontSize: typography.fontSize.body, marginLeft: 4 },
 
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
-  locationText: { fontFamily: 'Rubik-Regular', fontSize: 14, flex: 1 },
+  locationText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodyLg, flex: 1 },
 
   priceBlock: { padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 16 },
   priceTop: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  originalPrice: { fontFamily: 'Rubik-Regular', fontSize: 16, color: '#EF4444', textDecorationLine: 'line-through' },
-  currentPrice: { fontFamily: 'HostGrotesk-Bold', fontSize: 32 },
-  perNight: { fontFamily: 'Rubik-Regular', fontSize: 14 },
+  originalPrice: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.base, color: '#EF4444', textDecorationLine: 'line-through' },
+  currentPrice: { fontFamily: fontFamily.display, fontSize: 32 },
+  perNight: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodyLg },
   savingsPill: { backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, alignSelf: 'flex-start', marginTop: 8 },
-  savingsText: { fontFamily: 'Rubik-SemiBold', fontSize: 12, color: '#059669' },
+  savingsText: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.bodySm, color: '#059669' },
 
   dateCard: { flexDirection: 'row', borderRadius: 16, borderWidth: 1, marginBottom: 20, overflow: 'hidden' },
   dateCol: { flex: 1, paddingVertical: 14, paddingHorizontal: 16 },
-  dateLabel: { fontFamily: 'Rubik-Regular', fontSize: 11, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
-  dateValue: { fontFamily: 'Rubik-SemiBold', fontSize: 15 },
+  dateLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.caption, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+  dateValue: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.heading3 },
   dateDivider: { width: 1 },
 
   amenitiesSection: { marginBottom: 8 },
   amenitiesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   amenityChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
-  amenityText: { fontFamily: 'Rubik-Medium', fontSize: 12 },
+  amenityText: { fontFamily: fontFamily.medium, fontSize: typography.fontSize.bodySm },
 });

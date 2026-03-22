@@ -136,7 +136,7 @@ export default function EntryEditorScreen() {
         text: 'Camera',
         onPress: async () => {
           const { status } = await ImagePicker.requestCameraPermissionsAsync();
-          if (status !== 'granted') { Alert.alert('Permission needed', 'Camera access is required.'); return; }
+          if (status !== 'granted') { showError('Camera access is required. Please enable it in Settings.'); return; }
           const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.8 });
           if (!result.canceled && result.assets[0]) {
             setBlocks(blocks.map(block =>
@@ -151,7 +151,7 @@ export default function EntryEditorScreen() {
         text: 'Photo Library',
         onPress: async () => {
           const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (status !== 'granted') { Alert.alert('Permission needed', 'Photo library access is required.'); return; }
+          if (status !== 'granted') { showError('Photo library access is required. Please enable it in Settings.'); return; }
           const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
           if (!result.canceled && result.assets[0]) {
             setBlocks(blocks.map(block =>
@@ -171,7 +171,7 @@ export default function EntryEditorScreen() {
     setAddContentVisible(false);
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permission needed', 'Photo library access is required.'); return; }
+    if (status !== 'granted') { showError('Photo library access is required. Please enable it in Settings.'); return; }
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
@@ -196,7 +196,7 @@ export default function EntryEditorScreen() {
 
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permission needed', 'Location access is required to pin your position.'); return; }
+      if (status !== 'granted') { showError('Location access is required to pin your position.'); return; }
 
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const [geo] = await Location.reverseGeocodeAsync({
@@ -226,7 +226,7 @@ export default function EntryEditorScreen() {
       showSuccess(`Pinned: ${locationName}`);
     } catch (err) {
       console.error('Location error:', err);
-      Alert.alert('Location Error', 'Could not get your current location. Please try again.');
+      showError('Could not get your current location. Please try again.');
     }
   };
 
@@ -240,7 +240,7 @@ export default function EntryEditorScreen() {
 
     try {
       const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permission needed', 'Microphone access is required for voice notes.'); return; }
+      if (status !== 'granted') { showError('Microphone access is required for voice notes.'); return; }
 
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
 
@@ -254,7 +254,7 @@ export default function EntryEditorScreen() {
       showSuccess('Recording... Tap stop when done');
     } catch (err) {
       console.error('Audio recording error:', err);
-      Alert.alert('Recording Error', 'Could not start recording. Please try again.');
+      showError('Could not start recording. Please try again.');
     }
   };
 
@@ -328,7 +328,7 @@ export default function EntryEditorScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (err) {
       console.error('Playback error:', err);
-      Alert.alert('Playback Error', 'Could not play this voice note.');
+      showError('Could not play this voice note.');
       setPlayingBlockId(null);
     }
   };
@@ -372,7 +372,7 @@ export default function EntryEditorScreen() {
       showSuccess('Transcription complete!');
     } catch (err: any) {
       console.error('Transcription error:', err);
-      Alert.alert('Transcription Failed', err.message || 'Could not transcribe audio.');
+      showError(err.message || 'Could not transcribe audio.');
     } finally {
       setTranscribingBlockId(null);
     }

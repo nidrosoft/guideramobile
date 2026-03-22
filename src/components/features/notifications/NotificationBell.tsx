@@ -25,7 +25,7 @@ export default function NotificationBell({ size = 24 }: NotificationBellProps) {
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/notifications' as any);
+    router.push('/notifications');
   };
 
   return (
@@ -34,6 +34,8 @@ export default function NotificationBell({ size = 24 }: NotificationBellProps) {
       onPress={handlePress}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
     >
       <Notification size={size} color={tc.textPrimary} variant="Linear" />
       {unreadCount > 0 && (

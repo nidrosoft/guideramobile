@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/ThemeContext';
-import { borderRadius as br, spacing } from '@/styles';
+import { borderRadius as br, spacing, fontFamily, typography } from '@/styles';
 import { useAuth } from '@/context/AuthContext';
 import { useDealRedirect, useIsDealSaved, usePriceHistory } from '@/hooks/useDeals';
 import { useHasAlert } from '@/hooks/usePriceAlerts';
@@ -375,7 +375,7 @@ export default function FlightDealScreen({
       </ScrollView>
 
       {/* Bottom CTA */}
-      <View style={[styles.bottomBar, { backgroundColor: isDark ? '#1A1A1A' : colors.white, borderTopColor: colors.borderSubtle }]}>
+      <View style={[styles.bottomBar, { backgroundColor: isDark ? '#1A1A1A' : colors.white, borderTopColor: colors.borderSubtle, paddingBottom: insets.bottom + 12 }]}>
         <BookOnProviderButton
           provider={provider}
           price={formatPrice(flight.price.amount, flight.price.currency)}
@@ -400,7 +400,7 @@ function InfoItem({ icon, label, colors }: { icon: string; label: string; colors
 const infoStyles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   iconWrap: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  label: { fontFamily: 'Rubik-Regular', fontSize: 14 },
+  label: { fontFamily: fontFamily.regular, fontSize: 14 },
 });
 
 const styles = StyleSheet.create({
@@ -429,13 +429,13 @@ const styles = StyleSheet.create({
   },
   heroTitleBlock: { flex: 1, alignItems: 'center' },
   heroTitle: {
-    fontFamily: 'HostGrotesk-Bold',
+    fontFamily: fontFamily.display,
     fontSize: 19,
     color: '#fff',
   },
   heroSubtitle: {
-    fontFamily: 'Rubik-Regular',
-    fontSize: 13,
+    fontFamily: fontFamily.regular,
+    fontSize: typography.fontSize.body,
     color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
   },
@@ -453,8 +453,8 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   routePoint: {},
-  airportCode: { fontFamily: 'HostGrotesk-Bold', fontSize: 28 },
-  airportCity: { fontFamily: 'Rubik-Regular', fontSize: 13, marginTop: 2 },
+  airportCode: { fontFamily: fontFamily.display, fontSize: 28 },
+  airportCity: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body, marginTop: 2 },
   routeLine: {
     flex: 1,
     flexDirection: 'row',
@@ -478,9 +478,9 @@ const styles = StyleSheet.create({
     paddingTop: 14,
   },
   detail: {},
-  detailLabel: { fontFamily: 'Rubik-Regular', fontSize: 11 },
-  detailValue: { fontFamily: 'Rubik-SemiBold', fontSize: 16, marginTop: 2 },
-  detailSub: { fontFamily: 'Rubik-Regular', fontSize: 12, marginTop: 1 },
+  detailLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.caption },
+  detailValue: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.base, marginTop: 2 },
+  detailSub: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodySm, marginTop: 1 },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -489,16 +489,16 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     marginTop: 12,
   },
-  infoText: { fontFamily: 'Rubik-Regular', fontSize: 13 },
+  infoText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body },
   badges: { flexDirection: 'row', gap: 6 },
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  priceLabel: { fontFamily: 'Rubik-Regular', fontSize: 13 },
-  priceValue: { fontFamily: 'HostGrotesk-Bold', fontSize: 32, marginTop: 2 },
-  priceSub: { fontFamily: 'Rubik-Regular', fontSize: 12, marginTop: 2 },
+  priceLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body },
+  priceValue: { fontFamily: fontFamily.display, fontSize: 32, marginTop: 2 },
+  priceSub: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodySm, marginTop: 2 },
   saveBtn: {
     width: 48,
     height: 48,
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sectionTitle: { fontFamily: 'Rubik-SemiBold', fontSize: 15, marginBottom: 8 },
+  sectionTitle: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.heading3, marginBottom: 8 },
   infoList: { gap: 2 },
   bottomBar: {
     position: 'absolute',

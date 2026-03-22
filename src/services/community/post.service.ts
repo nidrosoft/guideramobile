@@ -149,11 +149,12 @@ class PostService {
     return this.mapPost(data);
   }
 
-  async deletePost(postId: string): Promise<void> {
+  async deletePost(postId: string, userId: string): Promise<void> {
     const { error } = await supabase
       .from('community_posts')
       .update({ status: 'deleted', updated_at: new Date().toISOString() })
-      .eq('id', postId);
+      .eq('id', postId)
+      .eq('author_id', userId);
 
     if (error) throw new Error(error.message);
   }
@@ -267,11 +268,12 @@ class PostService {
     return this.mapComment(comment);
   }
 
-  async deleteComment(commentId: string, postId: string): Promise<void> {
+  async deleteComment(commentId: string, postId: string, userId: string): Promise<void> {
     const { error } = await supabase
       .from('post_comments')
       .update({ status: 'deleted', updated_at: new Date().toISOString() })
-      .eq('id', commentId);
+      .eq('id', commentId)
+      .eq('author_id', userId);
 
     if (error) throw new Error(error.message);
 
@@ -406,7 +408,7 @@ class PostService {
         const { notifyPostReaction } = await import('@/services/notifications/community-notifications');
         await notifyPostReaction(post.author_id, reactorName, reactionType, postId, '');
       }
-    } catch (_) {}
+    } catch (e) { if (__DEV__) console.warn('Operation failed:', e); }
 
     return true;
   }

@@ -49,6 +49,10 @@ export default function AccountMenuItem({ item, isFirst, isLast }: AccountMenuIt
       onPress={handlePress}
       activeOpacity={0.7}
       disabled={item.disabled}
+      accessibilityRole="button"
+      accessibilityLabel={item.title}
+      accessibilityHint={item.subtitle || undefined}
+      accessibilityState={{ disabled: item.disabled }}
     >
       {/* Icon */}
       <View style={[

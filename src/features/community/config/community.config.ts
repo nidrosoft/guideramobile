@@ -130,25 +130,6 @@ export const COMMUNITY_TAGS = {
 } as const;
 
 // ============================================
-// INTEREST ICONS
-// ============================================
-
-export const INTEREST_ICONS: Record<string, string> = {
-  hiking: 'tree',
-  beaches: 'sun',
-  mountains: 'mountain',
-  cities: 'building',
-  nightlife: 'moon',
-  history: 'book',
-  art: 'brush',
-  music: 'music',
-  sports: 'activity',
-  wildlife: 'paw',
-  diving: 'droplet',
-  skiing: 'snowflake',
-};
-
-// ============================================
 // VERIFICATION BADGES
 // ============================================
 

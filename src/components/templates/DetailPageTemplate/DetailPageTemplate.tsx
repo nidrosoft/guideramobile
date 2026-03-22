@@ -135,7 +135,7 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
         title: data.name,
         message: `Check out ${data.name} in ${data.location} on Guidera! Rated ${data.rating}/5 — ${data.description?.slice(0, 100) || ''}...`,
       });
-    } catch (_) {}
+    } catch (e) { if (__DEV__) console.warn('Operation failed:', e); }
   };
 
   const handleAIAssistant = () => {

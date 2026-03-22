@@ -5,13 +5,14 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Modal, TouchableWithoutFeedback } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Skeleton } from '@/components/common/SkeletonLoader';
 import SmartPlanBottomSheet from '../SmartPlanBottomSheet';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Trip, BookingType } from '../../types/trip.types';
 import { TRIP_STATE_CONFIG } from '../../config/trip-states.config';
-import { spacing, typography, borderRadius, colors } from '@/styles';
+import { spacing, typography, borderRadius, colors as staticColors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
 import { plannerService } from '@/services/planner.service';
@@ -47,6 +48,7 @@ interface ComprehensiveTripCardProps {
 }
 
 export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTripCardProps) {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const stateConfig = TRIP_STATE_CONFIG[trip.state];
 
@@ -261,8 +263,8 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
         try {
           const { notifySmartPlanComplete } = await import('@/services/notifications/community-notifications');
           await notifySmartPlanComplete(currentUserId, trip.id, trip.title || trip.destination || 'Your trip', finalDone);
-        } catch (_) {}
-        router.push({ pathname: '/planner/[tripId]', params: { tripId: trip.id } } as any);
+        } catch (e) { if (__DEV__) console.warn('Smart plan notification failed:', e); }
+        router.push({ pathname: '/planner/[tripId]', params: { tripId: trip.id } });
       } else {
         throw new Error('All modules failed to generate');
       }
@@ -541,13 +543,13 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
           <TouchableWithoutFeedback onPress={() => setCancelSheetVisible(false)}>
             <View style={cancelStyles.backdrop} />
           </TouchableWithoutFeedback>
-          <View style={[cancelStyles.sheet, { backgroundColor: colors.bgPrimary }]}>
+          <View style={[cancelStyles.sheet, { backgroundColor: colors.bgPrimary, paddingBottom: insets.bottom + 12 }]}>
             <View style={cancelStyles.handleRow}>
               <View style={[cancelStyles.handle, { backgroundColor: colors.borderSubtle }]} />
             </View>
             <View style={cancelStyles.content}>
-              <View style={[cancelStyles.iconCircle, { backgroundColor: '#EF444415' }]}>
-                <CloseCircle size={32} color="#EF4444" variant="Bold" />
+              <View style={[cancelStyles.iconCircle, { backgroundColor: `${colors.error}15` }]}>
+                <CloseCircle size={32} color={colors.error} variant="Bold" />
               </View>
               <Text style={[cancelStyles.title, { color: colors.textPrimary }]}>Cancel Generation?</Text>
               <Text style={[cancelStyles.desc, { color: colors.textSecondary }]}>
@@ -565,7 +567,7 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
                 onPress={handleCancelGeneration}
                 activeOpacity={0.6}
               >
-                <Text style={[cancelStyles.keepText, { color: '#EF4444' }]}>Yes, Cancel</Text>
+                <Text style={[cancelStyles.keepText, { color: colors.error }]}>Yes, Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -581,8 +583,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    shadowColor: '#000',
+    borderColor: staticColors.borderSubtle,
+    shadowColor: staticColors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -625,7 +627,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: 20,
-    shadowColor: '#000',
+    shadowColor: staticColors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -633,7 +635,7 @@ const styles = StyleSheet.create({
   },
   stateText: {
     fontSize: typography.fontSize.xs,
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -652,7 +654,7 @@ const styles = StyleSheet.create({
   },
   daysUntilText: {
     fontSize: typography.fontSize.xs,
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontWeight: '600',
   },
   titleOverlay: {
@@ -670,7 +672,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: staticColors.white,
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
@@ -679,7 +681,7 @@ const styles = StyleSheet.create({
   priceOverlay: {
     fontSize: typography.fontSize.lg,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: staticColors.white,
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
@@ -692,7 +694,7 @@ const styles = StyleSheet.create({
   },
   destination: {
     fontSize: typography.fontSize.sm,
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontWeight: '500',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
@@ -724,7 +726,7 @@ const styles = StyleSheet.create({
   },
   durationText: {
     fontSize: typography.fontSize.xs,
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontWeight: '700',
   },
   flightDetailsSection: {
@@ -807,7 +809,7 @@ const styles = StyleSheet.create({
   countdownText: {
     fontSize: typography.fontSize.xs,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: staticColors.white,
   },
   smartPlanButton: {
     flexDirection: 'row',
@@ -900,7 +902,7 @@ const cancelStyles = StyleSheet.create({
   confirmText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: staticColors.white,
   },
   keepBtn: {
     paddingVertical: 10,

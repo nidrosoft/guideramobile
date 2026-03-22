@@ -15,7 +15,10 @@ import {
   ScrollView,
   Modal,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Add, CloseCircle, Sms, TickCircle, User } from 'iconsax-react-native';
 import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -41,6 +44,7 @@ export default function InviteTravelersBottomSheet({
   tripDestination,
   onInvite,
 }: InviteTravelersBottomSheetProps) {
+  const insets = useSafeAreaInsets();
   const { colors: tc } = useTheme();
   const { profile } = useAuth();
   const senderName = profile ? [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Someone' : 'Someone';
@@ -114,7 +118,11 @@ export default function InviteTravelersBottomSheet({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={onClose}>
-        <View style={[s.sheet, { backgroundColor: tc.bgPrimary }]} onStartShouldSetResponder={() => true}>
+        <KeyboardAvoidingView
+          style={[s.sheet, { backgroundColor: tc.bgPrimary, paddingBottom: insets.bottom + 12 }]}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          onStartShouldSetResponder={() => true}
+        >
           {/* Handle */}
           <View style={s.handleRow}>
             <View style={[s.handle, { backgroundColor: tc.borderSubtle }]} />
@@ -249,7 +257,7 @@ export default function InviteTravelersBottomSheet({
               <Text style={s.sendText}>{sending ? 'Sending...' : `Send Invite${validEmailCount > 1 ? `s (${validEmailCount})` : ''}`}</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </TouchableOpacity>
     </Modal>
   );

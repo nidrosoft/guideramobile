@@ -187,7 +187,15 @@ export const rewardsService = {
    * Generate a unique referral code for user
    */
   async generateReferralCode(userId: string): Promise<string> {
-    const code = `GUIDERA${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    let randomPart: string;
+    const array = new Uint8Array(6);
+    if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.getRandomValues) {
+      globalThis.crypto.getRandomValues(array);
+    } else {
+      for (let i = 0; i < array.length; i++) array[i] = Math.floor(Math.random() * 256);
+    }
+    randomPart = Array.from(array).map(b => b.toString(36).padStart(2, '0')).join('').substring(0, 6).toUpperCase();
+    const code = `GUIDERA${randomPart}`;
     
     await supabase
       .from('profiles')
@@ -314,15 +322,18 @@ export const rewardsService = {
         points_amount: amount,
       });
 
-      // If RPC doesn't exist, update manually
+      // If RPC doesn't exist, update manually with read-then-update
       if (updateError) {
+        const { data: currentData } = await supabase
+          .from('profiles')
+          .select('reward_points_balance')
+          .eq('id', userId)
+          .single();
+
         await supabase
           .from('profiles')
-          .update({ 
-            reward_points_balance: supabase.rpc('coalesce', { 
-              value: 'reward_points_balance', 
-              default_value: 0 
-            }) 
+          .update({
+            reward_points_balance: (currentData?.reward_points_balance || 0) + amount,
           })
           .eq('id', userId);
       }

@@ -162,16 +162,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   categoryLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: typography.fontSize.caption,
+    fontWeight: typography.fontWeight.bold,
     color: colors.white,
   },
   content: {
     padding: 14,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
     marginBottom: 6,
     lineHeight: 22,
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   locationText: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textSecondary,
   },
   priceRow: {
@@ -193,8 +193,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   price: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: typography.fontSize.heading3,
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
   },
   durationBadge: {
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   durationText: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     color: colors.textSecondary,
   },
   statsRow: {
@@ -222,16 +222,16 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   ratingText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
   },
   reviewCount: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textSecondary,
   },
   inquiryCount: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textTertiary,
   },
   guideRow: {
@@ -248,8 +248,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   guideName: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
   },
   spacer: {
@@ -270,8 +270,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   inquireBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodySm,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.white,
   },
 
@@ -313,19 +313,19 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   catText: {
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: typography.fontSize.captionSm,
+    fontWeight: typography.fontWeight.semibold,
   },
   compactTitle: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
     marginBottom: 3,
     lineHeight: 18,
   },
   compactPrice: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: typography.fontSize.bodySm,
+    fontWeight: typography.fontWeight.bold,
     color: colors.primary,
     marginBottom: 3,
   },
@@ -335,16 +335,16 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   compactRating: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: typography.fontSize.caption,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
   },
   compactDot: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     color: colors.textTertiary,
   },
   compactInquiries: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     color: colors.textTertiary,
   },
 });

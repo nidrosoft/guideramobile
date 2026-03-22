@@ -27,7 +27,7 @@ import {
   TickCircle,
   CloseCircle,
 } from 'iconsax-react-native';
-import { spacing, typography } from '@/styles';
+import { spacing, typography, colors as staticColors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -171,8 +171,8 @@ export default function GenerationProgressOverlay({
 
   const getStatusColor = (status: ModuleStatus) => {
     switch (status) {
-      case 'done': return '#10B981';
-      case 'failed': return '#EF4444';
+      case 'done': return tc.success;
+      case 'failed': return tc.error;
       case 'generating': return tc.primary;
       default: return tc.textTertiary;
     }
@@ -196,7 +196,7 @@ export default function GenerationProgressOverlay({
             <SpinningStar color={tc.primary} />
           </View>
 
-          <Text style={[styles.title, { color: '#FFFFFF' }]}>
+          <Text style={[styles.title, { color: tc.white }]}>
             Building Your Trip Plan
           </Text>
           <Text style={[styles.subtitle, { color: 'rgba(255,255,255,0.6)' }]}>
@@ -239,12 +239,12 @@ export default function GenerationProgressOverlay({
                       backgroundColor: isActive
                         ? tc.primary + '12'
                         : mod.status === 'done'
-                        ? '#10B98108'
+                        ? `${tc.success}08`
                         : 'rgba(255,255,255,0.03)',
                       borderColor: isActive
                         ? tc.primary + '30'
                         : mod.status === 'done'
-                        ? '#10B98120'
+                        ? `${tc.success}20`
                         : 'rgba(255,255,255,0.06)',
                     },
                   ]}
@@ -259,9 +259,9 @@ export default function GenerationProgressOverlay({
                         {
                           backgroundColor:
                             mod.status === 'done'
-                              ? '#10B98115'
+                              ? `${tc.success}15`
                               : mod.status === 'failed'
-                              ? '#EF444415'
+                              ? `${tc.error}15`
                               : 'rgba(255,255,255,0.06)',
                         },
                       ]}
@@ -270,9 +270,9 @@ export default function GenerationProgressOverlay({
                         size={20}
                         color={
                           mod.status === 'done'
-                            ? '#10B981'
+                            ? tc.success
                             : mod.status === 'failed'
-                            ? '#EF4444'
+                            ? tc.error
                             : 'rgba(255,255,255,0.25)'
                         }
                         variant="Bold"
@@ -288,7 +288,7 @@ export default function GenerationProgressOverlay({
                         color:
                           mod.status === 'waiting'
                             ? 'rgba(255,255,255,0.35)'
-                            : '#FFFFFF',
+                            : tc.white,
                       },
                     ]}
                   >
@@ -304,15 +304,15 @@ export default function GenerationProgressOverlay({
                       </View>
                     ) : mod.status === 'done' ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <Text style={[styles.statusText, { color: '#10B981' }]}>
+                        <Text style={[styles.statusText, { color: tc.success }]}>
                           {mod.detail || 'Done'}
                         </Text>
-                        <TickCircle size={16} color="#10B981" variant="Bold" />
+                        <TickCircle size={16} color={tc.success} variant="Bold" />
                       </View>
                     ) : mod.status === 'failed' ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <Text style={[styles.statusText, { color: '#EF4444' }]}>Failed</Text>
-                        <CloseCircle size={16} color="#EF4444" variant="Bold" />
+                        <Text style={[styles.statusText, { color: tc.error }]}>Failed</Text>
+                        <CloseCircle size={16} color={tc.error} variant="Bold" />
                       </View>
                     ) : (
                       <Text style={[styles.statusText, { color: 'rgba(255,255,255,0.2)' }]}>

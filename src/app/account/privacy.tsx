@@ -32,6 +32,7 @@ import {
   InfoCircle,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -65,6 +66,7 @@ export default function PrivacySettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { t } = useTranslation();
   const { profile } = useAuth();
   const [settings, setSettings] = useState<PrivacySettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
@@ -115,7 +117,7 @@ export default function PrivacySettingsScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error('Error saving privacy settings:', error);
-      Alert.alert('Error', 'Failed to save settings. Please try again.');
+      showPrivacyError('Failed to save settings. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -143,19 +145,72 @@ export default function PrivacySettingsScreen() {
     router.back();
   };
 
-  const handleDownloadData = () => {
+  const { showError: showPrivacyError } = require('@/contexts/ToastContext').useToast();
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleDownloadData = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const profileId = profile?.id;
+    if (!profileId) {
+      showPrivacyError('Please sign in to download your data.');
+      return;
+    }
+
     Alert.alert(
       'Download Your Data',
-      'We\'ll prepare a copy of your data and send it to your email within 48 hours.',
+      'We\'ll collect all your data and generate a shareable file. This may take a moment.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Request Download', 
-          onPress: () => {
-            // TODO: Implement data download request
-            Alert.alert('Request Sent', 'You\'ll receive an email when your data is ready.');
-          }
+        {
+          text: 'Download',
+          onPress: async () => {
+            setIsExporting(true);
+            try {
+              // Collect user data from all tables
+              const [
+                profileData,
+                tripsData,
+                prefsData,
+                savedData,
+                expensesData,
+                notifPrefsData,
+              ] = await Promise.allSettled([
+                supabase.from('profiles').select('*').eq('id', profileId).single(),
+                supabase.from('trips').select('*').eq('user_id', profileId),
+                supabase.from('travel_preferences').select('*').eq('user_id', profileId).maybeSingle(),
+                supabase.from('user_saved_items').select('*').eq('user_id', profileId),
+                supabase.from('expenses').select('*').eq('user_id', profileId),
+                supabase.from('user_notification_preferences').select('*').eq('user_id', profileId).maybeSingle(),
+              ]);
+
+              const exportData = {
+                exported_at: new Date().toISOString(),
+                user_id: profileId,
+                profile: profileData.status === 'fulfilled' ? profileData.value.data : null,
+                trips: tripsData.status === 'fulfilled' ? tripsData.value.data : [],
+                travel_preferences: prefsData.status === 'fulfilled' ? prefsData.value.data : null,
+                saved_items: savedData.status === 'fulfilled' ? savedData.value.data : [],
+                expenses: expensesData.status === 'fulfilled' ? expensesData.value.data : [],
+                notification_preferences: notifPrefsData.status === 'fulfilled' ? notifPrefsData.value.data : null,
+              };
+
+              // Share as JSON via native share sheet
+              const { Share } = require('react-native');
+              const jsonString = JSON.stringify(exportData, null, 2);
+              await Share.share({
+                message: jsonString,
+                title: 'Guidera Data Export',
+              });
+
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch (err) {
+              if (__DEV__) console.error('Data export error:', err);
+              Alert.alert('Export Failed', 'Something went wrong. Please try again or contact support@guidera.app.');
+            } finally {
+              setIsExporting(false);
+            }
+          },
         },
       ]
     );
@@ -163,7 +218,7 @@ export default function PrivacySettingsScreen() {
 
   const handleConnectedApps = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/account/connected-apps' as any);
+    router.push('/account/connected-apps');
   };
 
   if (isLoading) {
@@ -181,10 +236,10 @@ export default function PrivacySettingsScreen() {
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Go back">
           <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Privacy Settings</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{t('account.privacy.title')}</Text>
         <View style={styles.headerSpacer}>
           {isSaving && <ActivityIndicator size="small" color={tc.primary} />}
         </View>
@@ -197,8 +252,8 @@ export default function PrivacySettingsScreen() {
       >
         {/* Profile Visibility Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Profile Visibility</Text>
-          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Control who can see your profile and activity</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>{t('account.privacy.profileVisibility')}</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>{t('account.privacy.profileVisibilityDesc')}</Text>
           
           <View style={[styles.card, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             {/* Profile Visibility */}
@@ -263,6 +318,8 @@ export default function PrivacySettingsScreen() {
                 onValueChange={() => handleToggle('activity_status')}
                 trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
                 thumbColor={settings.activity_status ? tc.primary : isDark ? '#666' : colors.gray400}
+                accessibilityRole="switch"
+                accessibilityLabel="Activity status"
               />
             </View>
 
@@ -282,6 +339,8 @@ export default function PrivacySettingsScreen() {
                 onValueChange={() => handleToggle('search_visibility')}
                 trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
                 thumbColor={settings.search_visibility ? tc.primary : isDark ? '#666' : colors.gray400}
+                accessibilityRole="switch"
+                accessibilityLabel="Search visibility"
               />
             </View>
           </View>
@@ -289,8 +348,8 @@ export default function PrivacySettingsScreen() {
 
         {/* Sharing Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Sharing</Text>
-          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Manage how your content is shared</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>{t('account.privacy.sharing')}</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>{t('account.privacy.sharingDesc')}</Text>
           
           <View style={[styles.card, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             {/* Trip Sharing */}
@@ -355,6 +414,8 @@ export default function PrivacySettingsScreen() {
                 onValueChange={() => handleToggle('location_sharing')}
                 trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
                 thumbColor={settings.location_sharing ? tc.primary : isDark ? '#666' : colors.gray400}
+                accessibilityRole="switch"
+                accessibilityLabel="Location sharing"
               />
             </View>
           </View>
@@ -362,8 +423,8 @@ export default function PrivacySettingsScreen() {
 
         {/* Data & Personalization Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Data & Personalization</Text>
-          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Control how your data is used</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>{t('account.privacy.dataPersonalization')}</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>{t('account.privacy.dataPersonalizationDesc')}</Text>
           
           <View style={[styles.card, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             {/* Personalization */}
@@ -380,6 +441,8 @@ export default function PrivacySettingsScreen() {
                 onValueChange={() => handleToggle('personalization')}
                 trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
                 thumbColor={settings.personalization ? tc.primary : isDark ? '#666' : colors.gray400}
+                accessibilityRole="switch"
+                accessibilityLabel="Personalized recommendations"
               />
             </View>
 

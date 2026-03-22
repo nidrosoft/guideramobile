@@ -5,8 +5,8 @@
  * Uses real Viator data based on user's detected city.
  */
 
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
-import { useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
+import { useCallback, useState, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
@@ -14,7 +14,7 @@ import { ArrowLeft2, Location } from 'iconsax-react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Clock, Star1, TickCircle } from 'iconsax-react-native';
-import { typography, spacing } from '@/styles';
+import { typography, spacing, fontFamily } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useLocalExperiences } from '@/hooks/useLocalExperiences';
 import type { LocalExperience } from '@/services/localExperiences.service';
@@ -25,6 +25,7 @@ const PRIMARY = '#3FC39E';
 export default function ViewAllLocalExperiences() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const PAGE_SIZE = 15;
   const {
     experiences,
     categories,
@@ -36,6 +37,21 @@ export default function ViewAllLocalExperiences() {
     isCategoriesLoading,
     error,
   } = useLocalExperiences({ limit: 30 });
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const paginatedExperiences = useMemo(() => {
+    return experiences.slice(0, visibleCount);
+  }, [experiences, visibleCount]);
+
+  const handleLoadMore = useCallback(() => {
+    if (loadingMore || visibleCount >= experiences.length) return;
+    setLoadingMore(true);
+    setTimeout(() => {
+      setVisibleCount(prev => Math.min(prev + PAGE_SIZE, experiences.length));
+      setLoadingMore(false);
+    }, 300);
+  }, [loadingMore, visibleCount, experiences.length]);
 
   const handleBack = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -45,6 +61,7 @@ export default function ViewAllLocalExperiences() {
   const handleCategoryPress = useCallback((tagId: number | null) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedCategory(tagId);
+    setVisibleCount(PAGE_SIZE);
   }, [setSelectedCategory]);
 
   const handleExperiencePress = useCallback((experience: LocalExperience) => {
@@ -69,7 +86,7 @@ export default function ViewAllLocalExperiences() {
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Local Experiences</Text>
           {city ? (
             <View style={styles.locationRow}>
-              <Location size={12} color={PRIMARY} variant="Bold" />
+              <Location size={12} color={colors.primary} variant="Bold" />
               <Text style={[styles.locationText, { color: colors.textSecondary }]}>{usedFallback ? `Near ${city}` : city}</Text>
             </View>
           ) : null}
@@ -93,8 +110,8 @@ export default function ViewAllLocalExperiences() {
                   style={[
                     styles.tab,
                     {
-                      backgroundColor: isActive ? PRIMARY : (isDark ? colors.bgCard : '#F1F5F9'),
-                      borderColor: isActive ? PRIMARY : colors.borderSubtle,
+                      backgroundColor: isActive ? colors.primary : (isDark ? colors.bgCard : '#F1F5F9'),
+                      borderColor: isActive ? colors.primary : colors.borderSubtle,
                     },
                   ]}
                   onPress={() => handleCategoryPress(cat.tagId)}
@@ -103,7 +120,7 @@ export default function ViewAllLocalExperiences() {
                   <Text
                     style={[
                       styles.tabText,
-                      { color: isActive ? '#FFFFFF' : colors.textPrimary },
+                      { color: isActive ? colors.white : colors.textPrimary },
                     ]}
                     numberOfLines={1}
                   >
@@ -126,28 +143,38 @@ export default function ViewAllLocalExperiences() {
           <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Something went wrong</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>{error}</Text>
         </View>
-      ) : experiences.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No experiences found</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            {selectedCategory ? 'Try a different category' : 'Check back soon for new content'}
-          </Text>
-        </View>
       ) : (
-        <ScrollView
+        <FlatList
+          data={paginatedExperiences}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
+          renderItem={({ item }) => (
+            <ExperienceListCard
+              experience={item}
+              onPress={() => handleExperiencePress(item)}
+              colors={colors}
+            />
+          )}
           style={styles.list}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
-        >
-          {experiences.map((exp, index) => (
-            <ExperienceListCard
-              key={`${exp.id}-${index}`}
-              experience={exp}
-              onPress={() => handleExperiencePress(exp)}
-              colors={colors}
-            />
-          ))}
-        </ScrollView>
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No experiences found</Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+                {selectedCategory ? 'Try a different category' : 'Check back soon for new content'}
+              </Text>
+            </View>
+          }
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : null
+          }
+        />
       )}
     </SafeAreaView>
   );
@@ -174,10 +201,10 @@ function ExperienceListCard({
         <Image source={{ uri: exp.heroImage }} style={styles.cardImage} contentFit="cover" />
         <LinearGradient colors={['transparent', 'rgba(0,0,0,0.5)']} style={styles.cardGradient} />
 
-        {exp.price.amount > 0 ? (
+        {exp.price.discountPercent && exp.price.discountPercent > 0 ? (
           <View style={styles.cardDiscountBadge}>
             <Text style={styles.cardDiscountText}>
-              {exp.price.discountPercent && exp.price.discountPercent > 0 ? exp.price.discountPercent : 46}% OFF
+              {exp.price.discountPercent}% OFF
             </Text>
           </View>
         ) : null}
@@ -220,12 +247,12 @@ function ExperienceListCard({
             ) : null}
           </View>
           <View style={styles.cardPriceContainer}>
-            <Text style={[styles.cardOriginalPrice, { color: colors.textSecondary }]}>
-              ${exp.price.originalPrice && exp.price.originalPrice > exp.price.amount
-                ? Math.round(exp.price.originalPrice)
-                : Math.round(exp.price.amount * 1.85)}
-            </Text>
-            <Text style={[styles.cardPrice, { color: PRIMARY }]}>{exp.price.formatted}</Text>
+            {exp.price.originalPrice && exp.price.originalPrice > exp.price.amount ? (
+              <Text style={[styles.cardOriginalPrice, { color: colors.textSecondary }]}>
+                ${Math.round(exp.price.originalPrice)}
+              </Text>
+            ) : null}
+            <Text style={[styles.cardPrice, { color: colors.primary }]}>{exp.price.formatted}</Text>
           </View>
         </View>
       </View>
@@ -243,9 +270,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -253,8 +280,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontFamily: 'Rubik-Bold',
-    fontSize: 20,
+    fontFamily: fontFamily.bold,
+    fontSize: typography.fontSize.kpiValue,
   },
   locationRow: {
     flexDirection: 'row',
@@ -263,8 +290,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   locationText: {
-    fontFamily: 'Rubik-Regular',
-    fontSize: 12,
+    fontFamily: fontFamily.regular,
+    fontSize: typography.fontSize.bodySm,
   },
 
   // Category Tabs
@@ -283,14 +310,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
   },
-  tabText: { fontFamily: 'Rubik-SemiBold', fontSize: 13 },
+  tabText: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.body },
 
   // Loading / Empty
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  loadingText: { fontFamily: 'Rubik-Regular', fontSize: 14 },
+  loadingText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodyLg },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8, paddingBottom: 60 },
-  emptyTitle: { fontFamily: 'Rubik-SemiBold', fontSize: 18 },
-  emptySubtitle: { fontFamily: 'Rubik-Regular', fontSize: 14 },
+  emptyTitle: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.heading2 },
+  emptySubtitle: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodyLg },
 
   // List
   list: { flex: 1 },
@@ -329,8 +356,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   cardDiscountText: {
-    fontSize: 10,
-    fontWeight: '700' as const,
+    fontSize: typography.fontSize.captionSm,
+    fontWeight: typography.fontWeight.bold,
     color: '#FFFFFF',
   },
   cardCategoryBadge: {
@@ -378,9 +405,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   cardCancellationText: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     color: '#3FC39E',
-    fontWeight: '500' as const,
+    fontWeight: typography.fontWeight.medium,
   },
   cardBottomRow: {
     flexDirection: 'row',
@@ -397,7 +424,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.semibold,
   },
   cardReviewCount: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
   },
   cardPriceContainer: {
     flexDirection: 'row',

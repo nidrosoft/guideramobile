@@ -1,12 +1,13 @@
-import { View, StyleSheet } from 'react-native';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 
 export default function Saved() {
-  return <View style={styles.container} />;
-}
+  const router = useRouter();
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-});
+  useEffect(() => {
+    // Redirect to the existing saved deals screen which has full functionality
+    router.replace('/deals/saved');
+  }, []);
+
+  return null;
+}

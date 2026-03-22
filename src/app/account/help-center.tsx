@@ -175,7 +175,7 @@ export default function HelpCenterScreen() {
   const handleCategoryPress = (categoryId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     // Navigate to separate page for this topic
-    router.push(`/account/help-topic?category=${categoryId}` as any);
+    router.push(`/account/help-topic?category=${categoryId}`);
   };
 
   const handleFAQPress = (faqId: string) => {
@@ -186,7 +186,7 @@ export default function HelpCenterScreen() {
 
   const handleContactSupport = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/account/contact-support' as any);
+    router.push('/account/contact-support');
   };
 
   // Filter FAQs based on search

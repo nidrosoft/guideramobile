@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Video, ResizeMode } from 'expo-av';
@@ -8,6 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { colors, typography, spacing, borderRadius, shadows } from '@/styles';
 import PrimaryButton from '@/components/common/buttons/PrimaryButton';
 import TypingAnimation from '@/components/common/TypingAnimation';
+import DSButton from '@/components/ds/DSButton';
 import { useSSO, useUser } from '@clerk/clerk-expo';
 import { syncClerkUserToSupabase } from '@/lib/clerk/profileSync';
 import * as WebBrowser from 'expo-web-browser';
@@ -25,10 +27,10 @@ export const useWarmUpBrowser = () => {
 
 WebBrowser.maybeCompleteAuthSession();
 
-const { width, height } = Dimensions.get('window');
-
 export default function Landing() {
   useWarmUpBrowser();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { startSSOFlow } = useSSO();
   const { user: clerkUser } = useUser();
@@ -70,7 +72,7 @@ export default function Landing() {
 
       if (createdSessionId) {
         if (__DEV__) console.log('[Landing SSO] Session created, activating...');
-        await setActive!({ session: createdSessionId });
+        await setActive?.({ session: createdSessionId });
         if (__DEV__) console.log('[Landing SSO] Session activated, navigating...');
         router.replace('/');
         return;
@@ -105,7 +107,7 @@ export default function Landing() {
 
   const handleEmailSignUp = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/(auth)/email-signup' as any);
+    router.push('/(auth)/email-signup');
   };
 
   const handleSignIn = () => {
@@ -120,21 +122,22 @@ export default function Landing() {
       {/* Background Video */}
       <Video
         source={require('../../../assets/images/landing.mp4')}
-        style={styles.video}
+        style={[styles.video, { width, height }]}
         resizeMode={ResizeMode.COVER}
         shouldPlay
         isLooping
         isMuted
+        accessible={false}
       />
 
       {/* Gradient Overlay */}
       <LinearGradient
         colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.85)']}
-        style={styles.gradient}
+        style={[styles.gradient, { width, height }]}
       />
 
       {/* Content */}
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingBottom: insets.bottom + 12 }]}>
         {/* Centered Typing Animation */}
         <View style={styles.centerSection}>
           <TypingAnimation 
@@ -154,6 +157,9 @@ export default function Landing() {
               onPress={() => handleSSOSignUp('oauth_apple')}
               activeOpacity={0.8}
               disabled={!!ssoLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Sign up with Apple"
+              accessibilityState={{ disabled: !!ssoLoading }}
             >
               {ssoLoading === 'oauth_apple' ? (
                 <ActivityIndicator color={colors.textPrimary} size="small" />
@@ -167,6 +173,9 @@ export default function Landing() {
               onPress={() => handleSSOSignUp('oauth_google')}
               activeOpacity={0.8}
               disabled={!!ssoLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Sign up with Google"
+              accessibilityState={{ disabled: !!ssoLoading }}
             >
               {ssoLoading === 'oauth_google' ? (
                 <ActivityIndicator color={colors.textPrimary} size="small" />
@@ -180,6 +189,9 @@ export default function Landing() {
               onPress={() => handleSSOSignUp('oauth_facebook')}
               activeOpacity={0.8}
               disabled={!!ssoLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Sign up with Facebook"
+              accessibilityState={{ disabled: !!ssoLoading }}
             >
               {ssoLoading === 'oauth_facebook' ? (
                 <ActivityIndicator color={colors.textPrimary} size="small" />
@@ -208,21 +220,25 @@ export default function Landing() {
                 style={styles.signUpButtonInner}
                 onPress={handleEmailSignUp}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Sign up with email"
               >
                 <Text style={styles.signUpButtonText}>Email</Text>
               </TouchableOpacity>
             </LinearGradient>
 
-            <TouchableOpacity
-              style={styles.phoneSignUpButton}
+            <DSButton
+              title="Phone"
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 router.push('/(auth)/phone-signup');
               }}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.phoneSignUpButtonText}>Phone</Text>
-            </TouchableOpacity>
+              variant="secondary"
+              size="xl"
+              haptic={false}
+              style={{ flex: 1, borderColor: colors.white, borderRadius: borderRadius.lg }}
+              textStyle={{ color: colors.white, fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold }}
+            />
           </View>
 
           {error ? <Text style={styles.errorBadge}>{error}</Text> : null}
@@ -230,7 +246,11 @@ export default function Landing() {
           {/* Sign In Link */}
           <View style={styles.signInContainer}>
             <Text style={styles.signInText}>Already have an account? </Text>
-            <TouchableOpacity onPress={handleSignIn}>
+            <TouchableOpacity
+              onPress={handleSignIn}
+              accessibilityRole="link"
+              accessibilityLabel="Sign in to existing account"
+            >
               <Text style={styles.signInLink}>Sign In</Text>
             </TouchableOpacity>
           </View>
@@ -238,9 +258,9 @@ export default function Landing() {
           {/* Terms */}
           <Text style={styles.terms}>
             By signing up, you agree to our{' '}
-            <Text style={styles.termsLink} onPress={() => router.push('/account/terms-of-service' as any)}>Terms</Text>
+            <Text style={styles.termsLink} onPress={() => router.push('/account/terms-of-service' as any)} accessibilityRole="link" accessibilityLabel="Terms of Service">Terms</Text>
             . See how we use your data in our{' '}
-            <Text style={styles.termsLink} onPress={() => router.push('/account/privacy-policy' as any)}>Privacy Policy</Text>.
+            <Text style={styles.termsLink} onPress={() => router.push('/account/privacy-policy' as any)} accessibilityRole="link" accessibilityLabel="Privacy Policy">Privacy Policy</Text>.
           </Text>
         </View>
       </View>
@@ -257,15 +277,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    width: width,
-    height: height,
+    // width and height applied inline via useWindowDimensions
   },
   gradient: {
     position: 'absolute',
     top: 0,
     left: 0,
-    width: width,
-    height: height,
+    // width and height applied inline via useWindowDimensions
   },
   content: {
     flex: 1,

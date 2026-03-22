@@ -92,18 +92,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: '#FFFFFF',
+    color: colors.white,
     marginBottom: spacing.xs,
     maxWidth: '60%',
   },
   discount: {
     fontSize: typography.fontSize['4xl'],
     fontWeight: typography.fontWeight.bold,
-    color: '#FFFFFF',
+    color: colors.white,
     marginBottom: spacing.lg,
   },
   button: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.xl,
     borderRadius: 24,
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.bold,
-    color: '#3FC39E',
+    color: colors.primary,
   },
   image: {
     position: 'absolute',

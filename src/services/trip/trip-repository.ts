@@ -121,7 +121,7 @@ export async function update(tripId: string, updates: Partial<Trip>): Promise<Tr
 export async function deleteTrip(tripId: string): Promise<void> {
   const { error } = await supabase
     .from('trips')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', tripId);
 
   if (error) throw error;

@@ -159,12 +159,12 @@ export default function FlightCard({
         {/* Premium Badge with Gradient - Green for both Best Deal and Recommended */}
         {(isRecommended || isBestDeal) && !compact && (
           <LinearGradient
-            colors={['#059669', '#047857']}
+            colors={[tc.success, tc.success]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.badge}
           >
-            <Star1 size={12} color={colors.white} variant="Bold" />
+            <Star1 size={12} color={tc.white} variant="Bold" />
             <Text style={styles.badgeText}>
               {isRecommended ? 'Recommended' : 'Best Deal'}
             </Text>
@@ -176,7 +176,7 @@ export default function FlightCard({
           {/* Airline Logo - Real image with fallback to initials */}
           <View style={styles.airlineSection}>
             {!logoError ? (
-              <View style={[styles.airlineLogo, compact && styles.airlineLogoCompact, { backgroundColor: '#F3F4F6' }]}>
+              <View style={[styles.airlineLogo, compact && styles.airlineLogoCompact, { backgroundColor: tc.bgElevated }]}>
                 <Image
                   source={{ uri: airlineLogoUrl }}
                   style={styles.airlineLogoImage}
@@ -255,9 +255,9 @@ export default function FlightCard({
                   colors={[tc.primary, colors.primaryDark]}
                   style={styles.planeIconBg}
                 >
-                  <Airplane 
-                    size={compact ? 12 : 14} 
-                    color="#FFFFFF" 
+                  <Airplane
+                    size={compact ? 12 : 14}
+                    color={tc.white}
                     variant="Bold"
                     style={{ transform: [{ rotate: '45deg' }] }}
                   />
@@ -348,7 +348,7 @@ export default function FlightCard({
               colors={[colors.primary, colors.primaryDark]}
               style={styles.selectionBadge}
             >
-              <TickCircle size={14} color={colors.white} variant="Bold" />
+              <TickCircle size={14} color={tc.white} variant="Bold" />
               <Text style={styles.selectionText}>Selected</Text>
             </LinearGradient>
           </View>

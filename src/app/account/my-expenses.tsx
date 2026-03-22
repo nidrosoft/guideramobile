@@ -23,6 +23,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { typography, spacing, borderRadius } from '@/styles';
 import { expenseService } from '@/services/expense.service';
+import { useTranslation } from 'react-i18next';
 import { Expense, ExpenseCategory } from '@/features/trips/plugins/expenses/types/expense.types';
 
 // Extended expense with trip name
@@ -46,6 +47,11 @@ const CATEGORIES: { id: ExpenseCategory; name: string; emoji: string; color: str
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
+
+const formatCurrency = (amount: number, currency: string = 'USD') => {
+  const symbols: Record<string, string> = { USD: '$', EUR: '\u20AC', GBP: '\u00A3', JPY: '\u00A5' };
+  return `${symbols[currency] || currency} ${amount.toFixed(2)}`;
+};
 
 // ─── Month Group Component ───
 
@@ -86,7 +92,7 @@ function MonthCard({ group, tc }: { group: MonthGroup; tc: any }) {
         </View>
         <View style={styles.monthRight}>
           <Text style={[styles.monthTotal, { color: tc.textPrimary }]}>
-            ${group.total.toFixed(2)}
+            {formatCurrency(group.total, group.expenses[0]?.currency)}
           </Text>
           <View style={[styles.chevronWrap, { backgroundColor: `${tc.primary}12` }]}>
             {expanded
@@ -113,7 +119,7 @@ function MonthCard({ group, tc }: { group: MonthGroup; tc: any }) {
                     <View style={[styles.catBar, { backgroundColor: `${tc.textTertiary}15` }]}>
                       <View style={[styles.catBarFill, { width: `${cat.percentage}%`, backgroundColor: info.color }]} />
                     </View>
-                    <Text style={[styles.catAmount, { color: tc.textSecondary }]}>${cat.amount.toFixed(2)}</Text>
+                    <Text style={[styles.catAmount, { color: tc.textSecondary }]}>{formatCurrency(cat.amount)}</Text>
                   </View>
                 </View>
               );
@@ -141,7 +147,7 @@ function MonthCard({ group, tc }: { group: MonthGroup; tc: any }) {
                       {exp.source === 'receipt_scan' ? ' · 📷' : ''}
                     </Text>
                   </View>
-                  <Text style={[styles.expAmount, { color: tc.textPrimary }]}>${exp.amount.toFixed(2)}</Text>
+                  <Text style={[styles.expAmount, { color: tc.textPrimary }]}>{formatCurrency(exp.amount, exp.currency)}</Text>
                 </View>
               );
             })}
@@ -158,6 +164,7 @@ export default function MyExpensesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { t } = useTranslation();
   const { profile } = useAuth();
 
   const [expenses, setExpenses] = useState<ExpenseWithTrip[]>([]);
@@ -273,7 +280,7 @@ export default function MyExpensesScreen() {
         <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: tc.bgSunken }]}>
           <ArrowLeft2 size={20} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>My Expenses</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{t('account.expenses.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -288,25 +295,25 @@ export default function MyExpensesScreen() {
           <View style={[styles.summaryIcon, { backgroundColor: `${tc.primary}12` }]}>
             <DollarCircle size={28} color={tc.primary} variant="Bold" />
           </View>
-          <Text style={[styles.summaryLabel, { color: tc.textSecondary }]}>Total Spending</Text>
+          <Text style={[styles.summaryLabel, { color: tc.textSecondary }]}>{t('account.expenses.totalSpending')}</Text>
           <Text style={[styles.summaryTotal, { color: tc.textPrimary }]}>
-            ${grandTotal.toFixed(2)}
+            {formatCurrency(grandTotal)}
           </Text>
           <View style={styles.summaryStats}>
             <View style={[styles.statChip, { backgroundColor: tc.bgSunken }]}>
               <Text style={[styles.statValue, { color: tc.textPrimary }]}>{expenses.length}</Text>
-              <Text style={[styles.statLabel, { color: tc.textTertiary }]}>expenses</Text>
+              <Text style={[styles.statLabel, { color: tc.textTertiary }]}>{t('account.expenses.expenses')}</Text>
             </View>
             <View style={[styles.statChip, { backgroundColor: tc.bgSunken }]}>
               <Text style={[styles.statValue, { color: tc.textPrimary }]}>{monthGroups.length}</Text>
-              <Text style={[styles.statLabel, { color: tc.textTertiary }]}>months</Text>
+              <Text style={[styles.statLabel, { color: tc.textTertiary }]}>{t('account.expenses.months')}</Text>
             </View>
             {topCategory && (
               <View style={[styles.statChip, { backgroundColor: tc.bgSunken }]}>
                 <Text style={[styles.statValue, { color: tc.textPrimary }]}>
                   {CATEGORIES.find(c => c.id === topCategory.category)?.emoji || '📦'}
                 </Text>
-                <Text style={[styles.statLabel, { color: tc.textTertiary }]}>top</Text>
+                <Text style={[styles.statLabel, { color: tc.textTertiary }]}>{t('account.expenses.top')}</Text>
               </View>
             )}
           </View>
@@ -316,9 +323,9 @@ export default function MyExpensesScreen() {
         {expenses.length === 0 && (
           <View style={styles.emptyState}>
             <Receipt1 size={48} color={tc.textTertiary} variant="Bold" />
-            <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No Expenses Yet</Text>
+            <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>{t('account.expenses.noExpensesYet')}</Text>
             <Text style={[styles.emptySub, { color: tc.textSecondary }]}>
-              Scan a receipt or add expenses from your trip to see them here
+              {t('account.expenses.emptyDescription')}
             </Text>
           </View>
         )}

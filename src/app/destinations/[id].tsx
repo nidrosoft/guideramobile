@@ -102,38 +102,7 @@ function mapToDetailData(dest: CuratedDestination, similarItems: any[], poiData:
         latitude: p.location?.lat || 0,
         longitude: p.location?.lng || 0,
       };
-    }) : [
-      {
-        id: '1',
-        name: `${city} City Center`,
-        description: `Explore the vibrant heart of ${city} with its iconic landmarks, local markets, and cultural attractions.`,
-        image: allImages[0] || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
-        distance: '0.5 Miles',
-        category: 'Attractions',
-        latitude: Number(dest.latitude) || 0,
-        longitude: Number(dest.longitude) || 0,
-      },
-      {
-        id: '2',
-        name: `Historic ${city} Quarter`,
-        description: `Discover the rich history and heritage of ${city} through its ancient streets and architectural marvels.`,
-        image: allImages[1] || allImages[0] || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
-        distance: '1.2 Miles',
-        category: 'Attractions',
-        latitude: (Number(dest.latitude) || 0) + 0.005,
-        longitude: (Number(dest.longitude) || 0) + 0.003,
-      },
-      {
-        id: '3',
-        name: `${city} Local Market`,
-        description: `Experience authentic local cuisine and handcrafted goods at ${city}'s most popular market.`,
-        image: allImages[2] || allImages[0] || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
-        distance: '0.8 Miles',
-        category: 'Hidden Gems',
-        latitude: (Number(dest.latitude) || 0) - 0.003,
-        longitude: (Number(dest.longitude) || 0) + 0.005,
-      },
-    ],
+    }) : [],
 
     // Safety Information — AI-enriched (accurate per-destination) or DB fallback
     safetyInfo: aiEnrichment?.safety_cards?.length > 0

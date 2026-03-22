@@ -72,14 +72,13 @@ export function initSentry(): void {
         return null;
       }
 
-      // Filter out specific errors you want to ignore
-      const error = hint.originalException;
-      if (error instanceof Error) {
-        // Example: Ignore network errors that are expected
-        if (error.message.includes('Network request failed')) {
-          // Still log but don't send to Sentry
-          return null;
-        }
+      // Only drop generic network errors without useful stack traces
+      const message = event.exception?.values?.[0]?.value || '';
+      if (
+        message === 'Network request failed' &&
+        !event.exception?.values?.[0]?.stacktrace?.frames?.length
+      ) {
+        return null;
       }
 
       return event;

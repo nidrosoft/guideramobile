@@ -18,6 +18,7 @@ import {
   TextInput,
   Modal,
   Animated,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -41,10 +42,14 @@ import * as Clipboard from 'expo-clipboard';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
+import { useTranslation } from 'react-i18next';
 import { rewardsService, Referral, ReferralStatus } from '@/services/rewards.service';
 
+const { height: screenHeight } = Dimensions.get('window');
+
 // Header animation constants
-const HEADER_MAX_HEIGHT = 280;
+const HEADER_MAX_HEIGHT = Math.min(280, screenHeight * 0.35);
 const HEADER_MIN_HEIGHT = 80;
 const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
 
@@ -60,6 +65,8 @@ export default function ReferralsScreen() {
   const { user, profile } = useAuth();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { showSuccess, showError } = useToast();
+  const { t } = useTranslation();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [stats, setStats] = useState({
@@ -140,15 +147,15 @@ export default function ReferralsScreen() {
   const handleCopyCode = async () => {
     await Clipboard.setStringAsync(referralCode);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Copied!', 'Referral code copied to clipboard');
+    showSuccess(t('account.referrals.codeCopied'));
   };
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       await Share.share({
-        message: `Join me on Guidera and get $20 off your first booking! Use my referral code: ${referralCode}\n\nDownload now: https://guidera.app/invite/${referralCode}`,
-        title: 'Join Guidera',
+        message: t('account.referrals.shareMessage', { code: referralCode }),
+        title: t('account.referrals.shareTitle'),
       });
     } catch (error) {
       console.error('Error sharing:', error);
@@ -168,19 +175,19 @@ export default function ReferralsScreen() {
       );
       
       if (error) {
-        Alert.alert('Error', 'Failed to send invite. Please try again.');
+        showError(t('account.referrals.inviteFailed'));
         return;
       }
       
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Invite Sent!', `An invitation has been sent to ${inviteEmail}`);
+      showSuccess(t('account.referrals.inviteSent', { email: inviteEmail }));
       setShowInviteModal(false);
       setInviteEmail('');
       setInviteName('');
       fetchReferrals();
     } catch (error) {
       console.error('Error sending invite:', error);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      showError(t('account.referrals.somethingWrong'));
     } finally {
       setIsSending(false);
     }
@@ -214,11 +221,11 @@ export default function ReferralsScreen() {
         >
           {/* Fixed Navigation Row - always visible and touchable */}
           <View style={[styles.header, { backgroundColor: 'transparent', borderBottomColor: 'transparent' }]}>
-            <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel="Go back">
               <ArrowLeft2 size={24} color={colors.white} />
             </TouchableOpacity>
             <Animated.Text style={[styles.headerTitle, { opacity: compactHeaderOpacity }]}>
-              Refer Friends
+              {t('account.referrals.title')}
             </Animated.Text>
             <View style={styles.placeholder} />
           </View>
@@ -229,9 +236,9 @@ export default function ReferralsScreen() {
             pointerEvents="none"
           >
             <People size={28} color={colors.white} variant="Bold" />
-            <Text style={styles.referralTitle}>Earn $20 for each friend</Text>
+            <Text style={styles.referralTitle}>{t('account.referrals.earnPerFriend')}</Text>
             <Text style={styles.referralSubtitle}>
-              Share your code and earn rewards when friends book
+              {t('account.referrals.shareAndEarn')}
             </Text>
             
             {/* Referral Code */}
@@ -251,7 +258,7 @@ export default function ReferralsScreen() {
             </View>
             <TouchableOpacity onPress={handleShare} style={styles.compactShareButton}>
               <ShareIcon size={16} color={colors.success} />
-              <Text style={styles.compactShareText}>Share</Text>
+              <Text style={styles.compactShareText}>{t('account.referrals.share')}</Text>
             </TouchableOpacity>
           </Animated.View>
         </LinearGradient>
@@ -285,43 +292,43 @@ export default function ReferralsScreen() {
             <View style={styles.statsContainer}>
               <View style={[styles.statCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
                 <Text style={[styles.statValue, { color: tc.textPrimary }]}>{stats.totalReferrals}</Text>
-                <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Total Invites</Text>
+                <Text style={[styles.statLabel, { color: tc.textSecondary }]}>{t('account.referrals.totalInvites')}</Text>
               </View>
               <View style={[styles.statCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
                 <Text style={[styles.statValue, { color: tc.textPrimary }]}>{stats.completedReferrals}</Text>
-                <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Completed</Text>
+                <Text style={[styles.statLabel, { color: tc.textSecondary }]}>{t('account.referrals.completed')}</Text>
               </View>
               <View style={[styles.statCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
                 <Text style={[styles.statValue, { color: tc.success }]}>
                   {stats.totalEarned.toLocaleString()}
                 </Text>
-                <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Points Earned</Text>
+                <Text style={[styles.statLabel, { color: tc.textSecondary }]}>{t('account.referrals.pointsEarned')}</Text>
               </View>
             </View>
 
             {/* How It Works */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>How It Works</Text>
+              <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>{t('account.referrals.howItWorks')}</Text>
               <View style={[styles.stepsCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
-                <StepItem 
+                <StepItem
                   number={1}
-                  title="Share your code"
-                  description="Send your unique referral code to friends"
+                  title={t('account.referrals.step1Title')}
+                  description={t('account.referrals.step1Desc')}
                 />
-                <StepItem 
+                <StepItem
                   number={2}
-                  title="Friend signs up"
-                  description="They create an account using your code"
+                  title={t('account.referrals.step2Title')}
+                  description={t('account.referrals.step2Desc')}
                 />
-                <StepItem 
+                <StepItem
                   number={3}
-                  title="Friend books"
-                  description="They complete their first booking"
+                  title={t('account.referrals.step3Title')}
+                  description={t('account.referrals.step3Desc')}
                 />
-                <StepItem 
+                <StepItem
                   number={4}
-                  title="You both earn"
-                  description="Get 500 points ($20 value) each!"
+                  title={t('account.referrals.step4Title')}
+                  description={t('account.referrals.step4Desc')}
                   isLast
                 />
               </View>
@@ -334,20 +341,20 @@ export default function ReferralsScreen() {
                 onPress={() => setShowInviteModal(true)}
               >
                 <Sms size={20} color={colors.white} />
-                <Text style={styles.inviteButtonText}>Invite by Email</Text>
+                <Text style={styles.inviteButtonText}>{t('account.referrals.inviteByEmail')}</Text>
               </TouchableOpacity>
             </View>
 
             {/* Referrals List */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>Your Referrals</Text>
-              
+              <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>{t('account.referrals.yourReferrals')}</Text>
+
               {referrals.length === 0 ? (
                 <View style={[styles.emptyState, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
                   <People size={48} color={tc.textTertiary} variant="Bold" />
-                  <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No referrals yet</Text>
+                  <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>{t('account.referrals.noReferralsYet')}</Text>
                   <Text style={[styles.emptyText, { color: tc.textSecondary }]}>
-                    Share your code to start earning rewards
+                    {t('account.referrals.shareToEarn')}
                   </Text>
                 </View>
               ) : (
@@ -374,7 +381,7 @@ export default function ReferralsScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: isDark ? '#1A1A1A' : tc.bgElevated }]}>
             <View style={[styles.modalHeader, { borderBottomColor: tc.borderSubtle }]}>
-              <Text style={[styles.modalTitle, { color: tc.textPrimary }]}>Invite a Friend</Text>
+              <Text style={[styles.modalTitle, { color: tc.textPrimary }]}>{t('account.referrals.inviteAFriend')}</Text>
               <TouchableOpacity onPress={() => setShowInviteModal(false)}>
                 <CloseCircle size={24} color={tc.textTertiary} variant="Bold" />
               </TouchableOpacity>
@@ -382,18 +389,19 @@ export default function ReferralsScreen() {
             
             <View style={styles.modalBody}>
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Friend's Name (optional)</Text>
+                <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>{t('account.referrals.friendName')}</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.gray50, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
                   value={inviteName}
                   onChangeText={setInviteName}
                   placeholder="John Doe"
                   placeholderTextColor={tc.textTertiary}
+                  accessibilityLabel="Friend's name"
                 />
               </View>
               
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Email Address</Text>
+                <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>{t('account.referrals.emailAddress')}</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.gray50, borderColor: tc.borderSubtle, color: tc.textPrimary }]}
                   value={inviteEmail}
@@ -401,6 +409,7 @@ export default function ReferralsScreen() {
                   placeholder="friend@example.com"
                   placeholderTextColor={tc.textTertiary}
                   keyboardType="email-address"
+                  accessibilityLabel="Friend's email address"
                   autoCapitalize="none"
                 />
               </View>
@@ -411,7 +420,7 @@ export default function ReferralsScreen() {
                 style={[styles.cancelButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : colors.gray100 }]}
                 onPress={() => setShowInviteModal(false)}
               >
-                <Text style={[styles.cancelButtonText, { color: tc.textSecondary }]}>Cancel</Text>
+                <Text style={[styles.cancelButtonText, { color: tc.textSecondary }]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[
@@ -422,9 +431,9 @@ export default function ReferralsScreen() {
                 disabled={!inviteEmail.trim() || isSending}
               >
                 {isSending ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={colors.white} />
                 ) : (
-                  <Text style={styles.sendButtonText}>Send Invite</Text>
+                  <Text style={styles.sendButtonText}>{t('account.referrals.sendInvite')}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -587,7 +596,7 @@ const styles = StyleSheet.create({
   compactShareText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: '#34A076',
+    color: colors.primary,
   },
   referralSubtitle: {
     fontSize: typography.fontSize.sm,
@@ -633,7 +642,7 @@ const styles = StyleSheet.create({
   shareButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: '#34A076',
+    color: colors.primary,
   },
   content: {
     flex: 1,
@@ -674,7 +683,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   statLabel: {
-    fontSize: 10,
+    fontSize: typography.fontSize.captionSm,
     color: colors.textSecondary,
     marginTop: 2,
   },
@@ -714,7 +723,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#34A076',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -741,7 +750,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#34A076',
+    backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.lg,
     gap: spacing.sm,
@@ -826,7 +835,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   statusText: {
-    fontSize: 10,
+    fontSize: typography.fontSize.captionSm,
     fontWeight: typography.fontWeight.semibold,
   },
   rewardText: {
@@ -904,7 +913,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.lg,
-    backgroundColor: '#34A076',
+    backgroundColor: colors.primary,
     alignItems: 'center',
   },
   sendButtonDisabled: {

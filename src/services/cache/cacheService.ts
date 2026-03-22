@@ -25,7 +25,7 @@ interface CacheConfig {
 
 const DEFAULT_CONFIG: CacheConfig = {
   defaultTTL: 5 * 60 * 1000, // 5 minutes
-  maxMemoryItems: 100,
+  maxMemoryItems: 500,
   persistToStorage: true,
 };
 
@@ -259,14 +259,20 @@ class CacheService {
   private enforceMemoryLimit(): void {
     if (this.memoryCache.size <= this.config.maxMemoryItems) return;
 
-    // Remove oldest entries
+    // Batch eviction: remove the oldest 20% to avoid sorting on every single write.
+    // This amortises the O(n log n) sort cost across many inserts.
+    const evictCount = Math.max(
+      Math.ceil(this.config.maxMemoryItems * 0.2),
+      this.memoryCache.size - this.config.maxMemoryItems,
+    );
+
     const entries = Array.from(this.memoryCache.entries())
       .sort((a, b) => a[1].timestamp - b[1].timestamp);
 
-    const toRemove = entries.slice(0, entries.length - this.config.maxMemoryItems);
+    const toRemove = entries.slice(0, evictCount);
     toRemove.forEach(([key]) => this.memoryCache.delete(key));
 
-    logger.debug(`Cache memory limit enforced, removed ${toRemove.length} items`);
+    logger.debug(`Cache memory limit enforced, evicted ${toRemove.length} items (batch 20%)`);
   }
 }
 

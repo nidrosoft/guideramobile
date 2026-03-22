@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, Animated, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Animated, Platform, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect, useRef } from 'react';
@@ -187,6 +188,7 @@ function AnimatedFeature({
 
 export default function Intro() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
   const [currentFeatureIndex, setCurrentFeatureIndex] = useState(0);
   const [zoomFeatureIndex, setZoomFeatureIndex] = useState(-1);
@@ -294,9 +296,9 @@ export default function Intro() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: tc.background }]}>
+    <View style={[styles.container, { backgroundColor: tc.background, paddingTop: insets.top + 20 }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: tc.textPrimary }]}>Welcome to Guidera!</Text>
@@ -305,39 +307,44 @@ export default function Intro() {
         </Text>
       </View>
 
-      {/* Features Container */}
-      <View style={styles.featuresContainer}>
-        {features.map((feature, index) => (
-          index <= currentFeatureIndex && (
-            <AnimatedFeature
-              key={index}
-              feature={feature}
-              shouldAnimate={index === currentFeatureIndex}
-              shouldZoom={index === zoomFeatureIndex}
-            />
-          )
-        ))}
-      </View>
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Features Container */}
+        <View style={styles.featuresContainer}>
+          {features.map((feature, index) => (
+            index <= currentFeatureIndex && (
+              <AnimatedFeature
+                key={index}
+                feature={feature}
+                shouldAnimate={index === currentFeatureIndex}
+                shouldZoom={index === zoomFeatureIndex}
+              />
+            )
+          ))}
+        </View>
 
-      {/* Button Container */}
-      {showButton && (
-        <Animated.View 
-          style={[
-            styles.buttonContainer,
-            { transform: [{ scale: buttonScale }] }
-          ]}
-        >
-          <Text style={[styles.setupText, { color: tc.textSecondary }]}>Let's personalize your experience</Text>
-          <TouchableOpacity
-            style={[styles.ctaButton, { backgroundColor: tc.primary }]}
-            onPress={handleContinue}
-            activeOpacity={0.8}
+        {/* Button Container */}
+        {showButton && (
+          <Animated.View
+            style={[
+              styles.buttonContainer,
+              { transform: [{ scale: buttonScale }] }
+            ]}
           >
-            <Text style={[styles.ctaButtonText, { color: tc.white }]}>Get Started</Text>
-          </TouchableOpacity>
-          <Text style={[styles.footerText, { color: tc.textTertiary }]}>Quick setup — less than 2 minutes</Text>
-        </Animated.View>
-      )}
+            <Text style={[styles.setupText, { color: tc.textSecondary }]}>Let's personalize your experience</Text>
+            <TouchableOpacity
+              style={[styles.ctaButton, { backgroundColor: tc.primary }]}
+              onPress={handleContinue}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.ctaButtonText, { color: tc.white }]}>Get Started</Text>
+            </TouchableOpacity>
+            <Text style={[styles.footerText, { color: tc.textTertiary }]}>Quick setup — less than 2 minutes</Text>
+          </Animated.View>
+        )}
+      </ScrollView>
     </View>
   );
 }

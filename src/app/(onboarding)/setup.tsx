@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, Animated, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Animated, Platform, Alert, useWindowDimensions, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
@@ -10,8 +11,6 @@ import { useTheme } from '@/context/ThemeContext';
 import { useOnboardingStore } from '@/stores/useOnboardingStore';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const setupSteps = [
   { id: 1, text: 'Creating your profile', icon: User, color: '#818CF8', bgColor: 'rgba(99, 102, 241, 0.15)', duration: 1200 },
@@ -25,6 +24,8 @@ const setupSteps = [
 
 export default function Setup() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
   const { colors: tc, isDark } = useTheme();
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
@@ -118,11 +119,17 @@ export default function Setup() {
             setTimeout(() => {
               router.replace('/(tabs)');
             }, 3000);
-          }).catch(() => {
-            // Save failed — still redirect after delay but no confetti
-            setTimeout(() => {
-              router.replace('/(tabs)');
-            }, 2000);
+          }).catch((err) => {
+            // Save failed — show error with retry option instead of silently redirecting
+            if (__DEV__) console.error('[Setup] Profile save failed:', err);
+            Alert.alert(
+              'Setup Error',
+              'We couldn\'t save your profile. Please try again.',
+              [
+                { text: 'Retry', onPress: () => { setCurrentStep(setupSteps.length - 1); setCompletedSteps(prev => prev.filter(s => s !== setupSteps.length - 1)); } },
+                { text: 'Skip for Now', style: 'cancel', onPress: () => router.replace('/(tabs)') },
+              ]
+            );
           });
         }
       }, setupSteps[currentStep].duration);
@@ -150,7 +157,7 @@ export default function Setup() {
       />
       
       {/* Content */}
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingTop: insets.top + 40 }]}>
         {/* Logo */}
         <View style={styles.logoContainer}>
           <Text style={[styles.logo, { color: tc.textPrimary }]}>GUIDERA</Text>
@@ -166,44 +173,49 @@ export default function Setup() {
         </Text>
 
         {/* Setup Steps */}
-        <View style={styles.stepsContainer}>
-          {setupSteps.map((step, index) => {
-            const StepIcon = step.icon;
-            const isCompleted = completedSteps.includes(index);
-            const isActive = index === currentStep;
-            const isPending = !isCompleted && !isActive;
-            
-            return (
-              <View key={step.id} style={[styles.stepItem, isPending && { opacity: 0.4 }]}>
-                <View style={[styles.iconContainer, { backgroundColor: step.bgColor }]}>
-                  <StepIcon size={24} color={step.color} variant="Bold" />
-                </View>
-                
-                <View style={styles.stepContent}>
-                  <Text style={[styles.stepText, { color: tc.textPrimary }]}>{step.text}</Text>
-                  {isActive && (
-                    <View style={styles.loadingDots}>
-                      <View style={[styles.loadingDot, styles.loadingDot1]} />
-                      <View style={[styles.loadingDot, styles.loadingDot2]} />
-                      <View style={[styles.loadingDot, styles.loadingDot3]} />
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.stepsContainer}>
+            {setupSteps.map((step, index) => {
+              const StepIcon = step.icon;
+              const isCompleted = completedSteps.includes(index);
+              const isActive = index === currentStep;
+              const isPending = !isCompleted && !isActive;
+
+              return (
+                <View key={step.id} style={[styles.stepItem, isPending && { opacity: 0.4 }]}>
+                  <View style={[styles.iconContainer, { backgroundColor: step.bgColor }]}>
+                    <StepIcon size={24} color={step.color} variant="Bold" />
+                  </View>
+
+                  <View style={styles.stepContent}>
+                    <Text style={[styles.stepText, { color: tc.textPrimary }]}>{step.text}</Text>
+                    {isActive && (
+                      <View style={styles.loadingDots}>
+                        <View style={[styles.loadingDot, styles.loadingDot1]} />
+                        <View style={[styles.loadingDot, styles.loadingDot2]} />
+                        <View style={[styles.loadingDot, styles.loadingDot3]} />
+                      </View>
+                    )}
+                  </View>
+
+                  {isCompleted && (
+                    <View style={[styles.checkmarkContainer, { backgroundColor: tc.success }]}>
+                      <Text style={[styles.checkmark, { color: tc.white }]}>✓</Text>
                     </View>
                   )}
                 </View>
-                
-                {isCompleted && (
-                  <View style={[styles.checkmarkContainer, { backgroundColor: tc.success }]}>
-                    <Text style={[styles.checkmark, { color: tc.white }]}>✓</Text>
-                  </View>
-                )}
-              </View>
-            );
-          })}
-        </View>
+              );
+            })}
+          </View>
 
-        {/* Bottom Message */}
-        <Text style={[styles.bottomMessage, { color: tc.textSecondary }]}>
-          {allDone ? 'Welcome aboard! Redirecting...' : 'This will only take a moment...'}
-        </Text>
+          {/* Bottom Message */}
+          <Text style={[styles.bottomMessage, { color: tc.textSecondary }]}>
+            {allDone ? 'Welcome aboard! Redirecting...' : 'This will only take a moment...'}
+          </Text>
+        </ScrollView>
       </View>
     </View>
   );

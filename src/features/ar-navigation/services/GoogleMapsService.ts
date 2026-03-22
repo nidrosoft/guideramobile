@@ -44,7 +44,7 @@ class GoogleMapsService {
   private isInitialized = false;
 
   constructor() {
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://pkydmdygctojtfzbqcud.supabase.co';
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
     this.proxyUrl = `${supabaseUrl}/functions/v1/google-api-proxy`;
     this.supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
   }

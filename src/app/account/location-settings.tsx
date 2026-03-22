@@ -42,6 +42,7 @@ export default function LocationSettingsScreen() {
   const router = useRouter();
   const { colors: tc, isDark } = useTheme();
   const { profile, refreshProfile } = useAuth();
+  const { showSuccess, showError } = require('@/contexts/ToastContext').useToast();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isDetecting, setIsDetecting] = useState(false);
@@ -58,7 +59,7 @@ export default function LocationSettingsScreen() {
     try {
       const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please enable location permissions in your device settings to use GPS detection.');
+        showError('Please enable location permissions in your device settings to use GPS detection.');
         setIsDetecting(false);
         return;
       }
@@ -87,11 +88,11 @@ export default function LocationSettingsScreen() {
           longitude: location.coords.longitude,
         });
       } else {
-        Alert.alert('Error', 'Could not determine your city from GPS coordinates. Try searching manually.');
+        showError('Could not determine your city. Try searching manually.');
       }
     } catch (err) {
       console.error('Location detection error:', err);
-      Alert.alert('Error', 'Failed to detect location. Please try again or search manually.');
+      showError('Failed to detect location. Please try again or search manually.');
     } finally {
       setIsDetecting(false);
     }
@@ -172,7 +173,7 @@ export default function LocationSettingsScreen() {
       });
 
       if (error) {
-        Alert.alert('Error', 'Failed to save location. Please try again.');
+        showError('Failed to save location. Please try again.');
         return;
       }
 
@@ -185,7 +186,7 @@ export default function LocationSettingsScreen() {
       setTimeout(() => router.back(), 300);
     } catch (err) {
       console.error('Save location error:', err);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      showError('Something went wrong. Please try again.');
     } finally {
       setIsSaving(false);
     }

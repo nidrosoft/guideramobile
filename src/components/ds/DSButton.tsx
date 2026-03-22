@@ -16,7 +16,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/styles/colors';
+import { useTheme } from '@/context/ThemeContext';
 import { fontFamily } from '@/styles/typography';
 import { shadows } from '@/styles/shadows';
 
@@ -59,6 +59,7 @@ export default function DSButton({
   haptic = true,
   fullWidth = false,
 }: DSButtonProps) {
+  const { colors } = useTheme();
   const sizeConfig = SIZE_CONFIG[size];
 
   const handlePress = useCallback(() => {
@@ -70,9 +71,9 @@ export default function DSButton({
   const containerStyle: ViewStyle[] = [
     styles.base,
     { height: sizeConfig.height, paddingHorizontal: sizeConfig.paddingHorizontal },
-    variant === 'primary' && styles.primary,
-    variant === 'secondary' && styles.secondary,
-    variant === 'ghost' && styles.ghost,
+    variant === 'primary' && { backgroundColor: colors.primary },
+    variant === 'secondary' && { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.borderStandard },
+    variant === 'ghost' && { backgroundColor: 'transparent' },
     variant === 'primary' && shadows.btnPrimary,
     fullWidth && styles.fullWidth,
     (disabled || loading) && styles.disabled,
@@ -82,9 +83,9 @@ export default function DSButton({
   const labelStyle: TextStyle[] = [
     styles.label,
     { fontSize: sizeConfig.fontSize },
-    variant === 'primary' && styles.primaryLabel,
-    variant === 'secondary' && styles.secondaryLabel,
-    variant === 'ghost' && styles.ghostLabel,
+    variant === 'primary' && { color: colors.primaryText, fontFamily: fontFamily.bold, fontWeight: '700' },
+    variant === 'secondary' && { color: colors.textSecondary },
+    variant === 'ghost' && { color: colors.textSecondary, fontFamily: fontFamily.medium, fontWeight: '500' },
     textStyle,
   ].filter(Boolean) as TextStyle[];
 
@@ -128,36 +129,8 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.5,
   },
-
-  // Variants
-  primary: {
-    backgroundColor: colors.primary,
-  },
-  secondary: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: colors.borderStandard,
-  },
-  ghost: {
-    backgroundColor: 'transparent',
-  },
-
-  // Labels
   label: {
     fontFamily: fontFamily.semibold,
     fontWeight: '600',
-  },
-  primaryLabel: {
-    color: colors.primaryText,
-    fontFamily: fontFamily.bold,
-    fontWeight: '700',
-  },
-  secondaryLabel: {
-    color: colors.textSecondary,
-  },
-  ghostLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.medium,
-    fontWeight: '500',
   },
 });

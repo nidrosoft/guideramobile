@@ -210,21 +210,23 @@ export const savedService = {
         return { data: null, error: error as Error };
       }
 
-      // Get item counts for each collection
+      // Get item counts for all collections in a single query
       if (data) {
-        const collectionsWithCounts = await Promise.all(
-          data.map(async (collection) => {
-            const { count } = await supabase
-              .from('saved_items')
-              .select('*', { count: 'exact', head: true })
-              .eq('collection_id', collection.id);
-            
-            return {
-              ...collection,
-              item_count: count || 0,
-            };
-          })
-        );
+        const { data: counts } = await supabase
+          .from('saved_items')
+          .select('collection_id')
+          .eq('user_id', userId)
+          .not('collection_id', 'is', null);
+
+        const countMap = (counts || []).reduce((acc, item) => {
+          acc[item.collection_id] = (acc[item.collection_id] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+
+        const collectionsWithCounts = data.map(collection => ({
+          ...collection,
+          item_count: countMap[collection.id] || 0,
+        }));
         return { data: collectionsWithCounts, error: null };
       }
 

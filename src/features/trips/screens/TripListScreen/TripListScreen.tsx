@@ -3,7 +3,7 @@
  * Main screen showing all trips organized by state tabs
  */
 
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Animated, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, SafeAreaView } from 'react-native';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -17,6 +17,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { Add, Airplane } from 'iconsax-react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
+import DSButton from '@/components/ds/DSButton';
 
 // Tab labels will be translated in the component
 const TAB_IDS = [
@@ -34,11 +35,10 @@ export default function TripListScreen() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TripState>(TripState.UPCOMING);
   const [showPlanSheet, setShowPlanSheet] = useState(false);
-  const animatedValue = useState(new Animated.Value(0))[0];
   const flatListRef = useRef<FlatList>(null);
   
   const { profile } = useAuth();
-  const { trips, fetchTrips, filterByState, isLoading } = useTripStore();
+  const { trips, fetchTrips, filterByState, isLoading, error } = useTripStore();
   
   // Dynamic styles based on theme
   const dynamicStyles = useMemo(() => ({
@@ -104,24 +104,9 @@ export default function TripListScreen() {
     setShowPlanSheet(true);
   };
   
-  // Handle tab change with haptic feedback and animation
+  // Handle tab change with haptic feedback
   const handleTabChange = (tabId: TripState) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
-    // Animate tab transition
-    Animated.sequence([
-      Animated.timing(animatedValue, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(animatedValue, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    
     setActiveTab(tabId);
   };
   
@@ -137,6 +122,8 @@ export default function TripListScreen() {
           style={[styles.createButton, dynamicStyles.createButton]}
           onPress={handleCreateTrip}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Create new trip"
         >
           <Add size={20} color={colors.primary} variant="Bold" />
         </TouchableOpacity>
@@ -155,6 +142,9 @@ export default function TripListScreen() {
               style={styles.tab}
               onPress={() => handleTabChange(tabId)}
               activeOpacity={0.7}
+              accessibilityRole="tab"
+              accessibilityLabel={`${tabLabel} trips`}
+              accessibilityState={{ selected: isActive }}
             >
               <Text style={[styles.tabText, dynamicStyles.tabText, isActive && dynamicStyles.tabTextActive]}>
                 {tabLabel}
@@ -165,6 +155,13 @@ export default function TripListScreen() {
         })}
       </View>
       
+      {/* Error Banner */}
+      {error && (
+        <View style={{ padding: 16, backgroundColor: 'rgba(239, 68, 68, 0.1)', marginHorizontal: 16, marginTop: 8, borderRadius: 12 }}>
+          <Text style={{ color: '#EF4444', textAlign: 'center', fontSize: 14 }}>Failed to load trips. Pull down to retry.</Text>
+        </View>
+      )}
+
       {/* Trip List */}
       {isLoading && trips.length === 0 ? (
         <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
@@ -214,14 +211,13 @@ export default function TripListScreen() {
                   : t('trips.empty.noTrips', { type: '' })}
               </Text>
               {(activeTab === TripState.DRAFT || activeTab === TripState.UPCOMING) && (
-                <TouchableOpacity
-                  style={[styles.emptyButton, dynamicStyles.emptyButton]}
+                <DSButton
+                  title={t('trips.createTrip')}
                   onPress={handleCreateTrip}
-                  activeOpacity={0.7}
-                >
-                  <Add size={20} color={colors.white} variant="Bold" />
-                  <Text style={[styles.emptyButtonText, dynamicStyles.emptyButtonText]}>{t('trips.createTrip')}</Text>
-                </TouchableOpacity>
+                  variant="primary"
+                  size="lg"
+                  icon={<Add size={20} color={colors.white} variant="Bold" />}
+                />
               )}
             </View>
           }

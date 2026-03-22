@@ -6,6 +6,23 @@
 
 import { supabase } from '@/lib/supabase/client';
 
+const messageSendTimestamps: number[] = [];
+const MAX_MESSAGES_PER_MINUTE = 30;
+
+function checkMessageRateLimit(): boolean {
+  const now = Date.now();
+  const oneMinuteAgo = now - 60000;
+  // Remove old timestamps
+  while (messageSendTimestamps.length > 0 && messageSendTimestamps[0] < oneMinuteAgo) {
+    messageSendTimestamps.shift();
+  }
+  if (messageSendTimestamps.length >= MAX_MESSAGES_PER_MINUTE) {
+    return false; // Rate limited
+  }
+  messageSendTimestamps.push(now);
+  return true;
+}
+
 export interface Conversation {
   id: string;
   otherUser: { id: string; fullName: string; avatarUrl?: string };
@@ -23,6 +40,7 @@ export interface GroupChat {
   lastMessage?: string;
   lastMessageAt?: string;
   messageCount: number;
+  unreadCount: number;
 }
 
 export interface Message {
@@ -149,7 +167,23 @@ class ChatService {
       .order('last_message_at', { ascending: false, nullsFirst: false });
 
     if (error) throw new Error(error.message);
-    return (data || []).map(this.mapGroupChat);
+
+    // Fetch unread counts from message_read_status
+    const chatIds = (data || []).map((c: any) => c.id);
+    const unreadMap: Record<string, number> = {};
+    if (chatIds.length > 0) {
+      const { data: readStatus } = await supabase
+        .from('message_read_status')
+        .select('chat_id, unread_count')
+        .eq('user_id', userId)
+        .eq('chat_type', 'activity')
+        .in('chat_id', chatIds);
+      for (const row of readStatus || []) {
+        unreadMap[row.chat_id] = row.unread_count || 0;
+      }
+    }
+
+    return (data || []).map((c: any) => this.mapGroupChat(c, unreadMap[c.id] || 0));
   }
 
   // ============================================
@@ -174,7 +208,23 @@ class ChatService {
       .order('last_message_at', { ascending: false, nullsFirst: false });
 
     if (error) throw new Error(error.message);
-    return (data || []).map(this.mapGroupChat);
+
+    // Fetch unread counts from message_read_status
+    const chatIds = (data || []).map((c: any) => c.id);
+    const unreadMap: Record<string, number> = {};
+    if (chatIds.length > 0) {
+      const { data: readStatus } = await supabase
+        .from('message_read_status')
+        .select('chat_id, unread_count')
+        .eq('user_id', userId)
+        .eq('chat_type', 'group')
+        .in('chat_id', chatIds);
+      for (const row of readStatus || []) {
+        unreadMap[row.chat_id] = row.unread_count || 0;
+      }
+    }
+
+    return (data || []).map((c: any) => this.mapGroupChat(c, unreadMap[c.id] || 0));
   }
 
   // ============================================
@@ -212,6 +262,10 @@ class ChatService {
     content: string,
     type: string = 'text'
   ): Promise<Message> {
+    if (!checkMessageRateLimit()) {
+      throw new Error('Rate limit exceeded. Please wait before sending more messages.');
+    }
+
     // Determine if this is a group chat or direct conversation
     const { data: room } = await supabase
       .from('chat_rooms')
@@ -389,7 +443,7 @@ class ChatService {
     };
   }
 
-  private mapGroupChat = (data: any): GroupChat => {
+  private mapGroupChat = (data: any, unreadCount: number = 0): GroupChat => {
     return {
       id: data.id,
       name: data.name,
@@ -398,6 +452,7 @@ class ChatService {
       lastMessage: data.last_message_preview,
       lastMessageAt: data.last_message_at,
       messageCount: data.message_count || 0,
+      unreadCount,
     };
   }
 

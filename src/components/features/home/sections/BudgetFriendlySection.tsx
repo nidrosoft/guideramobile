@@ -36,7 +36,7 @@ export default function BudgetFriendlySection() {
         category: item.tags?.[0] || 'Budget Travel',
         rating: item.rating || 4.5,
         price: item.price?.formatted || `$${item.price?.amount || 50}/day`,
-        savingsPercent: item.budgetLevel ? String(Math.round((5 - item.budgetLevel) * 15)) : '',
+        savingsPercent: '',
         imageUrl: item.imageUrl || item.thumbnailUrl,
       }));
     }

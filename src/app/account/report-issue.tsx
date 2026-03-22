@@ -38,6 +38,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { supabase } from '@/lib/supabase/client';
 
 interface IssueCategory {
@@ -62,6 +63,7 @@ export default function ReportIssueScreen() {
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
   const { user, profile } = useAuth();
+  const { showSuccess, showError } = useToast();
 
   const PRIORITY_LEVELS = [
     { id: 'low', label: 'Low', color: tc.success, description: 'Minor inconvenience' },
@@ -174,7 +176,7 @@ export default function ReportIssueScreen() {
       setStep('success');
     } catch (error) {
       console.error('Error submitting issue:', error);
-      Alert.alert('Error', 'Failed to submit your report. Please try again.');
+      showError('Failed to submit your report. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -329,13 +331,13 @@ export default function ReportIssueScreen() {
 
       {/* Submit Button */}
       <TouchableOpacity
-        style={[styles.submitButton, { backgroundColor: tc.primary }, (!title.trim() || !description.trim()) && { backgroundColor: isDark ? '#444' : colors.gray300 }]}
+        style={[styles.submitButton, { backgroundColor: tc.primary }, (!title.trim() || !description.trim()) && { backgroundColor: isDark ? tc.gray300 : colors.gray300 }]}
         onPress={handleSubmit}
         disabled={!title.trim() || !description.trim() || isSubmitting}
         activeOpacity={0.8}
       >
         {isSubmitting ? (
-          <ActivityIndicator color="#FFFFFF" />
+          <ActivityIndicator color={tc.white} />
         ) : (
           <Text style={styles.submitButtonText}>Submit Report</Text>
         )}
@@ -376,7 +378,7 @@ export default function ReportIssueScreen() {
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? tc.bgModal : tc.white, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>

@@ -8,8 +8,9 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { colors } from '@/styles/colors';
+import { useTheme } from '@/context/ThemeContext';
 import { fontFamily } from '@/styles/typography';
+import { ColorScheme } from '@/styles/colors';
 
 type BadgeSize = 'sm' | 'md' | 'lg';
 type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'primary' | 'outline';
@@ -28,15 +29,17 @@ const SIZE_CONFIG = {
   lg: { fontSize: 13, paddingV: 5, paddingH: 14 },
 };
 
-const VARIANT_STYLES: Record<BadgeVariant, { bg: string; text: string; border?: string }> = {
-  default: { bg: colors.bgElevated, text: colors.textSecondary, border: colors.borderStandard },
-  success: { bg: colors.successBg, text: colors.success, border: colors.successBorder },
-  warning: { bg: colors.warningBg, text: colors.warning, border: colors.warningBorder },
-  error: { bg: colors.errorBg, text: colors.error, border: colors.errorBorder },
-  info: { bg: colors.infoBg, text: colors.info, border: colors.infoBorder },
-  primary: { bg: colors.primarySubtle, text: colors.primary, border: colors.primaryBorderSubtle },
-  outline: { bg: 'transparent', text: colors.textSecondary, border: colors.borderStandard },
-};
+function getVariantStyles(colors: ColorScheme): Record<BadgeVariant, { bg: string; text: string; border?: string }> {
+  return {
+    default: { bg: colors.bgElevated, text: colors.textSecondary, border: colors.borderStandard },
+    success: { bg: colors.successBg, text: colors.success, border: colors.successBorder },
+    warning: { bg: colors.warningBg, text: colors.warning, border: colors.warningBorder },
+    error: { bg: colors.errorBg, text: colors.error, border: colors.errorBorder },
+    info: { bg: colors.infoBg, text: colors.info, border: colors.infoBorder },
+    primary: { bg: colors.primarySubtle, text: colors.primary, border: colors.primaryBorderSubtle },
+    outline: { bg: 'transparent', text: colors.textSecondary, border: colors.borderStandard },
+  };
+}
 
 export default function DSBadge({
   label,
@@ -45,8 +48,9 @@ export default function DSBadge({
   icon,
   style,
 }: DSBadgeProps) {
+  const { colors } = useTheme();
   const sizeConfig = SIZE_CONFIG[size];
-  const variantConfig = VARIANT_STYLES[variant];
+  const variantConfig = getVariantStyles(colors)[variant];
 
   const containerStyle: ViewStyle = {
     ...styles.container,

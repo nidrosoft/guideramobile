@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface OnboardingData {
   firstName: string;
@@ -59,7 +61,9 @@ const initialData: OnboardingData = {
   languages: [],
 };
 
-export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
+export const useOnboardingStore = create<OnboardingStore>()(
+  persist(
+    (set, get) => ({
   data: { ...initialData },
   currentStep: 0,
 
@@ -170,4 +174,14 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
       } : null,
     };
   },
-}));
+}),
+    {
+      name: 'guidera-onboarding',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        data: state.data,
+        currentStep: state.currentStep,
+      }),
+    }
+  )
+);

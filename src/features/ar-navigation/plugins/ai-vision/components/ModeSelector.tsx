@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Eye, Camera, Receipt21, VolumeHigh, Microphone2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
@@ -45,6 +46,7 @@ const ACTIVE_COLOR = '#3FC39E';
 const INACTIVE_COLOR = 'rgba(255,255,255,0.5)';
 
 export default function ModeSelector({ activeMode, onModeChange, onVoiceSettings }: ModeSelectorProps) {
+  const insets = useSafeAreaInsets();
   const handlePress = (mode: VisionMode) => {
     if (mode === activeMode) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -52,7 +54,7 @@ export default function ModeSelector({ activeMode, onModeChange, onVoiceSettings
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { bottom: insets.bottom + 10 }]}>
       <View style={styles.tabRow}>
         {MODES.map((mode) => {
           const isActive = activeMode === mode.id;

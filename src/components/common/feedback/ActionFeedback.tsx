@@ -1,6 +1,6 @@
 /**
  * ActionFeedback Component
- * 
+ *
  * Animated success/error feedback for completed actions.
  * Shows checkmark, X, or custom icon with animation.
  */
@@ -9,7 +9,8 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Modal, Animated } from 'react-native';
 import { TickCircle, CloseCircle, InfoCircle, Warning2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { useReducedMotion } from '@/utils/accessibility';
 
 type FeedbackType = 'success' | 'error' | 'warning' | 'info';
@@ -24,31 +25,11 @@ interface ActionFeedbackProps {
   haptic?: boolean;
 }
 
-const FEEDBACK_CONFIG: Record<FeedbackType, {
-  icon: React.ReactNode;
-  color: string;
-  haptic: Haptics.NotificationFeedbackType;
-}> = {
-  success: {
-    icon: <TickCircle size={48} color={colors.success} variant="Bold" />,
-    color: colors.success,
-    haptic: Haptics.NotificationFeedbackType.Success,
-  },
-  error: {
-    icon: <CloseCircle size={48} color={colors.error} variant="Bold" />,
-    color: colors.error,
-    haptic: Haptics.NotificationFeedbackType.Error,
-  },
-  warning: {
-    icon: <Warning2 size={48} color={colors.warning} variant="Bold" />,
-    color: colors.warning,
-    haptic: Haptics.NotificationFeedbackType.Warning,
-  },
-  info: {
-    icon: <InfoCircle size={48} color={colors.info} variant="Bold" />,
-    color: colors.info,
-    haptic: Haptics.NotificationFeedbackType.Success,
-  },
+const HAPTIC_MAP: Record<FeedbackType, Haptics.NotificationFeedbackType> = {
+  success: Haptics.NotificationFeedbackType.Success,
+  error: Haptics.NotificationFeedbackType.Error,
+  warning: Haptics.NotificationFeedbackType.Warning,
+  info: Haptics.NotificationFeedbackType.Success,
 };
 
 export function ActionFeedback({
@@ -60,18 +41,40 @@ export function ActionFeedback({
   onDismiss,
   haptic = true,
 }: ActionFeedbackProps) {
+  const { colors } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const iconScaleAnim = useRef(new Animated.Value(0)).current;
   const reduceMotion = useReducedMotion();
 
-  const config = FEEDBACK_CONFIG[type];
+  const colorMap: Record<FeedbackType, string> = {
+    success: colors.success,
+    error: colors.error,
+    warning: colors.warning,
+    info: colors.info,
+  };
+
+  const feedbackColor = colorMap[type];
+  const feedbackHaptic = HAPTIC_MAP[type];
+
+  const getIcon = () => {
+    switch (type) {
+      case 'success':
+        return <TickCircle size={48} color={colors.success} variant="Bold" />;
+      case 'error':
+        return <CloseCircle size={48} color={colors.error} variant="Bold" />;
+      case 'warning':
+        return <Warning2 size={48} color={colors.warning} variant="Bold" />;
+      case 'info':
+        return <InfoCircle size={48} color={colors.info} variant="Bold" />;
+    }
+  };
 
   useEffect(() => {
     if (visible) {
       // Haptic feedback
       if (haptic) {
-        Haptics.notificationAsync(config.haptic);
+        Haptics.notificationAsync(feedbackHaptic);
       }
 
       // Animate in
@@ -115,7 +118,7 @@ export function ActionFeedback({
       scaleAnim.setValue(0.5);
       iconScaleAnim.setValue(0);
     }
-  }, [visible, duration, onDismiss, fadeAnim, scaleAnim, iconScaleAnim, reduceMotion, haptic, config.haptic]);
+  }, [visible, duration, onDismiss, fadeAnim, scaleAnim, iconScaleAnim, reduceMotion, haptic, feedbackHaptic]);
 
   if (!visible) return null;
 
@@ -125,21 +128,21 @@ export function ActionFeedback({
         <Animated.View
           style={[
             styles.content,
-            { transform: [{ scale: scaleAnim }] },
+            { backgroundColor: colors.bgElevated, transform: [{ scale: scaleAnim }] },
           ]}
         >
           <Animated.View
             style={[
               styles.iconContainer,
-              { backgroundColor: `${config.color}15` },
+              { backgroundColor: `${feedbackColor}15` },
               { transform: [{ scale: iconScaleAnim }] },
             ]}
           >
-            {config.icon}
+            {getIcon()}
           </Animated.View>
-          
-          <Text style={styles.title}>{title}</Text>
-          {message && <Text style={styles.message}>{message}</Text>}
+
+          <Text style={[styles.title, { color: colors.gray900 }]}>{title}</Text>
+          {message && <Text style={[styles.message, { color: colors.gray500 }]}>{message}</Text>}
         </Animated.View>
       </Animated.View>
     </Modal>
@@ -154,13 +157,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   content: {
-    backgroundColor: colors.bgElevated,
     borderRadius: 24,
     padding: spacing.xl,
     alignItems: 'center',
     minWidth: 220,
     maxWidth: 300,
-    shadowColor: colors.black,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -177,13 +179,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gray900,
     textAlign: 'center',
     marginBottom: spacing.xs,
   },
   message: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray500,
     textAlign: 'center',
     lineHeight: 20,
   },

@@ -166,7 +166,7 @@ export default function HotelCard({
             >
               <Heart
                 size={18}
-                color={isFavorite ? '#FF4757' : colors.white}
+                color={isFavorite ? tc.error : tc.white}
                 variant={isFavorite ? 'Bold' : 'Linear'}
               />
             </TouchableOpacity>
@@ -175,12 +175,12 @@ export default function HotelCard({
           {/* Popular/Best Value Badge */}
           {(hotel.isPopular || hotel.isBestValue || index === 0) && !compact && (
             <LinearGradient
-              colors={hotel.isBestValue ? ['#10B981', '#059669'] : [colors.primary, colors.primaryDark]}
+              colors={hotel.isBestValue ? [tc.success, tc.success] : [tc.primary, tc.primaryDark]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.popularBadge}
             >
-              <Star1 size={10} color={colors.white} variant="Bold" />
+              <Star1 size={10} color={tc.white} variant="Bold" />
               <Text style={styles.popularBadgeText}>
                 {hotel.isBestValue ? 'Best Value' : 'Popular'}
               </Text>
@@ -206,10 +206,10 @@ export default function HotelCard({
           {/* Selected Indicator */}
           {isSelected && (
             <LinearGradient
-              colors={[colors.primary, colors.primaryDark]}
+              colors={[tc.primary, tc.primaryDark]}
               style={styles.selectedBadge}
             >
-              <TickCircle size={16} color={colors.white} variant="Bold" />
+              <TickCircle size={16} color={tc.white} variant="Bold" />
             </LinearGradient>
           )}
         </View>
@@ -303,7 +303,7 @@ export default function HotelCard({
               <View style={styles.totalContainer}>
                 <Text style={[styles.totalLabel, { color: tc.textSecondary }]}>{nights} nights total</Text>
                 <LinearGradient
-                  colors={[colors.success, '#059669']}
+                  colors={[tc.success, tc.success]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.totalBadge}

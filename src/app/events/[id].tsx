@@ -24,6 +24,7 @@ import {
   Share,
   Alert,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -50,18 +51,19 @@ import {
   Routing2,
 } from 'iconsax-react-native';
 import { Image } from 'expo-image';
-import { spacing, typography } from '@/styles';
+import { spacing, typography, fontFamily } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { supabase } from '@/lib/supabase/client';
 import { eventsService, DiscoveredEvent } from '@/services/events.service';
 import { SkeletonDetailPage } from '@/components/common/SkeletonLoader';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PHOTO_HEIGHT = 380;
-const PRIMARY = '#3FC39E';
+// Use colors.primary from theme for dynamic theming
 
 export default function EventDetailScreen() {
   const router = useRouter();
+  const { height: screenHeight } = useWindowDimensions();
+  const PHOTO_HEIGHT = Math.min(380, screenHeight * 0.45);
   const params = useLocalSearchParams<{ id: string }>();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -265,8 +267,8 @@ export default function EventDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* ─── Hero Image ─── */}
-        <View style={styles.photoContainer}>
-          <Image source={imageUrl} style={styles.photo} contentFit="cover" />
+        <View style={[styles.photoContainer, { height: PHOTO_HEIGHT }]}>
+          <Image source={imageUrl} style={[styles.photo, { height: PHOTO_HEIGHT }]} contentFit="cover" />
           <View style={styles.photoOverlay} pointerEvents="none" />
 
           {/* Nav buttons */}
@@ -298,11 +300,11 @@ export default function EventDetailScreen() {
         <View style={[styles.content, { backgroundColor: colors.background }]}>
           {/* Date range */}
           <View style={styles.dateRow}>
-            <CalendarIcon size={16} color={PRIMARY} variant="Bold" />
-            <Text style={[styles.dateRangeText, { color: PRIMARY }]}>{dateRange}</Text>
+            <CalendarIcon size={16} color={colors.primary} variant="Bold" />
+            <Text style={[styles.dateRangeText, { color: colors.primary }]}>{dateRange}</Text>
             {event.is_recurring && event.recurrence_info && (
-              <View style={[styles.recurringBadge, { backgroundColor: PRIMARY + '15' }]}>
-                <Text style={[styles.recurringText, { color: PRIMARY }]}>{event.recurrence_info}</Text>
+              <View style={[styles.recurringBadge, { backgroundColor: colors.primary + '15' }]}>
+                <Text style={[styles.recurringText, { color: colors.primary }]}>{event.recurrence_info}</Text>
               </View>
             )}
           </View>
@@ -351,7 +353,7 @@ export default function EventDetailScreen() {
               const Icon = item.icon;
               return (
                 <View key={i} style={[styles.infoItem, i < quickInfo.length - 1 && styles.infoItemBorder]}>
-                  <Icon size={18} color={PRIMARY} variant="Bold" />
+                  <Icon size={18} color={colors.primary} variant="Bold" />
                   <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{item.label}</Text>
                   <Text style={[styles.infoValue, { color: colors.textPrimary }]} numberOfLines={1}>
                     {item.value}
@@ -383,7 +385,7 @@ export default function EventDetailScreen() {
             >
               {highlights.map((h: string, i: number) => (
                 <View key={i} style={styles.listItem}>
-                  <TickCircle size={18} color={PRIMARY} variant="Bold" />
+                  <TickCircle size={18} color={colors.primary} variant="Bold" />
                   <Text style={[styles.listText, { color: colors.textSecondary }]}>{h}</Text>
                 </View>
               ))}
@@ -437,7 +439,7 @@ export default function EventDetailScreen() {
               onPress={() => Linking.openURL(event.source_url!)}
               activeOpacity={0.7}
             >
-              <Link1 size={18} color={PRIMARY} />
+              <Link1 size={18} color={colors.primary} />
               <Text style={[styles.sourceText, { color: colors.textSecondary }]} numberOfLines={1}>
                 View original source
               </Text>
@@ -447,7 +449,7 @@ export default function EventDetailScreen() {
 
           {/* ─── AI Discovery note ─── */}
           <View style={[styles.partnerNote, { backgroundColor: isDark ? colors.bgCard : '#F8FAFC' }]}>
-            <Magicpen size={16} color={PRIMARY} />
+            <Magicpen size={16} color={colors.primary} />
             <Text style={[styles.partnerText, { color: colors.textSecondary }]}>
               This event was discovered by Guidera AI using real-time web search. Event details may change — please verify with the organizer.
             </Text>
@@ -467,12 +469,12 @@ export default function EventDetailScreen() {
         ]}
       >
         <TouchableOpacity
-          style={[styles.calendarBtn, calendarAdded && { backgroundColor: '#ECFDF5', borderColor: '#059669' }]}
+          style={[styles.calendarBtn, calendarAdded && { backgroundColor: '#ECFDF5', borderColor: colors.success }]}
           onPress={handleAddToCalendar}
           activeOpacity={0.85}
         >
-          <CalendarIcon size={18} color={calendarAdded ? '#059669' : PRIMARY} variant="Bold" />
-          <Text style={[styles.calendarBtnTxt, calendarAdded && { color: '#059669' }]}>
+          <CalendarIcon size={18} color={calendarAdded ? colors.success : colors.primary} variant="Bold" />
+          <Text style={[styles.calendarBtnTxt, calendarAdded && { color: colors.success }]}>
             {calendarAdded ? 'Added!' : 'Add to Calendar'}
           </Text>
         </TouchableOpacity>
@@ -531,7 +533,7 @@ function DetailRow({
 }) {
   return (
     <View style={styles.detailRow}>
-      <Icon size={16} color={PRIMARY} variant="Bold" />
+      <Icon size={16} color={colors.primary} variant="Bold" />
       <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{label}</Text>
       <Text style={[styles.detailValue, { color: colors.textPrimary }]}>{value}</Text>
     </View>
@@ -542,12 +544,12 @@ function DetailRow({
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  errorTxt: { fontSize: 16, fontFamily: 'Rubik-Medium' },
+  errorTxt: { fontSize: typography.fontSize.base, fontFamily: fontFamily.medium },
   scrollContent: { paddingBottom: 120 },
 
   // Photo gallery
-  photoContainer: { width: SCREEN_WIDTH, height: PHOTO_HEIGHT, position: 'relative' },
-  photo: { width: SCREEN_WIDTH, height: PHOTO_HEIGHT },
+  photoContainer: { width: SCREEN_WIDTH, position: 'relative' },
+  photo: { width: SCREEN_WIDTH },
   photoOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.15)',
@@ -562,9 +564,9 @@ const styles = StyleSheet.create({
   },
   navRight: { flexDirection: 'row', gap: 10 },
   navBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -583,23 +585,23 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 12,
   },
-  heroBadgeText: { fontFamily: 'Rubik-Bold', fontSize: 11, color: '#FFF', letterSpacing: 0.5 },
+  heroBadgeText: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.caption, color: '#FFF', letterSpacing: 0.5 },
 
   // Content
   content: { paddingHorizontal: spacing.lg, paddingTop: 18 },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  dateRangeText: { fontFamily: 'Rubik-SemiBold', fontSize: 14 },
+  dateRangeText: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.bodyLg },
   recurringBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginLeft: 4 },
-  recurringText: { fontFamily: 'Rubik-Medium', fontSize: 11 },
-  title: { fontFamily: 'Rubik-Bold', fontSize: 24, lineHeight: 30, marginBottom: 10 },
+  recurringText: { fontFamily: fontFamily.medium, fontSize: typography.fontSize.caption },
+  title: { fontFamily: fontFamily.bold, fontSize: typography.fontSize['2xl'], lineHeight: 30, marginBottom: 10 },
   venueRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  venueText: { fontFamily: 'Rubik-Medium', fontSize: 14, flex: 1 },
-  cityText: { fontFamily: 'Rubik-Regular', fontSize: 13 },
+  venueText: { fontFamily: fontFamily.medium, fontSize: typography.fontSize.bodyLg, flex: 1 },
+  cityText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body },
   ratingBar: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, marginBottom: 4 },
-  ratingText: { fontFamily: 'Rubik-Bold', fontSize: 15 },
+  ratingText: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.heading3 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 8, marginBottom: 4 },
-  price: { fontFamily: 'HostGrotesk-Bold', fontSize: 28 },
-  priceLabel: { fontFamily: 'Rubik-Regular', fontSize: 13 },
+  price: { fontFamily: fontFamily.display, fontSize: 28 },
+  priceLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body },
 
   // Quick info bar
   infoBar: {
@@ -613,30 +615,30 @@ const styles = StyleSheet.create({
   },
   infoItem: { flex: 1, alignItems: 'center', gap: 4 },
   infoItemBorder: { borderRightWidth: 1, borderRightColor: 'rgba(0,0,0,0.06)' },
-  infoLabel: { fontFamily: 'Rubik-Regular', fontSize: 10, textAlign: 'center' },
-  infoValue: { fontFamily: 'Rubik-SemiBold', fontSize: 12, textAlign: 'center' },
+  infoLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.captionSm, textAlign: 'center' },
+  infoValue: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.bodySm, textAlign: 'center' },
 
   // Collapsible sections
   section: { borderBottomWidth: 1, paddingVertical: 14 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { fontFamily: 'Rubik-Bold', fontSize: 16 },
+  sectionTitle: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.base },
   sectionBody: { marginTop: 12 },
-  bodyText: { fontFamily: 'Rubik-Regular', fontSize: 14, lineHeight: 22 },
+  bodyText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodyLg, lineHeight: 22 },
   listItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
-  listText: { fontFamily: 'Rubik-Regular', fontSize: 14, lineHeight: 20, flex: 1 },
+  listText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodyLg, lineHeight: 20, flex: 1 },
 
   // Detail grid
   detailGrid: { gap: 12 },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  detailLabel: { fontFamily: 'Rubik-Medium', fontSize: 13, width: 70 },
-  detailValue: { fontFamily: 'Rubik-Regular', fontSize: 14, flex: 1 },
+  detailLabel: { fontFamily: fontFamily.medium, fontSize: typography.fontSize.body, width: 70 },
+  detailValue: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodyLg, flex: 1 },
 
   // Tags
   tagsSection: { marginTop: 16 },
-  tagsSectionTitle: { fontFamily: 'Rubik-Bold', fontSize: 16, marginBottom: 10 },
+  tagsSectionTitle: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.base, marginBottom: 10 },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-  tagText: { fontFamily: 'Rubik-Medium', fontSize: 12 },
+  tagText: { fontFamily: fontFamily.medium, fontSize: typography.fontSize.bodySm },
 
   // Source card
   sourceCard: {
@@ -647,7 +649,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginTop: 16,
   },
-  sourceText: { fontFamily: 'Rubik-Regular', fontSize: 13, flex: 1 },
+  sourceText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body, flex: 1 },
 
   // AI note
   partnerNote: {
@@ -658,7 +660,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginTop: 12,
   },
-  partnerText: { fontFamily: 'Rubik-Regular', fontSize: 12, lineHeight: 17, flex: 1 },
+  partnerText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodySm, lineHeight: 17, flex: 1 },
 
   // Bottom CTA
   bottomBar: {
@@ -679,24 +681,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderWidth: 1.5,
-    borderColor: PRIMARY,
+    borderColor: '#3FC39E',
     paddingHorizontal: 16,
     paddingVertical: 13,
     borderRadius: 24,
     flex: 1,
     justifyContent: 'center',
   },
-  calendarBtnTxt: { fontFamily: 'Rubik-Bold', fontSize: 14, color: PRIMARY },
+  calendarBtnTxt: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.bodyLg, color: '#3FC39E' },
   ctaBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: PRIMARY,
+    backgroundColor: '#3FC39E',
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 24,
     flex: 1,
     justifyContent: 'center',
   },
-  ctaTxt: { fontFamily: 'Rubik-Bold', fontSize: 14, color: '#FFFFFF' },
+  ctaTxt: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.bodyLg, color: '#FFFFFF' },
 });

@@ -31,6 +31,7 @@ import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { supabase } from '@/lib/supabase/client';
 
 type ReportType = 'user' | 'group' | 'message' | 'event';
@@ -86,6 +87,7 @@ export default function ReportScreen() {
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
   const { profile } = useAuth();
+  const { showError } = useToast();
   const { type, id } = useLocalSearchParams<{ type: ReportType; id: string }>();
   
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
@@ -151,7 +153,7 @@ export default function ReportScreen() {
     } catch (err) {
       setIsSubmitting(false);
       if (__DEV__) console.warn('Report submission error:', err);
-      Alert.alert('Error', 'Failed to submit report. Please try again.');
+      showError('Failed to submit report. Please try again.');
     }
   };
   

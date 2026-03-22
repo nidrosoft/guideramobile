@@ -59,7 +59,7 @@ function mapGroupToPreview(g: any, memberGroupIds: Set<string>): CommunityPrevie
     coverImage: g.coverPhotoUrl || g.groupPhotoUrl || '',
     memberCount: g.memberCount || 0,
     isVerified: g.isVerified || false,
-    type: (g.category as any) || 'interest',
+    type: (g.category) || 'interest',
     privacy: g.privacy || 'public',
     tags: g.tags || [],
     description: g.description,
@@ -129,6 +129,7 @@ export default function DiscoverFeed({
   const { colors: tc } = useTheme();
   const router = useRouter();
   const { profile } = useAuth();
+  const { showError } = require('@/contexts/ToastContext').useToast();
   const userId = profile?.id;
 
   const [refreshing, setRefreshing] = useState(false);
@@ -287,7 +288,7 @@ export default function DiscoverFeed({
           t.userId === targetUserId ? { ...t, connectionStatus: 'pending_sent' as any } : t
         ));
       } else {
-        Alert.alert('Error', msg || 'Could not send connection request.');
+        showError(msg || 'Could not send connection request.');
       }
     }
   }, [userId, profile]);
@@ -369,8 +370,8 @@ export default function DiscoverFeed({
 
       <NearbyActivitiesSection
         activities={nearbyActivities}
-        onActivityPress={(id) => router.push(`/community/activity/${id}` as any)}
-        onSeeAll={() => router.push('/community/live-map' as any)}
+        onActivityPress={(id) => router.push(`/community/activity/${id}`)}
+        onSeeAll={() => router.push('/community/live-map')}
       />
 
       <DestinationsSection

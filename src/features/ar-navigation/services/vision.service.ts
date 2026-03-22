@@ -34,7 +34,7 @@ export class VisionService {
 
   constructor(_apiKey?: string) {
     // API key no longer used client-side — proxied through edge function
-    this.supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://pkydmdygctojtfzbqcud.supabase.co';
+    this.supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
     this.supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
   }
 

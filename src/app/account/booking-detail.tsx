@@ -20,6 +20,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
@@ -34,7 +35,7 @@ import {
   Trash,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { colors, spacing, typography, borderRadius, fontFamily } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
@@ -63,6 +64,7 @@ const TYPE_COLORS: Record<DealType, string> = {
 };
 
 export default function DealDetailScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors: tc, isDark } = useTheme();
   const { profile } = useAuth();
@@ -318,11 +320,11 @@ export default function DealDetailScreen() {
         {/* Price Alert */}
         <PriceAlertButton hasAlert={hasAlert} onToggle={handleToggleAlert} />
 
-        <View style={{ height: 120 }} />
+        <View style={{ height: 100 + (insets.bottom || 20) }} />
       </ScrollView>
 
       {/* Bottom CTA */}
-      <View style={[styles.bottomBar, { backgroundColor: isDark ? '#1A1A1A' : tc.white, borderTopColor: tc.borderSubtle }]}>
+      <View style={[styles.bottomBar, { backgroundColor: isDark ? '#1A1A1A' : tc.white, borderTopColor: tc.borderSubtle, paddingBottom: insets.bottom + 12 }]}>
         <BookOnProviderButton
           provider={deal.provider}
           price={formatPrice(currentPrice, deal.price_currency)}
@@ -347,8 +349,8 @@ function DetailRow({ icon: Icon, label, value, colors: tc }: {
 
 const detailStyles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 7 },
-  label: { fontFamily: 'Rubik-Regular', fontSize: 13, width: 70 },
-  value: { fontFamily: 'Rubik-Medium', fontSize: 14, flex: 1 },
+  label: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body, width: 70 },
+  value: { fontFamily: fontFamily.medium, fontSize: typography.fontSize.bodyLg, flex: 1 },
 });
 
 const styles = StyleSheet.create({
@@ -363,7 +365,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   headerBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontFamily: 'Rubik-SemiBold', fontSize: 17 },
+  headerTitle: { fontFamily: fontFamily.semibold, fontSize: 17 },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 14 },
   badgeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -375,17 +377,17 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 8,
   },
-  typeBadgeText: { fontFamily: 'Rubik-Medium', fontSize: 13 },
-  providerText: { fontFamily: 'Rubik-Regular', fontSize: 13 },
-  dealTitle: { fontFamily: 'HostGrotesk-Bold', fontSize: 24, marginTop: 4 },
-  dealSubtitle: { fontFamily: 'Rubik-Regular', fontSize: 14, marginTop: 2 },
+  typeBadgeText: { fontFamily: fontFamily.medium, fontSize: typography.fontSize.body },
+  providerText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body },
+  dealTitle: { fontFamily: fontFamily.display, fontSize: typography.fontSize['2xl'], marginTop: 4 },
+  dealSubtitle: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodyLg, marginTop: 2 },
   card: { borderRadius: 14, padding: 16, borderWidth: 1 },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  priceLabel: { fontFamily: 'Rubik-Regular', fontSize: 13 },
-  priceValue: { fontFamily: 'HostGrotesk-Bold', fontSize: 30, marginTop: 2 },
+  priceLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body },
+  priceValue: { fontFamily: fontFamily.display, fontSize: 30, marginTop: 2 },
   changeBadge: { alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
-  changeText: { fontFamily: 'Rubik-Bold', fontSize: 16 },
-  changeLabel: { fontFamily: 'Rubik-Regular', fontSize: 10, marginTop: 1 },
+  changeText: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.base },
+  changeLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.captionSm, marginTop: 1 },
   savedRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -393,9 +395,9 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     marginTop: 12,
   },
-  savedLabel: { fontFamily: 'Rubik-Regular', fontSize: 12 },
-  savedDate: { fontFamily: 'Rubik-Regular', fontSize: 12 },
-  sectionTitle: { fontFamily: 'Rubik-SemiBold', fontSize: 15, marginBottom: 4 },
+  savedLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodySm },
+  savedDate: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodySm },
+  sectionTitle: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.heading3, marginBottom: 4 },
   bottomBar: {
     position: 'absolute',
     bottom: 0,

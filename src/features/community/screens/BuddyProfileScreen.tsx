@@ -184,7 +184,7 @@ export default function BuddyProfileScreen() {
         'Upgrade to Premium to connect with travel buddies.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Upgrade', onPress: () => router.push('/premium' as any) },
+          { text: 'Learn More', onPress: () => router.push('/account/membership') },
         ]
       );
       return;
@@ -214,19 +214,19 @@ export default function BuddyProfileScreen() {
         'Upgrade to Premium to message travel buddies.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Upgrade', onPress: () => router.push('/premium' as any) },
+          { text: 'Learn More', onPress: () => router.push('/account/membership') },
         ]
       );
       return;
     }
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/community/chat/${buddy?.id}` as any);
+    router.push(`/community/chat/${buddy?.id}`);
   };
   
   const handleReport = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/community/report?type=user&id=${buddy?.id}` as any);
+    router.push(`/community/report?type=user&id=${buddy?.id}`);
   };
 
   const handleBlock = () => {
@@ -253,7 +253,7 @@ export default function BuddyProfileScreen() {
           await buddyService.removeBuddy(authProfile.id, id);
           setIsConnected(false);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } catch (err: any) { Alert.alert('Error', err?.message || 'Could not remove buddy.'); }
+        } catch (err: any) { showError(err?.message || 'Could not remove buddy.'); }
       }},
     ]);
   };
@@ -312,7 +312,7 @@ export default function BuddyProfileScreen() {
         {/* Profile Info */}
         <View style={styles.profileInfo}>
           <View style={styles.nameRow}>
-            <Text style={[styles.name, { color: tc.textPrimary }]}>{buddy.firstName} {buddy.lastName}</Text>
+            <Text style={[styles.name, { color: tc.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">{buddy.firstName} {buddy.lastName}</Text>
             {buddy.isVerified && (
               <Verify size={20} color={tc.primary} variant="Bold" />
             )}
@@ -440,18 +440,20 @@ export default function BuddyProfileScreen() {
         {buddy.mutualGroups.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Mutual Groups</Text>
-            <View style={styles.groupsContainer}>
-              {buddy.mutualGroups.map(group => (
-                <TouchableOpacity
-                  key={group.id}
-                  style={styles.groupItem}
-                  onPress={() => router.push(`/community/${group.id}` as any)}
-                >
-                  <Image source={{ uri: group.avatar }} style={styles.groupAvatar} />
-                  <Text style={[styles.groupName, { color: tc.textSecondary }]} numberOfLines={1}>{group.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.groupsContainer}>
+                {buddy.mutualGroups.map(group => (
+                  <TouchableOpacity
+                    key={group.id}
+                    style={styles.groupItem}
+                    onPress={() => router.push(`/community/${group.id}`)}
+                  >
+                    <Image source={{ uri: group.avatar }} style={styles.groupAvatar} />
+                    <Text style={[styles.groupName, { color: tc.textSecondary }]} numberOfLines={1}>{group.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
           </View>
         )}
         
@@ -540,8 +542,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   name: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: typography.fontWeight.bold,
   },
   locationRow: {
     flexDirection: 'row',
@@ -550,7 +552,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   locationText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
   },
   bio: {
     fontSize: 13,
@@ -574,11 +576,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: typography.fontSize.heading2,
+    fontWeight: typography.fontWeight.bold,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     marginTop: 2,
   },
   statDivider: {
@@ -604,8 +606,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   connectButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: typography.fontSize.heading3,
+    fontWeight: typography.fontWeight.semibold,
   },
   messageButton: {
     width: 52,
@@ -619,8 +621,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: typography.fontSize.heading3,
+    fontWeight: typography.fontWeight.bold,
     marginBottom: spacing.md,
   },
   tagsContainer: {
@@ -637,8 +639,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   languageText: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.medium,
   },
   tag: {
     paddingHorizontal: spacing.md,
@@ -646,7 +648,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   tagText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
   },
   interestTag: {
     flexDirection: 'row',
@@ -657,7 +659,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   interestText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
   },
   tripCard: {
     padding: spacing.md,
@@ -671,8 +673,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   tripDestination: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: typography.fontSize.heading3,
+    fontWeight: typography.fontWeight.semibold,
   },
   tripDates: {
     flexDirection: 'row',
@@ -681,7 +683,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   tripDatesText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
   },
   tripLookingFor: {
     fontSize: 13,
@@ -702,7 +704,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
   },
   groupName: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     marginTop: spacing.xs,
     textAlign: 'center',
   },
@@ -715,6 +717,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   reportText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
   },
 });

@@ -1,5 +1,5 @@
 import { View, StyleSheet } from 'react-native';
-import { colors } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 interface ProgressStepperProps {
   totalSteps: number;
@@ -7,6 +7,8 @@ interface ProgressStepperProps {
 }
 
 export default function ProgressStepper({ totalSteps, currentStep }: ProgressStepperProps) {
+  const { colors } = useTheme();
+
   return (
     <View style={styles.container}>
       {Array.from({ length: totalSteps }).map((_, index) => (
@@ -14,8 +16,9 @@ export default function ProgressStepper({ totalSteps, currentStep }: ProgressSte
           key={index}
           style={[
             styles.dot,
-            index === currentStep && styles.dotActive,
-            index < currentStep && styles.dotCompleted,
+            { backgroundColor: colors.gray300 },
+            index === currentStep && [styles.dotActive, { backgroundColor: colors.black }],
+            index < currentStep && { backgroundColor: colors.black },
           ]}
         />
       ))}
@@ -33,15 +36,10 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.gray300,
   },
   dotActive: {
     width: 32,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.black,
-  },
-  dotCompleted: {
-    backgroundColor: colors.black,
   },
 });

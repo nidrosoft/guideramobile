@@ -1,12 +1,10 @@
-import { View, StyleSheet } from 'react-native';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 
 export default function CarSearch() {
-  return <View style={styles.container} />;
+  const router = useRouter();
+  useEffect(() => { router.back(); }, []);
+  return null;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-});
+// NOTE: Car booking is handled by the modal flow in src/features/booking/flows/car/
+// This route stub exists to prevent blank screens if deep-linked.

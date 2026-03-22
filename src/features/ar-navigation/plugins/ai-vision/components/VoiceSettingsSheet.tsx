@@ -20,6 +20,7 @@ import { CloseCircle, VolumeHigh, TickCircle, Microphone2 } from 'iconsax-react-
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/ThemeContext';
+import { typography } from '@/styles';
 import { speak, stopSpeaking, getVoiceGender, setVoiceGender } from '../services/tts.service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -162,9 +163,9 @@ export default function VoiceSettingsSheet({ visible, onClose }: VoiceSettingsSh
           activeOpacity={0.7}
         >
           {isPreviewing ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color={tc.white} />
           ) : (
-            <VolumeHigh size={18} color={isPreviewing ? '#FFFFFF' : tc.primary} variant="Bold" />
+            <VolumeHigh size={18} color={isPreviewing ? tc.white : tc.primary} variant="Bold" />
           )}
         </TouchableOpacity>
       </TouchableOpacity>
@@ -204,7 +205,7 @@ export default function VoiceSettingsSheet({ visible, onClose }: VoiceSettingsSh
                   <Text style={[
                     styles.speedLabel,
                     { color: selectedSpeed === opt.value ? tc.primary : tc.textSecondary },
-                    selectedSpeed === opt.value && { fontWeight: '700' },
+                    selectedSpeed === opt.value && { fontWeight: typography.fontWeight.bold },
                   ]}>
                     {opt.label}
                   </Text>
@@ -256,15 +257,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: typography.fontSize.kpiValue,
+    fontWeight: typography.fontWeight.bold,
   },
   content: {
     paddingHorizontal: 20,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.semibold,
     marginBottom: 10,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -281,8 +282,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   speedLabel: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.medium,
   },
   voiceCard: {
     flexDirection: 'row',
@@ -302,11 +303,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   voiceName: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
   },
   voiceDesc: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     marginTop: 2,
   },
   previewBtn: {

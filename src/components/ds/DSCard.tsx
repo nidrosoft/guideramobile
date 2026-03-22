@@ -13,7 +13,7 @@ import {
   StyleSheet,
   ViewStyle,
 } from 'react-native';
-import { colors } from '@/styles/colors';
+import { useTheme } from '@/context/ThemeContext';
 import { shadows } from '@/styles/shadows';
 
 type CardSize = 'sm' | 'md' | 'lg' | 'xl';
@@ -37,10 +37,13 @@ export default function DSCard({
   noBorder = false,
   elevated = false,
 }: DSCardProps) {
+  const { colors } = useTheme();
+
   const cardStyle: ViewStyle[] = [
     styles.card,
+    { backgroundColor: colors.bgCard },
     { padding: PADDING[size] },
-    !noBorder && styles.border,
+    !noBorder && { borderWidth: 1.5, borderColor: colors.borderStandard },
     elevated && shadows.card,
     style,
   ].filter(Boolean) as ViewStyle[];
@@ -62,12 +65,7 @@ export default function DSCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.bgCard,
     borderRadius: 22,
     overflow: 'hidden',
-  },
-  border: {
-    borderWidth: 1.5,
-    borderColor: colors.borderStandard,
   },
 });

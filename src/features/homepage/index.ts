@@ -12,17 +12,6 @@ export { homepageService } from './services/homepageService'
 
 // Hooks
 export { useHomepage } from './hooks/useHomepage'
-export { 
-  useSectionData,
-  usePopularDestinations,
-  useTrendingDestinations,
-  useEditorChoices,
-  useBudgetFriendly,
-  useLuxuryEscapes,
-  useAdventureDestinations,
-  useFamilyFriendly,
-  useNearbyDestinations,
-} from './hooks/useSectionData'
 
 // Context
 export { 

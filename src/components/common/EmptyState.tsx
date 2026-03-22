@@ -1,29 +1,30 @@
 /**
  * EmptyState Component
- * 
+ *
  * Reusable empty state for lists and screens.
  * Provides consistent empty state UI across the app.
  */
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { 
-  DocumentText, 
-  Airplane, 
-  Building, 
-  Car, 
+import {
+  DocumentText,
+  Airplane,
+  Building,
+  Car,
   Calendar,
   SearchNormal,
   Notification,
-  Heart 
+  Heart
 } from 'iconsax-react-native';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
-type EmptyStateType = 
-  | 'trips' 
-  | 'bookings' 
-  | 'search' 
-  | 'notifications' 
+type EmptyStateType =
+  | 'trips'
+  | 'bookings'
+  | 'search'
+  | 'notifications'
   | 'favorites'
   | 'flights'
   | 'hotels'
@@ -40,52 +41,52 @@ interface EmptyStateProps {
 }
 
 const EMPTY_STATE_CONFIG: Record<EmptyStateType, {
-  icon: React.ReactNode;
+  icon: (color: string) => React.ReactNode;
   title: string;
   description: string;
 }> = {
   trips: {
-    icon: <Calendar size={64} color={colors.gray300} variant="Bulk" />,
+    icon: (c) => <Calendar size={64} color={c} variant="Bulk" />,
     title: 'No trips yet',
     description: 'Start planning your next adventure!',
   },
   bookings: {
-    icon: <DocumentText size={64} color={colors.gray300} variant="Bulk" />,
+    icon: (c) => <DocumentText size={64} color={c} variant="Bulk" />,
     title: 'No bookings yet',
     description: 'Your booking history will appear here.',
   },
   search: {
-    icon: <SearchNormal size={64} color={colors.gray300} variant="Bulk" />,
+    icon: (c) => <SearchNormal size={64} color={c} variant="Bulk" />,
     title: 'No results found',
     description: 'Try adjusting your search or filters.',
   },
   notifications: {
-    icon: <Notification size={64} color={colors.gray300} variant="Bulk" />,
+    icon: (c) => <Notification size={64} color={c} variant="Bulk" />,
     title: 'No notifications',
     description: 'You\'re all caught up!',
   },
   favorites: {
-    icon: <Heart size={64} color={colors.gray300} variant="Bulk" />,
+    icon: (c) => <Heart size={64} color={c} variant="Bulk" />,
     title: 'No favorites yet',
     description: 'Save places you love to find them easily.',
   },
   flights: {
-    icon: <Airplane size={64} color={colors.gray300} variant="Bulk" />,
+    icon: (c) => <Airplane size={64} color={c} variant="Bulk" />,
     title: 'No flights found',
     description: 'Try different dates or destinations.',
   },
   hotels: {
-    icon: <Building size={64} color={colors.gray300} variant="Bulk" />,
+    icon: (c) => <Building size={64} color={c} variant="Bulk" />,
     title: 'No hotels found',
     description: 'Try different dates or locations.',
   },
   cars: {
-    icon: <Car size={64} color={colors.gray300} variant="Bulk" />,
+    icon: (c) => <Car size={64} color={c} variant="Bulk" />,
     title: 'No cars available',
     description: 'Try different dates or pickup locations.',
   },
   generic: {
-    icon: <DocumentText size={64} color={colors.gray300} variant="Bulk" />,
+    icon: (c) => <DocumentText size={64} color={c} variant="Bulk" />,
     title: 'Nothing here yet',
     description: 'Check back later.',
   },
@@ -99,20 +100,21 @@ export function EmptyState({
   onAction,
   icon,
 }: EmptyStateProps) {
+  const { colors } = useTheme();
   const config = EMPTY_STATE_CONFIG[type];
 
   return (
     <View style={styles.container}>
       <View style={styles.iconContainer}>
-        {icon || config.icon}
+        {icon || config.icon(colors.gray300)}
       </View>
-      
-      <Text style={styles.title}>{title || config.title}</Text>
-      <Text style={styles.description}>{description || config.description}</Text>
-      
+
+      <Text style={[styles.title, { color: colors.gray700 }]}>{title || config.title}</Text>
+      <Text style={[styles.description, { color: colors.gray500 }]}>{description || config.description}</Text>
+
       {actionLabel && onAction && (
-        <TouchableOpacity style={styles.actionButton} onPress={onAction}>
-          <Text style={styles.actionButtonText}>{actionLabel}</Text>
+        <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.primary }]} onPress={onAction}>
+          <Text style={[styles.actionButtonText, { color: colors.white }]}>{actionLabel}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -134,19 +136,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.gray700,
     textAlign: 'center',
     marginBottom: spacing.xs,
   },
   description: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray500,
     textAlign: 'center',
     lineHeight: 20,
   },
   actionButton: {
     marginTop: spacing.lg,
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: 12,
@@ -154,7 +153,6 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
   },
 });
 

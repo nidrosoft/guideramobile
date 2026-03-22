@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Animated,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -35,12 +36,13 @@ import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { rewardsService, MembershipTier, MembershipTierInfo, MEMBERSHIP_TIERS } from '@/services/rewards.service';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: screenHeight } = Dimensions.get('window');
 
 // Header animation constants
-const HEADER_MAX_HEIGHT = 260;
+const HEADER_MAX_HEIGHT = Math.min(260, screenHeight * 0.35);
 const HEADER_MIN_HEIGHT = 80;
 const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
 
@@ -56,6 +58,7 @@ export default function MembershipScreen() {
   const { user, profile } = useAuth();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { t } = useTranslation();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [currentTier, setCurrentTier] = useState<MembershipTier>('free');
   const [expiresAt, setExpiresAt] = useState<string | undefined>();
@@ -89,8 +92,15 @@ export default function MembershipScreen() {
 
   const handleUpgrade = (tier: MembershipTierInfo) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // In production, this would open Stripe checkout
-    if (__DEV__) console.log('Upgrade to:', tier.name);
+    // TODO: [POST-USER-TESTING] Payment integration will be added after user testing is complete.
+    // The membership tiers and pricing will be finalized based on user feedback.
+    // For now, all users have access to 10 free AI generations.
+    // Payment provider: Stripe or RevenueCat (TBD after user testing)
+    Alert.alert(
+      t('account.membership.comingSoon'),
+      t('account.membership.comingSoonMessage', { tierName: tier.name }),
+      [{ text: t('common.done') }]
+    );
   };
 
   const currentTierInfo = rewardsService.getTierInfo(currentTier);
@@ -153,11 +163,11 @@ export default function MembershipScreen() {
         >
           {/* Fixed Navigation Row - always visible and touchable */}
           <View style={[styles.header, { backgroundColor: 'transparent', borderBottomColor: 'transparent' }]}>
-            <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel="Go back">
               <ArrowLeft2 size={24} color={colors.white} />
             </TouchableOpacity>
             <Animated.Text style={[styles.headerTitle, { opacity: compactHeaderOpacity }]}>
-              Membership
+              {t('account.membership.title')}
             </Animated.Text>
             <View style={styles.placeholder} />
           </View>
@@ -172,13 +182,13 @@ export default function MembershipScreen() {
             </View>
             <Text style={styles.tierName}>{currentTierInfo.name}</Text>
             <Text style={styles.tierLabel}>
-              {currentTier === 'free' ? 'Free Member' : 'Premium Member'}
+              {currentTier === 'free' ? t('account.membership.freeMember') : t('account.membership.premiumMember')}
             </Text>
 
             <View style={styles.pointsDisplay}>
               <Gift size={16} color={colors.white} />
               <Text style={styles.pointsText}>
-                {pointsBalance.toLocaleString()} points
+                {pointsBalance.toLocaleString()} {t('account.membership.points')}
               </Text>
             </View>
           </Animated.View>
@@ -206,7 +216,7 @@ export default function MembershipScreen() {
       >
         {/* Current Benefits */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>Your Benefits</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>{t('account.membership.yourBenefits')}</Text>
           <View style={[styles.benefitsCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             {currentTierInfo.benefits.map((benefit, index) => (
               <View key={index} style={styles.benefitRow}>
@@ -220,7 +230,7 @@ export default function MembershipScreen() {
         {/* Upgrade Options */}
         {currentTier !== 'platinum' && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>Upgrade Your Experience</Text>
+            <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>{t('account.membership.upgradeExperience')}</Text>
             
             {/* Plan Toggle */}
             <View style={[styles.planToggle, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : colors.gray100 }]}>
@@ -236,7 +246,7 @@ export default function MembershipScreen() {
                   { color: tc.textSecondary },
                   selectedPlan === 'monthly' && [styles.planOptionTextActive, { color: tc.textPrimary }],
                 ]}>
-                  Monthly
+                  {t('account.membership.monthly')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -251,10 +261,10 @@ export default function MembershipScreen() {
                   { color: tc.textSecondary },
                   selectedPlan === 'yearly' && [styles.planOptionTextActive, { color: tc.textPrimary }],
                 ]}>
-                  Yearly
+                  {t('account.membership.yearly')}
                 </Text>
                 <View style={styles.saveBadge}>
-                  <Text style={styles.saveBadgeText}>Save 17%</Text>
+                  <Text style={styles.saveBadgeText}>{t('account.membership.save17')}</Text>
                 </View>
               </TouchableOpacity>
             </View>
@@ -275,7 +285,7 @@ export default function MembershipScreen() {
 
         {/* Points Multiplier Info */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>Points Multiplier</Text>
+          <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>{t('account.membership.pointsMultiplier')}</Text>
           <View style={[styles.multiplierCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             <View style={styles.multiplierRow}>
               {MEMBERSHIP_TIERS.map(tier => {
@@ -317,9 +327,10 @@ interface TierUpgradeCardProps {
 
 function TierUpgradeCard({ tier, selectedPlan, onUpgrade }: TierUpgradeCardProps) {
   const { colors: tc } = useTheme();
+  const { t } = useTranslation();
   const TierIcon = TIER_ICONS[tier.id as MembershipTier];
   const price = selectedPlan === 'monthly' ? tier.monthlyPrice : tier.yearlyPrice;
-  const period = selectedPlan === 'monthly' ? '/month' : '/year';
+  const period = selectedPlan === 'monthly' ? t('account.membership.perMonth') : t('account.membership.perYear');
   
   return (
     <View style={[styles.upgradeCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
@@ -341,7 +352,7 @@ function TierUpgradeCard({ tier, selectedPlan, onUpgrade }: TierUpgradeCardProps
       
       <View style={styles.upgradeCardBody}>
         <Text style={[styles.upgradeCardSubtitle, { color: tc.textSecondary }]}>
-          {tier.pointsMultiplier}x points on all bookings
+          {t('account.membership.pointsOnBookings', { multiplier: tier.pointsMultiplier })}
         </Text>
         
         <View style={styles.upgradeCardBenefits}>
@@ -355,7 +366,7 @@ function TierUpgradeCard({ tier, selectedPlan, onUpgrade }: TierUpgradeCardProps
           ))}
           {tier.benefits.length > 4 && (
             <Text style={[styles.moreBenefits, { color: tc.primary }]}>
-              +{tier.benefits.length - 4} more benefits
+              {t('account.membership.moreBenefits', { count: tier.benefits.length - 4 })}
             </Text>
           )}
         </View>
@@ -364,7 +375,7 @@ function TierUpgradeCard({ tier, selectedPlan, onUpgrade }: TierUpgradeCardProps
           style={[styles.upgradeButton, { backgroundColor: tier.color }]}
           onPress={onUpgrade}
         >
-          <Text style={styles.upgradeButtonText}>Upgrade to {tier.name}</Text>
+          <Text style={styles.upgradeButtonText}>{t('account.membership.upgradeTo', { tierName: tier.name })}</Text>
           <ArrowRight2 size={18} color={colors.white} />
         </TouchableOpacity>
       </View>
@@ -574,7 +585,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
   },
   saveBadgeText: {
-    fontSize: 10,
+    fontSize: typography.fontSize.captionSm,
     fontWeight: typography.fontWeight.bold,
     color: colors.white,
   },

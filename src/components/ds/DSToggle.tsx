@@ -16,7 +16,7 @@ import {
   UIManager,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/styles/colors';
+import { useTheme } from '@/context/ThemeContext';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -43,6 +43,7 @@ export default function DSToggle({
   size = 'md',
   disabled = false,
 }: DSToggleProps) {
+  const { colors } = useTheme();
   const config = SIZE_CONFIG[size];
   const thumbOffset = value ? config.trackW - config.thumb - 4 : 2;
 
@@ -78,6 +79,7 @@ export default function DSToggle({
             width: config.thumb,
             height: config.thumb,
             borderRadius: config.thumb / 2,
+            backgroundColor: colors.bgElevated,
             transform: [{ translateX: thumbOffset }],
           },
         ]}
@@ -91,7 +93,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   thumb: {
-    backgroundColor: colors.bgElevated,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,

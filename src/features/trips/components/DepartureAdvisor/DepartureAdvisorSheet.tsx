@@ -528,77 +528,77 @@ const styles = StyleSheet.create({
   },
   flightIconCircle: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
   flightInfo: { flex: 1 },
-  flightNumber: { fontSize: 18, fontWeight: '700', marginBottom: 2 },
-  flightRoute: { fontSize: 14, fontWeight: '500', marginBottom: 2 },
-  flightTime: { fontSize: 12 },
+  flightNumber: { fontSize: typography.fontSize.heading2, fontWeight: typography.fontWeight.bold, marginBottom: 2 },
+  flightRoute: { fontSize: typography.fontSize.bodyLg, fontWeight: typography.fontWeight.medium, marginBottom: 2 },
+  flightTime: { fontSize: typography.fontSize.bodySm },
   intlBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  intlBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  intlBadgeText: { fontSize: typography.fontSize.captionSm, fontWeight: '800', letterSpacing: 0.5 },
 
   // Loading
   loadingContainer: { alignItems: 'center', paddingVertical: spacing.xl * 2 },
-  loadingText: { fontSize: 14, marginTop: spacing.md },
+  loadingText: { fontSize: typography.fontSize.bodyLg, marginTop: spacing.md },
 
   // Error
   errorContainer: { alignItems: 'center', padding: spacing.xl, borderRadius: 16, marginBottom: spacing.lg },
-  errorText: { fontSize: 14, textAlign: 'center', marginTop: spacing.sm, marginBottom: spacing.md },
+  errorText: { fontSize: typography.fontSize.bodyLg, textAlign: 'center', marginTop: spacing.sm, marginBottom: spacing.md },
   retryButton: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: 12 },
-  retryButtonText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  retryButtonText: { fontSize: typography.fontSize.bodyLg, fontWeight: typography.fontWeight.bold, color: '#FFFFFF' },
 
   // Leave By
   leaveByCard: { alignItems: 'center', padding: spacing.lg, borderRadius: 20, borderWidth: 1.5, marginBottom: spacing.lg },
   leaveByHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.sm },
-  leaveByLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 1.5 },
+  leaveByLabel: { fontSize: typography.fontSize.bodySm, fontWeight: '800', letterSpacing: 1.5 },
   leaveByTime: { fontSize: 42, fontWeight: '800', lineHeight: 50, marginBottom: 4 },
-  leaveByCountdown: { fontSize: 15, fontWeight: '500', marginBottom: spacing.sm },
+  leaveByCountdown: { fontSize: typography.fontSize.heading3, fontWeight: typography.fontWeight.medium, marginBottom: spacing.sm },
   confidenceBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
-  confidenceText: { fontSize: 11, fontWeight: '600' },
+  confidenceText: { fontSize: typography.fontSize.caption, fontWeight: typography.fontWeight.semibold },
 
   // Section
   sectionContainer: { marginBottom: spacing.lg },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm },
-  sectionTitle: { fontSize: 16, fontWeight: '700' },
+  sectionTitle: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold },
 
   // Breakdown
   breakdownCard: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
   breakdownRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: spacing.md },
-  breakdownEmoji: { fontSize: 16, width: 28 },
-  breakdownLabel: { flex: 1, fontSize: 14 },
-  breakdownValue: { fontSize: 14, fontWeight: '600' },
+  breakdownEmoji: { fontSize: typography.fontSize.base, width: 28 },
+  breakdownLabel: { flex: 1, fontSize: typography.fontSize.bodyLg },
+  breakdownValue: { fontSize: typography.fontSize.bodyLg, fontWeight: typography.fontWeight.semibold },
   breakdownTotal: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: spacing.md, borderTopWidth: 2 },
-  breakdownTotalLabel: { flex: 1, fontSize: 15, fontWeight: '700' },
-  breakdownTotalValue: { fontSize: 15, fontWeight: '800' },
+  breakdownTotalLabel: { flex: 1, fontSize: typography.fontSize.heading3, fontWeight: typography.fontWeight.bold },
+  breakdownTotalValue: { fontSize: typography.fontSize.heading3, fontWeight: '800' },
 
   // Transport
   transportCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md, borderRadius: 16, borderWidth: 1, marginBottom: spacing.sm },
   transportLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   transportInfo: { marginLeft: spacing.md },
-  transportMode: { fontSize: 14, fontWeight: '600' },
-  transportDuration: { fontSize: 12, marginTop: 2 },
+  transportMode: { fontSize: typography.fontSize.bodyLg, fontWeight: typography.fontWeight.semibold },
+  transportDuration: { fontSize: typography.fontSize.bodySm, marginTop: 2 },
   trafficBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  trafficBadgeText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
+  trafficBadgeText: { fontSize: typography.fontSize.caption, fontWeight: typography.fontWeight.bold, textTransform: 'capitalize' },
 
   // Risk
   riskGrid: { flexDirection: 'row', gap: spacing.sm },
   riskCard: { flex: 1, padding: spacing.md, borderRadius: 14, borderWidth: 1, alignItems: 'center' },
-  riskCategory: { fontSize: 12, fontWeight: '700', marginTop: 6, marginBottom: 4 },
-  riskDetail: { fontSize: 10, textAlign: 'center', lineHeight: 14 },
+  riskCategory: { fontSize: typography.fontSize.bodySm, fontWeight: typography.fontWeight.bold, marginTop: 6, marginBottom: 4 },
+  riskDetail: { fontSize: typography.fontSize.captionSm, textAlign: 'center', lineHeight: 14 },
 
   // Reasoning
   reasoningCard: { padding: spacing.md, borderRadius: 16, borderWidth: 1 },
-  reasoningText: { fontSize: 13, lineHeight: 20 },
+  reasoningText: { fontSize: typography.fontSize.body, lineHeight: 20 },
 
   // Actions
   actionRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md, marginTop: spacing.sm },
   actionButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: 16 },
-  actionButtonText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+  actionButtonText: { fontSize: typography.fontSize.heading3, fontWeight: typography.fontWeight.bold, color: '#FFFFFF' },
 
   // Reminder
   reminderButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 16, borderWidth: 1.5, marginBottom: spacing.md },
-  reminderButtonText: { fontSize: 15, fontWeight: '700' },
+  reminderButtonText: { fontSize: typography.fontSize.heading3, fontWeight: typography.fontWeight.bold },
   reminderSetBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, marginBottom: spacing.md },
-  reminderSetText: { fontSize: 13, fontWeight: '600' },
+  reminderSetText: { fontSize: typography.fontSize.body, fontWeight: typography.fontWeight.semibold },
 
   // Close
   maybeLaterBtn: { paddingVertical: 12, alignItems: 'center' },
-  maybeLaterText: { fontSize: 15, fontWeight: '500' },
+  maybeLaterText: { fontSize: typography.fontSize.heading3, fontWeight: typography.fontWeight.medium },
 });

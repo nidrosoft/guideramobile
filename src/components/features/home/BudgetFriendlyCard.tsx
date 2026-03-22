@@ -1,7 +1,11 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { typography, spacing, colors } from '@/styles';
+import { View, Text, StyleSheet, Dimensions, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
+import { typography, spacing, borderRadius, shadows } from '@/styles';
+
+const { width: screenWidth } = Dimensions.get('window');
+const CARD_WIDTH = screenWidth * 0.92;
 import { useTheme } from '@/context/ThemeContext';
-import { Star1, Location, Heart, TickCircle } from 'iconsax-react-native';
+import { Star1, Location } from 'iconsax-react-native';
 
 interface BudgetFriendlyCardProps {
   name: string;
@@ -23,21 +27,20 @@ export default function BudgetFriendlyCard({
   imageUrl 
 }: BudgetFriendlyCardProps) {
   const { colors } = useTheme();
+  const { width: dynamicWidth } = useWindowDimensions();
   return (
     <View style={[styles.container, { backgroundColor: colors.bgCard }]}>
       {/* Image Section */}
-      <View style={styles.imageContainer}>
-        <Image source={{ uri: imageUrl }} style={styles.image} />
+      <View style={[styles.imageContainer, { width: dynamicWidth * 0.35 }]}>
+        <Image source={imageUrl} style={styles.image} contentFit="cover" transition={200} />
         
         {/* Savings Badge */}
-        <View style={styles.savingsBadge}>
-          <Text style={styles.savingsText}>Save {savingsPercent}%</Text>
-        </View>
+        {savingsPercent ? (
+          <View style={styles.savingsBadge}>
+            <Text style={styles.savingsText}>Save {savingsPercent}%</Text>
+          </View>
+        ) : null}
         
-        {/* Heart Button */}
-        <TouchableOpacity style={styles.heartButton}>
-          <Heart size={16} color={colors.error} variant="Outline" />
-        </TouchableOpacity>
       </View>
 
       {/* Info Section */}
@@ -48,12 +51,6 @@ export default function BudgetFriendlyCard({
           <Text style={[styles.ratingText, { color: colors.textSecondary }]}>{rating}</Text>
         </View>
         
-        {/* Verified Badge */}
-        <View style={styles.verifiedBadge}>
-          <TickCircle size={12} color="#4CAF50" variant="Bold" />
-          <Text style={styles.verifiedText}>Verified</Text>
-        </View>
-
         {/* Name */}
         <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={2}>{name}</Text>
 
@@ -75,23 +72,18 @@ export default function BudgetFriendlyCard({
 
 const styles = StyleSheet.create({
   container: {
-    width: 360,
+    width: CARD_WIDTH,
     flexDirection: 'row',
-    borderRadius: 20,
+    borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginRight: spacing.md,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
+    ...shadows.cardLight,
   },
   imageContainer: {
-    width: 140,
-    height: 140,
-    borderRadius: 16,
+    aspectRatio: 1,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
     marginRight: spacing.md,
     position: 'relative',
@@ -110,17 +102,6 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.bold,
     color: '#FFFFFF',
   },
-  heartButton: {
-    position: 'absolute',
-    top: spacing.xs,
-    right: spacing.xs,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   image: {
     width: '100%',
     height: '100%',
@@ -134,18 +115,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     marginBottom: spacing.xs,
-  },
-  verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    alignSelf: 'flex-start',
-    marginBottom: spacing.xs,
-  },
-  verifiedText: {
-    fontSize: typography.fontSize.xs,
-    color: '#4CAF50',
-    fontWeight: typography.fontWeight.medium,
   },
   ratingText: {
     fontSize: typography.fontSize.sm,

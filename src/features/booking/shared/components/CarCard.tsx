@@ -22,7 +22,7 @@ import {
   Car,
   Speedometer,
 } from 'iconsax-react-native';
-import { spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius, colors as staticColors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 
 export interface CarCardData {
@@ -60,16 +60,16 @@ interface CarCardProps {
 
 const getCategoryStyle = (category: string, primary: string): { bg: string; text: string } => {
   const c = category.toLowerCase();
-  if (c.includes('suv')) return { bg: '#059669', text: '#FFFFFF' };
-  if (c.includes('luxury')) return { bg: '#7C3AED', text: '#FFFFFF' };
-  if (c.includes('convertible') || c.includes('sport')) return { bg: '#EC4899', text: '#FFFFFF' };
-  if (c.includes('compact')) return { bg: '#0EA5E9', text: '#FFFFFF' };
-  if (c.includes('economy')) return { bg: primary, text: '#FFFFFF' };
-  if (c.includes('full')) return { bg: '#6366F1', text: '#FFFFFF' };
-  if (c.includes('minivan')) return { bg: '#F59E0B', text: '#FFFFFF' };
-  if (c.includes('standard')) return { bg: '#8B5CF6', text: '#FFFFFF' };
-  if (c.includes('midsize')) return { bg: '#14B8A6', text: '#FFFFFF' };
-  return { bg: primary, text: '#FFFFFF' };
+  if (c.includes('suv')) return { bg: '#059669', text: staticColors.white };
+  if (c.includes('luxury')) return { bg: '#7C3AED', text: staticColors.white };
+  if (c.includes('convertible') || c.includes('sport')) return { bg: '#EC4899', text: staticColors.white };
+  if (c.includes('compact')) return { bg: '#0EA5E9', text: staticColors.white };
+  if (c.includes('economy')) return { bg: primary, text: staticColors.white };
+  if (c.includes('full')) return { bg: '#6366F1', text: staticColors.white };
+  if (c.includes('minivan')) return { bg: '#F59E0B', text: staticColors.white };
+  if (c.includes('standard')) return { bg: '#8B5CF6', text: staticColors.white };
+  if (c.includes('midsize')) return { bg: '#14B8A6', text: staticColors.white };
+  return { bg: primary, text: staticColors.white };
 };
 
 export default function CarCard({
@@ -99,8 +99,8 @@ export default function CarCard({
       >
         {/* Popular / Best Value Badge */}
         {(car.popularChoice || car.bestValue || index === 0) && !compact && (
-          <View style={[styles.popularBadge, { backgroundColor: car.bestValue ? '#059669' : tc.primary }]}>
-            <Star1 size={10} color="#FFFFFF" variant="Bold" />
+          <View style={[styles.popularBadge, { backgroundColor: car.bestValue ? tc.success : tc.primary }]}>
+            <Star1 size={10} color={tc.white} variant="Bold" />
             <Text style={styles.popularText}>
               {car.bestValue ? 'Best Value' : 'Popular Choice'}
             </Text>
@@ -110,7 +110,7 @@ export default function CarCard({
         {/* Selected check */}
         {isSelected && (
           <View style={[styles.selectedBadge, { backgroundColor: tc.primary }]}>
-            <TickCircle size={16} color="#FFFFFF" variant="Bold" />
+            <TickCircle size={16} color={tc.white} variant="Bold" />
           </View>
         )}
 
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     borderWidth: 1.5,
     overflow: 'hidden',
-    shadowColor: '#000000',
+    shadowColor: staticColors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 16,
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
   popularText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold,
-    color: '#FFFFFF',
+    color: staticColors.white,
     letterSpacing: 0.3,
   },
   selectedBadge: {

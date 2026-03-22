@@ -3,17 +3,26 @@ import Anthropic from 'https://esm.sh/@anthropic-ai/sdk@0.24.3';
 import { buildSystemPrompt } from './system-prompt.ts';
 import { TOOL_DEFINITIONS } from './tool-defs.ts';
 import { executeTool } from './tool-exec.ts';
+import { getUserIdFromRequest, unauthorizedResponse } from '../_shared/auth.ts';
 
-const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
+const cors = { 'Access-Control-Allow-Origin': '', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
 const PREMIUM_KW = ['generate','create a list','make me a','build me','give me a full','packing list','full itinerary','plan my trip','plan the trip','write me an itinerary','save to my trip'];
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
-    const { sessionId, message, contextType, contextData, userId } = await req.json();
-    if (!message?.trim() || !userId) return new Response(JSON.stringify({ error: 'message and userId required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+    const body = await req.json();
+    const { sessionId, message, contextType, contextData } = body;
 
-    const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+
+    // SEC-01: Validate user identity from JWT, falling back to body.userId for backward compat
+    const userId = await getUserIdFromRequest(req, body, supabaseUrl, supabaseServiceKey, supabaseAnonKey);
+    if (!message?.trim() || !userId) return new Response(JSON.stringify({ error: 'message and valid authentication required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+
+    const sb = createClient(supabaseUrl, supabaseServiceKey);
 
     let sid = sessionId;
     if (!sid) {

@@ -32,6 +32,7 @@ import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useUser } from '@clerk/clerk-expo';
 import { supabase } from '@/lib/supabase/client';
 
 type TwoFactorMethod = 'sms' | 'authenticator';
@@ -40,13 +41,17 @@ type SetupStep = 'select' | 'verify' | 'success';
 export default function TwoFactorAuthScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const { user, profile } = useAuth();
+  const { user: clerkUser } = useUser();
+  const { showError } = require('@/contexts/ToastContext').useToast();
   const [step, setStep] = useState<SetupStep>('select');
   const [method, setMethod] = useState<TwoFactorMethod | null>(null);
   const [verificationCode, setVerificationCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [totpUri, setTotpUri] = useState<string>('');
+  const [totpSecret, setTotpSecret] = useState<string>('');
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -65,21 +70,21 @@ export default function TwoFactorAuthScreen() {
     setMethod(selectedMethod);
     setStep('verify');
     
-    if (selectedMethod === 'sms') {
-      // Send verification code to phone
-      sendSMSCode();
+    if (selectedMethod === 'authenticator') {
+      setupTOTP();
     }
   };
 
-  const sendSMSCode = async () => {
+  const setupTOTP = async () => {
     setIsLoading(true);
     try {
-      // TODO: Implement SMS sending via Supabase or Twilio
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // Mock success
-    } catch (error) {
-      console.error('Error sending SMS:', error);
-      Alert.alert('Error', 'Failed to send verification code. Please try again.');
+      if (!clerkUser) throw new Error('Not authenticated');
+      const totp = await clerkUser.createTOTP();
+      setTotpUri(totp.uri || '');
+      setTotpSecret(totp.secret || '');
+    } catch (err: any) {
+      if (__DEV__) console.error('TOTP setup error:', err);
+      showError(err?.errors?.[0]?.longMessage || 'Failed to set up authenticator. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -96,12 +101,14 @@ export default function TwoFactorAuthScreen() {
     setError(null);
     
     try {
-      // TODO: Verify code with backend
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Save 2FA settings
+      if (!clerkUser) throw new Error('Not authenticated');
+
+      // Verify TOTP code with Clerk
+      await clerkUser.verifyTOTP({ code: verificationCode });
+
+      // Save 2FA settings to profile
       if (profile?.id) {
-        const { error: updateError } = await supabase
+        await supabase
           .from('profiles')
           .update({
             security_settings: {
@@ -111,15 +118,14 @@ export default function TwoFactorAuthScreen() {
             }
           })
           .eq('id', profile.id);
-
-        if (updateError) throw updateError;
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setStep('success');
-    } catch (error: any) {
-      console.error('Error verifying code:', error);
-      setError('Invalid verification code. Please try again.');
+    } catch (err: any) {
+      if (__DEV__) console.error('TOTP verify error:', err);
+      const msg = err?.errors?.[0]?.longMessage || 'Invalid verification code. Please try again.';
+      setError(msg);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setIsLoading(false);
@@ -134,22 +140,22 @@ export default function TwoFactorAuthScreen() {
   const renderSelectMethod = () => (
     <>
       <View style={styles.introSection}>
-        <View style={styles.introIcon}>
-          <ShieldTick size={40} color={colors.primary} variant="Bold" />
+        <View style={[styles.introIcon, { backgroundColor: tc.primary + '15' }]}>
+          <ShieldTick size={40} color={tc.primary} variant="Bold" />
         </View>
-        <Text style={styles.introTitle}>Add Extra Security</Text>
-        <Text style={styles.introText}>
-          Two-factor authentication adds an extra layer of security to your account. 
+        <Text style={[styles.introTitle, { color: tc.textPrimary }]}>Add Extra Security</Text>
+        <Text style={[styles.introText, { color: tc.textSecondary }]}>
+          Two-factor authentication adds an extra layer of security to your account.
           Choose how you'd like to receive verification codes.
         </Text>
       </View>
 
       <View style={styles.methodsSection}>
-        <Text style={styles.sectionTitle}>Choose a Method</Text>
-        
+        <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Choose a Method</Text>
+
         {/* SMS Option - Coming Soon */}
-        <TouchableOpacity 
-          style={[styles.methodCard, styles.methodCardDisabled]}
+        <TouchableOpacity
+          style={[styles.methodCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }, styles.methodCardDisabled]}
           onPress={() => {
             Alert.alert(
               'Coming Soon',
@@ -159,12 +165,12 @@ export default function TwoFactorAuthScreen() {
           }}
           activeOpacity={0.7}
         >
-          <View style={[styles.methodIcon, styles.methodIconDisabled]}>
-            <Sms size={24} color={colors.gray400} variant="Bold" />
+          <View style={[styles.methodIcon, { backgroundColor: tc.borderSubtle }]}>
+            <Sms size={24} color={tc.textTertiary} variant="Bold" />
           </View>
           <View style={styles.methodContent}>
-            <Text style={[styles.methodTitle, styles.methodTitleDisabled]}>Text Message (SMS)</Text>
-            <Text style={styles.methodDescription}>
+            <Text style={[styles.methodTitle, { color: tc.textTertiary }]}>Text Message (SMS)</Text>
+            <Text style={[styles.methodDescription, { color: tc.textSecondary }]}>
               Coming soon - requires SMS provider integration
             </Text>
           </View>
@@ -174,28 +180,28 @@ export default function TwoFactorAuthScreen() {
         </TouchableOpacity>
 
         {/* Authenticator App Option */}
-        <TouchableOpacity 
-          style={styles.methodCard}
+        <TouchableOpacity
+          style={[styles.methodCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
           onPress={() => handleSelectMethod('authenticator')}
           activeOpacity={0.7}
         >
-          <View style={styles.methodIcon}>
-            <Key size={24} color={colors.primary} variant="Bold" />
+          <View style={[styles.methodIcon, { backgroundColor: tc.primary + '10' }]}>
+            <Key size={24} color={tc.primary} variant="Bold" />
           </View>
           <View style={styles.methodContent}>
-            <Text style={styles.methodTitle}>Authenticator App</Text>
-            <Text style={styles.methodDescription}>
+            <Text style={[styles.methodTitle, { color: tc.textPrimary }]}>Authenticator App</Text>
+            <Text style={[styles.methodDescription, { color: tc.textSecondary }]}>
               Use Google Authenticator, Authy, or similar apps
             </Text>
           </View>
-          <ArrowLeft2 size={18} color={colors.gray400} style={{ transform: [{ rotate: '180deg' }] }} />
+          <ArrowLeft2 size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
         </TouchableOpacity>
       </View>
 
       {/* Info Card */}
-      <View style={styles.infoCard}>
+      <View style={[styles.infoCard, { backgroundColor: colors.info + '10', borderColor: colors.info + '20' }]}>
         <InfoCircle size={18} color={colors.info} variant="Bold" />
-        <Text style={styles.infoText}>
+        <Text style={[styles.infoText, { color: tc.textSecondary }]}>
           We recommend using an authenticator app for the most secure experience.
         </Text>
       </View>
@@ -205,18 +211,18 @@ export default function TwoFactorAuthScreen() {
   const renderVerify = () => (
     <>
       <View style={styles.verifySection}>
-        <View style={styles.verifyIcon}>
+        <View style={[styles.verifyIcon, { backgroundColor: tc.primary + '15' }]}>
           {method === 'sms' ? (
-            <Sms size={40} color={colors.primary} variant="Bold" />
+            <Sms size={40} color={tc.primary} variant="Bold" />
           ) : (
-            <Key size={40} color={colors.primary} variant="Bold" />
+            <Key size={40} color={tc.primary} variant="Bold" />
           )}
         </View>
-        <Text style={styles.verifyTitle}>
+        <Text style={[styles.verifyTitle, { color: tc.textPrimary }]}>
           {method === 'sms' ? 'Enter SMS Code' : 'Enter Authenticator Code'}
         </Text>
-        <Text style={styles.verifyText}>
-          {method === 'sms' 
+        <Text style={[styles.verifyText, { color: tc.textSecondary }]}>
+          {method === 'sms'
             ? `We've sent a 6-digit code to your phone number ending in ${profile?.phone?.slice(-4) || '****'}`
             : 'Enter the 6-digit code from your authenticator app'
           }
@@ -226,51 +232,42 @@ export default function TwoFactorAuthScreen() {
       {/* Code Input */}
       <View style={styles.codeInputSection}>
         <TextInput
-          style={[styles.codeInput, error && styles.codeInputError]}
+          style={[styles.codeInput, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary }, error && styles.codeInputError]}
           value={verificationCode}
           onChangeText={(text) => {
             setVerificationCode(text.replace(/[^0-9]/g, '').slice(0, 6));
             if (error) setError(null);
           }}
           placeholder="000000"
-          placeholderTextColor={colors.gray300}
+          placeholderTextColor={tc.textTertiary}
           keyboardType="number-pad"
           maxLength={6}
           autoFocus
         />
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {error && <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text>}
       </View>
 
-      {/* Resend Code (SMS only) */}
-      {method === 'sms' && (
-        <TouchableOpacity 
-          style={styles.resendButton}
-          onPress={sendSMSCode}
-          disabled={isLoading}
-        >
-          <Text style={styles.resendText}>Didn't receive a code? Resend</Text>
-        </TouchableOpacity>
-      )}
+      {/* Resend Code (SMS only -- currently disabled, SMS 2FA is Coming Soon) */}
 
       {/* Authenticator Setup Instructions */}
       {method === 'authenticator' && (
-        <View style={styles.authenticatorInstructions}>
-          <Text style={styles.instructionsTitle}>Setup Instructions</Text>
-          <Text style={styles.instructionStep}>1. Download an authenticator app (Google Authenticator, Authy)</Text>
-          <Text style={styles.instructionStep}>2. Scan the QR code or enter the setup key</Text>
-          <Text style={styles.instructionStep}>3. Enter the 6-digit code shown in the app</Text>
-          
+        <View style={[styles.authenticatorInstructions, { backgroundColor: isDark ? tc.bgElevated : colors.gray50 }]}>
+          <Text style={[styles.instructionsTitle, { color: tc.textPrimary }]}>Setup Instructions</Text>
+          <Text style={[styles.instructionStep, { color: tc.textSecondary }]}>1. Download an authenticator app (Google Authenticator, Authy)</Text>
+          <Text style={[styles.instructionStep, { color: tc.textSecondary }]}>2. Scan the QR code or enter the setup key</Text>
+          <Text style={[styles.instructionStep, { color: tc.textSecondary }]}>3. Enter the 6-digit code shown in the app</Text>
+
           {/* Mock QR Code placeholder */}
-          <View style={styles.qrPlaceholder}>
-            <Text style={styles.qrPlaceholderText}>QR Code</Text>
-            <Text style={styles.setupKey}>Setup Key: ABCD-EFGH-IJKL-MNOP</Text>
+          <View style={[styles.qrPlaceholder, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+            <Text style={[styles.qrPlaceholderText, { color: tc.textTertiary }]}>QR Code</Text>
+            <Text style={[styles.setupKey, { color: tc.textPrimary }]}>Setup Key: ABCD-EFGH-IJKL-MNOP</Text>
           </View>
         </View>
       )}
 
       {/* Verify Button */}
       <TouchableOpacity
-        style={[styles.verifyButton, verificationCode.length !== 6 && styles.verifyButtonDisabled]}
+        style={[styles.verifyButton, { backgroundColor: tc.primary }, verificationCode.length !== 6 && { backgroundColor: tc.textTertiary }]}
         onPress={handleVerify}
         disabled={verificationCode.length !== 6 || isLoading}
         activeOpacity={0.8}
@@ -289,21 +286,21 @@ export default function TwoFactorAuthScreen() {
       <View style={styles.successIcon}>
         <TickCircle size={64} color={colors.success} variant="Bold" />
       </View>
-      <Text style={styles.successTitle}>2FA Enabled!</Text>
-      <Text style={styles.successText}>
-        Two-factor authentication has been successfully enabled on your account. 
+      <Text style={[styles.successTitle, { color: tc.textPrimary }]}>2FA Enabled!</Text>
+      <Text style={[styles.successText, { color: tc.textSecondary }]}>
+        Two-factor authentication has been successfully enabled on your account.
         You'll now need to enter a verification code when signing in.
       </Text>
-      
-      <View style={styles.successInfo}>
-        <Text style={styles.successInfoTitle}>Method:</Text>
+
+      <View style={[styles.successInfo, { backgroundColor: colors.success + '10' }]}>
+        <Text style={[styles.successInfoTitle, { color: tc.textSecondary }]}>Method:</Text>
         <Text style={styles.successInfoValue}>
           {method === 'sms' ? 'Text Message (SMS)' : 'Authenticator App'}
         </Text>
       </View>
 
       <TouchableOpacity
-        style={styles.doneButton}
+        style={[styles.doneButton, { backgroundColor: tc.primary }]}
         onPress={handleDone}
         activeOpacity={0.8}
       >
@@ -314,14 +311,14 @@ export default function TwoFactorAuthScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
-      
+      <StatusBar style={isDark ? "light" : "dark"} />
+
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Two-Factor Authentication</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Two-Factor Authentication</Text>
         <View style={styles.headerSpacer} />
       </View>
 

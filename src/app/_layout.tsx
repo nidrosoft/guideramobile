@@ -25,6 +25,8 @@ import { startHealthChecks, stopHealthChecks } from '@/services/health';
 import { logger } from '@/services/logging';
 import { initSentry } from '@/services/sentry';
 import { initNotifications, requestNotificationPermissions } from '@/services/notifications';
+import { initAnalytics } from '@/services/analytics/analytics';
+import { initDeepLinks } from '@/services/deeplink/deeplinkService';
 import '@/lib/i18n'; // Initialize i18n
 import { loadSavedLanguage } from '@/lib/i18n';
 // Mapbox SDK — only initialize if native module is available (dev build, not Expo Go)
@@ -74,6 +76,19 @@ export default function RootLayout() {
     // Load saved language preference
     loadSavedLanguage();
     
+    // Initialize analytics (Mixpanel — falls back to mock if no token)
+    initAnalytics('mixpanel').catch(err => logger.warn('Analytics init failed', err));
+
+    // NAV-01: Initialize deep linking service
+    initDeepLinks((route, params) => {
+      try {
+        const { router } = require('expo-router');
+        router.push({ pathname: route as any, params });
+      } catch (err) {
+        logger.warn('Deep link navigation failed', { route, params, error: err });
+      }
+    });
+
     // Initialize push notifications
     initNotifications().then(() => {
       requestNotificationPermissions();

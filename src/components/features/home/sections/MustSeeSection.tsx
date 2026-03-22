@@ -35,7 +35,7 @@ export default function MustSeeSection() {
         location: `${item.location?.city || ''}, ${item.location?.country || ''}`.replace(/^, |, $/g, ''),
         category: item.tags?.[0] || 'Landmark',
         rating: item.rating || 4.8,
-        visitors: item.matchScore ? `${Math.round(item.matchScore / 10)}K` : '',
+        visitors: '',
         imageUrl: item.imageUrl || item.thumbnailUrl,
         badge: item.badges?.[0]?.text || (item.rating && item.rating >= 4.5 ? 'Top Rated' : undefined),
       }));

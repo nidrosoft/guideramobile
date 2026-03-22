@@ -67,7 +67,7 @@ export default function AllEvents() {
 
   const handleEventPress = (eventId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/community/event/${eventId}` as any);
+    router.push(`/community/event/${eventId}`);
   };
 
   return (
@@ -89,7 +89,7 @@ export default function AllEvents() {
         loading={loading}
         onRefresh={fetchEvents}
         onEventPress={handleEventPress}
-        onCreateEvent={() => router.push('/community/create-event' as any)}
+        onCreateEvent={() => router.push('/community/create-event')}
       />
     </View>
   );

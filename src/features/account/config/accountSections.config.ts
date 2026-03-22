@@ -105,7 +105,7 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
       {
         id: 'rewards-points',
         title: 'Rewards Points',
-        subtitle: '2,450 points available',
+        subtitle: undefined, // Computed dynamically in AccountScreen
         icon: Gift,
         iconColor: '#A855F7',
         iconVariant: 'TwoTone',
@@ -163,7 +163,7 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
       {
         id: 'language',
         title: 'Language & Region',
-        subtitle: 'English, USD',
+        subtitle: undefined, // Computed dynamically in AccountScreen
         icon: LanguageSquare,
         iconColor: '#06B6D4',
         iconVariant: 'TwoTone',
@@ -173,7 +173,7 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
       {
         id: 'appearance',
         title: 'Appearance',
-        subtitle: 'Light mode',
+        subtitle: undefined, // Computed dynamically in AccountScreen
         icon: Moon,
         iconColor: '#6366F1',
         iconVariant: 'TwoTone',
@@ -201,24 +201,22 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
       {
         id: 'security-settings',
         title: 'Security',
-        subtitle: 'Coming soon — biometrics & 2FA',
+        subtitle: 'Password, biometrics & 2FA',
         icon: ShieldTick,
         iconColor: '#10B981',
         iconVariant: 'TwoTone',
         route: '/account/security',
         showChevron: true,
-        disabled: true,
       },
       {
         id: 'verification',
         title: 'Trusted Traveler',
-        subtitle: 'Coming soon — identity verification',
+        subtitle: undefined, // Computed dynamically in AccountScreen
         icon: Verify,
         iconColor: colors.primary,
         iconVariant: 'TwoTone',
         route: '/account/verification',
         showChevron: true,
-        disabled: true,
       },
     ],
   },
@@ -276,7 +274,7 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
       {
         id: 'about',
         title: 'About Guidera',
-        subtitle: 'Version 1.0.0',
+        subtitle: undefined, // Computed dynamically in AccountScreen from Constants.expoConfig.version
         icon: InfoCircle,
         iconColor: '#9CA3AF',
         iconVariant: 'TwoTone',
@@ -328,12 +326,14 @@ export const PROFILE_QUICK_ACTIONS = [
     id: 'share-profile',
     title: 'Share',
     icon: Profile2User,
-    action: () => console.log('Share profile'),
-  },
-  {
-    id: 'qr-code',
-    title: 'QR Code',
-    icon: Camera,
-    route: '/account/qr-code',
+    action: async () => {
+      try {
+        const { Share } = require('react-native');
+        await Share.share({
+          message: 'Check out my Guidera travel profile! Download Guidera: https://guidera.app',
+          title: 'Share Profile',
+        });
+      } catch {}
+    },
   },
 ];

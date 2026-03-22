@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { getProviderDisplayName } from '@/services/deal';
 import { useTheme } from '@/context/ThemeContext';
-import { borderRadius as br } from '@/styles';
+import { borderRadius as br, fontFamily } from '@/styles';
 
 interface BookOnProviderButtonProps {
   provider: string;
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   label: {
-    fontFamily: 'Rubik-SemiBold',
+    fontFamily: fontFamily.semibold,
     fontSize: 16,
     color: '#FFFFFF',
   },

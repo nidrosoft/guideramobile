@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
@@ -14,22 +14,22 @@ import Animated, {
   runOnJS,
   Easing,
 } from 'react-native-reanimated';
-import { typography, spacing } from '@/styles';
+import { typography, spacing, colors as staticColors } from '@/styles';
 import { ArrowRight, Star1, Ticket } from 'iconsax-react-native';
 import { useHomepageDataSafe, useInteractionTracking, filterByCategory, useSectionVisibility } from '@/features/homepage';
 import { useTheme } from '@/context/ThemeContext';
 import SaveButton from '@/components/common/SaveButton';
 import { SkeletonStackedDestination } from '@/components/common/SkeletonLoader';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH - 64;
-const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 const SWIPE_VELOCITY_THRESHOLD = 500;
 const MAX_ROTATION = 12; // degrees
 
 export default function StackedDestinationCards() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { width: SCREEN_WIDTH, height: screenHeight } = useWindowDimensions();
+  const CARD_WIDTH = SCREEN_WIDTH - 64;
+  const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
   const [currentIndex, setCurrentIndex] = useState(0);
   const homepageData = useHomepageDataSafe();
   const { trackDetailView } = useInteractionTracking();
@@ -174,14 +174,14 @@ export default function StackedDestinationCards() {
     .sort((a, b) => b!.position - a!.position) as { dest: typeof filteredDestinations[0]; index: number; position: number }[];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { height: Math.min(450, screenHeight * 0.6) }]}>
       {visibleCards.map(({ dest: destination, index, position }) => {
         const cardContent = (
           <Animated.View
             key={destination.id}
             style={[
               styles.card,
-              { borderColor: colors.borderSubtle, zIndex: filteredDestinations.length - position },
+              { width: CARD_WIDTH, borderColor: colors.borderSubtle, zIndex: filteredDestinations.length - position, height: Math.min(420, screenHeight * 0.55) },
               getCardStyle(position),
             ]}
           >
@@ -203,7 +203,7 @@ export default function StackedDestinationCards() {
               <View style={styles.infoContainer}>
                 <View style={styles.textContainer}>
                   <Text style={styles.location}>{destination.city}, {destination.country}</Text>
-                  <Text style={styles.name}>{destination.name}</Text>
+                  <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">{destination.name}</Text>
                   <View style={styles.keyInfoRow}>
                     {destination.rating > 0 ? (
                       <View style={styles.infoItem}>
@@ -223,7 +223,7 @@ export default function StackedDestinationCards() {
                   style={styles.arrowButton}
                   onPress={() => handleCardPress(destination, index)}
                 >
-                  <ArrowRight size={20} color="#1a1a1a" variant="Outline" />
+                  <ArrowRight size={20} color={colors.bgSecondary} variant="Outline" />
                 </TouchableOpacity>
               </View>
             </BlurView>
@@ -247,7 +247,6 @@ export default function StackedDestinationCards() {
 
 const styles = StyleSheet.create({
   container: {
-    height: 450,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xl,
@@ -255,8 +254,7 @@ const styles = StyleSheet.create({
   },
   card: {
     position: 'absolute',
-    width: CARD_WIDTH,
-    height: 420,
+    // width applied inline with CARD_WIDTH from useWindowDimensions
     borderRadius: 32,
     overflow: 'hidden',
     borderWidth: 1,
@@ -282,7 +280,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
-    color: '#FFFFFF',
+    color: staticColors.white,
   },
   bottomContainer: {
     position: 'absolute',
@@ -302,13 +300,13 @@ const styles = StyleSheet.create({
   },
   location: {
     fontSize: typography.fontSize.sm,
-    color: '#FFFFFF',
+    color: staticColors.white,
     marginBottom: 4,
   },
   name: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: '#FFFFFF',
+    color: staticColors.white,
     marginBottom: spacing.sm,
   },
   keyInfoRow: {
@@ -323,7 +321,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: typography.fontSize.sm,
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontWeight: typography.fontWeight.semibold,
   },
   arrowButton: {

@@ -28,7 +28,7 @@ export default function PlacesSection() {
         id: item.id || index,
         name: item.title,
         country: item.location?.country || 'Unknown',
-        visitors: item.matchScore ? `${Math.round(item.matchScore / 10)}K` : '',
+        visitors: '',
         rating: item.rating || 4.5,
         imageUrl: item.imageUrl || item.thumbnailUrl,
       }));

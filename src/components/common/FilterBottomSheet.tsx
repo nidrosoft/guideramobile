@@ -1,7 +1,8 @@
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import * as Haptics from 'expo-haptics';
-import { colors, typography, spacing, borderRadius } from '@/styles';
+import { typography, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { ArrowSwapHorizontal, Clock, People, CloseCircle } from 'iconsax-react-native';
 
 interface FilterBottomSheetProps {
@@ -17,6 +18,7 @@ export interface FilterState {
 }
 
 export default function FilterBottomSheet({ visible, onClose, onApply }: FilterBottomSheetProps) {
+  const { colors } = useTheme();
   const [filters, setFilters] = useState<FilterState>({
     arrange: 'aToZ',
     timeline: 'newest',
@@ -39,6 +41,29 @@ export default function FilterBottomSheet({ visible, onClose, onApply }: FilterB
     onClose();
   };
 
+  const renderOption = (
+    category: keyof FilterState,
+    value: string,
+    label: string
+  ) => (
+    <TouchableOpacity
+      style={[
+        styles.optionButton,
+        { backgroundColor: colors.background, borderColor: colors.gray200 },
+        filters[category] === value && { backgroundColor: colors.black, borderColor: colors.black },
+      ]}
+      onPress={() => handleSelectOption(category, value)}
+    >
+      <Text style={[
+        styles.optionText,
+        { color: colors.textPrimary },
+        filters[category] === value && { color: colors.white },
+      ]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
     <Modal
       visible={visible}
@@ -47,22 +72,22 @@ export default function FilterBottomSheet({ visible, onClose, onApply }: FilterB
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <View style={styles.overlay}>
-        <TouchableOpacity 
-          style={styles.backdrop} 
-          activeOpacity={1} 
+      <View style={[styles.overlay, { backgroundColor: colors.bgOverlay }]}>
+        <TouchableOpacity
+          style={styles.backdrop}
+          activeOpacity={1}
           onPress={onClose}
         />
-        
-        <View style={styles.bottomSheet}>
+
+        <View style={[styles.bottomSheet, { backgroundColor: colors.bgModal }]}>
           {/* Handle */}
           <View style={styles.handleContainer}>
-            <View style={styles.handle} />
+            <View style={[styles.handle, { backgroundColor: colors.gray300 }]} />
           </View>
 
           {/* Close Button */}
-          <TouchableOpacity 
-            style={styles.closeButton} 
+          <TouchableOpacity
+            style={styles.closeButton}
             onPress={handleCancel}
             activeOpacity={0.7}
           >
@@ -73,37 +98,11 @@ export default function FilterBottomSheet({ visible, onClose, onApply }: FilterB
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <ArrowSwapHorizontal size={20} color={colors.textPrimary} />
-              <Text style={styles.sectionTitle}>Arrange</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Arrange</Text>
             </View>
             <View style={styles.optionsRow}>
-              <TouchableOpacity
-                style={[
-                  styles.optionButton,
-                  filters.arrange === 'aToZ' && styles.optionButtonSelected,
-                ]}
-                onPress={() => handleSelectOption('arrange', 'aToZ')}
-              >
-                <Text style={[
-                  styles.optionText,
-                  filters.arrange === 'aToZ' && styles.optionTextSelected,
-                ]}>
-                  A to Z
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.optionButton,
-                  filters.arrange === 'zToA' && styles.optionButtonSelected,
-                ]}
-                onPress={() => handleSelectOption('arrange', 'zToA')}
-              >
-                <Text style={[
-                  styles.optionText,
-                  filters.arrange === 'zToA' && styles.optionTextSelected,
-                ]}>
-                  Z to A
-                </Text>
-              </TouchableOpacity>
+              {renderOption('arrange', 'aToZ', 'A to Z')}
+              {renderOption('arrange', 'zToA', 'Z to A')}
             </View>
           </View>
 
@@ -111,37 +110,11 @@ export default function FilterBottomSheet({ visible, onClose, onApply }: FilterB
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Clock size={20} color={colors.textPrimary} />
-              <Text style={styles.sectionTitle}>Timeline</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Timeline</Text>
             </View>
             <View style={styles.optionsRow}>
-              <TouchableOpacity
-                style={[
-                  styles.optionButton,
-                  filters.timeline === 'newest' && styles.optionButtonSelected,
-                ]}
-                onPress={() => handleSelectOption('timeline', 'newest')}
-              >
-                <Text style={[
-                  styles.optionText,
-                  filters.timeline === 'newest' && styles.optionTextSelected,
-                ]}>
-                  Newest
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.optionButton,
-                  filters.timeline === 'oldest' && styles.optionButtonSelected,
-                ]}
-                onPress={() => handleSelectOption('timeline', 'oldest')}
-              >
-                <Text style={[
-                  styles.optionText,
-                  filters.timeline === 'oldest' && styles.optionTextSelected,
-                ]}>
-                  Oldest
-                </Text>
-              </TouchableOpacity>
+              {renderOption('timeline', 'newest', 'Newest')}
+              {renderOption('timeline', 'oldest', 'Oldest')}
             </View>
           </View>
 
@@ -149,61 +122,22 @@ export default function FilterBottomSheet({ visible, onClose, onApply }: FilterB
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <People size={20} color={colors.textPrimary} />
-              <Text style={styles.sectionTitle}>Package</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Package</Text>
             </View>
             <View style={styles.optionsRow}>
-              <TouchableOpacity
-                style={[
-                  styles.optionButton,
-                  filters.package === 'adultOnly' && styles.optionButtonSelected,
-                ]}
-                onPress={() => handleSelectOption('package', 'adultOnly')}
-              >
-                <Text style={[
-                  styles.optionText,
-                  filters.package === 'adultOnly' && styles.optionTextSelected,
-                ]}>
-                  Adult Only
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.optionButton,
-                  filters.package === 'includeChildren' && styles.optionButtonSelected,
-                ]}
-                onPress={() => handleSelectOption('package', 'includeChildren')}
-              >
-                <Text style={[
-                  styles.optionText,
-                  filters.package === 'includeChildren' && styles.optionTextSelected,
-                ]}>
-                  Include Children
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.optionButton,
-                  filters.package === 'adultAndChild' && styles.optionButtonSelected,
-                ]}
-                onPress={() => handleSelectOption('package', 'adultAndChild')}
-              >
-                <Text style={[
-                  styles.optionText,
-                  filters.package === 'adultAndChild' && styles.optionTextSelected,
-                ]}>
-                  Adult & Child
-                </Text>
-              </TouchableOpacity>
+              {renderOption('package', 'adultOnly', 'Adult Only')}
+              {renderOption('package', 'includeChildren', 'Include Children')}
+              {renderOption('package', 'adultAndChild', 'Adult & Child')}
             </View>
           </View>
 
           {/* Action Button */}
           <TouchableOpacity
-            style={styles.saveButton}
+            style={[styles.saveButton, { backgroundColor: colors.primary }]}
             onPress={handleSave}
             activeOpacity={0.8}
           >
-            <Text style={styles.saveButtonText}>Save</Text>
+            <Text style={[styles.saveButtonText, { color: colors.white }]}>Save</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -215,13 +149,11 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   backdrop: {
     flex: 1,
   },
   bottomSheet: {
-    backgroundColor: colors.bgModal,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingHorizontal: spacing.lg,
@@ -235,7 +167,6 @@ const styles = StyleSheet.create({
   handle: {
     width: 40,
     height: 4,
-    backgroundColor: colors.gray300,
     borderRadius: 2,
   },
   closeButton: {
@@ -256,7 +187,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
   },
   optionsRow: {
     flexDirection: 'row',
@@ -267,27 +197,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: 24,
-    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: colors.gray200,
-  },
-  optionButtonSelected: {
-    backgroundColor: colors.black,
-    borderColor: colors.black,
   },
   optionText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
-  },
-  optionTextSelected: {
-    color: colors.white,
   },
   saveButton: {
     width: '100%',
     height: 52,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: spacing.xl,
@@ -295,6 +214,5 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
   },
 });

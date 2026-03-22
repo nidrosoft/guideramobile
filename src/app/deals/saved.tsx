@@ -23,13 +23,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { ArrowLeft2, Airplane, Building, Activity, Archive, Trash, Location, Map1 } from 'iconsax-react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, typography } from '@/styles';
+import { spacing, typography, fontFamily, colors as staticColors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PRIMARY = '#3FC39E';
+const PRIMARY = staticColors.primary;
 
 type FilterTab = 'all' | 'flight' | 'hotel' | 'experience' | 'destination' | 'trip';
 
@@ -184,17 +184,17 @@ export default function SavedDealsScreen() {
                 key={tab.key}
                 style={[
                   styles.tab,
-                  { backgroundColor: isActive ? PRIMARY : isDark ? colors.bgCard : '#F1F5F9', borderColor: isActive ? PRIMARY : colors.borderSubtle },
+                  { backgroundColor: isActive ? PRIMARY : isDark ? colors.bgCard : colors.gray100, borderColor: isActive ? PRIMARY : colors.borderSubtle },
                 ]}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setActiveTab(tab.key); }}
                 activeOpacity={0.7}
               >
-                <Icon size={16} color={isActive ? '#FFF' : colors.textSecondary} variant={isActive ? 'Bold' : 'Linear'} />
-                <Text style={[styles.tabText, { color: isActive ? '#FFF' : colors.textPrimary }]}>
+                <Icon size={16} color={isActive ? colors.white : colors.textSecondary} variant={isActive ? 'Bold' : 'Linear'} />
+                <Text style={[styles.tabText, { color: isActive ? colors.white : colors.textPrimary }]}>
                   {tab.label}
                 </Text>
                 <View style={[styles.tabCount, { backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
-                  <Text style={[styles.tabCountText, { color: isActive ? '#FFF' : colors.textSecondary }]}>
+                  <Text style={[styles.tabCountText, { color: isActive ? colors.white : colors.textSecondary }]}>
                     {tabCounts[tab.key]}
                   </Text>
                 </View>
@@ -245,14 +245,14 @@ export default function SavedDealsScreen() {
             return (
               <TouchableOpacity
                 key={entry.id}
-                style={[styles.card, { backgroundColor: isDark ? colors.bgCard : '#FFFFFF', borderColor: colors.borderSubtle }]}
+                style={[styles.card, { backgroundColor: isDark ? colors.bgCard : colors.white, borderColor: colors.borderSubtle }]}
                 onPress={() => isDeal ? handleDealPress(entry) : handleItemPress(entry)}
                 activeOpacity={0.85}
               >
                 {heroImage ? (
                   <Image source={heroImage} style={styles.cardImage} contentFit="cover" />
                 ) : (
-                  <View style={[styles.cardImage, styles.cardImagePlaceholder, { backgroundColor: isDark ? '#1F2937' : '#F1F5F9' }]}>
+                  <View style={[styles.cardImage, styles.cardImagePlaceholder, { backgroundColor: isDark ? colors.gray800 : colors.gray100 }]}>
                     <Ionicons name="image-outline" size={32} color={colors.textSecondary} />
                   </View>
                 )}
@@ -284,7 +284,7 @@ export default function SavedDealsScreen() {
 
                     <TouchableOpacity
                       onPress={(e) => { e.stopPropagation?.(); isDeal ? handleRemoveDeal(entry) : handleRemoveItem(entry); }}
-                      style={[styles.removeBtn, { backgroundColor: isDark ? '#1F2937' : '#FEF2F2' }]}
+                      style={[styles.removeBtn, { backgroundColor: isDark ? colors.gray800 : colors.errorBg }]}
                       activeOpacity={0.7}
                     >
                       <Trash size={16} color="#EF4444" variant="Bold" />
@@ -306,17 +306,17 @@ const styles = StyleSheet.create({
 
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: 12 },
   backBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontFamily: 'Rubik-Bold', fontSize: 18 },
+  headerTitle: { fontFamily: fontFamily.bold, fontSize: 18 },
 
   tabsWrapper: { height: 48, marginBottom: 8 },
   tabsContainer: { paddingHorizontal: spacing.lg, gap: 8, alignItems: 'center' },
   tab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
-  tabText: { fontFamily: 'Rubik-Medium', fontSize: 13 },
+  tabText: { fontFamily: fontFamily.medium, fontSize: 13 },
   tabCount: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
-  tabCountText: { fontFamily: 'Rubik-Bold', fontSize: 11 },
+  tabCountText: { fontFamily: fontFamily.bold, fontSize: 11 },
 
-  emptyTitle: { fontFamily: 'Rubik-Bold', fontSize: 18, textAlign: 'center' },
-  emptySubtitle: { fontFamily: 'Rubik-Regular', fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { fontFamily: fontFamily.bold, fontSize: 18, textAlign: 'center' },
+  emptySubtitle: { fontFamily: fontFamily.regular, fontSize: 14, textAlign: 'center', lineHeight: 20 },
 
   listContent: { paddingHorizontal: spacing.lg, paddingBottom: 40, gap: 14 },
 
@@ -325,11 +325,11 @@ const styles = StyleSheet.create({
   cardImagePlaceholder: { justifyContent: 'center', alignItems: 'center' },
   cardContent: { flex: 1, padding: 12, justifyContent: 'space-between' },
   typePill: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginBottom: 4 },
-  typePillText: { fontFamily: 'Rubik-Bold', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
-  cardTitle: { fontFamily: 'Rubik-SemiBold', fontSize: 15, lineHeight: 20, marginBottom: 2 },
-  cardLocation: { fontFamily: 'Rubik-Regular', fontSize: 12, marginBottom: 6 },
+  typePillText: { fontFamily: fontFamily.bold, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  cardTitle: { fontFamily: fontFamily.semibold, fontSize: 15, lineHeight: 20, marginBottom: 2 },
+  cardLocation: { fontFamily: fontFamily.regular, fontSize: 12, marginBottom: 6 },
   cardBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cardPrice: { fontFamily: 'HostGrotesk-Bold', fontSize: 20 },
-  cardPriceLabel: { fontFamily: 'Rubik-Regular', fontSize: 12 },
+  cardPrice: { fontFamily: fontFamily.display, fontSize: 20 },
+  cardPriceLabel: { fontFamily: fontFamily.regular, fontSize: 12 },
   removeBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
 });

@@ -132,9 +132,9 @@ export default function LanguageSettingsScreen() {
 
         {/* Info Card */}
         <View style={[styles.infoCard, { backgroundColor: tc.info + '10', borderColor: tc.info + '20' }]}>
-          <Text style={[styles.infoTitle, { color: tc.info }]}>About Language Settings</Text>
+          <Text style={[styles.infoTitle, { color: tc.info }]}>{t('account.language.aboutTitle')}</Text>
           <Text style={[styles.infoText, { color: tc.textSecondary }]}>
-            Changing the language will update all text throughout the app. Some content from external sources may still appear in its original language.
+            {t('account.language.aboutDescription')}
           </Text>
         </View>
       </ScrollView>

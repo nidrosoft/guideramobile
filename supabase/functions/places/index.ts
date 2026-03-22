@@ -250,9 +250,10 @@ async function nearbySearch(
   return (data.results || []).map((place: Record<string, unknown>) => normalizePlace(place, apiKey));
 }
 
-// Get photo URL
-function getPhotoUrl(photoReference: string, apiKey: string, maxWidth: number = 400): string {
-  return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photo_reference=${photoReference}&key=${apiKey}`;
+// Get photo URL — returns a proxy URL via google-api-proxy edge function to avoid leaking the API key
+function getPhotoUrl(photoReference: string, _apiKey: string, maxWidth: number = 400): string {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+  return `${supabaseUrl}/functions/v1/google-api-proxy?action=place_photo&photoReference=${encodeURIComponent(photoReference)}&maxWidth=${maxWidth}`;
 }
 
 // Normalize place data

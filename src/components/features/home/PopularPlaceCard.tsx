@@ -1,5 +1,9 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { typography, spacing, borderRadius, colors } from '@/styles';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { Image } from 'expo-image';
+import { typography, spacing, borderRadius, shadows } from '@/styles';
+
+const { width: screenWidth } = Dimensions.get('window');
+const CARD_WIDTH = screenWidth * 0.46;
 import { useTheme } from '@/context/ThemeContext';
 import { Star1, People } from 'iconsax-react-native';
 
@@ -23,9 +27,9 @@ export default function PopularPlaceCard({
   const { colors } = useTheme();
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle, shadowColor: '#000' }]}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
       <View style={styles.imageContainer}>
-        <Image source={{ uri: imageUrl }} style={styles.image} />
+        <Image source={imageUrl} style={styles.image} contentFit="cover" transition={200} />
         
         {/* Rating Badge */}
         <View style={[styles.ratingBadge, { backgroundColor: colors.bgOverlay }]}>
@@ -39,10 +43,12 @@ export default function PopularPlaceCard({
         <Text style={[styles.country, { color: colors.textSecondary }]}>{country}</Text>
         
         {/* Visitors */}
-        <View style={styles.visitorsContainer}>
-          <People size={14} color={colors.primary} variant="Bold" />
-          <Text style={[styles.visitorsText, { color: colors.textSecondary }]}>{visitors} visitors</Text>
-        </View>
+        {visitors ? (
+          <View style={styles.visitorsContainer}>
+            <People size={14} color={colors.primary} variant="Bold" />
+            <Text style={[styles.visitorsText, { color: colors.textSecondary }]}>{visitors} visitors</Text>
+          </View>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
@@ -50,22 +56,18 @@ export default function PopularPlaceCard({
 
 const styles = StyleSheet.create({
   container: {
-    width: 180,
-    borderRadius: 20,
+    width: CARD_WIDTH,
+    borderRadius: borderRadius.xl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    ...shadows.cardLight,
     padding: spacing.sm,
     marginRight: spacing.md,
   },
   imageContainer: {
     width: '100%',
     aspectRatio: 4 / 3,
-    borderRadius: 20,
+    borderRadius: borderRadius.xl,
     overflow: 'hidden',
     marginBottom: spacing.sm,
     position: 'relative',

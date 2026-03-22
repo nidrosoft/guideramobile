@@ -2,15 +2,23 @@
  * Analytics Service
  * 
  * Centralized analytics tracking for user behavior and app events.
- * Supports multiple analytics providers (Mixpanel, Amplitude, Firebase).
+ * Primary provider: Mixpanel (20M free events/month, excellent mobile support).
  * 
- * Setup Instructions:
- * 1. Choose your analytics provider
- * 2. Add the appropriate SDK
- * 3. Set EXPO_PUBLIC_ANALYTICS_KEY in .env
+ * Setup:
+ * 1. Create a Mixpanel project at https://mixpanel.com
+ * 2. Get your project token from Project Settings
+ * 3. Set EXPO_PUBLIC_MIXPANEL_TOKEN in your .env file
  */
 
+import { Mixpanel } from 'mixpanel-react-native';
 import { logger } from '@/services/logging';
+
+// Mixpanel singleton — initialized once
+let mixpanelInstance: Mixpanel | null = null;
+
+function getMixpanel(): Mixpanel | null {
+  return mixpanelInstance;
+}
 
 // Event categories for organization
 export const EVENT_CATEGORIES = {
@@ -110,7 +118,7 @@ class AnalyticsService {
   private static instance: AnalyticsService;
   private isInitialized: boolean = false;
   private isEnabled: boolean = true;
-  private provider: AnalyticsProvider = 'mock';
+  private provider: AnalyticsProvider = 'mixpanel';
   private userId: string | null = null;
   private userProperties: UserProperties = {};
   private eventQueue: AnalyticsEvent[] = [];
@@ -135,17 +143,24 @@ class AnalyticsService {
 
     try {
       switch (provider) {
-        case 'mixpanel':
-          // TODO: Initialize Mixpanel
-          // await Mixpanel.init(process.env.EXPO_PUBLIC_MIXPANEL_TOKEN);
+        case 'mixpanel': {
+          const token = process.env.EXPO_PUBLIC_MIXPANEL_TOKEN;
+          if (token) {
+            const mp = new Mixpanel(token, true); // true = trackAutomaticEvents
+            await mp.init();
+            mixpanelInstance = mp;
+            logger.info('[Analytics] Mixpanel initialized');
+          } else {
+            if (__DEV__) console.warn('[Analytics] EXPO_PUBLIC_MIXPANEL_TOKEN not set — falling back to mock');
+            this.provider = 'mock';
+          }
           break;
+        }
         case 'amplitude':
-          // TODO: Initialize Amplitude
-          // await Amplitude.init(process.env.EXPO_PUBLIC_AMPLITUDE_KEY);
+          // Amplitude not wired — use Mixpanel
           break;
         case 'firebase':
-          // TODO: Initialize Firebase Analytics
-          // await analytics().setAnalyticsCollectionEnabled(true);
+          // Firebase Analytics not wired — use Mixpanel
           break;
         case 'mock':
           // Mock provider for development
@@ -183,20 +198,18 @@ class AnalyticsService {
     if (!this.isEnabled) return;
 
     switch (this.provider) {
-      case 'mixpanel':
-        // Mixpanel.identify(userId);
-        // Mixpanel.getPeople().set(properties);
+      case 'mixpanel': {
+        const mp = getMixpanel();
+        if (mp) {
+          mp.identify(userId);
+          if (properties) mp.getPeople().set(properties as Record<string, any>);
+        }
         break;
-      case 'amplitude':
-        // Amplitude.setUserId(userId);
-        // Amplitude.setUserProperties(properties);
-        break;
-      case 'firebase':
-        // analytics().setUserId(userId);
-        // analytics().setUserProperties(properties);
-        break;
+      }
       case 'mock':
-        logger.debug('Analytics identify', { userId, properties });
+        if (__DEV__) logger.debug('Analytics identify', { userId, properties });
+        break;
+      default:
         break;
     }
   }
@@ -209,18 +222,15 @@ class AnalyticsService {
     this.userProperties = {};
 
     switch (this.provider) {
-      case 'mixpanel':
-        // Mixpanel.reset();
+      case 'mixpanel': {
+        const mp = getMixpanel();
+        if (mp) mp.reset();
         break;
-      case 'amplitude':
-        // Amplitude.clearUserProperties();
-        // Amplitude.setUserId(null);
-        break;
-      case 'firebase':
-        // analytics().setUserId(null);
-        break;
+      }
       case 'mock':
-        logger.debug('Analytics reset');
+        if (__DEV__) logger.debug('Analytics reset');
+        break;
+      default:
         break;
     }
   }
@@ -342,17 +352,15 @@ class AnalyticsService {
     if (!this.isEnabled) return;
 
     switch (this.provider) {
-      case 'mixpanel':
-        // Mixpanel.getPeople().set(key, value);
+      case 'mixpanel': {
+        const mp = getMixpanel();
+        if (mp) mp.getPeople().set(key, value);
         break;
-      case 'amplitude':
-        // Amplitude.setUserProperties({ [key]: value });
-        break;
-      case 'firebase':
-        // analytics().setUserProperty(key, String(value));
-        break;
+      }
       case 'mock':
-        logger.debug('Analytics setUserProperty', { key, value });
+        if (__DEV__) logger.debug('Analytics setUserProperty', { key, value });
+        break;
+      default:
         break;
     }
   }
@@ -365,14 +373,13 @@ class AnalyticsService {
     this.userProperties[key] = currentValue + amount;
 
     switch (this.provider) {
-      case 'mixpanel':
-        // Mixpanel.getPeople().increment(key, amount);
+      case 'mixpanel': {
+        const mp = getMixpanel();
+        if (mp) mp.getPeople().increment(key, amount);
         break;
-      case 'amplitude':
-        // Amplitude.identify(new Identify().add(key, amount));
-        break;
+      }
       default:
-        logger.debug('Analytics incrementUserProperty', { key, amount });
+        if (__DEV__) logger.debug('Analytics incrementUserProperty', { key, amount });
         break;
     }
   }
@@ -382,11 +389,12 @@ class AnalyticsService {
    */
   timeEvent(eventName: string): void {
     switch (this.provider) {
-      case 'mixpanel':
-        // Mixpanel.timeEvent(eventName);
+      case 'mixpanel': {
+        const mp = getMixpanel();
+        if (mp) mp.timeEvent(eventName);
         break;
+      }
       default:
-        // Store start time for manual calculation
         this.superProperties[`_time_${eventName}`] = Date.now();
         break;
     }
@@ -411,19 +419,17 @@ class AnalyticsService {
 
   private sendEvent(event: AnalyticsEvent): void {
     switch (this.provider) {
-      case 'mixpanel':
-        // Mixpanel.track(event.name, event.properties);
+      case 'mixpanel': {
+        const mp = getMixpanel();
+        if (mp) mp.track(event.name, event.properties);
         break;
-      case 'amplitude':
-        // Amplitude.logEvent(event.name, event.properties);
-        break;
-      case 'firebase':
-        // analytics().logEvent(event.name, event.properties);
-        break;
+      }
       case 'mock':
         if (__DEV__) {
-          logger.debug(`📊 Analytics: ${event.name}`, event.properties);
+          logger.debug(`Analytics: ${event.name}`, event.properties);
         }
+        break;
+      default:
         break;
     }
   }

@@ -7,10 +7,13 @@
  */
 
 import React, { useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { spacing } from '@/styles';
+import { spacing, fontFamily, borderRadius, typography, colors as staticColors } from '@/styles';
+
+const { width: screenWidth } = Dimensions.get('window');
+const DEAL_CARD_WIDTH = screenWidth * 0.62;
 import { useTheme } from '@/context/ThemeContext';
 import { useGilDeals } from '@/hooks/useDeals';
 import type { PersonalizedDeal } from '@/services/deal';
@@ -190,9 +193,9 @@ const styles = StyleSheet.create({
     minHeight: 180,
   },
   card: {
-    width: 240,
+    width: DEAL_CARD_WIDTH,
     height: 170,
-    borderRadius: 20,
+    borderRadius: borderRadius.xl,
     padding: 16,
     justifyContent: 'space-between',
     overflow: 'hidden',
@@ -239,9 +242,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   typePillText: {
-    fontFamily: 'Rubik-Bold',
-    fontSize: 10,
-    color: '#FFFFFF',
+    fontFamily: fontFamily.bold,
+    fontSize: typography.fontSize.captionSm,
+    color: staticColors.white,
     letterSpacing: 0.5,
   },
   badgePill: {
@@ -251,15 +254,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   badgePillText: {
-    fontFamily: 'Rubik-Bold',
+    fontFamily: fontFamily.bold,
     fontSize: 9,
-    color: '#FFFFFF',
+    color: staticColors.white,
     letterSpacing: 0.8,
   },
   cardTitle: {
-    fontFamily: 'Rubik-SemiBold',
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontFamily: fontFamily.semibold,
+    fontSize: typography.fontSize.bodyLg,
+    color: staticColors.white,
     lineHeight: 19,
     maxWidth: '85%',
   },
@@ -269,19 +272,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cardPrice: {
-    fontFamily: 'HostGrotesk-Bold',
+    fontFamily: fontFamily.display,
     fontSize: 28,
-    color: '#FFFFFF',
+    color: staticColors.white,
   },
   originalPrice: {
-    fontFamily: 'Rubik-Regular',
-    fontSize: 13,
+    fontFamily: fontFamily.regular,
+    fontSize: typography.fontSize.body,
     color: 'rgba(255,200,200,0.9)',
     textDecorationLine: 'line-through',
   },
   savingsText: {
-    fontFamily: 'Rubik-Bold',
-    fontSize: 11,
+    fontFamily: fontFamily.bold,
+    fontSize: typography.fontSize.caption,
     color: '#86EFAC',
     marginTop: -2,
   },
@@ -291,8 +294,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   footerText: {
-    fontFamily: 'Rubik-Medium',
-    fontSize: 11,
+    fontFamily: fontFamily.medium,
+    fontSize: typography.fontSize.caption,
     color: 'rgba(255,255,255,0.85)',
     flex: 1,
     marginRight: 10,
@@ -301,7 +304,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: staticColors.white,
     justifyContent: 'center',
     alignItems: 'center',
   },

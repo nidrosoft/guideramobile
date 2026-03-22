@@ -20,7 +20,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -42,7 +42,6 @@ import { useTheme } from '@/context/ThemeContext';
 import { Experience, CANCELLATION_POLICY_LABELS } from '../../../types/experience.types';
 import { useDealRedirect } from '@/hooks/useDeals';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PHOTO_HEIGHT = 280;
 
 interface ExperienceDetailSheetProps {
@@ -88,6 +87,7 @@ export default function ExperienceDetailSheet({
   experience,
 }: ExperienceDetailSheetProps) {
   const insets = useSafeAreaInsets();
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
   const { colors: tc, isDark } = useTheme();
   const { redirect } = useDealRedirect();
   const [expandedSection, setExpandedSection] = useState<string | null>('description');
@@ -193,7 +193,7 @@ export default function ExperienceDetailSheet({
             showsVerticalScrollIndicator={false}
           >
             {/* ─── Photo ─── */}
-            <View style={styles.photoContainer}>
+            <View style={[styles.photoContainer, { width: SCREEN_WIDTH }]}>
               {images.length > 0 ? (
                 <Image source={{ uri: images[0] }} style={styles.photo} resizeMode="cover" />
               ) : (
@@ -395,8 +395,8 @@ const styles = StyleSheet.create({
   scrollContent: {},
 
   // Photo
-  photoContainer: { width: SCREEN_WIDTH, height: PHOTO_HEIGHT, position: 'relative' },
-  photo: { width: SCREEN_WIDTH, height: PHOTO_HEIGHT },
+  photoContainer: { height: PHOTO_HEIGHT, position: 'relative' },
+  photo: { width: '100%', height: PHOTO_HEIGHT },
   photoOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.15)' },
   heroNav: {
     position: 'absolute',
@@ -420,16 +420,16 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10 },
   badgeTxt: { fontSize: 9, fontWeight: '700' as any, letterSpacing: 0.7 },
   title: {
-    fontSize: 22,
+    fontSize: typography.fontSize.heading1,
     fontWeight: typography.fontWeight.bold,
     lineHeight: 28,
     marginBottom: 8,
   },
   ratingBar: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 12 },
-  ratingText: { fontSize: 15, fontWeight: typography.fontWeight.bold },
-  ratingCount: { fontSize: 13 },
+  ratingText: { fontSize: typography.fontSize.heading3, fontWeight: typography.fontWeight.bold },
+  ratingCount: { fontSize: typography.fontSize.body },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 4 },
-  priceLabel: { fontSize: 13 },
+  priceLabel: { fontSize: typography.fontSize.body },
   price: { fontSize: 36, fontWeight: typography.fontWeight.bold },
 
   // Quick info bar
@@ -442,19 +442,19 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   infoItem: { flex: 1, alignItems: 'center', gap: 4 },
-  infoLabel: { fontSize: 10, textAlign: 'center' },
-  infoValue: { fontSize: 12, fontWeight: typography.fontWeight.semibold, textAlign: 'center' },
+  infoLabel: { fontSize: typography.fontSize.captionSm, textAlign: 'center' },
+  infoValue: { fontSize: typography.fontSize.bodySm, fontWeight: typography.fontWeight.semibold, textAlign: 'center' },
 
   // Collapsible sections
   section: { borderBottomWidth: 1, paddingVertical: 14 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { fontSize: 16, fontWeight: typography.fontWeight.bold },
+  sectionTitle: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold },
   sectionBody: { marginTop: 12 },
-  bodyText: { fontSize: 14, lineHeight: 22 },
+  bodyText: { fontSize: typography.fontSize.bodyLg, lineHeight: 22 },
   listItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
-  listText: { fontSize: 14, lineHeight: 20, flex: 1 },
+  listText: { fontSize: typography.fontSize.bodyLg, lineHeight: 20, flex: 1 },
   miniDivider: { height: 1, marginVertical: 12 },
-  subHeading: { fontSize: 14, fontWeight: typography.fontWeight.semibold, marginBottom: 10 },
+  subHeading: { fontSize: typography.fontSize.bodyLg, fontWeight: typography.fontWeight.semibold, marginBottom: 10 },
 
   // Policy card
   policyCard: {
@@ -466,8 +466,8 @@ const styles = StyleSheet.create({
     marginTop: 16,
     alignItems: 'flex-start',
   },
-  policyTitle: { fontSize: 14, fontWeight: typography.fontWeight.semibold, marginBottom: 2 },
-  policyBody: { fontSize: 13, lineHeight: 19 },
+  policyTitle: { fontSize: typography.fontSize.bodyLg, fontWeight: typography.fontWeight.semibold, marginBottom: 2 },
+  policyBody: { fontSize: typography.fontSize.body, lineHeight: 19 },
 
   // Partner note
   partnerNote: {
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginTop: 16,
   },
-  partnerText: { fontSize: 12, lineHeight: 17, flex: 1 },
+  partnerText: { fontSize: typography.fontSize.bodySm, lineHeight: 17, flex: 1 },
 
   // Bottom CTA
   bottomBar: {
@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderTopWidth: 1,
   },
-  btmLabel: { fontSize: 12 },
+  btmLabel: { fontSize: typography.fontSize.bodySm },
   btmPrice: { fontSize: 26, fontWeight: typography.fontWeight.bold },
   ctaBtn: {
     flexDirection: 'row',
@@ -503,5 +503,5 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 24,
   },
-  ctaTxt: { fontSize: 16, fontWeight: typography.fontWeight.bold, color: '#FFFFFF' },
+  ctaTxt: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, color: '#FFFFFF' },
 });

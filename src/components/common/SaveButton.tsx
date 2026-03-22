@@ -6,6 +6,7 @@
 import { TouchableOpacity, StyleSheet } from 'react-native';
 import { Bookmark } from 'iconsax-react-native';
 import { useSaveDestination } from '@/hooks/useSaveDestination';
+import { useTheme } from '@/context/ThemeContext';
 
 interface SaveButtonProps {
   destinationId: string;
@@ -15,6 +16,7 @@ interface SaveButtonProps {
 
 export default function SaveButton({ destinationId, size = 20, style }: SaveButtonProps) {
   const { isSaved, toggleSave } = useSaveDestination(destinationId);
+  const { colors } = useTheme();
 
   return (
     <TouchableOpacity
@@ -25,7 +27,7 @@ export default function SaveButton({ destinationId, size = 20, style }: SaveButt
     >
       <Bookmark
         size={size}
-        color={isSaved ? '#3FC39E' : '#1a1a1a'}
+        color={isSaved ? colors.primary : colors.textSecondary}
         variant={isSaved ? 'Bold' : 'Outline'}
       />
     </TouchableOpacity>

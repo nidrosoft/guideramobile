@@ -1,12 +1,9 @@
-import { View, StyleSheet } from 'react-native';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 
 export default function EditProfile() {
-  return <View style={styles.container} />;
+  const router = useRouter();
+  useEffect(() => { router.replace('/account/edit-profile'); }, []);
+  return null;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-});
+// Redirects to the real edit-profile screen at /account/edit-profile

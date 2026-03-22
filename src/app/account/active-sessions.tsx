@@ -33,6 +33,7 @@ import * as Device from 'expo-device';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { supabase } from '@/lib/supabase/client';
 
 interface Session {
@@ -73,6 +74,7 @@ export default function ActiveSessionsScreen() {
   const insets = useSafeAreaInsets();
   const { colors: tc } = useTheme();
   const { user, signOut } = useAuth();
+  const { showError } = useToast();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -107,10 +109,7 @@ export default function ActiveSessionsScreen() {
 
   const handleLogoutSession = (session: Session) => {
     if (session.is_current) {
-      Alert.alert(
-        'Cannot Log Out',
-        'You cannot log out of your current session from here. Use the Log Out option in Settings instead.',
-      );
+      Alert.alert('Info', 'You cannot log out of your current session from here. Use the Log Out option in Settings instead.');
       return;
     }
 
@@ -150,7 +149,7 @@ export default function ActiveSessionsScreen() {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } catch (error) {
               console.error('Error logging out all devices:', error);
-              Alert.alert('Error', 'Failed to log out. Please try again.');
+              showError('Failed to log out. Please try again.');
             }
           }
         },

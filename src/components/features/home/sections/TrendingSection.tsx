@@ -35,7 +35,7 @@ export default function TrendingSection() {
         country: item.location?.country || 'Unknown',
         placeName: item.title,
         visitorsCount: item.matchScore ? `${Math.round(item.matchScore / 10)}K` : '',
-        trendPercentage: item.matchScore ? String(Math.round(item.matchScore / 50)) : '',
+        trendPercentage: '',
         rating: item.rating || 4.5,
         category: item.tags?.[0] || 'Destination',
         imageUrl: item.imageUrl || item.thumbnailUrl,

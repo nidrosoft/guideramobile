@@ -36,6 +36,7 @@ import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { supabase } from '@/lib/supabase/client';
 
 interface ChatMessage {
@@ -71,6 +72,7 @@ const AUTO_RESPONSES: Record<string, string> = {
 export default function ContactSupportScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { showSuccess, showError } = useToast();
   const { colors: tc, isDark } = useTheme();
   const { user, profile } = useAuth();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -110,10 +112,10 @@ export default function ContactSupportScreen() {
                   message: feedback,
                   status: 'pending',
                 });
-                Alert.alert('Thank You!', 'Your feedback has been submitted. We appreciate your input!');
+                showSuccess('Your feedback has been submitted. Thank you!');
               } catch (error) {
                 console.error('Error sending feedback:', error);
-                Alert.alert('Error', 'Failed to send feedback. Please try again.');
+                showError('Failed to send feedback. Please try again.');
               }
             }
           },

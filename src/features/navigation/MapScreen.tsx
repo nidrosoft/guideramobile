@@ -25,7 +25,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft2, SearchNormal1, Location, Map1, Airplane, Building } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { spacing, borderRadius as br } from '@/styles';
+import { spacing, borderRadius as br, colors, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { mapboxService, MapboxPlace } from '@/features/ar-navigation/services/mapbox.service';
 
@@ -131,7 +131,7 @@ export default function MapScreen({ initialMode = 'city', onClose }: MapScreenPr
   }, [nav.userLocation, landmarks]);
 
   return (
-    <View style={[styles.container, { backgroundColor: '#0a0a0a' }]}>
+    <View style={[styles.container, { backgroundColor: tc.bgSecondary }]}>
       {/* Map */}
       <OutdoorMap
         userLocation={nav.userLocation}
@@ -165,8 +165,8 @@ export default function MapScreen({ initialMode = 'city', onClose }: MapScreenPr
                   style={[styles.modeTab, isActive && { backgroundColor: tc.primary }]}
                   onPress={() => handleModeChange(tab.id)}
                 >
-                  <Icon size={16} color={isActive ? '#FFFFFF' : tc.textSecondary} variant="Bold" />
-                  <Text style={[styles.modeLabel, { color: isActive ? '#FFFFFF' : tc.textSecondary }]}>
+                  <Icon size={16} color={isActive ? tc.white : tc.textSecondary} variant="Bold" />
+                  <Text style={[styles.modeLabel, { color: isActive ? tc.white : tc.textSecondary }]}>
                     {tab.label}
                   </Text>
                 </TouchableOpacity>
@@ -201,7 +201,7 @@ export default function MapScreen({ initialMode = 'city', onClose }: MapScreenPr
                   style={[styles.categoryChip, { backgroundColor: isActive ? tc.primary : tc.bgElevated, borderColor: isActive ? tc.primary : tc.borderSubtle }]}
                   onPress={() => handleCategoryChange(cat.id)}
                 >
-                  <Text style={[styles.categoryText, { color: isActive ? '#FFFFFF' : tc.textSecondary }]}>{cat.label}</Text>
+                  <Text style={[styles.categoryText, { color: isActive ? tc.white : tc.textSecondary }]}>{cat.label}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -264,7 +264,7 @@ export default function MapScreen({ initialMode = 'city', onClose }: MapScreenPr
       {nav.isLoading && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={tc.primary} />
-          <Text style={{ color: '#FFFFFF', marginTop: 8 }}>Calculating route...</Text>
+          <Text style={{ color: tc.white, marginTop: 8 }}>Calculating route...</Text>
         </View>
       )}
 
@@ -317,53 +317,53 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 44, height: 44, borderRadius: 22,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 4,
+    shadowColor: colors.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 4,
   },
   modeRow: {
     flex: 1, flexDirection: 'row', borderRadius: br.full, padding: 3, gap: 3,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 4,
+    shadowColor: colors.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 4,
   },
   modeTab: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingVertical: 10, borderRadius: br.full, gap: 4,
   },
-  modeLabel: { fontSize: 13, fontWeight: '600' },
+  modeLabel: { fontSize: typography.fontSize.body, fontWeight: typography.fontWeight.semibold },
   // Search
   searchBar: {
     position: 'absolute', left: spacing.md, right: spacing.md, zIndex: 40,
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     paddingHorizontal: spacing.md, height: 44, borderRadius: br.md, borderWidth: 1,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3,
+    shadowColor: colors.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3,
   },
-  searchPlaceholder: { fontSize: 14 },
+  searchPlaceholder: { fontSize: typography.fontSize.bodyLg },
   // Categories
   categoryRow: { position: 'absolute', left: 0, right: 0, zIndex: 35 },
   categoryScroll: { paddingHorizontal: spacing.md, gap: 8 },
   categoryChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: br.full, borderWidth: 1 },
-  categoryText: { fontSize: 12, fontWeight: '600' },
+  categoryText: { fontSize: typography.fontSize.bodySm, fontWeight: typography.fontWeight.semibold },
   // Airport placeholder
   airportPlaceholder: {
     position: 'absolute', bottom: 100, left: spacing.lg, right: spacing.lg, zIndex: 30,
   },
   airportCard: {
     padding: spacing.xl, borderRadius: 20, alignItems: 'center', gap: spacing.sm,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8,
+    shadowColor: colors.black, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8,
   },
-  airportTitle: { fontSize: 18, fontWeight: '700' },
-  airportSub: { fontSize: 13, textAlign: 'center', lineHeight: 19 },
+  airportTitle: { fontSize: typography.fontSize.heading2, fontWeight: typography.fontWeight.bold },
+  airportSub: { fontSize: typography.fontSize.body, textAlign: 'center', lineHeight: 19 },
   // Place sheet
   placeSheet: {
     position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 80,
     borderTopLeftRadius: 20, borderTopRightRadius: 20,
     padding: spacing.lg, paddingBottom: 40,
-    shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 10,
+    shadowColor: colors.black, shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 10,
   },
   placeHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },
   placeIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  placeName: { fontSize: 16, fontWeight: '700' },
-  placeAddr: { fontSize: 13, marginTop: 2 },
+  placeName: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold },
+  placeAddr: { fontSize: typography.fontSize.body, marginTop: 2 },
   navigateBtn: { paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  navigateBtnText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  navigateBtnText: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, color: colors.white },
   // Loading
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject, zIndex: 200,
@@ -384,6 +384,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     paddingVertical: spacing.md, borderBottomWidth: 1,
   },
-  searchResultName: { fontSize: 15, fontWeight: '600' },
-  searchResultAddr: { fontSize: 12, marginTop: 2 },
+  searchResultName: { fontSize: typography.fontSize.heading3, fontWeight: typography.fontWeight.semibold },
+  searchResultAddr: { fontSize: typography.fontSize.bodySm, marginTop: 2 },
 });

@@ -1,12 +1,9 @@
-import { View, StyleSheet } from 'react-native';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 
 export default function Emergency() {
-  return <View style={styles.container} />;
+  const router = useRouter();
+  useEffect(() => { router.back(); }, []);
+  return null;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-});
+// Safety emergency is handled within the SafetyScreen plugin on trip detail

@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { RefreshCircle } from 'iconsax-react-native';
 import { ErrorBoundary } from './ErrorBoundary';
 
@@ -37,9 +38,11 @@ interface ComponentErrorFallbackProps {
 }
 
 function ComponentErrorFallback({ message, onRetry }: ComponentErrorFallbackProps) {
+  const { colors } = useTheme();
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.message}>{message}</Text>
+    <View style={[styles.container, { backgroundColor: colors.gray100 }]}>
+      <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
       {onRetry && (
         <TouchableOpacity
           style={styles.retryButton}
@@ -58,14 +61,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.gray100,
     borderRadius: 8,
     padding: spacing.sm,
     gap: spacing.xs,
   },
   message: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
   },
   retryButton: {
     padding: 4,

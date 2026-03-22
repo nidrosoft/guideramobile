@@ -1,7 +1,10 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { typography, spacing } from '@/styles';
+import { typography, spacing, borderRadius, shadows } from '@/styles';
+
+const { width: screenWidth } = Dimensions.get('window');
+const CARD_WIDTH = screenWidth * 0.72;
 import { useTheme } from '@/context/ThemeContext';
 import { Clock, Star1, TickCircle } from 'iconsax-react-native';
 
@@ -107,16 +110,12 @@ export default function LocalExperienceCard({
 
 const styles = StyleSheet.create({
   container: {
-    width: 280,
-    borderRadius: 20,
+    width: CARD_WIDTH,
+    borderRadius: borderRadius.xl,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    ...shadows.cardLight,
   },
   imageContainer: {
     width: '100%',

@@ -6,15 +6,16 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
 import { Setting2, Verify, Star1, Location, Clock, CloseCircle, TickCircle } from 'iconsax-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { spacing, typography, borderRadius, colors } from '@/styles';
+import { spacing, typography, borderRadius, colors as staticColors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { UserProfile } from '../types/account.types';
 import { partnerService } from '@/services/community/partner.service';
+import DSButton from '@/components/ds/DSButton';
 
 interface ProfileHeaderProps {
   user: UserProfile;
@@ -39,10 +40,10 @@ function getVerificationDisplay(appStatus: string | null, diditStatus: string | 
     return { status: 'verified', label: 'Verified Partner', color: '#16A34A', bgColor: 'rgba(22,163,74,0.12)', Icon: TickCircle };
   }
   if (appStatus === 'rejected' || diditStatus === 'declined') {
-    return { status: 'declined', label: 'Verification Declined', color: '#EF4444', bgColor: 'rgba(239,68,68,0.12)', Icon: CloseCircle };
+    return { status: 'declined', label: 'Verification Declined', color: staticColors.error, bgColor: 'rgba(239,68,68,0.12)', Icon: CloseCircle };
   }
   // submitted, under_review, identity_verification, in_progress
-  return { status: 'in_review', label: 'In Review', color: '#F59E0B', bgColor: 'rgba(245,158,11,0.12)', Icon: Clock };
+  return { status: 'in_review', label: 'In Review', color: staticColors.warning, bgColor: 'rgba(245,158,11,0.12)', Icon: Clock };
 }
 
 export default function ProfileHeader({ user, onEditPress, onAvatarPress }: ProfileHeaderProps) {
@@ -71,7 +72,7 @@ export default function ProfileHeader({ user, onEditPress, onAvatarPress }: Prof
 
   const handleVerificationPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/community/partner-apply' as any);
+    router.push('/community/partner-apply');
   };
   
   return (
@@ -90,7 +91,7 @@ export default function ProfileHeader({ user, onEditPress, onAvatarPress }: Prof
             />
             {user.verified?.identity && (
               <View style={styles.verifiedBadge}>
-                <Verify size={16} color="#FFFFFF" variant="Bold" />
+                <Verify size={16} color={colors.white} variant="Bold" />
               </View>
             )}
             {isPremium && (
@@ -104,7 +105,7 @@ export default function ProfileHeader({ user, onEditPress, onAvatarPress }: Prof
         {/* Name & Info */}
         <View style={styles.infoContainer}>
           <View style={styles.nameRow}>
-            <Text style={styles.name}>{fullName}</Text>
+            <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">{fullName}</Text>
             {isPremium && (
               <View style={styles.premiumTag}>
                 <Text style={styles.premiumText}>PRO</Text>
@@ -139,14 +140,19 @@ export default function ProfileHeader({ user, onEditPress, onAvatarPress }: Prof
         </View>
         
         {/* Edit button */}
-        <TouchableOpacity style={[styles.editButton, { backgroundColor: 'rgba(255,255,255,0.12)' }]} onPress={onEditPress}>
-          <Setting2 size={20} color="#FFFFFF" variant="TwoTone" />
-        </TouchableOpacity>
+        <DSButton
+          title=""
+          onPress={onEditPress || (() => {})}
+          variant="ghost"
+          size="sm"
+          icon={<Setting2 size={20} color={colors.white} variant="TwoTone" />}
+          style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 12, width: 40, height: 40, paddingHorizontal: 0 }}
+        />
       </View>
       
       {/* Stats */}
       {user.stats && (
-        <View style={[styles.statsContainer, { backgroundColor: isDark ? '#1A1A1A' : colors.bgCard, zIndex: 1 }]}>
+        <View style={[styles.statsContainer, { backgroundColor: isDark ? colors.bgSecondary : colors.bgCard, zIndex: 1 }]}>
           <View style={styles.statItem}>
             <Text style={[styles.statValue, { color: colors.textPrimary }]}>{user.stats.tripsCompleted}</Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Trips</Text>
@@ -172,16 +178,18 @@ export default function ProfileHeader({ user, onEditPress, onAvatarPress }: Prof
   );
 }
 
+const { height: _screenHeight } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
   container: {
     marginBottom: spacing.lg,
   },
   backgroundSolid: {
     position: 'absolute',
-    top: -200,
+    top: -(_screenHeight * 0.25),
     left: 0,
     right: 0,
-    height: 420,
+    height: _screenHeight * 0.55,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
@@ -199,7 +207,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 3,
-    borderColor: '#FFFFFF',
+    borderColor: staticColors.white,
   },
   verifiedBadge: {
     position: 'absolute',
@@ -208,11 +216,11 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#3FC39E',
+    backgroundColor: staticColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: staticColors.white,
   },
   premiumBadge: {
     position: 'absolute',
@@ -225,7 +233,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: staticColors.white,
   },
   infoContainer: {
     flex: 1,
@@ -240,10 +248,10 @@ const styles = StyleSheet.create({
   name: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: '#FFFFFF',
+    color: staticColors.white,
   },
   premiumTag: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: staticColors.warning,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -276,11 +284,11 @@ const styles = StyleSheet.create({
   location: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: '#FFFFFF',
+    color: staticColors.white,
   },
   bio: {
     fontSize: typography.fontSize.sm,
-    color: '#FFFFFF',
+    color: staticColors.white,
     opacity: 0.85,
     marginTop: spacing.xs,
     lineHeight: 20,
@@ -299,8 +307,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    shadowColor: '#000',
+    borderColor: staticColors.borderSubtle,
+    shadowColor: staticColors.black,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 16,

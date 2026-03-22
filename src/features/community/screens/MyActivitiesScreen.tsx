@@ -64,7 +64,7 @@ export default function MyActivitiesScreen() {
         style={[styles.card, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          router.push(`/community/activity/${item.id}` as any);
+          router.push(`/community/activity/${item.id}`);
         }}
         activeOpacity={0.7}
       >
@@ -136,7 +136,7 @@ export default function MyActivitiesScreen() {
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>My Activities</Text>
         <TouchableOpacity
           style={[styles.backBtn, { backgroundColor: tc.primary }]}
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push('/community/create-activity' as any); }}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push('/community/create-activity'); }}
         >
           <Add size={22} color="#FFFFFF" />
         </TouchableOpacity>

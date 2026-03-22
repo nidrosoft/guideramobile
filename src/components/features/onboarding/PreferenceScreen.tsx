@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import ProgressStepper from '@/components/common/ProgressStepper';
@@ -61,6 +62,7 @@ export default function PreferenceScreen({
 }: PreferenceScreenProps) {
   const router = useRouter();
   const { colors: tc, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [value, setValue] = useState('');
   const [selectedOption, setSelectedOption] = useState('');
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
@@ -158,9 +160,9 @@ export default function PreferenceScreen({
     await updateOnboardingStep(currentStep);
     
     if (isLast) {
-      router.push('/(onboarding)/setup' as any);
+      router.push('/(onboarding)/setup');
     } else if (nextRoute) {
-      router.push(nextRoute as any);
+      router.push(nextRoute);
     }
   };
 
@@ -177,11 +179,14 @@ export default function PreferenceScreen({
     : undefined;
 
   return (
-    <View style={[styles.container, { backgroundColor: tc.background }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: tc.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      
+
       {/* Header */}
-      <View style={styles.headerContainer}>
+      <View style={[styles.headerContainer, { paddingTop: insets.top + 10 }]}>
         {/* Back Button - First Line */}
         {showBackButton && (
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -309,7 +314,7 @@ export default function PreferenceScreen({
           <Text style={[styles.continueIcon, { color: isDark ? tc.black : tc.white }, !isValid && { color: tc.textTertiary }]}>→</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -318,7 +323,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerContainer: {
-    paddingTop: 60,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
   },

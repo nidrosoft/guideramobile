@@ -28,7 +28,7 @@ export class TranslationService {
 
   constructor(_apiKey?: string) {
     // API key no longer used client-side — proxied through edge function
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://pkydmdygctojtfzbqcud.supabase.co';
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
     this.proxyUrl = `${supabaseUrl}/functions/v1/google-api-proxy`;
     this.supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
   }

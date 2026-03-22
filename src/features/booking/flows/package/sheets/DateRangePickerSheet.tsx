@@ -232,7 +232,7 @@ export default function DateRangePickerSheet({
                         styles.dayText,
                         { color: tc.textPrimary },
                         disabled && { color: tc.borderSubtle },
-                        (selected || inRange) && { color: '#FFFFFF' },
+                        (selected || inRange) && { color: tc.white },
                       ]}>
                         {day.getDate()}
                       </Text>

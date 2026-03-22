@@ -43,9 +43,10 @@ export async function checkRateLimit(
     .gte('created_at', windowStart);
 
   if (error) {
-    // On error, allow the request (fail open) but log
-    console.warn(`[RateLimiter] Error checking rate limit: ${error.message}`);
-    return { allowed: true, remaining: config.maxRequests, resetAt };
+    // Fail closed — deny the request when rate limiter can't verify the limit.
+    // This prevents abuse during database issues or attack conditions.
+    console.error(`[RateLimiter] Error checking rate limit (denying request): ${error.message}`);
+    return { allowed: false, remaining: 0, resetAt };
   }
 
   const used = count || 0;

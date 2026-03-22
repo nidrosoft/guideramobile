@@ -9,7 +9,7 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   Image,
   RefreshControl,
@@ -31,6 +31,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { spacing, typography, borderRadius } from '@/styles';
+import { useTranslation } from 'react-i18next';
 import { chatService } from '@/services/community/chat.service';
 import { supabase } from '@/lib/supabase/client';
 
@@ -52,6 +53,7 @@ export default function MessagesListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { t } = useTranslation();
   const { profile } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,7 +88,7 @@ export default function MessagesListScreen() {
         avatar: '',
         lastMessage: g.lastMessage || '',
         lastMessageTime: g.lastMessageAt ? new Date(g.lastMessageAt) : new Date(),
-        unreadCount: 0,
+        unreadCount: g.unreadCount || 0,
       }));
 
       const activityMapped: Conversation[] = activityChats.map(g => ({
@@ -96,7 +98,7 @@ export default function MessagesListScreen() {
         avatar: '',
         lastMessage: g.lastMessage || '',
         lastMessageTime: g.lastMessageAt ? new Date(g.lastMessageAt) : new Date(),
-        unreadCount: 0,
+        unreadCount: g.unreadCount || 0,
       }));
 
       const combined = [...dmMapped, ...groupMapped, ...activityMapped].sort(
@@ -147,18 +149,18 @@ export default function MessagesListScreen() {
     if (conversation.type === 'group') {
       // Activity chats have a pin emoji prefix — route to activity chat
       if (conversation.name.startsWith(String.fromCodePoint(0x1F4CD))) {
-        router.push(`/community/activity-chat/${conversation.id}` as any);
+        router.push(`/community/activity-chat/${conversation.id}`);
       } else {
-        router.push(`/community/${conversation.id}` as any);
+        router.push(`/community/${conversation.id}`);
       }
     } else {
-      router.push(`/community/chat/${conversation.id}` as any);
+      router.push(`/community/chat/${conversation.id}`);
     }
   };
   
   const handleNewMessage = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Navigate to new message screen
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/community/search');
   };
   
   const formatTime = (date: Date) => {
@@ -201,18 +203,18 @@ export default function MessagesListScreen() {
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top, backgroundColor: tc.bgElevated }]}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack} accessibilityRole="button" accessibilityLabel="Go back">
           <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Messages</Text>
+          <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{t('community.messages.title')}</Text>
           {totalUnread > 0 && (
             <View style={[styles.headerBadge, { backgroundColor: tc.error }]}>
               <Text style={styles.headerBadgeText}>{totalUnread}</Text>
             </View>
           )}
         </View>
-        <TouchableOpacity style={styles.newButton} onPress={handleNewMessage}>
+        <TouchableOpacity style={styles.newButton} onPress={handleNewMessage} accessibilityRole="button" accessibilityLabel="New message">
           <Edit size={22} color={tc.primary} />
         </TouchableOpacity>
       </View>
@@ -222,8 +224,9 @@ export default function MessagesListScreen() {
         <SearchNormal1 size={20} color={tc.textTertiary} />
         <TextInput
           style={[styles.searchInput, { color: tc.textPrimary }]}
-          placeholder="Search conversations..."
+          placeholder={t('community.messages.searchPlaceholder')}
           placeholderTextColor={tc.textTertiary}
+          accessibilityLabel="Search conversations"
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -232,9 +235,9 @@ export default function MessagesListScreen() {
       {/* Filters */}
       <View style={styles.filtersContainer}>
         {[
-          { id: 'all' as FilterType, label: 'All' },
-          { id: 'groups' as FilterType, label: 'Groups', icon: People },
-          { id: 'dms' as FilterType, label: 'Direct', icon: Message },
+          { id: 'all' as FilterType, label: t('community.messages.all') },
+          { id: 'groups' as FilterType, label: t('community.messages.groups'), icon: People },
+          { id: 'dms' as FilterType, label: t('community.messages.direct'), icon: Message },
         ].map(f => {
           const isActive = filter === f.id;
           return (
@@ -266,7 +269,68 @@ export default function MessagesListScreen() {
       </View>
       
       {/* Conversations List */}
-      <ScrollView
+      <FlatList
+        data={filteredConversations}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item: conversation }) => (
+          <TouchableOpacity
+            style={[styles.conversationCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
+            onPress={() => handleConversationPress(conversation)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Chat with ${conversation.name}${conversation.unreadCount > 0 ? `, ${conversation.unreadCount} unread` : ''}`}
+          >
+            <View style={styles.avatarContainer}>
+              <Image source={{ uri: conversation.avatar }} style={styles.avatar} />
+              {conversation.type === 'dm' && conversation.isOnline && (
+                <View style={[styles.onlineIndicator, { backgroundColor: tc.success, borderColor: tc.bgElevated }]} />
+              )}
+              {conversation.type === 'group' && (
+                <View style={[styles.groupIndicator, { backgroundColor: tc.primary, borderColor: tc.bgElevated }]}>
+                  <People size={10} color="#FFFFFF" />
+                </View>
+              )}
+            </View>
+
+            <View style={styles.conversationContent}>
+              <View style={styles.conversationHeader}>
+                <Text style={[styles.conversationName, { color: tc.textPrimary }]} numberOfLines={1}>
+                  {conversation.name}
+                </Text>
+                <Text style={[
+                  styles.conversationTime,
+                  { color: tc.textTertiary },
+                  conversation.unreadCount > 0 && { color: tc.primary, fontWeight: '600' as const },
+                ]}>
+                  {formatTime(conversation.lastMessageTime)}
+                </Text>
+              </View>
+
+              <View style={styles.conversationFooter}>
+                <Text
+                  style={[
+                    styles.lastMessage,
+                    { color: tc.textSecondary },
+                    conversation.unreadCount > 0 && { color: tc.textPrimary, fontWeight: '500' as const },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {conversation.lastMessage}
+                </Text>
+
+                {conversation.unreadCount > 0 ? (
+                  <View style={[styles.unreadBadge, { backgroundColor: tc.primary }]}>
+                    <Text style={styles.unreadBadgeText}>
+                      {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
+                    </Text>
+                  </View>
+                ) : (
+                  <TickCircle size={16} color={tc.textTertiary} variant="Bold" />
+                )}
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
         style={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -276,76 +340,15 @@ export default function MessagesListScreen() {
             tintColor={tc.primary}
           />
         }
-      >
-        {filteredConversations.length === 0 ? (
+        ListEmptyComponent={
           <View style={styles.emptyState}>
             <Message size={48} color={tc.textTertiary} />
-            <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No conversations</Text>
-            <Text style={[styles.emptyText, { color: tc.textSecondary }]}>Start chatting with travel buddies</Text>
+            <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>{t('community.messages.noConversations')}</Text>
+            <Text style={[styles.emptyText, { color: tc.textSecondary }]}>{t('community.messages.startChatting')}</Text>
           </View>
-        ) : (
-          filteredConversations.map(conversation => (
-            <TouchableOpacity
-              key={conversation.id}
-              style={[styles.conversationCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
-              onPress={() => handleConversationPress(conversation)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.avatarContainer}>
-                <Image source={{ uri: conversation.avatar }} style={styles.avatar} />
-                {conversation.type === 'dm' && conversation.isOnline && (
-                  <View style={[styles.onlineIndicator, { backgroundColor: tc.success, borderColor: tc.bgElevated }]} />
-                )}
-                {conversation.type === 'group' && (
-                  <View style={[styles.groupIndicator, { backgroundColor: tc.primary, borderColor: tc.bgElevated }]}>
-                    <People size={10} color="#FFFFFF" />
-                  </View>
-                )}
-              </View>
-              
-              <View style={styles.conversationContent}>
-                <View style={styles.conversationHeader}>
-                  <Text style={[styles.conversationName, { color: tc.textPrimary }]} numberOfLines={1}>
-                    {conversation.name}
-                  </Text>
-                  <Text style={[
-                    styles.conversationTime,
-                    { color: tc.textTertiary },
-                    conversation.unreadCount > 0 && { color: tc.primary, fontWeight: '600' as const },
-                  ]}>
-                    {formatTime(conversation.lastMessageTime)}
-                  </Text>
-                </View>
-                
-                <View style={styles.conversationFooter}>
-                  <Text 
-                    style={[
-                      styles.lastMessage,
-                      { color: tc.textSecondary },
-                      conversation.unreadCount > 0 && { color: tc.textPrimary, fontWeight: '500' as const },
-                    ]} 
-                    numberOfLines={1}
-                  >
-                    {conversation.lastMessage}
-                  </Text>
-                  
-                  {conversation.unreadCount > 0 ? (
-                    <View style={[styles.unreadBadge, { backgroundColor: tc.primary }]}>
-                      <Text style={styles.unreadBadgeText}>
-                        {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
-                      </Text>
-                    </View>
-                  ) : (
-                    <TickCircle size={16} color={tc.textTertiary} variant="Bold" />
-                  )}
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-        
-        <View style={{ height: 100 }} />
-      </ScrollView>
+        }
+        ListFooterComponent={<View style={{ height: 100 }} />}
+      />
     </View>
   );
 }

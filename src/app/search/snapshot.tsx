@@ -143,7 +143,7 @@ function LoadingAnimation({ destination, tc }: { destination: string; tc: any })
         </Text>
 
         {/* Progress Bar */}
-        <View style={[styles.progressBarTrack, { width: TRACK_WIDTH, backgroundColor: '#D1D5DB' }]}>
+        <View style={[styles.progressBarTrack, { width: TRACK_WIDTH, backgroundColor: tc.borderMedium }]}>
           <Animated.View style={[styles.progressBarFill, { backgroundColor: tc.primary, width: progressWidth }]} />
         </View>
 
@@ -421,7 +421,7 @@ export default function TripSnapshotScreen() {
           </Text>
           {cost.withinBudget !== undefined && (
             <View style={[styles.budgetBadge, { backgroundColor: cost.withinBudget ? `${tc.success}15` : `${tc.error}15` }]}>
-              <Text style={{ color: cost.withinBudget ? tc.success : tc.error, fontSize: 13, fontWeight: '600' }}>
+              <Text style={{ color: cost.withinBudget ? tc.success : tc.error, fontSize: typography.fontSize.body, fontWeight: typography.fontWeight.semibold }}>
                 {cost.withinBudget ? 'Within your budget' : 'Over budget'}
                 {cost.budgetAmount ? ` ($${cost.budgetAmount.toLocaleString()})` : ''}
               </Text>
@@ -621,7 +621,7 @@ export default function TripSnapshotScreen() {
           activeOpacity={0.8}
           onPress={handleSearchFlights}
         >
-          <Airplane size={18} color="#FFF" />
+          <Airplane size={18} color={tc.white} />
           <Text style={styles.actionBtnText}>Search Flights</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -681,13 +681,13 @@ const styles = StyleSheet.create({
   },
   loadingContainer: { alignItems: 'center', paddingHorizontal: spacing.xl },
   loadingTitle: {
-    fontSize: typography.fontSize.xl, fontWeight: '700', textAlign: 'center',
+    fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, textAlign: 'center',
     marginBottom: spacing.lg,
   },
   loadingStepContainer: { height: 40, justifyContent: 'center', alignItems: 'center', marginTop: spacing.lg },
   loadingStepRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   loadingStepIcon: { fontSize: 22 },
-  loadingStepText: { fontSize: typography.fontSize.sm, fontWeight: '500' },
+  loadingStepText: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium },
   progressBarTrack: {
     width: '75%', height: 6, borderRadius: 3, overflow: 'hidden',
     marginTop: spacing.sm, marginBottom: spacing.sm,
@@ -703,19 +703,19 @@ const styles = StyleSheet.create({
     lineHeight: 22, marginBottom: 6,
   },
   quoteAuthor: {
-    fontSize: typography.fontSize.xs, fontWeight: '600',
+    fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold,
   },
   retryBtn: { marginTop: spacing.lg, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: 14 },
-  retryText: { color: '#FFF', fontWeight: '600', fontSize: typography.fontSize.base },
+  retryText: { color: '#FFF', fontWeight: typography.fontWeight.semibold, fontSize: typography.fontSize.base },
 
   header: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: spacing.md, paddingBottom: spacing.md, gap: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  backBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: typography.fontSize.lg, fontWeight: '700' },
+  headerTitle: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold },
   headerSub: { fontSize: typography.fontSize.xs, marginTop: 2 },
 
   scroll: { flex: 1 },
@@ -731,8 +731,8 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
   },
-  overviewBadgeText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
-  overviewText: { fontSize: typography.fontSize.sm, lineHeight: 22, fontWeight: '500' },
+  overviewBadgeText: { fontSize: typography.fontSize.caption, fontWeight: typography.fontWeight.bold, letterSpacing: 0.3 },
+  overviewText: { fontSize: typography.fontSize.sm, lineHeight: 22, fontWeight: typography.fontWeight.medium },
 
   // Cards
   card: { borderRadius: borderRadius.xl, padding: spacing.lg, borderWidth: 1 },
@@ -741,11 +741,11 @@ const styles = StyleSheet.create({
     width: 32, height: 32, borderRadius: 10,
     justifyContent: 'center', alignItems: 'center',
   },
-  cardTitle: { fontSize: typography.fontSize.base, fontWeight: '700', flex: 1 },
+  cardTitle: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, flex: 1 },
   cardSubtitle: { fontSize: typography.fontSize.xs },
 
   // Cost
-  costRange: { fontSize: 28, fontWeight: '800', marginBottom: spacing.sm },
+  costRange: { fontSize: 28, fontWeight: typography.fontWeight.bold, marginBottom: spacing.sm },
   budgetBadge: {
     alignSelf: 'flex-start', paddingHorizontal: spacing.md,
     paddingVertical: 6, borderRadius: 10, marginBottom: spacing.sm,
@@ -754,10 +754,10 @@ const styles = StyleSheet.create({
   breakdownGrid: { gap: 8 },
   perDayRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4 },
   perDayLabel: { fontSize: typography.fontSize.sm },
-  perDayValue: { fontSize: typography.fontSize.sm, fontWeight: '700' },
+  perDayValue: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.bold },
   breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   breakdownLabel: { fontSize: typography.fontSize.sm },
-  breakdownValue: { fontSize: typography.fontSize.sm, fontWeight: '600' },
+  breakdownValue: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold },
 
   // Flights
   flightRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
@@ -765,9 +765,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
     minWidth: 70, alignItems: 'center',
   },
-  flightTagText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  flightTagText: { fontSize: typography.fontSize.captionSm, fontWeight: typography.fontWeight.bold, textTransform: 'uppercase', letterSpacing: 0.5 },
   flightContent: { flex: 1 },
-  flightPrice: { fontSize: typography.fontSize.base, fontWeight: '700' },
+  flightPrice: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold },
   flightMeta: { fontSize: typography.fontSize.xs, marginTop: 1 },
 
   // Hotels
@@ -776,28 +776,28 @@ const styles = StyleSheet.create({
     flex: 1, borderRadius: 14, padding: spacing.sm, alignItems: 'center',
     borderWidth: 1,
   },
-  hotelStars: { fontSize: 12, marginBottom: 4 },
-  hotelTierLabel: { fontSize: typography.fontSize.xs, fontWeight: '700', marginBottom: 6 },
-  hotelPrice: { fontSize: typography.fontSize.sm, fontWeight: '700' },
-  hotelPriceUnit: { fontSize: 10, marginTop: 1 },
+  hotelStars: { fontSize: typography.fontSize.bodySm, marginBottom: 4 },
+  hotelTierLabel: { fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.bold, marginBottom: 6 },
+  hotelPrice: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.bold },
+  hotelPriceUnit: { fontSize: typography.fontSize.captionSm, marginTop: 1 },
 
   // Experiences
   expCard: { width: 190, borderRadius: 16, overflow: 'hidden', borderWidth: 1 },
   expImage: { width: '100%', height: 110 },
   expInfo: { padding: spacing.sm },
-  expTitle: { fontSize: typography.fontSize.xs, fontWeight: '600', lineHeight: 17, marginBottom: 6 },
+  expTitle: { fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold, lineHeight: 17, marginBottom: 6 },
   expMeta: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 8 },
-  expMetaText: { fontSize: 11 },
+  expMetaText: { fontSize: typography.fontSize.caption },
   expBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 },
-  chipText: { fontSize: 10 },
-  expPrice: { fontSize: typography.fontSize.sm, fontWeight: '700' },
-  expFreeCancel: { fontSize: 10, fontWeight: '600', marginTop: 4 },
+  chipText: { fontSize: typography.fontSize.captionSm },
+  expPrice: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.bold },
+  expFreeCancel: { fontSize: typography.fontSize.captionSm, fontWeight: typography.fontWeight.semibold, marginTop: 4 },
 
   // Events
   eventRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: spacing.sm },
   eventDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },
-  eventName: { fontSize: typography.fontSize.sm, fontWeight: '600' },
+  eventName: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold },
   eventMeta: { fontSize: typography.fontSize.xs, marginTop: 2 },
 
   // Intelligence Sections
@@ -810,7 +810,7 @@ const styles = StyleSheet.create({
     width: 32, height: 32, borderRadius: 10,
     justifyContent: 'center', alignItems: 'center',
   },
-  intelSectionTitle: { fontSize: typography.fontSize.base, fontWeight: '700' },
+  intelSectionTitle: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold },
   intelSectionSub: { fontSize: typography.fontSize.xs, marginTop: 1 },
 
   intelSection: {
@@ -824,14 +824,14 @@ const styles = StyleSheet.create({
     width: 32, height: 32, borderRadius: 10,
     justifyContent: 'center', alignItems: 'center',
   },
-  intelTitle: { fontSize: typography.fontSize.sm, fontWeight: '700', flex: 1 },
+  intelTitle: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.bold, flex: 1 },
   intelChevron: {
     width: 26, height: 26, borderRadius: 13,
     justifyContent: 'center', alignItems: 'center',
   },
   intelBody: { paddingHorizontal: spacing.md, paddingBottom: spacing.md },
   intelItem: { paddingVertical: 10 },
-  intelLabel: { fontSize: 12, fontWeight: '700', marginBottom: 3, letterSpacing: 0.2 },
+  intelLabel: { fontSize: typography.fontSize.bodySm, fontWeight: typography.fontWeight.bold, marginBottom: 3, letterSpacing: 0.2 },
   intelDetail: { fontSize: typography.fontSize.sm, lineHeight: 20 },
 
   // Powered By
@@ -839,7 +839,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 6, paddingVertical: spacing.md,
   },
-  poweredByText: { fontSize: 11, fontWeight: '500' },
+  poweredByText: { fontSize: typography.fontSize.caption, fontWeight: typography.fontWeight.medium },
 
   // Quick Actions
   quickActions: {
@@ -851,5 +851,5 @@ const styles = StyleSheet.create({
     gap: spacing.sm, paddingVertical: 15, borderRadius: 16,
   },
   actionBtnOutline: { borderWidth: 1 },
-  actionBtnText: { color: '#FFF', fontWeight: '700', fontSize: typography.fontSize.sm },
+  actionBtnText: { color: '#FFF', fontWeight: typography.fontWeight.bold, fontSize: typography.fontSize.sm },
 });

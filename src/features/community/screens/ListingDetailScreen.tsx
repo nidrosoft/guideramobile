@@ -38,7 +38,7 @@ import {
   InfoCircle,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/styles';
+import { colors, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import {
   GuideListing,
@@ -455,11 +455,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   categoryText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodySm,
+    fontWeight: typography.fontWeight.semibold,
   },
   title: {
-    fontSize: 22,
+    fontSize: typography.fontSize.heading1,
     fontWeight: '800',
     color: colors.textPrimary,
     lineHeight: 30,
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   locationText: {
-    fontSize: 14,
+    fontSize: typography.fontSize.bodyLg,
     color: colors.textSecondary,
   },
   statsRow: {
@@ -487,16 +487,16 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   ratingText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
   },
   ratingCount: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textSecondary,
   },
   inquiryText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textTertiary,
   },
 
@@ -515,16 +515,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   priceLabel: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     color: colors.textTertiary,
-    fontWeight: '500',
+    fontWeight: typography.fontWeight.medium,
     marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   priceValue: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: typography.fontSize.bodyLg,
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
   },
   durationRow: {
@@ -539,7 +539,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
     marginBottom: 10,
   },
@@ -550,12 +550,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   seeAll: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: typography.fontWeight.semibold,
   },
   descriptionText: {
-    fontSize: 15,
+    fontSize: typography.fontSize.heading3,
     color: colors.textSecondary,
     lineHeight: 23,
   },
@@ -568,9 +568,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   includedText: {
-    fontSize: 14,
+    fontSize: typography.fontSize.bodyLg,
     color: colors.textPrimary,
-    fontWeight: '500',
+    fontWeight: typography.fontWeight.medium,
   },
 
   // Notice
@@ -587,7 +587,7 @@ const styles = StyleSheet.create({
   },
   noticeText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textSecondary,
     lineHeight: 19,
   },
@@ -623,8 +623,8 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   guideName: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: typography.fontSize.heading3,
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
   },
   guideMetaRow: {
@@ -634,24 +634,24 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   guideRating: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodySm,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
   },
   guideReviews: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     color: colors.textSecondary,
   },
   guideDot: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     color: colors.textTertiary,
   },
   guideVouches: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     color: colors.textSecondary,
   },
   guideResponse: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     color: colors.textTertiary,
   },
 
@@ -683,7 +683,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   bottomDuration: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textTertiary,
     marginTop: 2,
   },
@@ -697,8 +697,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   inquireButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     color: colors.white,
   },
 });

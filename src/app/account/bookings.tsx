@@ -34,6 +34,7 @@ import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useSavedDeals, useRecentClicks } from '@/hooks/useDeals';
 import type { SavedDeal, DealClick, DealType } from '@/services/deal';
+import { useTranslation } from 'react-i18next';
 import { getProviderDisplayName } from '@/services/deal';
 
 const TABS = [
@@ -58,6 +59,7 @@ const TYPE_COLORS: Record<DealType, string> = {
 export default function BookingsScreen() {
   const router = useRouter();
   const { colors: tc } = useTheme();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'saved' | 'recent'>('saved');
   const { deals: savedDeals, isLoading: savedLoading, refresh: refreshSaved, remove } = useSavedDeals();
   const { clicks: recentClicks, isLoading: recentLoading, refresh: refreshRecent } = useRecentClicks();
@@ -105,12 +107,12 @@ export default function BookingsScreen() {
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: tc.textPrimary }]}>My Deals</Text>
+        <Text style={[styles.title, { color: tc.textPrimary }]}>{t('account.bookings.title')}</Text>
         <View style={styles.placeholder} />
       </View>
       
       {/* Tabs */}
-      <View style={styles.tabsContainer}>
+      <View style={[styles.tabsContainer, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         {TABS.map(tab => (
           <TouchableOpacity
             key={tab.value}
@@ -124,13 +126,13 @@ export default function BookingsScreen() {
             }}
           >
             <Text style={[
-              styles.tabText,
+              styles.tabText, { color: tc.textSecondary },
               activeTab === tab.value && styles.tabTextActive,
             ]}>
               {tab.label}
             </Text>
             {tab.value === 'saved' && savedDeals.length > 0 && (
-              <View style={styles.tabBadge}>
+              <View style={[styles.tabBadge, { backgroundColor: tc.bgElevated }]}>
                 <Text style={styles.tabBadgeText}>{savedDeals.length}</Text>
               </View>
             )}
@@ -139,8 +141,8 @@ export default function BookingsScreen() {
       </View>
       
       {/* Content */}
-      <ScrollView 
-        style={styles.content}
+      <ScrollView
+        style={[styles.content, { backgroundColor: tc.background }]}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -154,9 +156,9 @@ export default function BookingsScreen() {
         ) : activeTab === 'saved' ? (
           savedDeals.length === 0 ? (
             <View style={styles.emptyState}>
-              <Heart size={48} color={colors.gray300} variant="Bold" />
-              <Text style={styles.emptyTitle}>No saved deals</Text>
-              <Text style={styles.emptyText}>Deals you save will appear here</Text>
+              <Heart size={48} color={tc.textTertiary} variant="Bold" />
+              <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>{t('account.bookings.noSavedDeals')}</Text>
+              <Text style={[styles.emptyText, { color: tc.textSecondary }]}>{t('account.bookings.savedDealsAppear')}</Text>
             </View>
           ) : (
             savedDeals.map(deal => (
@@ -171,9 +173,9 @@ export default function BookingsScreen() {
         ) : (
           recentClicks.length === 0 ? (
             <View style={styles.emptyState}>
-              <TicketStar size={48} color={colors.gray300} variant="Bold" />
-              <Text style={styles.emptyTitle}>No recent activity</Text>
-              <Text style={styles.emptyText}>Deals you click will appear here</Text>
+              <TicketStar size={48} color={tc.textTertiary} variant="Bold" />
+              <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>{t('account.bookings.noRecentActivity')}</Text>
+              <Text style={[styles.emptyText, { color: tc.textSecondary }]}>{t('account.bookings.clickedDealsAppear')}</Text>
             </View>
           ) : (
             recentClicks.map(click => (
@@ -199,29 +201,30 @@ interface DealCardProps {
 }
 
 function DealCard({ deal, formatCurrency, formatDate }: DealCardProps) {
+  const { colors: tc } = useTheme();
   const TypeIcon = TYPE_ICONS[deal.deal_type] || TicketStar;
   const typeColor = TYPE_COLORS[deal.deal_type] || colors.primary;
   const snapshot = deal.deal_snapshot as any;
-  
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: tc.bgElevated }]}>
       <View style={styles.cardHeader}>
         <View style={[styles.typeIcon, { backgroundColor: `${typeColor}15` }]}>
           <TypeIcon size={20} color={typeColor} variant="Bold" />
         </View>
-        <Text style={styles.providerBadge}>
+        <Text style={[styles.providerBadge, { color: tc.textSecondary }]}>
           {getProviderDisplayName(deal.provider)}
         </Text>
       </View>
-      
-      <Text style={styles.cardTitle} numberOfLines={1}>
+
+      <Text style={[styles.cardTitle, { color: tc.textPrimary }]} numberOfLines={1}>
         {snapshot?.title || `${deal.deal_type} deal`}
       </Text>
-      
+
       <View style={styles.cardDetails}>
         <View style={styles.detailRow}>
-          <Calendar size={14} color={colors.textSecondary} />
-          <Text style={styles.detailText}>{formatDate(deal.created_at)}</Text>
+          <Calendar size={14} color={tc.textSecondary} />
+          <Text style={[styles.detailText, { color: tc.textSecondary }]}>{formatDate(deal.created_at)}</Text>
         </View>
         {deal.price_changed && deal.price_change_pct && (
           <Text style={[styles.priceChange, {
@@ -231,12 +234,12 @@ function DealCard({ deal, formatCurrency, formatDate }: DealCardProps) {
           </Text>
         )}
       </View>
-      
-      <View style={styles.cardFooter}>
-        <Text style={styles.totalAmount}>
+
+      <View style={[styles.cardFooter, { borderTopColor: tc.borderSubtle }]}>
+        <Text style={[styles.totalAmount, { color: tc.textPrimary }]}>
           {formatCurrency(deal.current_price || deal.price_at_save, deal.price_currency)}
         </Text>
-        <ArrowRight2 size={18} color={colors.gray400} />
+        <ArrowRight2 size={18} color={tc.textTertiary} />
       </View>
     </View>
   );
@@ -250,37 +253,38 @@ interface ClickCardProps {
 }
 
 function ClickCard({ click, formatCurrency, formatDate }: ClickCardProps) {
+  const { colors: tc } = useTheme();
   const TypeIcon = TYPE_ICONS[click.deal_type] || TicketStar;
   const typeColor = TYPE_COLORS[click.deal_type] || colors.primary;
   const snapshot = click.deal_snapshot as any;
-  
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: tc.bgElevated }]}>
       <View style={styles.cardHeader}>
         <View style={[styles.typeIcon, { backgroundColor: `${typeColor}15` }]}>
           <TypeIcon size={20} color={typeColor} variant="Bold" />
         </View>
-        <Text style={styles.providerBadge}>
+        <Text style={[styles.providerBadge, { color: tc.textSecondary }]}>
           {getProviderDisplayName(click.provider)}
         </Text>
       </View>
-      
-      <Text style={styles.cardTitle} numberOfLines={1}>
+
+      <Text style={[styles.cardTitle, { color: tc.textPrimary }]} numberOfLines={1}>
         {snapshot?.title || `${click.deal_type} deal`}
       </Text>
-      
+
       <View style={styles.cardDetails}>
         <View style={styles.detailRow}>
-          <Calendar size={14} color={colors.textSecondary} />
-          <Text style={styles.detailText}>{formatDate(click.clicked_at)}</Text>
+          <Calendar size={14} color={tc.textSecondary} />
+          <Text style={[styles.detailText, { color: tc.textSecondary }]}>{formatDate(click.clicked_at)}</Text>
         </View>
       </View>
-      
-      <View style={styles.cardFooter}>
-        <Text style={styles.totalAmount}>
+
+      <View style={[styles.cardFooter, { borderTopColor: tc.borderSubtle }]}>
+        <Text style={[styles.totalAmount, { color: tc.textPrimary }]}>
           {formatCurrency(click.price_amount, click.price_currency)}
         </Text>
-        <ArrowRight2 size={18} color={colors.gray400} />
+        <ArrowRight2 size={18} color={tc.textTertiary} />
       </View>
     </View>
   );

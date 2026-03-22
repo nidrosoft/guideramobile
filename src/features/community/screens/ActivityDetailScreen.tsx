@@ -39,9 +39,10 @@ import {
   People,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { spacing, borderRadius } from '@/styles';
+import { spacing, borderRadius, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { useActivityActions, useActivityComments } from '@/hooks/useCommunity';
 import { activityService, type ActivityComment } from '@/services/community/activity.service';
 import type { Activity } from '@/services/community/types/community.types';
@@ -52,6 +53,7 @@ export default function ActivityDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
+  const { showError } = useToast();
   const { colors: tc, isDark } = useTheme();
   const { profile } = useAuth();
   const userId = profile?.id;
@@ -85,7 +87,7 @@ export default function ActivityDetailScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const updated = await activityService.getActivity(activityId);
       setActivity(updated);
-    } catch (e: any) { Alert.alert('Error', e.message); }
+    } catch (e: any) { showError(e.message || 'Failed to join activity'); }
   };
 
   const handleLeave = async () => {
@@ -95,7 +97,7 @@ export default function ActivityDetailScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const updated = await activityService.getActivity(activityId);
       setActivity(updated);
-    } catch (e: any) { Alert.alert('Error', e.message); }
+    } catch (e: any) { showError(e.message || 'Failed to leave activity'); }
   };
 
   const handleCancel = () => {
@@ -108,7 +110,7 @@ export default function ActivityDetailScreen() {
             await cancelActivity(activityId);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             router.back();
-          } catch (e: any) { Alert.alert('Error', e.message); }
+          } catch (e: any) { showError(e.message || 'Failed to cancel activity'); }
         }
       },
     ]);
@@ -121,7 +123,7 @@ export default function ActivityDetailScreen() {
       await addComment(commentText.trim());
       setCommentText('');
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      showError(e.message || 'Failed to post comment');
     }
   };
 
@@ -145,7 +147,7 @@ export default function ActivityDetailScreen() {
       <View style={[styles.container, { backgroundColor: tc.background, paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
         <Text style={{ color: tc.textSecondary, fontSize: 16 }}>Activity not found</Text>
         <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
-          <Text style={{ color: tc.primary, fontSize: 15, fontWeight: '600' }}>Go Back</Text>
+          <Text style={{ color: tc.primary, fontSize: typography.fontSize.heading3, fontWeight: typography.fontWeight.semibold }}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -154,7 +156,7 @@ export default function ActivityDetailScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: tc.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
@@ -215,7 +217,7 @@ export default function ActivityDetailScreen() {
                   onPress={() => {
                     if (p.userId !== userId) {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      router.push(`/community/chat/${p.userId}` as any);
+                      router.push(`/community/chat/${p.userId}`);
                     }
                   }}
                   activeOpacity={p.userId === userId ? 1 : 0.7}
@@ -242,7 +244,7 @@ export default function ActivityDetailScreen() {
                   style={[styles.actionBtn, { borderColor: tc.borderSubtle }]}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push({ pathname: '/community/create-activity' as any, params: { editId: activity.id, editTitle: activity.title, editType: activity.type, editDescription: activity.description || '', editLocationName: activity.locationName || '', editLatitude: String(activity.latitude || 0), editLongitude: String(activity.longitude || 0) } });
+                    router.push({ pathname: '/community/create-activity', params: { editId: activity.id, editTitle: activity.title, editType: activity.type, editDescription: activity.description || '', editLocationName: activity.locationName || '', editLatitude: String(activity.latitude || 0), editLongitude: String(activity.longitude || 0) } });
                   }}
                 >
                   <Edit2 size={16} color={tc.textPrimary} />
@@ -257,7 +259,7 @@ export default function ActivityDetailScreen() {
               <>
                 <TouchableOpacity
                   style={[styles.actionBtn, { borderColor: tc.borderSubtle }]}
-                  onPress={() => router.push(`/community/activity-chat/${activity.id}` as any)}
+                  onPress={() => router.push(`/community/activity-chat/${activity.id}`)}
                 >
                   <MessageText1 size={16} color={tc.textPrimary} />
                   <Text style={[styles.actionBtnText, { color: tc.textPrimary }]}>Group Chat</Text>
@@ -271,7 +273,7 @@ export default function ActivityDetailScreen() {
               <>
                 <TouchableOpacity
                   style={[styles.actionBtn, { borderColor: tc.borderSubtle }]}
-                  onPress={() => router.push(`/community/activity-chat/${activity.id}` as any)}
+                  onPress={() => router.push(`/community/activity-chat/${activity.id}`)}
                 >
                   <MessageText1 size={16} color={tc.textPrimary} />
                   <Text style={[styles.actionBtnText, { color: tc.textPrimary }]}>Chat</Text>
@@ -390,7 +392,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, borderBottomWidth: 1,
   },
   backBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '600' },
+  headerTitle: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 20 },
 
@@ -400,36 +402,36 @@ const styles = StyleSheet.create({
   emojiCircle: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   emoji: { fontSize: 24 },
   activityInfo: { flex: 1, marginLeft: spacing.md },
-  activityTitle: { fontSize: 18, fontWeight: '700' },
-  activityCreator: { fontSize: 13, marginTop: 2 },
-  description: { fontSize: 14, lineHeight: 20, marginBottom: spacing.md },
+  activityTitle: { fontSize: typography.fontSize.heading2, fontWeight: typography.fontWeight.bold },
+  activityCreator: { fontSize: typography.fontSize.body, marginTop: 2 },
+  description: { fontSize: typography.fontSize.bodyLg, lineHeight: 20, marginBottom: spacing.md },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: spacing.md },
   metaChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
-  metaText: { fontSize: 12, fontWeight: '500', maxWidth: 120 },
+  metaText: { fontSize: typography.fontSize.bodySm, fontWeight: typography.fontWeight.medium, maxWidth: 120 },
   participantRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
-  moreCount: { fontSize: 12, marginLeft: 6 },
+  moreCount: { fontSize: typography.fontSize.bodySm, marginLeft: 6 },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
   actionBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingVertical: 12, borderRadius: 12, borderWidth: 1, gap: 6,
   },
-  actionBtnText: { fontSize: 14, fontWeight: '600' },
+  actionBtnText: { fontSize: typography.fontSize.bodyLg, fontWeight: typography.fontWeight.semibold },
   actionBtnPrimary: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12 },
-  actionBtnPrimaryText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  actionBtnPrimaryText: { fontSize: typography.fontSize.bodyLg, fontWeight: typography.fontWeight.bold, color: '#FFFFFF' },
 
   // Comments
   commentsSection: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-  commentsTitle: { fontSize: 16, fontWeight: '700', marginBottom: spacing.md },
-  emptyComments: { fontSize: 14, textAlign: 'center', paddingVertical: spacing.xl },
+  commentsTitle: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, marginBottom: spacing.md },
+  emptyComments: { fontSize: typography.fontSize.bodyLg, textAlign: 'center', paddingVertical: spacing.xl },
   commentCard: { flexDirection: 'row', paddingVertical: spacing.md, borderBottomWidth: 1, gap: spacing.sm },
   commentBody: { flex: 1 },
   commentHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
-  commentAuthor: { fontSize: 13, fontWeight: '600' },
-  commentTime: { fontSize: 11 },
-  commentContent: { fontSize: 14, lineHeight: 19, marginBottom: 4 },
+  commentAuthor: { fontSize: typography.fontSize.body, fontWeight: typography.fontWeight.semibold },
+  commentTime: { fontSize: typography.fontSize.caption },
+  commentContent: { fontSize: typography.fontSize.bodyLg, lineHeight: 19, marginBottom: 4 },
   commentActions: { flexDirection: 'row', gap: spacing.md },
   commentActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingVertical: 2 },
-  commentActionText: { fontSize: 12, fontWeight: '500' },
+  commentActionText: { fontSize: typography.fontSize.bodySm, fontWeight: typography.fontWeight.medium },
 
   // Comment Input
   commentInput: {
@@ -437,6 +439,6 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm, borderTopWidth: 1, gap: spacing.sm,
   },
   commentInputWrap: { flex: 1, borderRadius: 20, borderWidth: 1, paddingHorizontal: spacing.md, minHeight: 40, justifyContent: 'center' },
-  commentTextInput: { fontSize: 14, paddingVertical: 8 },
+  commentTextInput: { fontSize: typography.fontSize.bodyLg, paddingVertical: 8 },
   commentSendBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
 });

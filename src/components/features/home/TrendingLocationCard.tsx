@@ -1,8 +1,12 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
-import { typography, spacing } from '@/styles';
+import { typography, spacing, borderRadius } from '@/styles';
+
+const { width: screenWidth } = Dimensions.get('window');
+const CARD_WIDTH = screenWidth * 0.92;
 import { useTheme } from '@/context/ThemeContext';
-import { ArrowRight, TrendUp, Star1 } from 'iconsax-react-native';
+import { TrendUp, Star1 } from 'iconsax-react-native';
 import SaveButton from '@/components/common/SaveButton';
 
 interface TrendingLocationCardProps {
@@ -29,18 +33,21 @@ export default function TrendingLocationCard({
   imageUrl 
 }: TrendingLocationCardProps) {
   const { colors } = useTheme();
+  const { height: screenHeight } = useWindowDimensions();
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { height: Math.min(360, screenHeight * 0.5) }]}>
       {/* Background Image */}
-      <Image source={{ uri: imageUrl }} style={styles.backgroundImage} />
+      <Image source={imageUrl} style={styles.backgroundImage} contentFit="cover" transition={200} />
       
       {/* Top Section */}
       <View style={styles.topSection}>
         {/* Trending Badge */}
-        <View style={styles.trendingBadge}>
-          <TrendUp size={14} color="#4CAF50" variant="Bold" />
-          <Text style={styles.trendingText}>+{trendPercentage}%</Text>
-        </View>
+        {trendPercentage ? (
+          <View style={styles.trendingBadge}>
+            <TrendUp size={14} color="#4CAF50" variant="Bold" />
+            <Text style={styles.trendingText}>+{trendPercentage}%</Text>
+          </View>
+        ) : <View />}
         
         {id ? <SaveButton destinationId={id} /> : null}
       </View>
@@ -55,7 +62,7 @@ export default function TrendingLocationCard({
               <Text style={styles.category}>{category}</Text>
               
               <Text style={styles.location}>{city}, {country}</Text>
-              <Text style={styles.placeName}>{placeName}</Text>
+              <Text style={styles.placeName} numberOfLines={1} ellipsizeMode="tail">{placeName}</Text>
               
               {/* Rating & Visitors Row */}
               <View style={styles.statsRow}>
@@ -63,14 +70,10 @@ export default function TrendingLocationCard({
                   <Star1 size={14} color="#FFD700" variant="Bold" />
                   <Text style={styles.ratingText}>{rating}</Text>
                 </View>
-                <Text style={styles.visitorsText}>{visitorsCount} visitors</Text>
+                {visitorsCount ? <Text style={styles.visitorsText}>{visitorsCount} visitors</Text> : null}
               </View>
             </View>
 
-            {/* Right Side - Arrow Button */}
-            <TouchableOpacity style={styles.arrowButton}>
-              <ArrowRight size={24} color="#1a1a1a" variant="Outline" />
-            </TouchableOpacity>
           </View>
         </BlurView>
       </View>
@@ -80,9 +83,8 @@ export default function TrendingLocationCard({
 
 const styles = StyleSheet.create({
   container: {
-    width: 380,
-    height: 360,
-    borderRadius: 32,
+    width: CARD_WIDTH,
+    borderRadius: borderRadius['3xl'],
     overflow: 'hidden',
     marginRight: spacing.md,
     position: 'relative',
@@ -114,25 +116,16 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.bold,
     color: '#4CAF50',
   },
-  bookmarkButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
   bottomContainer: {
     position: 'absolute',
     bottom: spacing.lg,
     left: spacing.lg,
     right: spacing.lg,
-    borderRadius: 24,
+    borderRadius: borderRadius.xl,
     overflow: 'hidden',
   },
   blurContainer: {
-    borderRadius: 24,
+    borderRadius: borderRadius.xl,
     overflow: 'hidden',
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     padding: spacing.lg,
@@ -162,22 +155,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginBottom: spacing.sm,
   },
-  visitorsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  avatarStack: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
   visitorsText: {
     fontSize: typography.fontSize.xs,
     color: 'rgba(255, 255, 255, 0.9)',
@@ -198,14 +175,5 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: '#FFFFFF',
     fontWeight: typography.fontWeight.bold,
-  },
-  arrowButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: spacing.md,
   },
 });

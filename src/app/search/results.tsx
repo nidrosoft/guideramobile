@@ -12,14 +12,17 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import { spacing } from '@/styles';
-import { 
-  searchService, 
-  SearchResult, 
-  SearchFilters, 
-  DEFAULT_FILTERS 
+import {
+  searchService,
+  SearchResult,
+  SearchFilters,
+  DEFAULT_FILTERS
 } from '@/services/search.service';
+import { savedService, SavedItemType } from '@/services/saved.service';
 import {
   FilterBottomSheet,
   SearchResultCard,
@@ -44,6 +47,8 @@ export default function SearchResultsScreen() {
   const insets = useSafeAreaInsets();
   const { q } = useLocalSearchParams<{ q: string }>();
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
+  const { profile } = useAuth();
   
   const [searchQuery, setSearchQuery] = useState(q || '');
   const [activeTab, setActiveTab] = useState<CategoryTab>('all');
@@ -118,6 +123,23 @@ export default function SearchResultsScreen() {
     performSearch(searchQuery);
   };
 
+  const handleFavoritePress = useCallback(async (result: SearchResult) => {
+    if (!profile?.id) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      await savedService.saveItem(profile.id, {
+        type: (result.type as SavedItemType) || 'destination',
+        title: result.title || '',
+        subtitle: result.subtitle || result.location || '',
+        image_url: result.image || '',
+        data: { searchResultId: result.id },
+        external_id: result.id,
+      });
+    } catch (error) {
+      console.error('Failed to save item:', error);
+    }
+  }, [profile?.id]);
+
   const handleResultPress = (result: SearchResult) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const routes: Record<string, string> = {
@@ -127,7 +149,7 @@ export default function SearchResultsScreen() {
       place: `/destinations/${result.id}`,
     };
     const route = routes[result.type];
-    if (route) router.push(route as any);
+    if (route) router.push(route);
   };
 
   const filteredResults = useMemo((): SearchResult[] => {
@@ -166,7 +188,7 @@ export default function SearchResultsScreen() {
       {/* Results Count */}
       <View style={styles.resultsHeader}>
         <Text style={[styles.resultsCount, dynamicStyles.resultsCount]}>
-          {isLoading ? 'Searching...' : `${filteredResults.length} results found`}
+          {isLoading ? t('search.results.searching') : t('search.results.resultsFound', { count: filteredResults.length })}
         </Text>
       </View>
 
@@ -174,7 +196,7 @@ export default function SearchResultsScreen() {
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Searching...</Text>
+          <Text style={[styles.loadingText, dynamicStyles.loadingText]}>{t('search.results.searching')}</Text>
         </View>
       ) : filteredResults.length === 0 ? (
         <EmptyState />
@@ -192,7 +214,7 @@ export default function SearchResultsScreen() {
               key={result.id}
               result={result}
               onPress={() => handleResultPress(result)}
-              onFavoritePress={() => {}}
+              onFavoritePress={() => handleFavoritePress(result)}
             />
           ))}
         </ScrollView>

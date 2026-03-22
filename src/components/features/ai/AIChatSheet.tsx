@@ -26,7 +26,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
 import { invokeEdgeFn } from '@/utils/retry';
-import { spacing, borderRadius } from '@/styles';
+import { spacing, borderRadius, typography, fontFamily } from '@/styles';
 
 export interface AIChatContext {
   id?: string;
@@ -350,21 +350,21 @@ export default function AIChatSheet({
     ? SUGGESTED_QUESTIONS_DESTINATION
     : SUGGESTED_QUESTIONS_GLOBAL;
 
-  const headerBg = isDark ? '#1A1A1A' : colors.white;
+  const headerBg = isDark ? colors.bgSecondary : colors.white;
 
   const dynamicStyles = useMemo(() => ({
     container: { backgroundColor: colors.background },
     header: { backgroundColor: headerBg, borderBottomColor: colors.gray200 },
     inputBar: { backgroundColor: headerBg, borderTopColor: colors.gray200 },
-    inputContainer: { backgroundColor: isDark ? '#2A2A2A' : colors.gray100 },
+    inputContainer: { backgroundColor: isDark ? colors.gray50 : colors.gray100 },
     userBubble: { backgroundColor: colors.primary },
-    aiBubble: { backgroundColor: isDark ? '#2A2A2A' : colors.gray100, borderColor: isDark ? 'rgba(255,255,255,0.08)' : colors.gray200 },
-    upsellBubble: { backgroundColor: isDark ? '#2D1F00' : '#FFF8E6', borderColor: '#F59E0B' },
+    aiBubble: { backgroundColor: isDark ? colors.gray50 : colors.gray100, borderColor: isDark ? colors.borderMedium : colors.gray200 },
+    upsellBubble: { backgroundColor: isDark ? '#2D1F00' : '#FFF8E6', borderColor: colors.warning },
     inputText: { color: colors.textPrimary },
     timeText: { color: colors.textTertiary },
-    contextChipBg: { backgroundColor: isDark ? '#1A2E26' : '#E8F8F3' },
-    suggestBorder: { borderColor: isDark ? 'rgba(255,255,255,0.1)' : colors.gray200 },
-    sessionCard: { backgroundColor: isDark ? '#2A2A2A' : colors.white, borderColor: isDark ? 'rgba(255,255,255,0.06)' : colors.gray200 },
+    contextChipBg: { backgroundColor: isDark ? colors.primarySubtle : '#E8F8F3' },
+    suggestBorder: { borderColor: isDark ? colors.borderMedium : colors.gray200 },
+    sessionCard: { backgroundColor: isDark ? colors.gray50 : colors.white, borderColor: isDark ? colors.borderStandard : colors.gray200 },
   }), [colors, isDark, headerBg]);
 
   // ── Load past sessions ────────────────────────────────────────────
@@ -908,8 +908,8 @@ const styles = StyleSheet.create({
   headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   headerTitleGroup: { alignItems: 'center' },
   headerAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '700' },
-  headerSubtitle: { fontSize: 12, fontWeight: '500' },
+  headerTitle: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold },
+  headerSubtitle: { fontSize: typography.fontSize.bodySm, fontWeight: typography.fontWeight.medium },
   headerRight: { width: 32 },
 
   // ── Context Chip ────────────────────────────────────
@@ -924,8 +924,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     alignSelf: 'flex-start',
   },
-  contextChipText: { fontSize: 13, color: '#3FC39E' },
-  contextChipBold: { fontWeight: '700' },
+  contextChipText: { fontSize: typography.fontSize.body, color: '#3FC39E' },
+  contextChipBold: { fontWeight: typography.fontWeight.bold },
 
   // ── Lobby ───────────────────────────────────────────
   newChatBtn: {
@@ -938,7 +938,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: borderRadius.xl,
   },
-  newChatBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  newChatBtnText: { color: '#FFFFFF', fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold },
   sessionsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -947,7 +947,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: spacing.sm,
   },
-  sessionsTitle: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  sessionsTitle: { fontSize: typography.fontSize.body, fontWeight: typography.fontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.5 },
   sessionsList: { paddingHorizontal: spacing.md },
   sessionCard: {
     flexDirection: 'row',
@@ -962,11 +962,11 @@ const styles = StyleSheet.create({
   sessionCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   sessionIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   sessionCardInfo: { flex: 1 },
-  sessionCardTitle: { fontSize: 15, fontWeight: '600' },
-  sessionCardTime: { fontSize: 12, marginTop: 2 },
+  sessionCardTitle: { fontSize: typography.fontSize.heading3, fontWeight: typography.fontWeight.semibold },
+  sessionCardTime: { fontSize: typography.fontSize.bodySm, marginTop: 2 },
   emptyLobby: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },
-  emptyLobbyTitle: { fontSize: 17, fontWeight: '600', marginTop: 16 },
-  emptyLobbyText: { fontSize: 14, textAlign: 'center', marginTop: 6, lineHeight: 20 },
+  emptyLobbyTitle: { fontSize: 17, fontWeight: typography.fontWeight.semibold, marginTop: 16 },
+  emptyLobbyText: { fontSize: typography.fontSize.bodyLg, textAlign: 'center', marginTop: 6, lineHeight: 20 },
 
   // ── Chat Messages ───────────────────────────────────
   messageList: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.sm },
@@ -978,12 +978,12 @@ const styles = StyleSheet.create({
   bubbleUser: { borderBottomRightRadius: 4 },
   bubbleAI: { borderBottomLeftRadius: 4, borderWidth: 1 },
   bubbleUpsell: { borderWidth: 1, borderBottomLeftRadius: 4 },
-  textUser: { color: '#FFFFFF', fontSize: 15, lineHeight: 21 },
-  timeOutside: { fontSize: 11, marginTop: 4 },
+  textUser: { color: '#FFFFFF', fontSize: typography.fontSize.heading3, lineHeight: 21 },
+  timeOutside: { fontSize: typography.fontSize.caption, marginTop: 4 },
   timeOutsideLeft: { textAlign: 'left' as const, marginLeft: 2 },
   timeOutsideRight: { textAlign: 'right' as const, marginRight: 2 },
   upsellHeader: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
-  upsellLabel: { fontSize: 12, fontWeight: '700', color: '#F59E0B' },
+  upsellLabel: { fontSize: typography.fontSize.bodySm, fontWeight: typography.fontWeight.bold, color: '#F59E0B' },
   streamingCursor: { width: 2, height: 16, backgroundColor: '#3FC39E', marginTop: 4, borderRadius: 1 },
 
   // ── Typing Indicator ────────────────────────────────
@@ -994,8 +994,8 @@ const styles = StyleSheet.create({
   suggestionsCenter: { alignItems: 'center', paddingHorizontal: spacing.lg },
   welcomeAvatarLarge: { marginBottom: 16 },
   welcomeAvatarGradient: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
-  welcomeTitle: { fontSize: 20, fontWeight: '700', marginBottom: 6 },
-  welcomeSubtitle: { fontSize: 14, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  welcomeTitle: { fontSize: typography.fontSize.kpiValue, fontWeight: typography.fontWeight.bold, marginBottom: 6 },
+  welcomeSubtitle: { fontSize: typography.fontSize.bodyLg, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
   suggestChipsWrap: { width: '100%' },
   suggestChip: {
     borderWidth: 1,
@@ -1004,7 +1004,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginBottom: spacing.sm,
   },
-  suggestChipText: { fontSize: 14 },
+  suggestChipText: { fontSize: typography.fontSize.bodyLg },
 
   // ── Input Bar ───────────────────────────────────────
   inputBar: {
@@ -1022,7 +1022,7 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === 'ios' ? spacing.sm : 4,
     maxHeight: 120,
   },
-  input: { fontSize: 15, maxHeight: 100 },
+  input: { fontSize: typography.fontSize.heading3, maxHeight: 100 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
 
   // ── Map Image ─────────────────────────────────────
@@ -1047,8 +1047,8 @@ const styles = StyleSheet.create({
   },
   mapOverlayText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: typography.fontSize.bodySm,
+    fontWeight: typography.fontWeight.semibold,
     textAlign: 'center',
   },
 });

@@ -6,13 +6,14 @@ export default function EmergencyContactScreen() {
     <PreferenceScreen
       icon={Call}
       title="Emergency contact"
-      description="Phone number of someone we can reach in case of emergency"
+      description="This can be a family member, best friend, or anyone you trust. We'll only contact them if something happens to you while traveling — your safety is our priority."
       placeholder="Enter phone number"
       inputType="text"
       keyboardType="phone-pad"
       currentStep={7}
       totalSteps={10}
       nextRoute="/(onboarding)/travel-preferences"
+      showBackButton={true}
       fieldName="emergencyContactPhone"
     />
   );

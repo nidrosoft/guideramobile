@@ -1,5 +1,9 @@
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { typography, spacing, borderRadius } from '@/styles';
+
+const { width: screenWidth } = Dimensions.get('window');
+const CARD_WIDTH = screenWidth * 0.72;
 import { useTheme } from '@/context/ThemeContext';
 import { Location, Star1, Eye } from 'iconsax-react-native';
 import SaveButton from '@/components/common/SaveButton';
@@ -30,7 +34,7 @@ export default function MustSeeCard({
     <View style={[styles.container, { backgroundColor: colors.bgCard }]}>
       {/* Image Section */}
       <View style={styles.imageContainer}>
-        <Image source={{ uri: imageUrl }} style={styles.image} />
+        <Image source={imageUrl} style={styles.image} contentFit="cover" transition={200} />
         
         {/* Badge */}
         <View style={styles.badge}>
@@ -57,10 +61,12 @@ export default function MustSeeCard({
             <Star1 size={14} color="#FFD700" variant="Bold" />
             <Text style={[styles.ratingText, { color: colors.textPrimary }]}>{rating}</Text>
           </View>
-          <View style={styles.visitorsContainer}>
-            <Eye size={14} color={colors.textSecondary} variant="Bold" />
-            <Text style={[styles.visitorsText, { color: colors.textSecondary }]}>{visitors}</Text>
-          </View>
+          {visitors ? (
+            <View style={styles.visitorsContainer}>
+              <Eye size={14} color={colors.textSecondary} variant="Bold" />
+              <Text style={[styles.visitorsText, { color: colors.textSecondary }]}>{visitors}</Text>
+            </View>
+          ) : null}
         </View>
       </View>
     </View>
@@ -69,8 +75,8 @@ export default function MustSeeCard({
 
 const styles = StyleSheet.create({
   container: {
-    width: 280,
-    borderRadius: 20,
+    width: CARD_WIDTH,
+    borderRadius: borderRadius.xl,
     padding: spacing.sm,
     marginRight: spacing.md,
     borderWidth: 1,
@@ -78,8 +84,8 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     width: '100%',
-    height: 200,
-    borderRadius: 16,
+    aspectRatio: 4 / 3,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
     position: 'relative',
     marginBottom: spacing.md,
@@ -102,27 +108,15 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.semibold,
     color: '#1a1a1a',
   },
-  bookmarkButton: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   infoContainer: {
     paddingHorizontal: spacing.sm,
-    height: 110,
+    flex: 1,
   },
   name: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
     marginBottom: 4,
     lineHeight: 22,
-    height: 44,
   },
   category: {
     fontSize: typography.fontSize.xs,

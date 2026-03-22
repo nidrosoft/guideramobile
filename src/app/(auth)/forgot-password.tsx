@@ -1,9 +1,11 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Lock } from 'iconsax-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import CloseIcon from '@/components/common/icons/CloseIcon';
 import { colors, typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -11,7 +13,9 @@ import { useSignIn } from '@clerk/clerk-expo';
 
 export default function ForgotPassword() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { colors: tc, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const { isLoaded, signIn } = useSignIn();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -67,6 +71,10 @@ export default function ForgotPassword() {
       setError('Password must be at least 8 characters');
       return;
     }
+    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      setError('Password must include uppercase, lowercase, and a number');
+      return;
+    }
 
     setIsLoading(true);
     setError('');
@@ -101,66 +109,76 @@ export default function ForgotPassword() {
       >
         <StatusBar style={isDark ? 'light' : 'dark'} />
         
-        <TouchableOpacity style={styles.closeButton} onPress={handleBack}>
+        <TouchableOpacity style={[styles.closeButton, { top: insets.top + 10 }]} onPress={handleBack}>
           <CloseIcon size={24} color={tc.textPrimary} />
         </TouchableOpacity>
 
-        <View style={styles.content}>
-          <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
-            <Lock size={32} color={tc.textPrimary} variant="Outline" />
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.content, { paddingTop: insets.top + 80 }]}>
+            <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
+              <Lock size={32} color={tc.textPrimary} variant="Outline" />
+            </View>
+
+            <Text style={[styles.title, { color: tc.textPrimary }]}>{t('auth.forgotPassword.resetTitle')}</Text>
+            <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
+              {t('auth.forgotPassword.resetSubtitle', { email })}
+            </Text>
+
+            <View style={styles.inputContainer}>
+              <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>{t('auth.forgotPassword.verificationCode')}</Text>
+              <TextInput
+                style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
+                placeholder={t('auth.forgotPassword.codePlaceholder')}
+                placeholderTextColor={tc.textTertiary}
+                keyboardType="number-pad"
+                accessibilityLabel="Verification code"
+                value={code}
+                onChangeText={(text) => {
+                  setCode(text);
+                  setError('');
+                }}
+                autoFocus
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>{t('auth.forgotPassword.newPassword')}</Text>
+              <TextInput
+                style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
+                placeholder={t('auth.forgotPassword.passwordPlaceholder')}
+                placeholderTextColor={tc.textTertiary}
+                secureTextEntry
+                accessibilityLabel="New password"
+                value={newPassword}
+                onChangeText={(text) => {
+                  setNewPassword(text);
+                  setError('');
+                }}
+              />
+            </View>
+
+            {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
+
+            <TouchableOpacity
+              style={[styles.resetButton, { backgroundColor: tc.primary }, (!code || !newPassword || isLoading) && { backgroundColor: tc.gray300 }]}
+              onPress={handleConfirmReset}
+              disabled={!code || !newPassword || isLoading}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Reset password"
+            >
+              {isLoading ? (
+                <ActivityIndicator color={tc.white} />
+              ) : (
+                <Text style={[styles.resetButtonText, { color: tc.white }]}>{t('auth.forgotPassword.resetButton')}</Text>
+              )}
+            </TouchableOpacity>
           </View>
-
-          <Text style={[styles.title, { color: tc.textPrimary }]}>Reset your password</Text>
-          <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
-            Enter the code sent to {email} and your new password.
-          </Text>
-
-          <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Verification Code</Text>
-            <TextInput
-              style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
-              placeholder="Enter 6-digit code"
-              placeholderTextColor={tc.textTertiary}
-              keyboardType="number-pad"
-              value={code}
-              onChangeText={(text) => {
-                setCode(text);
-                setError('');
-              }}
-              autoFocus
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>New Password</Text>
-            <TextInput
-              style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
-              placeholder="At least 8 characters"
-              placeholderTextColor={tc.textTertiary}
-              secureTextEntry
-              value={newPassword}
-              onChangeText={(text) => {
-                setNewPassword(text);
-                setError('');
-              }}
-            />
-          </View>
-
-          {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
-
-          <TouchableOpacity
-            style={[styles.resetButton, { backgroundColor: tc.primary }, (!code || !newPassword || isLoading) && { backgroundColor: tc.gray300 }]}
-            onPress={handleConfirmReset}
-            disabled={!code || !newPassword || isLoading}
-            activeOpacity={0.8}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={tc.white} />
-            ) : (
-              <Text style={[styles.resetButtonText, { color: tc.white }]}>Reset Password</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     );
   }
@@ -169,30 +187,32 @@ export default function ForgotPassword() {
     return (
       <View style={[styles.container, { backgroundColor: tc.background }]}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
-        
-        <TouchableOpacity style={styles.closeButton} onPress={handleBack}>
+
+        <TouchableOpacity style={[styles.closeButton, { top: insets.top + 10 }]} onPress={handleBack}>
           <CloseIcon size={24} color={tc.textPrimary} />
         </TouchableOpacity>
 
-        <View style={styles.successContainer}>
-          <View style={[styles.successIconContainer, { backgroundColor: `${tc.primary}15` }]}>
-            <Lock size={48} color={tc.primary} variant="Bold" />
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.successContainer}>
+            <View style={[styles.successIconContainer, { backgroundColor: `${tc.primary}15` }]}>
+              <Lock size={48} color={tc.primary} variant="Bold" />
+            </View>
+            <Text style={[styles.successTitle, { color: tc.textPrimary }]}>{t('auth.forgotPassword.successTitle')}</Text>
+            <Text style={[styles.successText, { color: tc.textSecondary }]}>
+              {t('auth.forgotPassword.successText')}
+            </Text>
+            <TouchableOpacity
+              style={[styles.backToLoginButton, { backgroundColor: tc.primary }]}
+              onPress={() => router.push('/(auth)/sign-in')}
+            >
+              <Text style={[styles.backToLoginText, { color: tc.white }]}>{t('auth.forgotPassword.backToSignIn')}</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={[styles.successTitle, { color: tc.textPrimary }]}>Check your email</Text>
-          <Text style={[styles.successText, { color: tc.textSecondary }]}>
-            We've sent password reset instructions to{'\n'}
-            <Text style={[styles.emailHighlight, { color: tc.textPrimary }]}>{email}</Text>
-          </Text>
-          <Text style={[styles.successSubtext, { color: tc.textTertiary }]}>
-            Click the link in the email to reset your password.
-          </Text>
-          <TouchableOpacity
-            style={[styles.backToLoginButton, { backgroundColor: tc.primary }]}
-            onPress={() => router.push('/(auth)/email-signin' as any)}
-          >
-            <Text style={[styles.backToLoginText, { color: tc.white }]}>Back to Sign In</Text>
-          </TouchableOpacity>
-        </View>
+        </ScrollView>
       </View>
     );
   }
@@ -204,60 +224,69 @@ export default function ForgotPassword() {
     >
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
-      <TouchableOpacity style={styles.closeButton} onPress={handleBack}>
+      <TouchableOpacity style={[styles.closeButton, { top: insets.top + 10 }]} onPress={handleBack}>
         <CloseIcon size={24} color={tc.textPrimary} />
       </TouchableOpacity>
 
-      <View style={styles.content}>
-        <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
-          <Lock size={32} color={tc.textPrimary} variant="Outline" />
-        </View>
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.content, { paddingTop: insets.top + 80 }]}>
+          <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
+            <Lock size={32} color={tc.textPrimary} variant="Outline" />
+          </View>
 
-        <Text style={[styles.title, { color: tc.textPrimary }]}>Forgot password?</Text>
-        <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
-          Enter your email address and we'll send you instructions to reset your password.
-        </Text>
+          <Text style={[styles.title, { color: tc.textPrimary }]}>{t('auth.forgotPassword.title')}</Text>
+          <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
+            {t('auth.forgotPassword.subtitle')}
+          </Text>
 
-        <View style={styles.inputContainer}>
-          <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Email</Text>
-          <TextInput
-            style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
-            placeholder="you@example.com"
-            placeholderTextColor={tc.textTertiary}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            value={email}
-            onChangeText={(text) => {
-              setEmail(text);
-              setError('');
-            }}
-            autoFocus
-          />
-        </View>
+          <View style={styles.inputContainer}>
+            <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>{t('auth.forgotPassword.email')}</Text>
+            <TextInput
+              style={[styles.input, { borderColor: tc.borderMedium, color: tc.textPrimary, backgroundColor: tc.bgElevated }]}
+              placeholder={t('auth.forgotPassword.emailPlaceholder')}
+              placeholderTextColor={tc.textTertiary}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              accessibilityLabel="Email address"
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                setError('');
+              }}
+              autoFocus
+            />
+          </View>
 
-        {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
+          {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
 
-        <TouchableOpacity
-          style={[styles.resetButton, { backgroundColor: tc.primary }, (!isFormValid || isLoading) && { backgroundColor: tc.gray300 }]}
-          onPress={handleResetPassword}
-          disabled={!isFormValid || isLoading}
-          activeOpacity={0.8}
-        >
-          {isLoading ? (
-            <ActivityIndicator color={tc.white} />
-          ) : (
-            <Text style={[styles.resetButtonText, { color: tc.white }]}>Send Reset Link</Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: tc.textSecondary }]}>Remember your password? </Text>
-          <TouchableOpacity onPress={() => router.push('/(auth)/email-signin' as any)}>
-            <Text style={[styles.footerLink, { color: tc.primary }]}>Sign In</Text>
+          <TouchableOpacity
+            style={[styles.resetButton, { backgroundColor: tc.primary }, (!isFormValid || isLoading) && { backgroundColor: tc.gray300 }]}
+            onPress={handleResetPassword}
+            disabled={!isFormValid || isLoading}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Send reset link"
+          >
+            {isLoading ? (
+              <ActivityIndicator color={tc.white} />
+            ) : (
+              <Text style={[styles.resetButtonText, { color: tc.white }]}>{t('auth.forgotPassword.sendResetLink')}</Text>
+            )}
           </TouchableOpacity>
+
+          <View style={styles.footer}>
+            <Text style={[styles.footerText, { color: tc.textSecondary }]}>{t('auth.forgotPassword.rememberPassword')} </Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/sign-in')} accessibilityRole="button" accessibilityLabel="Sign in">
+              <Text style={[styles.footerLink, { color: tc.primary }]}>{t('auth.forgotPassword.signIn')}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }

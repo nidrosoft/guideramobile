@@ -14,6 +14,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { logger } from '@/services/logging';
 import { analytics, EVENTS } from '@/services/analytics';
 import { supabase } from '@/lib/supabase/client';
@@ -92,7 +93,7 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
 };
 
 const STORAGE_KEYS = {
-  PUSH_TOKEN: '@guidera_push_token',
+  PUSH_TOKEN: 'guidera_push_token',
   PREFERENCES: '@guidera_notification_prefs',
 };
 
@@ -503,13 +504,13 @@ class NotificationService {
         // Handle deep link navigation
         if (data?.deepLink) {
           try {
-            router.push(data.deepLink as any);
+            router.push(data.deepLink);
           } catch (navErr) {
             logger.warn('Deep link navigation failed', { deepLink: data.deepLink, error: navErr });
           }
         } else if (data?.actionUrl) {
           try {
-            router.push(data.actionUrl as any);
+            router.push(data.actionUrl);
           } catch (navErr) {
             logger.warn('Action URL navigation failed', { actionUrl: data.actionUrl, error: navErr });
           }
@@ -605,7 +606,17 @@ class NotificationService {
 
   private async loadPushToken(): Promise<void> {
     try {
-      const token = await AsyncStorage.getItem(STORAGE_KEYS.PUSH_TOKEN);
+      // Try SecureStore first (new location), fall back to AsyncStorage (legacy)
+      let token = await SecureStore.getItemAsync(STORAGE_KEYS.PUSH_TOKEN);
+      if (!token) {
+        // Migrate from AsyncStorage if present
+        token = await AsyncStorage.getItem(STORAGE_KEYS.PUSH_TOKEN);
+        if (token) {
+          await SecureStore.setItemAsync(STORAGE_KEYS.PUSH_TOKEN, token);
+          await AsyncStorage.removeItem(STORAGE_KEYS.PUSH_TOKEN);
+          logger.info('Push token migrated from AsyncStorage to SecureStore');
+        }
+      }
       if (token) {
         this.pushToken = token;
       }
@@ -616,7 +627,7 @@ class NotificationService {
 
   private async savePushToken(token: string): Promise<void> {
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.PUSH_TOKEN, token);
+      await SecureStore.setItemAsync(STORAGE_KEYS.PUSH_TOKEN, token);
     } catch (error) {
       logger.error('Failed to save push token', error);
     }

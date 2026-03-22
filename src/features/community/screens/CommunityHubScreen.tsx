@@ -30,6 +30,7 @@ import {
   Message,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -51,17 +52,18 @@ import { styles } from './CommunityHubScreen.styles';
 
 type TabType = 'discover' | 'guides' | 'groups' | 'events';
 
-const TABS: { id: TabType; label: string; icon: any }[] = [
-  { id: 'discover', label: 'Discover', icon: Discover },
-  { id: 'guides', label: 'Guides', icon: Map1 },
-  { id: 'groups', label: 'Groups', icon: People },
-  { id: 'events', label: 'Events', icon: Calendar },
+const TAB_KEYS: { id: TabType; labelKey: string; icon: any }[] = [
+  { id: 'discover', labelKey: 'connect.tabs.discover', icon: Discover },
+  { id: 'guides', labelKey: 'connect.tabs.guides', icon: Map1 },
+  { id: 'groups', labelKey: 'connect.tabs.groups', icon: People },
+  { id: 'events', labelKey: 'connect.tabs.events', icon: Calendar },
 ];
 
 export default function CommunityHubScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { t } = useTranslation();
   const { profile } = useAuth();
   const userId = profile?.id;
 
@@ -81,7 +83,7 @@ export default function CommunityHubScreen() {
   const [showEventSheet, setShowEventSheet] = useState(false);
   const [isVerifiedGuide, setIsVerifiedGuide] = useState(false);
   const [userCity, setUserCity] = useState<string | undefined>();
-  const isPremium = true;
+  const isPremium = false; // TODO: [PREMIUM] Wire to actual subscription/membership status from Supabase
 
   // Check partner/guide verification status + user city
   useEffect(() => {
@@ -132,9 +134,10 @@ export default function CommunityHubScreen() {
         event: 'INSERT',
         schema: 'public',
         table: 'chat_messages',
+        filter: `conversation_id=neq.`,
       }, (payload) => {
         const msg = payload.new as any;
-        // Only count messages from others (not self)
+        // Only count messages from others in conversations the user participates in
         if (msg.user_id !== userId && msg.conversation_id) {
           setMessageCount(prev => prev + 1);
         }
@@ -146,37 +149,37 @@ export default function CommunityHubScreen() {
   // Navigation handlers
   const handleSearch = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/community/search' as any);
+    router.push('/community/search');
   };
 
   const handleLiveMap = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/community/live-map' as any);
+    router.push('/community/live-map');
   };
 
   const handleMessages = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/community/messages' as any);
+    router.push('/community/messages');
   };
 
   const handleNotifications = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/community/notifications' as any);
+    router.push('/community/notifications');
   };
 
   const handleCommunityPress = (communityId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/community/${communityId}` as any);
+    router.push(`/community/${communityId}`);
   };
 
   const handleTravelerPress = (userId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/community/buddy/${userId}` as any);
+    router.push(`/community/buddy/${userId}`);
   };
 
   const handleEventPress = (eventId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/community/event/${eventId}` as any);
+    router.push(`/community/event/${eventId}`);
   };
 
   const handleCreateGroup = () => {
@@ -197,9 +200,9 @@ export default function CommunityHubScreen() {
             onGroupPress={handleCommunityPress}
             onTravelerPress={handleTravelerPress}
             onEventPress={handleEventPress}
-            onSeeAllGroups={() => router.push('/community/trending' as any)}
-            onSeeAllTravelers={() => router.push('/community/travelers' as any)}
-            onSeeAllEvents={() => router.push('/community/all-events' as any)}
+            onSeeAllGroups={() => router.push('/community/trending')}
+            onSeeAllTravelers={() => router.push('/community/travelers')}
+            onSeeAllEvents={() => router.push('/community/all-events')}
             isPremium={isPremium}
           />
         );
@@ -214,7 +217,7 @@ export default function CommunityHubScreen() {
             loadingMyGroups={loadingMyGroups}
             onGroupPress={handleCommunityPress}
             onCreateGroup={handleCreateGroup}
-            onSeeAllMyGroups={() => router.push('/community/my-groups' as any)}
+            onSeeAllMyGroups={() => router.push('/community/my-groups')}
             onRefresh={refetchMyGroups}
             isVerifiedGuide={isVerifiedGuide}
           />
@@ -259,13 +262,15 @@ export default function CommunityHubScreen() {
       {/* Header */}
       <View style={[styles.headerContainer, { paddingTop: insets.top, backgroundColor: tc.background }]}>
         <View style={styles.header}>
-          <Text style={[styles.title, { color: tc.textPrimary }]}>Connect</Text>
+          <Text style={[styles.title, { color: tc.textPrimary }]}>{t('connect.title')}</Text>
           <View style={styles.headerRight}>
             {/* Search Icon */}
             <TouchableOpacity
               style={[styles.headerIconButton, { backgroundColor: tc.bgElevated }]}
               onPress={handleSearch}
               activeOpacity={0.7}
+              accessibilityRole="search"
+              accessibilityLabel="Search community"
             >
               <SearchNormal1 size={20} color={tc.textPrimary} />
             </TouchableOpacity>
@@ -275,6 +280,9 @@ export default function CommunityHubScreen() {
               style={[styles.headerIconButton, { backgroundColor: tc.bgElevated }]}
               onPress={handleLiveMap}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Live map"
+              accessibilityHint="View nearby travelers on a map"
             >
               <Map1 size={20} color={tc.textPrimary} />
               {pulseCount > 0 && (
@@ -291,6 +299,8 @@ export default function CommunityHubScreen() {
               style={[styles.headerIconButton, { backgroundColor: tc.bgElevated }]}
               onPress={handleMessages}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={messageCount > 0 ? `Messages, ${messageCount} unread` : 'Messages'}
             >
               <Message size={20} color={tc.textPrimary} />
               {messageCount > 0 && (
@@ -307,6 +317,8 @@ export default function CommunityHubScreen() {
               style={[styles.headerIconButton, { backgroundColor: tc.bgElevated }]}
               onPress={handleNotifications}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={notificationCount > 0 ? `Notifications, ${notificationCount} unread` : 'Notifications'}
             >
               <Notification size={20} color={tc.textPrimary} />
               {notificationCount > 0 && (
@@ -328,7 +340,7 @@ export default function CommunityHubScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabs}
         >
-          {TABS.map(tab => {
+          {TAB_KEYS.map(tab => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
             return (
@@ -344,6 +356,9 @@ export default function CommunityHubScreen() {
                   setActiveTab(tab.id);
                 }}
                 activeOpacity={0.7}
+                accessibilityRole="tab"
+                accessibilityLabel={t(tab.labelKey)}
+                accessibilityState={{ selected: isActive }}
               >
                 <Icon
                   size={18}
@@ -351,7 +366,7 @@ export default function CommunityHubScreen() {
                   variant={isActive ? 'Bold' : 'Outline'}
                 />
                 <Text style={[styles.tabText, { color: tc.textSecondary }, isActive && styles.tabTextActive]}>
-                  {tab.label}
+                  {t(tab.labelKey)}
                 </Text>
               </TouchableOpacity>
             );
@@ -370,7 +385,7 @@ export default function CommunityHubScreen() {
         onClose={() => setShowGroupSheet(false)}
         onCreate={() => {
           setShowGroupSheet(false);
-          router.push('/community/create' as any);
+          router.push('/community/create');
         }}
       />
       <EventExplainerSheet
@@ -378,7 +393,7 @@ export default function CommunityHubScreen() {
         onClose={() => setShowEventSheet(false)}
         onCreate={() => {
           setShowEventSheet(false);
-          router.push('/community/create-event' as any);
+          router.push('/community/create-event');
         }}
       />
     </View>

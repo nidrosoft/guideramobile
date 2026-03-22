@@ -3,23 +3,61 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const FEEDBACK_EMAIL = "feedback@guidera.one";
 
+// SEC-05: Simple in-memory rate limiter (per IP, resets on cold start)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const MAX_REPORTS_PER_HOUR = 5;
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + 3600000 });
+    return false;
+  }
+  entry.count++;
+  if (entry.count > MAX_REPORTS_PER_HOUR) return true;
+  return false;
+}
+
 Deno.serve(async (req: Request) => {
+  const corsH = {
+    "Access-Control-Allow-Origin": "",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  };
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-      },
-    });
+    return new Response("ok", { headers: corsH });
   }
 
   try {
-    const { errorName, errorMessage, componentStack, userEmail, deviceInfo, appVersion } = await req.json();
+    // SEC-05: Rate limit by IP — 5 reports per hour max
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() 
+      || req.headers.get("cf-connecting-ip") 
+      || "unknown";
+    if (isRateLimited(clientIp)) {
+      return new Response(JSON.stringify({ error: "Rate limit exceeded. Max 5 crash reports per hour." }), {
+        status: 429,
+        headers: { ...corsH, "Content-Type": "application/json", "Retry-After": "3600" },
+      });
+    }
+
+    const body = await req.json();
+
+    // SEC-05: Payload size validation
+    const bodyStr = JSON.stringify(body);
+    if (bodyStr.length > 50000) {
+      return new Response(JSON.stringify({ error: "Payload too large" }), {
+        status: 413,
+        headers: { ...corsH, "Content-Type": "application/json" },
+      });
+    }
+
+    const { errorName, errorMessage, componentStack, userEmail, deviceInfo, appVersion } = body;
 
     if (!errorName || !errorMessage) {
       return new Response(JSON.stringify({ error: "Missing error details" }), {
         status: 400,
-        headers: { "Content-Type": "application/json" },
+        headers: { ...corsH, "Content-Type": "application/json" },
       });
     }
 

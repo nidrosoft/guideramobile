@@ -29,7 +29,7 @@ import {
 } from 'iconsax-react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import { spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius, colors as staticColors } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import {
@@ -166,11 +166,11 @@ export default function CompensationScreen() {
   const typeInfo = (t: ClaimType) => CLAIM_TYPES.find(x => x.id === t) || CLAIM_TYPES[CLAIM_TYPES.length - 1];
   const verdictStyle = (v?: string) => {
     switch (v) {
-      case 'eligible': return { bg: '#10B98115', clr: '#10B981', lbl: 'Eligible' };
-      case 'likely_eligible': return { bg: '#3B82F615', clr: '#3B82F6', lbl: 'Likely Eligible' };
-      case 'unlikely_eligible': return { bg: '#F59E0B15', clr: '#F59E0B', lbl: 'Unlikely' };
-      case 'not_eligible': return { bg: '#EF444415', clr: '#EF4444', lbl: 'Not Eligible' };
-      default: return { bg: '#6B728015', clr: '#6B7280', lbl: 'Pending' };
+      case 'eligible': return { bg: `${colors.success}15`, clr: colors.success, lbl: 'Eligible' };
+      case 'likely_eligible': return { bg: `${colors.info}15`, clr: colors.info, lbl: 'Likely Eligible' };
+      case 'unlikely_eligible': return { bg: `${colors.warning}15`, clr: colors.warning, lbl: 'Unlikely' };
+      case 'not_eligible': return { bg: `${colors.error}15`, clr: colors.error, lbl: 'Not Eligible' };
+      default: return { bg: `${colors.gray300}15`, clr: colors.gray300, lbl: 'Pending' };
     }
   };
 
@@ -231,7 +231,7 @@ export default function CompensationScreen() {
   // ── Render Claim Card ──────────────────
   const renderClaim = (claim: Claim) => {
     const ti = typeInfo(claim.type);
-    const sc = CLAIM_STATUS_CONFIG[claim.status] || { label: claim.status, color: '#6B7280' };
+    const sc = CLAIM_STATUS_CONFIG[claim.status] || { label: claim.status, color: colors.gray300 };
     const isAna = analyzingClaimId === claim.id;
     const isExp = expandedClaimId === claim.id;
     const hasAI = !!claim.aiAnalysis;
@@ -243,7 +243,7 @@ export default function CompensationScreen() {
       <TouchableOpacity key={claim.id} style={[styles.card, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}
         activeOpacity={0.7} onPress={() => setExpandedClaimId(isExp ? null : claim.id)}>
         {isRes && (
-          <View style={[styles.resBanner, { backgroundColor: isPaid ? '#10B981' : '#EF4444' }]}>
+          <View style={[styles.resBanner, { backgroundColor: isPaid ? colors.success : colors.error }]}>
             <Text style={styles.resBannerTxt}>{isPaid ? 'Successfully Claimed' : sc.label}</Text>
           </View>
         )}
@@ -299,8 +299,8 @@ export default function CompensationScreen() {
         {!hasAI && !isRes && (
           <TouchableOpacity style={[styles.anaBtn, { backgroundColor: colors.primary }]}
             onPress={() => handleAnalyze(claim.id)} disabled={isAna}>
-            {isAna ? <ActivityIndicator size="small" color="#FFF" /> : (
-              <><MagicStar size={18} color="#FFF" variant="Bold" /><Text style={styles.anaBtnTxt}>Analyze with AI</Text></>
+            {isAna ? <ActivityIndicator size="small" color={colors.white} /> : (
+              <><MagicStar size={18} color={colors.white} variant="Bold" /><Text style={styles.anaBtnTxt}>Analyze with AI</Text></>
             )}
           </TouchableOpacity>
         )}
@@ -312,7 +312,7 @@ export default function CompensationScreen() {
                 <Text style={[styles.expTitle, { color: colors.textPrimary }]}>Eligibility Analysis</Text>
                 <Text style={[styles.expText, { color: colors.textSecondary }]}>{claim.aiAnalysis.eligibility.reasoning}</Text>
                 {claim.aiAnalysis.eligibility.caveats?.map((cv: string, i: number) => (
-                  <Text key={i} style={[styles.cavTxt, { color: '#F59E0B' }]}>⚠️ {cv}</Text>
+                  <Text key={i} style={[styles.cavTxt, { color: colors.warning }]}>⚠️ {cv}</Text>
                 ))}
               </View>
             )}
@@ -384,9 +384,9 @@ export default function CompensationScreen() {
             )}
             {claim.claimDeadline?.deadlineDate && (
               <View style={[styles.dlCard, {
-                backgroundColor: claim.claimDeadline.urgency === 'critical' ? '#EF444415' : claim.claimDeadline.urgency === 'high' ? '#F59E0B15' : `${colors.primary}10`,
+                backgroundColor: claim.claimDeadline.urgency === 'critical' ? `${colors.error}15` : claim.claimDeadline.urgency === 'high' ? `${colors.warning}15` : `${colors.primary}10`,
               }]}>
-                <Clock size={16} color={claim.claimDeadline.urgency === 'critical' ? '#EF4444' : claim.claimDeadline.urgency === 'high' ? '#F59E0B' : colors.primary} />
+                <Clock size={16} color={claim.claimDeadline.urgency === 'critical' ? colors.error : claim.claimDeadline.urgency === 'high' ? colors.warning : colors.primary} />
                 <View style={{ flex: 1, marginLeft: spacing.sm }}>
                   <Text style={[styles.dlTxt, { color: colors.textPrimary }]}>Deadline: {claim.claimDeadline.deadlineDate}</Text>
                   <Text style={[styles.dlNote, { color: colors.textSecondary }]}>{claim.claimDeadline.note}</Text>
@@ -449,7 +449,7 @@ export default function CompensationScreen() {
               </View>
               <View style={[styles.sumDiv, { backgroundColor: colors.borderSubtle }]} />
               <View style={styles.sumItem}>
-                <TickCircle size={20} color="#10B981" variant="Bold" />
+                <TickCircle size={20} color={colors.success} variant="Bold" />
                 <Text style={[styles.sumVal, { color: colors.textPrimary }]}>{fmtCur(stats.totalCompletedAmount)}</Text>
                 <Text style={[styles.sumLbl, { color: colors.textSecondary }]}>Recovered</Text>
               </View>
@@ -467,7 +467,7 @@ export default function CompensationScreen() {
             {TABS.map(tab => (
               <TouchableOpacity key={tab.id} style={[styles.tab, activeTab === tab.id && { backgroundColor: colors.primary }]}
                 onPress={() => setActiveTab(tab.id)}>
-                <Text style={[styles.tabTxt, { color: activeTab === tab.id ? '#FFF' : colors.textSecondary }]}>{tab.label}</Text>
+                <Text style={[styles.tabTxt, { color: activeTab === tab.id ? colors.white : colors.textSecondary }]}>{tab.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
   // Claim Card
   card: { borderRadius: borderRadius['2xl'], borderWidth: 1, marginBottom: spacing.md, overflow: 'hidden' },
   resBanner: { paddingVertical: spacing.sm, alignItems: 'center' },
-  resBannerTxt: { fontSize: typography.fontSize.sm, fontWeight: '700', color: '#FFF' },
+  resBannerTxt: { fontSize: typography.fontSize.sm, fontWeight: '700', color: staticColors.white },
   cardHdr: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md, paddingBottom: 0 },
   cardHdrLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   cardType: { fontSize: typography.fontSize.base, fontWeight: '600' },
@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
   regTxt: { fontSize: typography.fontSize.sm },
   // Analyze
   anaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginHorizontal: spacing.md, marginTop: spacing.md, marginBottom: spacing.md, paddingVertical: 12, borderRadius: borderRadius.lg },
-  anaBtnTxt: { fontSize: typography.fontSize.sm, fontWeight: '600', color: '#FFF' },
+  anaBtnTxt: { fontSize: typography.fontSize.sm, fontWeight: '600', color: staticColors.white },
   // Expanded
   expSec: { borderTopWidth: 1, marginTop: spacing.md, paddingTop: spacing.md },
   expBlk: { paddingHorizontal: spacing.md, marginBottom: spacing.md },
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
   compNote: { fontSize: typography.fontSize.xs, marginTop: 2 },
   protoStep: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.sm },
   stepNum: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  stepNumTxt: { fontSize: 12, fontWeight: '700', color: '#FFF' },
+  stepNumTxt: { fontSize: 12, fontWeight: '700', color: staticColors.white },
   stepAct: { fontSize: typography.fontSize.sm, fontWeight: '600' },
   stepRsn: { fontSize: typography.fontSize.xs, marginTop: 2 },
   ltrHdr: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },

@@ -31,7 +31,7 @@ import {
   Coffee,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { spacing, typography, borderRadius as br } from '@/styles';
+import { spacing, typography, borderRadius as br, fontFamily } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useHotelStore } from '../../../stores/useHotelStore';
@@ -298,7 +298,7 @@ const localStyles = StyleSheet.create({
   },
 
   hotelName: {
-    fontFamily: 'HostGrotesk-Bold',
+    fontFamily: fontFamily.display,
     fontSize: typography.fontSize['2xl'],
     marginBottom: spacing.xs,
   },
@@ -310,7 +310,7 @@ const localStyles = StyleSheet.create({
   ratingValue: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.bold, color: '#fff' },
   ratingLabel: { fontSize: typography.fontSize.sm },
 
-  sectionTitle: { fontFamily: 'Rubik-SemiBold', fontSize: typography.fontSize.lg, marginBottom: spacing.md },
+  sectionTitle: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.lg, marginBottom: spacing.md },
 
   policiesGrid: { flexDirection: 'row', gap: spacing.md },
   policyItem: { flex: 1, flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: br.lg, gap: spacing.sm },

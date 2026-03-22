@@ -25,6 +25,7 @@ import {
   Share,
   Modal,
   FlatList,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -46,7 +47,7 @@ import {
   Heart,
 } from 'iconsax-react-native';
 import { Image } from 'expo-image';
-import { spacing, typography } from '@/styles';
+import { spacing, typography, fontFamily } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { localExperiencesService } from '@/services/localExperiences.service';
 import type { LocalExperience } from '@/services/localExperiences.service';
@@ -54,11 +55,12 @@ import { useSaveExperience } from '@/hooks/useSaveExperience';
 import { SkeletonDetailPage } from '@/components/common/SkeletonLoader';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PHOTO_HEIGHT = 340;
-const PRIMARY = '#3FC39E';
+// Use colors.primary from theme for dynamic theming
 
 export default function LocalExperienceDetailScreen() {
   const router = useRouter();
+  const { height: screenHeight } = useWindowDimensions();
+  const PHOTO_HEIGHT = Math.min(340, screenHeight * 0.4);
   const params = useLocalSearchParams<{ id: string }>();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -195,12 +197,12 @@ export default function LocalExperienceDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* ─── Photo Gallery ─── */}
-        <View style={styles.photoContainer}>
+        <View style={[styles.photoContainer, { height: PHOTO_HEIGHT }]}>
           <FlatList
             data={photos}
             renderItem={({ item, index }) => (
               <TouchableOpacity activeOpacity={0.9} onPress={() => openCarousel(index)}>
-                <Image source={item} style={styles.photo} contentFit="cover" />
+                <Image source={item} style={[styles.photo, { height: PHOTO_HEIGHT }]} contentFit="cover" />
               </TouchableOpacity>
             )}
             keyExtractor={(_, i) => i.toString()}
@@ -221,14 +223,14 @@ export default function LocalExperienceDetailScreen() {
           {/* Nav buttons */}
           <View style={[styles.heroNav, { top: insets.top + 8 }]}>
             <TouchableOpacity onPress={handleBack} style={styles.navBtn}>
-              <ArrowLeft2 size={22} color="#FFF" />
+              <ArrowLeft2 size={22} color={colors.white} />
             </TouchableOpacity>
             <View style={styles.navRight}>
               <TouchableOpacity onPress={toggleSave} style={styles.navBtn}>
-                <Heart size={20} color={isSaved ? '#FF4757' : '#FFF'} variant={isSaved ? 'Bold' : 'Outline'} />
+                <Heart size={20} color={isSaved ? colors.error : '#FFF'} variant={isSaved ? 'Bold' : 'Outline'} />
               </TouchableOpacity>
               <TouchableOpacity onPress={handleShare} style={styles.navBtn}>
-                <ExportSquare size={20} color="#FFF" />
+                <ExportSquare size={20} color={colors.white} />
               </TouchableOpacity>
             </View>
           </View>
@@ -245,7 +247,7 @@ export default function LocalExperienceDetailScreen() {
           {/* Photo count badge */}
           {photos.length > 1 && (
             <TouchableOpacity style={styles.photoCountBadge} onPress={() => openCarousel(activePhoto)}>
-              <Ionicons name="images-outline" size={14} color="#FFF" />
+              <Ionicons name="images-outline" size={14} color={colors.white} />
               <Text style={styles.photoCountText}>{photos.length}</Text>
             </TouchableOpacity>
           )}
@@ -262,7 +264,7 @@ export default function LocalExperienceDetailScreen() {
             ) : null}
             {freeCancellation ? (
               <View style={[styles.badge, { backgroundColor: '#ECFDF5' }]}>
-                <Text style={[styles.badgeTxt, { color: '#059669' }]}>FREE CANCELLATION</Text>
+                <Text style={[styles.badgeTxt, { color: colors.success }]}>FREE CANCELLATION</Text>
               </View>
             ) : null}
             {experience.instantConfirmation ? (
@@ -315,7 +317,7 @@ export default function LocalExperienceDetailScreen() {
                 const Icon = item.icon;
                 return (
                   <View key={i} style={[styles.infoItem, i < quickInfo.length - 1 && styles.infoItemBorder]}>
-                    <Icon size={18} color={PRIMARY} variant="Bold" />
+                    <Icon size={18} color={colors.primary} variant="Bold" />
                     <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{item.label}</Text>
                     <Text style={[styles.infoValue, { color: colors.textPrimary }]} numberOfLines={1}>
                       {item.value}
@@ -348,7 +350,7 @@ export default function LocalExperienceDetailScreen() {
             >
               {highlights.map((h: string, i: number) => (
                 <View key={i} style={styles.listItem}>
-                  <TickCircle size={18} color={PRIMARY} variant="Bold" />
+                  <TickCircle size={18} color={colors.primary} variant="Bold" />
                   <Text style={[styles.listText, { color: colors.textSecondary }]}>{h}</Text>
                 </View>
               ))}
@@ -365,7 +367,7 @@ export default function LocalExperienceDetailScreen() {
             >
               {included.map((item: string, i: number) => (
                 <View key={i} style={styles.listItem}>
-                  <TickCircle size={16} color="#059669" variant="Bold" />
+                  <TickCircle size={16} color={colors.success} variant="Bold" />
                   <Text style={[styles.listText, { color: colors.textSecondary }]}>{item}</Text>
                 </View>
               ))}
@@ -375,7 +377,7 @@ export default function LocalExperienceDetailScreen() {
                   <Text style={[styles.subHeading, { color: colors.textPrimary }]}>Not Included</Text>
                   {notIncluded.map((item: string, i: number) => (
                     <View key={i} style={styles.listItem}>
-                      <CloseCircle size={16} color="#EF4444" variant="Bold" />
+                      <CloseCircle size={16} color={colors.error} variant="Bold" />
                       <Text style={[styles.listText, { color: colors.textSecondary }]}>{item}</Text>
                     </View>
                   ))}
@@ -395,7 +397,7 @@ export default function LocalExperienceDetailScreen() {
                 },
               ]}
             >
-              <TickCircle size={20} color="#059669" variant="Bold" />
+              <TickCircle size={20} color={colors.success} variant="Bold" />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.policyTitle, { color: colors.textPrimary }]}>Free Cancellation</Text>
                 <Text style={[styles.policyBody, { color: colors.textSecondary }]}>
@@ -407,7 +409,7 @@ export default function LocalExperienceDetailScreen() {
 
           {/* ─── Partner note ─── */}
           <View style={[styles.partnerNote, { backgroundColor: isDark ? colors.bgCard : '#F8FAFC' }]}>
-            <Ionicons name="shield-checkmark" size={16} color={PRIMARY} />
+            <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
             <Text style={[styles.partnerText, { color: colors.textSecondary }]}>
               Secure booking through our trusted partner. You'll be taken directly to the booking page.
             </Text>
@@ -430,12 +432,12 @@ export default function LocalExperienceDetailScreen() {
           <Text style={[styles.btmLabel, { color: colors.textSecondary }]}>From</Text>
           <Text style={[styles.btmPrice, { color: colors.textPrimary }]}>
             ${Math.round(price)}
-            <Text style={{ fontSize: 14, fontFamily: 'Rubik-Regular' }}> /person</Text>
+            <Text style={{ fontSize: 14, fontFamily: fontFamily.regular }}> /person</Text>
           </Text>
         </View>
         <TouchableOpacity style={styles.ctaBtn} onPress={handleBookNow} activeOpacity={0.85}>
           <Text style={styles.ctaTxt}>Book Now</Text>
-          <ExportSquare size={18} color="#FFFFFF" />
+          <ExportSquare size={18} color={colors.white} />
         </TouchableOpacity>
       </View>
     </View>
@@ -525,7 +527,7 @@ function FullScreenCarousel({
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <View style={carouselStyles.overlay}>
         <TouchableOpacity style={carouselStyles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-          <Ionicons name="close" size={28} color="#FFF" />
+          <Ionicons name="close" size={28} color={colors.white} />
         </TouchableOpacity>
 
         <View style={carouselStyles.counter}>
@@ -587,7 +589,7 @@ const carouselStyles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 12,
   },
-  counterText: { fontFamily: 'Rubik-Medium', fontSize: 14, color: '#FFF' },
+  counterText: { fontFamily: fontFamily.medium, fontSize: typography.fontSize.bodyLg, color: '#FFF' },
   dotsRow: { position: 'absolute', bottom: 50, alignSelf: 'center', flexDirection: 'row', gap: 6 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.35)' },
   dotActive: { backgroundColor: '#FFFFFF', width: 20 },
@@ -596,12 +598,12 @@ const carouselStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  errorTxt: { fontSize: 16, fontFamily: 'Rubik-Medium' },
+  errorTxt: { fontSize: typography.fontSize.base, fontFamily: fontFamily.medium },
   scrollContent: { paddingBottom: 110 },
 
   // Photo gallery
-  photoContainer: { width: SCREEN_WIDTH, height: PHOTO_HEIGHT, position: 'relative' },
-  photo: { width: SCREEN_WIDTH, height: PHOTO_HEIGHT },
+  photoContainer: { width: SCREEN_WIDTH, position: 'relative' },
+  photo: { width: SCREEN_WIDTH },
   photoOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.15)' },
   heroNav: {
     position: 'absolute',
@@ -613,9 +615,9 @@ const styles = StyleSheet.create({
   },
   navRight: { flexDirection: 'row', gap: 10 },
   navBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -635,27 +637,27 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 12,
   },
-  photoCountText: { fontFamily: 'Rubik-Medium', fontSize: 12, color: '#FFF' },
+  photoCountText: { fontFamily: fontFamily.medium, fontSize: typography.fontSize.bodySm, color: '#FFF' },
 
   // Content
   content: { paddingHorizontal: spacing.lg, paddingTop: 18 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
   badge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10 },
-  badgeTxt: { fontFamily: 'Rubik-Bold', fontSize: 9, letterSpacing: 0.7 },
-  title: { fontFamily: 'Rubik-Bold', fontSize: 22, lineHeight: 28, marginBottom: 8 },
+  badgeTxt: { fontFamily: fontFamily.bold, fontSize: 9, letterSpacing: 0.7 },
+  title: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.heading1, lineHeight: 28, marginBottom: 8 },
   ratingBar: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 12 },
-  ratingText: { fontFamily: 'Rubik-Bold', fontSize: 15 },
-  ratingCount: { fontFamily: 'Rubik-Regular', fontSize: 13 },
+  ratingText: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.heading3 },
+  ratingCount: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 4 },
-  priceLabel: { fontFamily: 'Rubik-Regular', fontSize: 13 },
-  price: { fontFamily: 'HostGrotesk-Bold', fontSize: 36 },
+  priceLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body },
+  price: { fontFamily: fontFamily.display, fontSize: 36 },
   originalPrice: {
-    fontFamily: 'Rubik-Regular',
-    fontSize: 18,
+    fontFamily: fontFamily.regular,
+    fontSize: typography.fontSize.heading2,
     color: '#EF4444',
     textDecorationLine: 'line-through',
   },
-  currency: { fontFamily: 'Rubik-Medium', fontSize: 14 },
+  currency: { fontFamily: fontFamily.medium, fontSize: typography.fontSize.bodyLg },
   discountPill: {
     backgroundColor: '#ECFDF5',
     paddingHorizontal: 10,
@@ -664,7 +666,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginBottom: 12,
   },
-  discountText: { fontFamily: 'Rubik-SemiBold', fontSize: 12, color: '#059669' },
+  discountText: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.bodySm, color: '#059669' },
 
   // Quick info bar
   infoBar: {
@@ -678,19 +680,19 @@ const styles = StyleSheet.create({
   },
   infoItem: { flex: 1, alignItems: 'center', gap: 4 },
   infoItemBorder: { borderRightWidth: 1, borderRightColor: 'rgba(0,0,0,0.06)' },
-  infoLabel: { fontFamily: 'Rubik-Regular', fontSize: 10, textAlign: 'center' },
-  infoValue: { fontFamily: 'Rubik-SemiBold', fontSize: 12, textAlign: 'center' },
+  infoLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.captionSm, textAlign: 'center' },
+  infoValue: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.bodySm, textAlign: 'center' },
 
   // Collapsible sections
   section: { borderBottomWidth: 1, paddingVertical: 14 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { fontFamily: 'Rubik-Bold', fontSize: 16 },
+  sectionTitle: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.base },
   sectionBody: { marginTop: 12 },
-  bodyText: { fontFamily: 'Rubik-Regular', fontSize: 14, lineHeight: 22 },
+  bodyText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodyLg, lineHeight: 22 },
   listItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
-  listText: { fontFamily: 'Rubik-Regular', fontSize: 14, lineHeight: 20, flex: 1 },
+  listText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodyLg, lineHeight: 20, flex: 1 },
   miniDivider: { height: 1, marginVertical: 12 },
-  subHeading: { fontFamily: 'Rubik-SemiBold', fontSize: 14, marginBottom: 10 },
+  subHeading: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.bodyLg, marginBottom: 10 },
 
   // Policy card
   policyCard: {
@@ -702,8 +704,8 @@ const styles = StyleSheet.create({
     marginTop: 16,
     alignItems: 'flex-start',
   },
-  policyTitle: { fontFamily: 'Rubik-SemiBold', fontSize: 14, marginBottom: 2 },
-  policyBody: { fontFamily: 'Rubik-Regular', fontSize: 13, lineHeight: 19 },
+  policyTitle: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.bodyLg, marginBottom: 2 },
+  policyBody: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body, lineHeight: 19 },
 
   // Partner note
   partnerNote: {
@@ -714,7 +716,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginTop: 16,
   },
-  partnerText: { fontFamily: 'Rubik-Regular', fontSize: 12, lineHeight: 17, flex: 1 },
+  partnerText: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodySm, lineHeight: 17, flex: 1 },
 
   // Bottom CTA
   bottomBar: {
@@ -729,16 +731,16 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderTopWidth: 1,
   },
-  btmLabel: { fontFamily: 'Rubik-Regular', fontSize: 12 },
-  btmPrice: { fontFamily: 'HostGrotesk-Bold', fontSize: 26 },
+  btmLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.bodySm },
+  btmPrice: { fontFamily: fontFamily.display, fontSize: 26 },
   ctaBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: PRIMARY,
+    backgroundColor: '#3FC39E',
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 24,
   },
-  ctaTxt: { fontFamily: 'Rubik-Bold', fontSize: 16, color: '#FFFFFF' },
+  ctaTxt: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.base, color: '#FFFFFF' },
 });

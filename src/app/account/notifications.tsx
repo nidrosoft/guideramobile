@@ -34,6 +34,7 @@ import {
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -60,6 +61,7 @@ export default function NotificationsSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { t } = useTranslation();
   const { profile } = useAuth();
 
   const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
@@ -244,10 +246,10 @@ export default function NotificationsSettingsScreen() {
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Go back">
           <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Notifications</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{t('account.notifications.title')}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -258,12 +260,12 @@ export default function NotificationsSettingsScreen() {
       >
         {/* Permission Banner */}
         {!permissionGranted && (
-          <TouchableOpacity style={[styles.permissionBanner, { backgroundColor: tc.primary }]} onPress={handleRequestPermission}>
+          <TouchableOpacity style={[styles.permissionBanner, { backgroundColor: tc.primary }]} onPress={handleRequestPermission} accessibilityRole="button" accessibilityLabel="Enable notifications">
             <View style={styles.permissionIconContainer}>
               <Notification size={24} color="#FFFFFF" variant="Bold" />
             </View>
             <View style={styles.permissionContent}>
-              <Text style={styles.permissionTitle}>Enable Notifications</Text>
+              <Text style={styles.permissionTitle}>{t('account.notifications.enableNotifications')}</Text>
               <Text style={styles.permissionDescription}>
                 Allow notifications to stay updated on your trips and deals
               </Text>
@@ -281,7 +283,7 @@ export default function NotificationsSettingsScreen() {
               <Setting2 size={24} color={tc.primary} variant="Bold" />
             </View>
             <View style={styles.masterTextContainer}>
-              <Text style={[styles.masterTitle, { color: tc.textPrimary }]}>All Notifications</Text>
+              <Text style={[styles.masterTitle, { color: tc.textPrimary }]}>{t('account.notifications.allNotifications')}</Text>
               <Text style={[styles.masterDescription, { color: tc.textSecondary }]}>
                 {preferences?.enabled ? 'Notifications are enabled' : 'Notifications are disabled'}
               </Text>
@@ -293,6 +295,8 @@ export default function NotificationsSettingsScreen() {
             disabled={!permissionGranted}
             trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '50' }}
             thumbColor={preferences?.enabled ? tc.primary : isDark ? '#666' : colors.gray400}
+            accessibilityRole="switch"
+            accessibilityLabel="All notifications"
           />
         </View>
 
@@ -336,6 +340,8 @@ export default function NotificationsSettingsScreen() {
                       disabled={!permissionGranted || !preferences?.enabled}
                       trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '50' }}
                       thumbColor={preferences?.[item.key] ? tc.primary : isDark ? '#666' : colors.gray400}
+                      accessibilityRole="switch"
+                      accessibilityLabel={item.title}
                     />
                   </View>
                 </View>

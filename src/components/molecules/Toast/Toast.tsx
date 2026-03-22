@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { TickCircle, InfoCircle, Warning2, CloseCircle } from 'iconsax-react-native';
-import { colors, spacing, typography } from '@/styles';
+import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -59,27 +59,27 @@ export default function Toast({
     switch (type) {
       case 'success':
         return {
-          icon: <TickCircle size={20} color="#10B981" variant="Bold" />,
-          backgroundColor: '#10B98115',
-          iconColor: '#10B981',
+          icon: <TickCircle size={20} color={tc.success} variant="Bold" />,
+          backgroundColor: tc.successBg,
+          iconColor: tc.success,
         };
       case 'error':
         return {
-          icon: <CloseCircle size={20} color="#EF4444" variant="Bold" />,
-          backgroundColor: '#EF444415',
-          iconColor: '#EF4444',
+          icon: <CloseCircle size={20} color={tc.error} variant="Bold" />,
+          backgroundColor: tc.errorBg,
+          iconColor: tc.error,
         };
       case 'warning':
         return {
-          icon: <Warning2 size={20} color="#F59E0B" variant="Bold" />,
-          backgroundColor: '#F59E0B15',
-          iconColor: '#F59E0B',
+          icon: <Warning2 size={20} color={tc.warning} variant="Bold" />,
+          backgroundColor: tc.warningBg,
+          iconColor: tc.warning,
         };
       case 'info':
         return {
-          icon: <InfoCircle size={20} color="#3B82F6" variant="Bold" />,
-          backgroundColor: '#3B82F615',
-          iconColor: '#3B82F6',
+          icon: <InfoCircle size={20} color={tc.info} variant="Bold" />,
+          backgroundColor: tc.infoBg,
+          iconColor: tc.info,
         };
     }
   };
@@ -95,7 +95,7 @@ export default function Toast({
         },
       ]}
     >
-      <View style={[styles.toast, { backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF', borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+      <View style={[styles.toast, { backgroundColor: isDark ? tc.bgSecondary : tc.white, borderWidth: 1, borderColor: isDark ? tc.borderMedium : tc.borderStandard }]}>
         <View style={[styles.iconContainer, { backgroundColor }]}>
           {icon}
         </View>
@@ -116,12 +116,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   toast: {
-    backgroundColor: colors.gray900,
     borderRadius: 12,
     padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: colors.black,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -138,7 +137,6 @@ const styles = StyleSheet.create({
   message: {
     flex: 1,
     fontSize: typography.fontSize.sm,
-    fontWeight: '600',
-    color: colors.white,
+    fontWeight: typography.fontWeight.semibold,
   },
 });

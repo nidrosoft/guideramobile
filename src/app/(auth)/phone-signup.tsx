@@ -1,9 +1,10 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import CountryPicker, { Country, CountryCode } from 'react-native-country-picker-modal';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PhoneIcon from '@/components/common/icons/PhoneIcon';
 import CloseIcon from '@/components/common/icons/CloseIcon';
 import { colors, typography, spacing, borderRadius } from '@/styles';
@@ -26,6 +27,7 @@ export default function PhoneSignUp() {
   useWarmUpBrowser();
   const router = useRouter();
   const { colors: tc, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ phone?: string; callingCode?: string }>();
   const { isLoaded, signUp } = useSignUp();
   const { startSSOFlow } = useSSO();
@@ -88,107 +90,127 @@ export default function PhoneSignUp() {
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Close Button */}
-      <TouchableOpacity style={styles.closeButton} onPress={handleBack}>
+      <TouchableOpacity style={[styles.closeButton, { top: insets.top + 10 }]} onPress={handleBack} accessibilityRole="button" accessibilityLabel="Close">
         <CloseIcon size={24} color={tc.textPrimary} />
       </TouchableOpacity>
 
-      <View style={styles.content}>
-        {/* Phone Icon */}
-        <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
-          <PhoneIcon size={32} color={tc.textPrimary} />
-        </View>
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.content, { paddingTop: insets.top + 80 }]}>
+          {/* Phone Icon */}
+          <View style={[styles.iconContainer, { borderColor: tc.textPrimary }]}>
+            <PhoneIcon size={32} color={tc.textPrimary} />
+          </View>
 
-        {/* Header */}
-        <Text style={[styles.title, { color: tc.textPrimary }]}>Sign up with your phone number</Text>
+          {/* Header */}
+          <Text style={[styles.title, { color: tc.textPrimary }]}>Sign up with your phone number</Text>
 
-        {/* Phone Input - Inline */}
-        <View style={[styles.phoneInputContainer, { borderBottomColor: tc.borderMedium }]}>
-          {/* Country Code */}
-          <TouchableOpacity 
-            style={[styles.countryCodeButton, { borderRightColor: tc.borderMedium }]}
-            onPress={() => setShowCountryPicker(true)}
-          >
-            <CountryPicker
-              countryCode={countryCode}
-              withFilter
-              withFlag
-              withCallingCode
-              withEmoji
-              onSelect={onSelectCountry}
-              visible={showCountryPicker}
-              onClose={() => setShowCountryPicker(false)}
+          {/* Phone Input - Inline */}
+          <View style={[styles.phoneInputContainer, { borderBottomColor: tc.borderMedium }]}>
+            {/* Country Code */}
+            <TouchableOpacity
+              style={[styles.countryCodeButton, { borderRightColor: tc.borderMedium }]}
+              onPress={() => setShowCountryPicker(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Country code plus ${callingCode}`}
+            >
+              <CountryPicker
+                countryCode={countryCode}
+                withFilter
+                withFlag
+                withCallingCode
+                withEmoji
+                onSelect={onSelectCountry}
+                visible={showCountryPicker}
+                onClose={() => setShowCountryPicker(false)}
+              />
+              <Text style={[styles.countryCodeText, { color: tc.textPrimary }]}>+{callingCode}</Text>
+              <Text style={[styles.dropdownIcon, { color: tc.textSecondary }]}>▼</Text>
+            </TouchableOpacity>
+
+            {/* Phone Number */}
+            <TextInput
+              style={[styles.phoneInput, { color: tc.textPrimary }]}
+              placeholder=""
+              placeholderTextColor={tc.textTertiary}
+              keyboardType="phone-pad"
+              accessibilityLabel="Phone number"
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              maxLength={15}
+              autoFocus
             />
-            <Text style={[styles.countryCodeText, { color: tc.textPrimary }]}>+{callingCode}</Text>
-            <Text style={[styles.dropdownIcon, { color: tc.textSecondary }]}>▼</Text>
+          </View>
+
+          {/* Description */}
+          <Text style={[styles.description, { color: tc.textSecondary }]}>
+            We'll send you a text with a verification code.
+          </Text>
+
+          {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
+
+          {/* Continue Button - Always Visible */}
+          <TouchableOpacity
+            style={[
+              styles.continueButton,
+              { backgroundColor: isDark ? tc.white : tc.black },
+              (phoneNumber.length < 10 || isLoading) && { backgroundColor: tc.bgElevated, borderWidth: 1, borderColor: tc.borderMedium },
+            ]}
+            onPress={handleContinue}
+            disabled={phoneNumber.length < 10 || isLoading}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Continue"
+          >
+            {isLoading ? (
+              <ActivityIndicator color={isDark ? tc.black : tc.white} size="small" />
+            ) : (
+              <Text style={[styles.continueIcon, { color: isDark ? tc.black : tc.white }, phoneNumber.length < 10 && { color: tc.textTertiary }]}>→</Text>
+            )}
           </TouchableOpacity>
 
-          {/* Phone Number */}
-          <TextInput
-            style={[styles.phoneInput, { color: tc.textPrimary }]}
-            placeholder=""
-            placeholderTextColor={tc.textTertiary}
-            keyboardType="phone-pad"
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            maxLength={15}
-            autoFocus
-          />
-        </View>
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
+            <Text style={[styles.dividerText, { color: tc.textSecondary }]}>or</Text>
+            <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
+          </View>
 
-        {/* Description */}
-        <Text style={[styles.description, { color: tc.textSecondary }]}>
-          We'll send you a text with a verification code.
-        </Text>
-
-        {error ? <Text style={[styles.errorText, { color: tc.error }]}>{error}</Text> : null}
-
-        {/* Continue Button - Always Visible */}
-        <TouchableOpacity
-          style={[
-            styles.continueButton,
-            { backgroundColor: isDark ? tc.white : tc.black },
-            (phoneNumber.length < 10 || isLoading) && { backgroundColor: tc.bgElevated, borderWidth: 1, borderColor: tc.borderMedium },
-          ]}
-          onPress={handleContinue}
-          disabled={phoneNumber.length < 10 || isLoading}
-          activeOpacity={0.8}
-        >
-          {isLoading ? (
-            <ActivityIndicator color={isDark ? tc.black : tc.white} size="small" />
-          ) : (
-            <Text style={[styles.continueIcon, { color: isDark ? tc.black : tc.white }, phoneNumber.length < 10 && { color: tc.textTertiary }]}>→</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Divider */}
-        <View style={styles.divider}>
-          <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
-          <Text style={[styles.dividerText, { color: tc.textSecondary }]}>or</Text>
-          <View style={[styles.dividerLine, { backgroundColor: tc.borderMedium }]} />
-        </View>
-
-        {/* Google Button */}
-        <TouchableOpacity
-          style={[styles.googleButton, { backgroundColor: tc.bgElevated, borderColor: tc.borderMedium }]}
-          onPress={async () => {
-            try {
-              const { createdSessionId, setActive: ssoSetActive } = await startSSOFlow({
-                strategy: 'oauth_google',
-                redirectUrl: AuthSession.makeRedirectUri(),
-              });
-              if (createdSessionId && ssoSetActive) {
-                await ssoSetActive({ session: createdSessionId });
+          {/* Google Button */}
+          <TouchableOpacity
+            style={[styles.googleButton, { backgroundColor: tc.bgElevated, borderColor: tc.borderMedium }]}
+            onPress={async () => {
+              try {
+                const { createdSessionId, setActive: ssoSetActive, signUp: ssoSignUp } = await startSSOFlow({
+                  strategy: 'oauth_google',
+                  redirectUrl: AuthSession.makeRedirectUri(),
+                });
+                if (createdSessionId && ssoSetActive) {
+                  await ssoSetActive({ session: createdSessionId });
+                  const isNewUser = ssoSignUp?.status === 'complete';
+                  if (isNewUser) {
+                    router.replace('/(onboarding)/intro');
+                  } else {
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    router.replace('/(tabs)');
+                  }
+                }
+              } catch (err: any) {
+                const msg = err?.errors?.[0]?.longMessage || err?.message || 'Google sign up failed';
+                setError(msg);
               }
-            } catch (err: any) {
-              const msg = err?.errors?.[0]?.longMessage || err?.message || 'Google sign up failed';
-              setError(msg);
-            }
-          }}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.googleButtonText, { color: tc.textPrimary }]}>Sign up with Google</Text>
-        </TouchableOpacity>
-      </View>
+            }}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Sign up with Google"
+          >
+            <Text style={[styles.googleButtonText, { color: tc.textPrimary }]}>Sign up with Google</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }

@@ -43,6 +43,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { notifyJoinApproved, notifyJoinDenied } from '@/services/notifications/community-notifications';
 import { groupService } from '@/services/community';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 
 type AdminTab = 'members' | 'requests' | 'settings';
 
@@ -52,6 +53,7 @@ export default function GroupAdminScreen() {
   const { colors: tc } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useAuth();
+  const { showSuccess, showError } = useToast();
   
   const [activeTab, setActiveTab] = useState<AdminTab>('members');
   const [members, setMembers] = useState<{ id: string; name: string; avatar: string; role: string; joinedAt: string }[]>([]);
@@ -130,14 +132,14 @@ export default function GroupAdminScreen() {
       const request = requests.find(r => r.id === requestId);
       await groupService.approveRequest(profile.id, requestId);
       setRequests(prev => prev.filter(r => r.id !== requestId));
-      Alert.alert('Approved', 'Member has been added to the group.');
+      showSuccess('Member has been added to the group.');
       if (request) {
         notifyJoinApproved(request.id, groupSettings.name, id || '').catch(() => {});
       }
       fetchData();
     } catch (err: any) {
       if (__DEV__) console.warn('Failed to approve request:', err);
-      Alert.alert('Error', err?.message || 'Could not approve request.');
+      showError(err?.message || 'Could not approve request.');
     }
   };
   
@@ -153,7 +155,7 @@ export default function GroupAdminScreen() {
       }
     } catch (err: any) {
       if (__DEV__) console.warn('Failed to deny request:', err);
-      Alert.alert('Error', err?.message || 'Could not deny request.');
+      showError(err?.message || 'Could not deny request.');
     }
   };
   
@@ -174,7 +176,7 @@ export default function GroupAdminScreen() {
               setMembers(prev => prev.filter(m => m.id !== memberId));
             } catch (err: any) {
               if (__DEV__) console.warn('Failed to remove member:', err);
-              Alert.alert('Error', err?.message || 'Could not remove member.');
+              showError(err?.message || 'Could not remove member.');
             }
           },
         },
@@ -200,7 +202,7 @@ export default function GroupAdminScreen() {
               ));
             } catch (err: any) {
               if (__DEV__) console.warn('Failed to promote member:', err);
-              Alert.alert('Error', err?.message || 'Could not promote member.');
+              showError(err?.message || 'Could not promote member.');
             }
           },
         },

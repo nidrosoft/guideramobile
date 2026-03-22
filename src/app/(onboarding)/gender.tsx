@@ -6,7 +6,7 @@ export default function GenderScreen() {
     <PreferenceScreen
       icon={Profile2User}
       title="What's your gender?"
-      description="This helps us personalize recommendations"
+      description="Used for safety recommendations, cultural tips, and personalized travel advice for your destination"
       inputType="select"
       options={[
         'Woman',
@@ -19,6 +19,7 @@ export default function GenderScreen() {
       currentStep={3}
       totalSteps={10}
       nextRoute="/(onboarding)/ethnicity"
+      showBackButton={true}
       fieldName="gender"
     />
   );

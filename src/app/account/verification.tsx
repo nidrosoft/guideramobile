@@ -42,6 +42,7 @@ import * as Haptics from 'expo-haptics';
 import { spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { supabase } from '@/lib/supabase/client';
 import { partnerService } from '@/services/community/partner.service';
 
@@ -79,6 +80,7 @@ export default function VerificationScreen() {
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
   const { user, profile } = useAuth();
+  const { showError } = useToast();
   const [verificationData, setVerificationData] = useState<VerificationData>({ status: 'unverified' });
   const [isLoading, setIsLoading] = useState(true);
   const [step, setStep] = useState<VerificationStep>('intro');
@@ -228,7 +230,7 @@ export default function VerificationScreen() {
       setStep('submitted');
     } catch (error) {
       console.error('Error submitting verification:', error);
-      Alert.alert('Error', 'Failed to submit verification. Please try again.');
+      showError('Failed to submit verification. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -236,9 +238,9 @@ export default function VerificationScreen() {
 
   // Status helpers using dynamic theme colors
   const STATUS_COLORS: Record<VerificationStatus, string> = {
-    verified: '#16A34A',
-    pending: '#F59E0B',
-    rejected: '#EF4444',
+    verified: tc.success,
+    pending: tc.warning,
+    rejected: tc.error,
     unverified: tc.textTertiary,
   };
 
@@ -298,9 +300,9 @@ export default function VerificationScreen() {
           {/* Hero section */}
           <View style={styles.unifiedHeroSection}>
             <View style={[styles.unifiedBadgeCircle, { backgroundColor: isDark ? 'rgba(22,163,74,0.15)' : 'rgba(22,163,74,0.12)' }]}>
-              <TickCircle size={28} color="#16A34A" variant="Bold" />
+              <TickCircle size={28} color={tc.success} variant="Bold" />
             </View>
-            <Text style={[styles.unifiedHeroTitle, { color: '#16A34A' }]}>Trusted Traveler</Text>
+            <Text style={[styles.unifiedHeroTitle, { color: tc.success }]}>Trusted Traveler</Text>
             <Text style={[styles.unifiedHeroSubtitle, { color: tc.textSecondary }]}>
               {verificationData.source === 'partner' 
                 ? 'Verified through the Local Guide Partner Program' 
@@ -331,7 +333,7 @@ export default function VerificationScreen() {
                   <Text style={[styles.unifiedPerkTitle, { color: tc.textPrimary }]}>{benefit.title}</Text>
                   <Text style={[styles.unifiedPerkDesc, { color: tc.textSecondary }]}>{benefit.description}</Text>
                 </View>
-                <TickCircle size={14} color="#16A34A" variant="Bold" />
+                <TickCircle size={14} color={tc.success} variant="Bold" />
               </View>
             );
           })}
@@ -343,7 +345,7 @@ export default function VerificationScreen() {
         <>
           <View style={[styles.pendingHeroCard, { backgroundColor: isDark ? 'rgba(245,158,11,0.08)' : 'rgba(245,158,11,0.06)', borderColor: 'rgba(245,158,11,0.20)' }]}>
             <View style={[styles.verifiedBadgeCircle, { backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.12)' }]}>
-              <Clock size={40} color="#F59E0B" variant="Bold" />
+              <Clock size={40} color={tc.warning} variant="Bold" />
             </View>
             <Text style={[styles.verifiedHeroTitle, { color: '#F59E0B' }]}>Verification In Review</Text>
             <Text style={[styles.verifiedHeroSubtitle, { color: tc.textSecondary }]}>
@@ -384,9 +386,9 @@ export default function VerificationScreen() {
       {verificationData.status === 'rejected' && (
         <View style={styles.centeredSection}>
           <View style={{ marginBottom: spacing.md }}>
-            <CloseCircle size={48} color="#EF4444" variant="Bold" />
+            <CloseCircle size={48} color={tc.error} variant="Bold" />
           </View>
-          <Text style={[styles.sectionTitle, { color: '#EF4444' }]}>Verification Failed</Text>
+          <Text style={[styles.sectionTitle, { color: tc.error }]}>Verification Failed</Text>
           <Text style={[styles.sectionText, { color: tc.textSecondary }]}>
             {verificationData.rejection_reason || 'Your verification could not be completed. Please try again with clearer documents.'}
           </Text>
@@ -578,16 +580,16 @@ export default function VerificationScreen() {
         <View style={styles.reviewItem}>
           <Text style={[styles.reviewLabel, { color: tc.textSecondary }]}>Document Photo</Text>
           <View style={styles.reviewCheck}>
-            <TickCircle size={16} color="#16A34A" variant="Bold" />
-            <Text style={[styles.reviewCheckText, { color: '#16A34A' }]}>Captured</Text>
+            <TickCircle size={16} color={tc.success} variant="Bold" />
+            <Text style={[styles.reviewCheckText, { color: tc.success }]}>Captured</Text>
           </View>
         </View>
         <View style={[styles.reviewDivider, { backgroundColor: cardBorder }]} />
         <View style={styles.reviewItem}>
           <Text style={[styles.reviewLabel, { color: tc.textSecondary }]}>Selfie</Text>
           <View style={styles.reviewCheck}>
-            <TickCircle size={16} color="#16A34A" variant="Bold" />
-            <Text style={[styles.reviewCheckText, { color: '#16A34A' }]}>Captured</Text>
+            <TickCircle size={16} color={tc.success} variant="Bold" />
+            <Text style={[styles.reviewCheckText, { color: tc.success }]}>Captured</Text>
           </View>
         </View>
       </View>
@@ -617,7 +619,7 @@ export default function VerificationScreen() {
   const renderSubmitted = () => (
     <View style={styles.centeredSection}>
       <View style={{ marginBottom: spacing.lg }}>
-        <TickCircle size={64} color="#16A34A" variant="Bold" />
+        <TickCircle size={64} color={tc.success} variant="Bold" />
       </View>
       <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Submitted Successfully!</Text>
       <Text style={[styles.sectionText, { color: tc.textSecondary, marginBottom: spacing.xl }]}>
@@ -640,7 +642,7 @@ export default function VerificationScreen() {
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: cardBorder }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? tc.bgModal : tc.white, borderBottomColor: cardBorder }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
@@ -1040,7 +1042,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.semibold,
   },
   unifiedPerkDesc: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     marginTop: 1,
     lineHeight: 14,
   },

@@ -146,7 +146,7 @@ export class MapboxService {
     limit: number = 15
   ): Promise<MapboxPlace[]> {
     // Google Places via server-side proxy — key never exposed to client
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://pkydmdygctojtfzbqcud.supabase.co';
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
     const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
     if (supabaseUrl) {

@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { colors, typography, spacing } from '@/styles';
+import { typography, spacing } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 import { RefreshCircle, Warning2 } from 'iconsax-react-native';
 import { ErrorBoundary } from './ErrorBoundary';
 
@@ -42,25 +43,27 @@ interface FeatureErrorFallbackProps {
 }
 
 function FeatureErrorFallback({ featureName, onRetry }: FeatureErrorFallbackProps) {
+  const { colors } = useTheme();
+
   return (
-    <View style={styles.container}>
-      <View style={styles.iconContainer}>
+    <View style={[styles.container, { backgroundColor: colors.errorBg, borderColor: colors.errorBorder }]}>
+      <View style={[styles.iconContainer, { backgroundColor: colors.errorBg }]}>
         <Warning2 size={24} color={colors.error} variant="Bold" />
       </View>
       <View style={styles.textContainer}>
-        <Text style={styles.title}>Unable to load {featureName}</Text>
-        <Text style={styles.description}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Unable to load {featureName}</Text>
+        <Text style={[styles.description, { color: colors.textSecondary }]}>
           Something went wrong. Please try again.
         </Text>
       </View>
       {onRetry && (
         <TouchableOpacity
-          style={styles.retryButton}
+          style={[styles.retryButton, { backgroundColor: colors.bgElevated, borderColor: colors.gray200 }]}
           onPress={onRetry}
           activeOpacity={0.7}
         >
           <RefreshCircle size={18} color={colors.primary} variant="Bold" />
-          <Text style={styles.retryText}>Retry</Text>
+          <Text style={[styles.retryText, { color: colors.primary }]}>Retry</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -71,18 +74,15 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${colors.error}08`,
     borderRadius: 12,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: `${colors.error}20`,
     marginVertical: spacing.sm,
   },
   iconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: `${colors.error}15`,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
@@ -93,28 +93,23 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
     marginBottom: 2,
   },
   description: {
     fontSize: typography.fontSize.xs,
-    color: colors.textSecondary,
   },
   retryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
-    backgroundColor: colors.bgElevated,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.gray200,
     gap: 4,
   },
   retryText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
-    color: colors.primary,
   },
 });
 

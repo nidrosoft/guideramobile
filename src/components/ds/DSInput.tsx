@@ -16,7 +16,7 @@ import {
   TextStyle,
   TextInputProps,
 } from 'react-native';
-import { colors } from '@/styles/colors';
+import { useTheme } from '@/context/ThemeContext';
 import { fontFamily } from '@/styles/typography';
 
 type InputSize = 'sm' | 'md' | 'lg';
@@ -49,6 +49,7 @@ export default function DSInput({
   inputStyle,
   ...textInputProps
 }: DSInputProps) {
+  const { colors } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
   const sizeConfig = SIZE_CONFIG[size];
 
@@ -63,10 +64,19 @@ export default function DSInput({
   }, [textInputProps.onBlur]);
 
   const inputContainerStyle: TextStyle[] = [
-    styles.inputContainer as TextStyle,
-    { height: sizeConfig.height } as TextStyle,
-    isFocused && (styles.inputFocused as TextStyle),
-    !!error && (styles.inputError as TextStyle),
+    {
+      backgroundColor: colors.bgInput,
+      borderWidth: 1,
+      borderColor: colors.borderStandard,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      fontSize: 13,
+      fontFamily: fontFamily.regular,
+      color: colors.textPrimary,
+      height: sizeConfig.height,
+    } as TextStyle,
+    isFocused && ({ borderColor: colors.primaryBorderStrong, backgroundColor: colors.bgElevated } as TextStyle),
+    !!error && ({ borderColor: colors.errorBorder } as TextStyle),
     leadingIcon ? ({ paddingLeft: 40 } as TextStyle) : undefined,
     trailingIcon ? ({ paddingRight: 40 } as TextStyle) : undefined,
     inputStyle,
@@ -74,7 +84,7 @@ export default function DSInput({
 
   return (
     <View style={[styles.wrapper, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <Text style={[styles.label, { color: colors.textPrimary }]}>{label}</Text>}
       <View style={styles.inputRow}>
         {leadingIcon && <View style={styles.leadingIcon}>{leadingIcon}</View>}
         <TextInput
@@ -86,8 +96,8 @@ export default function DSInput({
         />
         {trailingIcon && <View style={styles.trailingIcon}>{trailingIcon}</View>}
       </View>
-      {error && <Text style={styles.error}>{error}</Text>}
-      {hint && !error && <Text style={styles.hint}>{hint}</Text>}
+      {error && <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>}
+      {hint && !error && <Text style={[styles.hint, { color: colors.textTertiary }]}>{hint}</Text>}
     </View>
   );
 }
@@ -100,28 +110,10 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.medium,
     fontSize: 13,
     fontWeight: '500',
-    color: colors.textPrimary,
     marginBottom: 2,
   },
   inputRow: {
     position: 'relative',
-  },
-  inputContainer: {
-    backgroundColor: colors.bgInput,
-    borderWidth: 1,
-    borderColor: colors.borderStandard,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    fontSize: 13,
-    fontFamily: fontFamily.regular,
-    color: colors.textPrimary,
-  },
-  inputFocused: {
-    borderColor: colors.primaryBorderStrong,
-    backgroundColor: colors.bgElevated,
-  },
-  inputError: {
-    borderColor: colors.errorBorder,
   },
   leadingIcon: {
     position: 'absolute',
@@ -139,14 +131,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 1,
   },
-  error: {
+  errorText: {
     fontFamily: fontFamily.regular,
     fontSize: 11,
-    color: colors.error,
   },
   hint: {
     fontFamily: fontFamily.regular,
     fontSize: 12,
-    color: colors.textTertiary,
   },
 });

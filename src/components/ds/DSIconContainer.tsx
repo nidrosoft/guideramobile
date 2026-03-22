@@ -1,13 +1,13 @@
 /**
  * DESIGN SYSTEM — ICON CONTAINER
  *
- * 36×36 rounded container with subtle colored background.
+ * 36x36 rounded container with subtle colored background.
  * Used for category icons, settings icons, etc.
  */
 
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
-import { colors } from '@/styles/colors';
+import { useTheme } from '@/context/ThemeContext';
 
 interface DSIconContainerProps {
   children: React.ReactNode;
@@ -19,11 +19,14 @@ interface DSIconContainerProps {
 
 export default function DSIconContainer({
   children,
-  color = colors.primary,
+  color,
   size = 36,
   borderRadius = 10,
   style,
 }: DSIconContainerProps) {
+  const { colors } = useTheme();
+  const iconColor = color ?? colors.primary;
+
   return (
     <View
       style={[
@@ -32,8 +35,8 @@ export default function DSIconContainer({
           width: size,
           height: size,
           borderRadius,
-          backgroundColor: `${color}10`,
-          borderColor: `${color}1A`,
+          backgroundColor: `${iconColor}10`,
+          borderColor: `${iconColor}1A`,
         },
         style,
       ]}

@@ -188,7 +188,8 @@ class Logger {
   }
 
   /**
-   * Send queued logs to remote server
+   * Send queued logs to Sentry as breadcrumbs (info/warn) or captured errors (error level).
+   * This ensures production logs are forwarded for observability.
    */
   async flushLogs(): Promise<void> {
     if (this.logQueue.length === 0) return;
@@ -196,17 +197,31 @@ class Logger {
     const logsToSend = [...this.logQueue];
     this.logQueue = [];
 
-    // TODO: Implement remote logging endpoint
-    // try {
-    //   await fetch('https://api.guidera.app/logs', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ logs: logsToSend }),
-    //   });
-    // } catch (error) {
-    //   // Re-queue on failure
-    //   this.logQueue = [...logsToSend, ...this.logQueue];
-    // }
+    try {
+      const Sentry = require('@sentry/react-native');
+
+      for (const log of logsToSend) {
+        if (log.level === 'error') {
+          // Capture errors as Sentry events for alerting
+          Sentry.captureMessage(log.message, {
+            level: 'error',
+            extra: { context: log.context, data: log.data, timestamp: log.timestamp },
+          });
+        } else {
+          // Forward info/warn as Sentry breadcrumbs for debugging context
+          const sentryLevel = log.level === 'warn' ? 'warning' : log.level === 'debug' ? 'debug' : 'info';
+          Sentry.addBreadcrumb({
+            category: log.context?.feature || 'app',
+            message: log.message,
+            level: sentryLevel,
+            data: { ...log.context, ...log.data },
+          });
+        }
+      }
+    } catch {
+      // Sentry not available — re-queue logs for next flush attempt
+      this.logQueue = [...logsToSend, ...this.logQueue].slice(0, 1000);
+    }
   }
 
   // ==================== Performance Logging ====================

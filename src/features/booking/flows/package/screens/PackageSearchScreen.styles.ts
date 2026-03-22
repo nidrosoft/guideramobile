@@ -35,7 +35,7 @@ export const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
-    color: '#FFFFFF',
+    color: colors.white,
   },
   closeButton: {
     width: 40,
@@ -130,7 +130,7 @@ export const styles = StyleSheet.create({
   popularBadgeText: {
     fontSize: 8,
     fontWeight: typography.fontWeight.bold,
-    color: '#FFFFFF',
+    color: colors.white,
   },
 
   // Field Cards
@@ -266,6 +266,6 @@ export const styles = StyleSheet.create({
   continueButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-    color: '#FFFFFF',
+    color: colors.white,
   },
 });

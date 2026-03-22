@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { colors, typography, spacing, borderRadius } from '@/styles';
+import { typography, spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { ArrowDown2 } from 'iconsax-react-native';
 
@@ -16,12 +16,14 @@ interface FilterPillsProps {
   onFilterPress: () => void;
 }
 
-export default function FilterPills({ 
-  filters, 
-  selectedFilter, 
+export default function FilterPills({
+  filters,
+  selectedFilter,
   onFilterSelect,
-  onFilterPress 
+  onFilterPress
 }: FilterPillsProps) {
+  const { colors } = useTheme();
+
   return (
     <ScrollView
       horizontal
@@ -30,12 +32,12 @@ export default function FilterPills({
       contentContainerStyle={styles.content}
     >
       {/* Filter Dropdown Button */}
-      <TouchableOpacity 
-        style={styles.filterButton}
+      <TouchableOpacity
+        style={[styles.filterButton, { backgroundColor: colors.bgElevated, borderColor: colors.gray200 }]}
         onPress={onFilterPress}
       >
-        <Text style={styles.filterButtonText}>Filter</Text>
-        <View style={styles.separator} />
+        <Text style={[styles.filterButtonText, { color: colors.textSecondary }]}>Filter</Text>
+        <View style={[styles.separator, { backgroundColor: colors.gray300 }]} />
         <ArrowDown2 size={16} color={colors.textSecondary} />
       </TouchableOpacity>
 
@@ -47,24 +49,28 @@ export default function FilterPills({
             key={filter.id}
             style={[
               styles.pill,
-              isSelected && styles.pillSelected,
+              { backgroundColor: colors.bgElevated, borderColor: colors.gray200 },
+              isSelected && { backgroundColor: colors.black, borderColor: colors.black },
             ]}
             onPress={() => onFilterSelect(filter.id)}
           >
             <Text style={[
               styles.pillText,
-              isSelected && styles.pillTextSelected,
+              { color: colors.textPrimary },
+              isSelected && { color: colors.white },
             ]}>
               {filter.label}
             </Text>
             {filter.count !== undefined && (
               <View style={[
                 styles.badge,
-                isSelected && styles.badgeSelected,
+                { backgroundColor: colors.error },
+                isSelected && { backgroundColor: colors.bgElevated },
               ]}>
                 <Text style={[
                   styles.badgeText,
-                  isSelected && styles.badgeTextSelected,
+                  { color: colors.white },
+                  isSelected && { color: colors.black },
                 ]}>
                   {filter.count}
                 </Text>
@@ -92,20 +98,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: 24,
-    backgroundColor: colors.bgElevated,
     borderWidth: 1,
-    borderColor: colors.gray200,
     gap: spacing.md,
   },
   filterButtonText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textSecondary,
   },
   separator: {
     width: 1,
     height: 16,
-    backgroundColor: colors.gray300,
   },
   pill: {
     flexDirection: 'row',
@@ -113,41 +115,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: 24,
-    backgroundColor: colors.bgElevated,
     borderWidth: 1,
-    borderColor: colors.gray200,
     gap: spacing.xs,
-  },
-  pillSelected: {
-    backgroundColor: colors.black,
-    borderColor: colors.black,
   },
   pillText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
-  },
-  pillTextSelected: {
-    color: colors.white,
   },
   badge: {
     minWidth: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: colors.error,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 6,
   },
-  badgeSelected: {
-    backgroundColor: colors.bgElevated,
-  },
   badgeText: {
-    fontSize: 11,
+    fontSize: typography.fontSize.caption,
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
-  },
-  badgeTextSelected: {
-    color: colors.black,
   },
 });

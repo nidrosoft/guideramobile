@@ -1,12 +1,9 @@
-import { View, StyleSheet } from 'react-native';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 
 export default function Profile() {
-  return <View style={styles.container} />;
+  const router = useRouter();
+  useEffect(() => { router.replace('/(tabs)/account'); }, []);
+  return null;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-});
+// Redirects to the real account/profile screen

@@ -337,10 +337,27 @@ class GroupService {
 
     if (error) throw new Error(error.message);
 
+    // Fetch unread counts from message_read_status
+    const groupIds = (data || []).map((item: any) => item.group?.id).filter(Boolean);
+    const unreadMap: Record<string, number> = {};
+    
+    if (groupIds.length > 0) {
+      const { data: readStatus } = await supabase
+        .from('message_read_status')
+        .select('chat_id, unread_count')
+        .eq('user_id', userId)
+        .eq('chat_type', 'group')
+        .in('chat_id', groupIds);
+      
+      for (const row of readStatus || []) {
+        unreadMap[row.chat_id] = row.unread_count || 0;
+      }
+    }
+
     return (data || []).map((item: any) => ({
       group: this.mapGroup(item.group),
       role: item.role as GroupRole,
-      unreadCount: 0, // TODO: Calculate from message_read_status
+      unreadCount: unreadMap[item.group?.id] || 0,
     }));
   }
 

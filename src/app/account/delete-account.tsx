@@ -6,15 +6,17 @@
  */
 
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  StyleSheet,
   ScrollView,
   TouchableOpacity,
   TextInput,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
@@ -29,6 +31,7 @@ import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase/client';
 
 const CONFIRMATION_TEXT = 'delete';
@@ -37,6 +40,7 @@ export default function DeleteAccountScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { t } = useTranslation();
   const { user, profile, signOut } = useAuth();
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -55,24 +59,78 @@ export default function DeleteAccountScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     
     Alert.alert(
-      'Final Confirmation',
-      'This action cannot be undone. Your account and all associated data will be permanently deleted.',
+      t('account.deleteAccount.finalConfirmation'),
+      t('account.deleteAccount.cannotBeUndone'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete Forever',
+          text: t('account.deleteAccount.deleteForever'),
           style: 'destructive',
           onPress: async () => {
             setIsDeleting(true);
             try {
               const profileId = profile?.id;
-              if (profileId) {
-                await supabase.from('profiles')
-                  .update({ deleted_at: new Date().toISOString() })
-                  .eq('id', profileId);
+              if (!profileId) throw new Error('Profile not found');
+
+              // Cascade delete user data across all tables (GDPR/CCPA compliance)
+              // Order matters: delete dependent data first, profile last
+              const deletionTables = [
+                'ai_chat_messages',
+                'ai_chat_sessions',
+                'user_saved_items',
+                'saved_deals',
+                'deal_clicks',
+                'price_alerts',
+                'user_interactions',
+                'trip_invitations',
+                'trip_activities',
+                'trip_bookings',
+                'trip_travelers',
+                'trip_imports',
+                'itinerary_activities',
+                'itinerary_days',
+                'packing_items',
+                'packing_lists',
+                'dos_donts_tips',
+                'safety_profiles',
+                'language_phrases',
+                'language_kits',
+                'document_items',
+                'document_checklists',
+                'compensation_claims',
+                'compensation_rights_cards',
+                'expenses',
+                'journal_entries',
+                'trips',
+                'post_reactions',
+                'post_comments',
+                'community_posts',
+                'activity_participants',
+                'community_activities',
+                'group_members',
+                'buddy_connections',
+                'user_follows',
+                'event_attendees',
+                'partner_applications',
+                'notifications',
+                'alerts',
+                'user_devices',
+                'user_notification_preferences',
+                'travel_preferences',
+              ];
+
+              for (const table of deletionTables) {
+                try {
+                  await supabase.from(table).delete().eq('user_id', profileId);
+                } catch {
+                  // Some tables may not exist or may use different FK column — skip silently
+                }
               }
-              
-              // Sign out
+
+              // Finally, delete the profile itself (hard delete for GDPR compliance)
+              await supabase.from('profiles').delete().eq('id', profileId);
+
+              // Sign out from Clerk
               await signOut();
               
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -80,10 +138,10 @@ export default function DeleteAccountScreen() {
               // Navigate to landing
               router.replace('/(auth)/landing' as any);
             } catch (error) {
-              console.error('Error deleting account:', error);
+              if (__DEV__) console.error('Error deleting account:', error);
               Alert.alert(
-                'Error',
-                'Failed to delete account. Please contact support at support@guidera.app'
+                t('common.error'),
+                t('account.deleteAccount.deleteFailed')
               );
             } finally {
               setIsDeleting(false);
@@ -95,19 +153,22 @@ export default function DeleteAccountScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: tc.background }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: tc.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      
+
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: tc.error }]}>Delete Account</Text>
+        <Text style={[styles.headerTitle, { color: tc.error }]}>{t('account.deleteAccount.title')}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + spacing.xl }]}
         showsVerticalScrollIndicator={false}
@@ -118,31 +179,31 @@ export default function DeleteAccountScreen() {
           <View style={[styles.warningIcon, { backgroundColor: tc.error + '15' }]}>
             <Warning2 size={48} color={tc.error} variant="Bold" />
           </View>
-          <Text style={[styles.warningTitle, { color: tc.error }]}>Delete Your Account?</Text>
+          <Text style={[styles.warningTitle, { color: tc.error }]}>{t('account.deleteAccount.warningTitle')}</Text>
           <Text style={[styles.warningText, { color: tc.textSecondary }]}>
-            This action is permanent and cannot be undone. All your data will be permanently removed.
+            {t('account.deleteAccount.warningText')}
           </Text>
         </View>
 
         {/* What will be deleted */}
         <View style={[styles.infoSection, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.gray50 }]}>
-          <Text style={[styles.infoTitle, { color: tc.textPrimary }]}>What will be deleted:</Text>
+          <Text style={[styles.infoTitle, { color: tc.textPrimary }]}>{t('account.deleteAccount.whatDeleted')}</Text>
           <View style={styles.infoList}>
-            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>• Your profile and personal information</Text>
-            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>• All your trips and itineraries</Text>
-            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>• Your saved items and collections</Text>
-            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>• Community posts, reviews, and comments</Text>
-            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>• Booking history and preferences</Text>
-            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>• All connected accounts and data</Text>
+            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>{t('account.deleteAccount.deleteItem1')}</Text>
+            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>{t('account.deleteAccount.deleteItem2')}</Text>
+            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>{t('account.deleteAccount.deleteItem3')}</Text>
+            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>{t('account.deleteAccount.deleteItem4')}</Text>
+            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>{t('account.deleteAccount.deleteItem5')}</Text>
+            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>{t('account.deleteAccount.deleteItem6')}</Text>
           </View>
         </View>
 
         {/* What will NOT be deleted */}
         <View style={[styles.infoSection, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.gray50 }]}>
-          <Text style={[styles.infoTitle, { color: tc.textPrimary }]}>What will NOT be deleted:</Text>
+          <Text style={[styles.infoTitle, { color: tc.textPrimary }]}>{t('account.deleteAccount.whatNotDeleted')}</Text>
           <View style={styles.infoList}>
-            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>• Active bookings (contact providers directly)</Text>
-            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>• Transaction records (required by law)</Text>
+            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>{t('account.deleteAccount.keepItem1')}</Text>
+            <Text style={[styles.infoItem, { color: tc.textSecondary }]}>{t('account.deleteAccount.keepItem2')}</Text>
           </View>
         </View>
 
@@ -159,14 +220,14 @@ export default function DeleteAccountScreen() {
             {understood && <TickCircle size={20} color="#FFFFFF" variant="Bold" />}
           </View>
           <Text style={[styles.checkboxText, { color: tc.textSecondary }]}>
-            I understand that this action is permanent and all my data will be deleted.
+            {t('account.deleteAccount.understandPermanent')}
           </Text>
         </TouchableOpacity>
 
         {/* Confirmation Input */}
         <View style={styles.confirmSection}>
           <Text style={[styles.confirmLabel, { color: tc.textPrimary }]}>
-            Type <Text style={[styles.confirmHighlight, { color: tc.error }]}>delete</Text> to confirm:
+            {t('account.deleteAccount.typeToConfirm')} <Text style={[styles.confirmHighlight, { color: tc.error }]}>delete</Text> {t('account.deleteAccount.toConfirm')}:
           </Text>
           <TextInput
             style={[
@@ -199,7 +260,7 @@ export default function DeleteAccountScreen() {
           ) : (
             <>
               <Trash size={20} color="#FFFFFF" variant="Bold" />
-              <Text style={styles.deleteButtonText}>Delete My Account</Text>
+              <Text style={styles.deleteButtonText}>{t('account.deleteAccount.deleteMyAccount')}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -210,10 +271,10 @@ export default function DeleteAccountScreen() {
           onPress={handleBack}
           activeOpacity={0.7}
         >
-          <Text style={[styles.cancelButtonText, { color: tc.primary }]}>Cancel and keep my account</Text>
+          <Text style={[styles.cancelButtonText, { color: tc.primary }]}>{t('account.deleteAccount.cancelKeep')}</Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

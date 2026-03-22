@@ -33,6 +33,7 @@ import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { useNearbyActivities, useActivityActions } from '@/hooks/useCommunity';
 import { activityService } from '@/services/community/activity.service';
 import type { Activity } from '@/services/community/types/community.types';
@@ -53,6 +54,7 @@ export default function PulseScreen() {
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
   const { profile } = useAuth();
+  const { showError } = useToast();
   const userId = profile?.id;
   const mapRef = useRef<MapView>(null);
 
@@ -121,7 +123,7 @@ export default function PulseScreen() {
 
   const handleCreateActivity = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/community/create-activity' as any);
+    router.push('/community/create-activity');
   };
 
   const handleActivityPress = (activity: Activity) => {
@@ -145,7 +147,7 @@ export default function PulseScreen() {
       setSelectedActivity(null);
       // Realtime will auto-refresh the list
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      showError(error.message || 'Failed to join activity');
     }
   };
 
@@ -156,7 +158,7 @@ export default function PulseScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSelectedActivity(null);
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      showError(error.message || 'Failed to leave activity');
     }
   };
 
@@ -229,11 +231,11 @@ export default function PulseScreen() {
         <TouchableOpacity style={[styles.headerBtn, { backgroundColor: tc.bgElevated }]} onPress={() => router.back()}>
           <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{cityName ? `Pulse · ${cityName}` : 'Pulse'}</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">{cityName ? `Pulse · ${cityName}` : 'Pulse'}</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <TouchableOpacity
             style={[styles.headerBtn, { backgroundColor: tc.bgElevated }]}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/community/my-activities' as any); }}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/community/my-activities'); }}
           >
             <Clock size={20} color={tc.textPrimary} />
           </TouchableOpacity>
@@ -272,7 +274,7 @@ export default function PulseScreen() {
         <PulseActivityList
           activities={filteredActivities}
           onActivityPress={handleActivityPress}
-          onCreatorPress={(creatorId) => router.push(`/community/buddy/${creatorId}` as any)}
+          onCreatorPress={(creatorId) => router.push(`/community/buddy/${creatorId}`)}
         />
       )}
 
@@ -285,11 +287,11 @@ export default function PulseScreen() {
           joining={joiningActivity}
           onJoin={handleJoinActivity}
           onLeave={handleLeaveActivity}
-          onViewDetails={() => router.push(`/community/activity/${selectedActivity.id}` as any)}
-          onChat={() => router.push(`/community/activity-chat/${selectedActivity.id}` as any)}
+          onViewDetails={() => router.push(`/community/activity/${selectedActivity.id}`)}
+          onChat={() => router.push(`/community/activity-chat/${selectedActivity.id}`)}
           onEdit={() => {
             router.push({
-              pathname: '/community/create-activity' as any,
+              pathname: '/community/create-activity',
               params: {
                 editId: selectedActivity.id,
                 editTitle: selectedActivity.title,
@@ -310,10 +312,10 @@ export default function PulseScreen() {
               setSelectedActivity(null);
               refetch();
             } catch (err: any) {
-              Alert.alert('Error', err?.message || 'Could not cancel activity');
+              showError(err?.message || 'Could not cancel activity');
             }
           }}
-          onReport={() => router.push(`/community/report?type=event&id=${selectedActivity.id}` as any)}
+          onReport={() => router.push(`/community/report?type=event&id=${selectedActivity.id}`)}
           onClose={() => setSelectedActivity(null)}
           bottomOffset={insets.bottom + 20}
         />

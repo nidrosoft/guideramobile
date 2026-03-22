@@ -1,12 +1,10 @@
-import { View, StyleSheet } from 'react-native';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 
 export default function FlightResults() {
-  return <View style={styles.container} />;
+  const router = useRouter();
+  useEffect(() => { router.back(); }, []);
+  return null;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-});
+// NOTE: Flight results are handled by the modal flow in src/features/booking/flows/flight/
+// This route stub exists to prevent blank screens if deep-linked.

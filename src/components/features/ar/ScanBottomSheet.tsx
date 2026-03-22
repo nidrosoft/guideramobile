@@ -141,7 +141,7 @@ export default function ScanBottomSheet({
           onPress={onClose}
         />
         
-        <View style={[styles.bottomSheet, { backgroundColor: isDark ? '#1A1A1A' : colors.bgElevated }]}>
+        <View style={[styles.bottomSheet, { backgroundColor: isDark ? colors.bgModal : colors.bgElevated }]}>
           {/* Handle */}
           <View style={styles.handleContainer}>
             <View style={[styles.handle, { backgroundColor: colors.gray300 }]} />

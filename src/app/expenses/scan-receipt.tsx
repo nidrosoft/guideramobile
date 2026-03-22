@@ -538,19 +538,19 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
 
   // Permission
-  permTitle: { fontSize: typography.fontSize.xl, fontWeight: '700', marginTop: spacing.lg, textAlign: 'center' },
+  permTitle: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, marginTop: spacing.lg, textAlign: 'center' },
   permSub: { fontSize: typography.fontSize.sm, marginTop: spacing.sm, textAlign: 'center' },
   permBtn: { marginTop: spacing.xl, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: 14 },
-  permBtnText: { color: '#FFF', fontWeight: '700', fontSize: typography.fontSize.base },
+  permBtnText: { color: '#FFF', fontWeight: typography.fontWeight.bold, fontSize: typography.fontSize.base },
 
   // Success
   successIcon: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center' },
-  successTitle: { fontSize: typography.fontSize.xl, fontWeight: '700', marginTop: spacing.lg },
+  successTitle: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, marginTop: spacing.lg },
   successSub: { fontSize: typography.fontSize.sm, marginTop: spacing.sm },
 
   // Processing
   processingThumb: { width: 120, height: 160, borderRadius: 12, opacity: 0.6 },
-  processingTitle: { fontSize: typography.fontSize.lg, fontWeight: '700', marginTop: spacing.md },
+  processingTitle: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, marginTop: spacing.md },
   processingSub: { fontSize: typography.fontSize.sm, marginTop: spacing.xs, textAlign: 'center' },
 
   // Header
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: typography.fontSize.lg, fontWeight: '700' },
+  headerTitle: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold },
   headerSub: { fontSize: typography.fontSize.xs, marginTop: 2 },
 
   scroll: { flex: 1 },
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: spacing.md, paddingVertical: 10, borderRadius: 12,
   },
-  confText: { fontSize: typography.fontSize.xs, fontWeight: '600' },
+  confText: { fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold },
 
   // Item cards
   itemCard: {
@@ -582,24 +582,24 @@ const styles = StyleSheet.create({
   itemLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: spacing.sm },
   itemEmoji: { fontSize: 24 },
   itemInfo: { flex: 1 },
-  itemDesc: { fontSize: typography.fontSize.sm, fontWeight: '600', lineHeight: 18 },
+  itemDesc: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, lineHeight: 18 },
   itemCat: { fontSize: typography.fontSize.xs, marginTop: 2 },
   itemRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  itemAmount: { fontSize: typography.fontSize.base, fontWeight: '700' },
+  itemAmount: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold },
   removeBtn: { padding: 4 },
 
   // Trip selector
   tripSelector: {
     borderRadius: 14, borderWidth: 1, padding: spacing.md,
   },
-  tripSelectorLabel: { fontSize: typography.fontSize.xs, fontWeight: '600', marginBottom: spacing.sm, letterSpacing: 0.3, textTransform: 'uppercase' },
+  tripSelectorLabel: { fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold, marginBottom: spacing.sm, letterSpacing: 0.3, textTransform: 'uppercase' },
   tripChips: { gap: 8 },
   tripChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
   },
   tripChipEmoji: { fontSize: 14 },
-  tripChipText: { fontSize: typography.fontSize.sm, fontWeight: '600', maxWidth: 120 },
+  tripChipText: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, maxWidth: 120 },
   noTripsHint: { fontSize: typography.fontSize.xs, marginTop: spacing.sm, textAlign: 'center' as const },
 
   // Total
@@ -607,8 +607,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     padding: spacing.md, borderRadius: 14, borderWidth: 1, marginTop: spacing.xs,
   },
-  totalLabel: { fontSize: typography.fontSize.base, fontWeight: '600' },
-  totalAmount: { fontSize: typography.fontSize.xl, fontWeight: '800' },
+  totalLabel: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold },
+  totalAmount: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold },
 
   // Bottom bar
   bottomBar: {
@@ -619,12 +619,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 6, paddingVertical: 14, paddingHorizontal: spacing.lg, borderRadius: 14, borderWidth: 1,
   },
-  scanAgainText: { fontWeight: '600', fontSize: typography.fontSize.sm },
+  scanAgainText: { fontWeight: typography.fontWeight.semibold, fontSize: typography.fontSize.sm },
   confirmBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: spacing.sm, paddingVertical: 14, borderRadius: 14,
   },
-  confirmText: { color: '#FFF', fontWeight: '700', fontSize: typography.fontSize.sm },
+  confirmText: { color: '#FFF', fontWeight: typography.fontWeight.bold, fontSize: typography.fontSize.sm },
 
   // Camera
   camera: { flex: 1 },
@@ -634,11 +634,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md, paddingTop: spacing.md,
   },
   cameraBack: { padding: 4 },
-  cameraTitle: { color: '#FFF', fontSize: typography.fontSize.lg, fontWeight: '700' },
+  cameraTitle: { color: '#FFF', fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold },
   cameraGuide: { alignItems: 'center', paddingVertical: spacing.md },
   cameraGuideText: {
     color: 'rgba(255,255,255,0.8)', fontSize: typography.fontSize.sm,
-    fontWeight: '500', textAlign: 'center',
+    fontWeight: typography.fontWeight.medium, textAlign: 'center',
     backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm, borderRadius: 20,
   },

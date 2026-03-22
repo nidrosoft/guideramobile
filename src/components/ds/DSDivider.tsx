@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
-import { colors } from '@/styles/colors';
+import { useTheme } from '@/context/ThemeContext';
 
 interface DSDividerProps {
   vertical?: boolean;
@@ -19,14 +19,17 @@ interface DSDividerProps {
 export default function DSDivider({
   vertical = false,
   spacing = 0,
-  color = colors.borderSubtle,
+  color,
   style,
 }: DSDividerProps) {
+  const { colors } = useTheme();
+  const dividerColor = color ?? colors.borderSubtle;
+
   return (
     <View
       style={[
         vertical ? styles.vertical : styles.horizontal,
-        { backgroundColor: color },
+        { backgroundColor: dividerColor },
         spacing > 0 && (vertical
           ? { marginHorizontal: spacing }
           : { marginVertical: spacing }),

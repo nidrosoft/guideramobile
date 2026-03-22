@@ -10,6 +10,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   TouchableOpacity,
   TextInput,
   Image,
@@ -34,8 +35,13 @@ import {
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase/client';
 import { groupService, eventService } from '@/services/community';
+
+const sanitizeSearchQuery = (query: string): string => {
+  return query.replace(/[%_\\'"()]/g, '');
+};
 
 type SearchTab = 'all' | 'groups' | 'buddies' | 'events';
 type SortOption = 'relevance' | 'popular' | 'recent' | 'nearby';
@@ -55,6 +61,7 @@ export default function SearchScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { t } = useTranslation();
   const inputRef = useRef<TextInput>(null);
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -152,12 +159,18 @@ export default function SearchScreen() {
         try {
           const { data: users } = await supabase
             .from('profiles')
-            .select('id, first_name, last_name, avatar_url, city, nationality')
-            .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,city.ilike.%${query}%`)
-            .limit(10);
+            .select('id, first_name, last_name, avatar_url, city, nationality, privacy_settings')
+            .or(`first_name.ilike.%${sanitizeSearchQuery(query)}%,last_name.ilike.%${sanitizeSearchQuery(query)}%,city.ilike.%${sanitizeSearchQuery(query)}%`)
+            .is('deleted_at', null)
+            .limit(20);
 
           if (users) {
-            results.push(...users.map(u => ({
+            // COMM-04: Filter out users who set their profile to private
+            const visibleUsers = users.filter(u => {
+              const privacy = u.privacy_settings as any;
+              return !privacy?.profileVisibility || privacy.profileVisibility === 'public';
+            });
+            results.push(...visibleUsers.map(u => ({
               id: u.id,
               type: 'buddy',
               name: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
@@ -176,7 +189,7 @@ export default function SearchScreen() {
           const { data: events } = await supabase
             .from('community_events')
             .select('id, title, start_date, location_name, attendee_count, cover_image_url')
-            .or(`title.ilike.%${query}%,location_name.ilike.%${query}%`)
+            .or(`title.ilike.%${sanitizeSearchQuery(query)}%,location_name.ilike.%${sanitizeSearchQuery(query)}%`)
             .eq('status', 'upcoming')
             .limit(10);
 
@@ -230,7 +243,7 @@ export default function SearchScreen() {
           style={[styles.resultCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push(`/community/${item.id}` as any);
+            router.push(`/community/${item.id}`);
           }}
         >
           <Image source={{ uri: item.avatar }} style={styles.resultAvatar} />
@@ -265,7 +278,7 @@ export default function SearchScreen() {
           style={[styles.resultCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push(`/community/buddy/${item.id}` as any);
+            router.push(`/community/buddy/${item.id}`);
           }}
         >
           <View style={styles.buddyAvatarContainer}>
@@ -297,7 +310,7 @@ export default function SearchScreen() {
           style={[styles.resultCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push(`/community/event/${item.id}` as any);
+            router.push(`/community/event/${item.id}`);
           }}
         >
           <Image source={{ uri: item.image }} style={styles.resultAvatar} />
@@ -328,7 +341,7 @@ export default function SearchScreen() {
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top, backgroundColor: tc.bgElevated }]}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack} accessibilityRole="button" accessibilityLabel="Go back">
           <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         
@@ -338,15 +351,16 @@ export default function SearchScreen() {
           <TextInput
             ref={inputRef}
             style={[styles.searchInput, { color: tc.textPrimary }]}
-            placeholder="Search groups, buddies, events..."
+            placeholder={t('community.search.placeholder')}
             placeholderTextColor={tc.textTertiary}
+            accessibilityLabel="Search groups, buddies, events"
             value={searchQuery}
             onChangeText={handleSearchChange}
             autoFocus
             returnKeyType="search"
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={clearSearch}>
+            <TouchableOpacity onPress={clearSearch} accessibilityRole="button" accessibilityLabel="Clear search">
               <CloseCircle size={20} color={tc.textTertiary} variant="Bold" />
             </TouchableOpacity>
           )}
@@ -356,6 +370,8 @@ export default function SearchScreen() {
         <TouchableOpacity 
           style={[styles.filterButton, { backgroundColor: tc.primary + '15' }, showFilters && styles.filterButtonActive]}
           onPress={toggleFilters}
+          accessibilityRole="button"
+          accessibilityLabel="Toggle filters"
         >
           <Filter size={20} color={showFilters ? colors.white : tc.primary} />
           {activeFiltersCount > 0 && (
@@ -369,10 +385,10 @@ export default function SearchScreen() {
       {/* Tabs */}
       <View style={[styles.tabsContainer, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         {[
-          { id: 'all' as SearchTab, label: 'All' },
-          { id: 'groups' as SearchTab, label: 'Groups' },
-          { id: 'buddies' as SearchTab, label: 'Buddies' },
-          { id: 'events' as SearchTab, label: 'Events' },
+          { id: 'all' as SearchTab, label: t('community.search.all') },
+          { id: 'groups' as SearchTab, label: t('community.search.groups') },
+          { id: 'buddies' as SearchTab, label: t('community.search.buddies') },
+          { id: 'events' as SearchTab, label: t('community.search.events') },
         ].map(tab => (
           <TouchableOpacity
             key={tab.id}
@@ -393,7 +409,7 @@ export default function SearchScreen() {
       <Animated.View style={[styles.filtersPanel, { height: filterHeight, backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Privacy Filter */}
-          <Text style={[styles.filterLabel, { color: tc.textPrimary }]}>Privacy</Text>
+          <Text style={[styles.filterLabel, { color: tc.textPrimary }]}>{t('community.search.privacy')}</Text>
           <View style={styles.filterOptions}>
             {['all', 'public', 'private'].map(option => (
               <TouchableOpacity
@@ -409,7 +425,7 @@ export default function SearchScreen() {
           </View>
           
           {/* Group Size Filter */}
-          <Text style={[styles.filterLabel, { color: tc.textPrimary }]}>Group Size</Text>
+          <Text style={[styles.filterLabel, { color: tc.textPrimary }]}>{t('community.search.groupSize')}</Text>
           <View style={styles.filterOptions}>
             {[
               { id: 'all', label: 'Any' },
@@ -430,7 +446,7 @@ export default function SearchScreen() {
           </View>
           
           {/* Tags */}
-          <Text style={[styles.filterLabel, { color: tc.textPrimary }]}>Tags</Text>
+          <Text style={[styles.filterLabel, { color: tc.textPrimary }]}>{t('community.search.tags')}</Text>
           <View style={styles.tagsContainer}>
             {POPULAR_TAGS.map(tag => (
               <TouchableOpacity
@@ -448,68 +464,77 @@ export default function SearchScreen() {
           {/* Clear Filters */}
           {activeFiltersCount > 0 && (
             <TouchableOpacity style={styles.clearFilters} onPress={clearFilters}>
-              <Text style={styles.clearFiltersText}>Clear all filters</Text>
+              <Text style={styles.clearFiltersText}>{t('community.search.clearFilters')}</Text>
             </TouchableOpacity>
           )}
         </ScrollView>
       </Animated.View>
       
       {/* Content */}
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {searchQuery.length === 0 ? (
-          <>
-            {/* Suggested Searches */}
-            <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Suggested Searches</Text>
-            {SUGGESTED_SEARCHES.map((query, index) => (
+      {searchQuery.length === 0 ? (
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Suggested Searches */}
+          <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>{t('community.search.suggestedSearches')}</Text>
+          {SUGGESTED_SEARCHES.map((query, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.recentItem}
+              onPress={() => handleRecentSearch(query)}
+            >
+              <SearchNormal1 size={18} color={tc.textTertiary} />
+              <Text style={[styles.recentText, { color: tc.textSecondary }]}>{query}</Text>
+            </TouchableOpacity>
+          ))}
+
+          {/* Popular Tags */}
+          <Text style={[styles.sectionTitle, { marginTop: spacing.xl, color: tc.textPrimary }]}>{t('community.search.popularTags')}</Text>
+          <View style={styles.tagsContainer}>
+            {POPULAR_TAGS.slice(0, 6).map(tag => (
               <TouchableOpacity
-                key={index}
-                style={styles.recentItem}
-                onPress={() => handleRecentSearch(query)}
+                key={tag}
+                style={[styles.popularTag, { backgroundColor: tc.primary + '15' }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSearchQuery(tag);
+                }}
               >
-                <SearchNormal1 size={18} color={tc.textTertiary} />
-                <Text style={[styles.recentText, { color: tc.textSecondary }]}>{query}</Text>
+                <Text style={[styles.popularTagText, { color: tc.primary }]}>#{tag}</Text>
               </TouchableOpacity>
             ))}
-            
-            {/* Popular Tags */}
-            <Text style={[styles.sectionTitle, { marginTop: spacing.xl, color: tc.textPrimary }]}>Popular Tags</Text>
-            <View style={styles.tagsContainer}>
-              {POPULAR_TAGS.slice(0, 6).map(tag => (
-                <TouchableOpacity
-                  key={tag}
-                  style={[styles.popularTag, { backgroundColor: tc.primary + '15' }]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setSearchQuery(tag);
-                  }}
-                >
-                  <Text style={[styles.popularTagText, { color: tc.primary }]}>#{tag}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </>
-        ) : results.length === 0 ? (
-          <View style={styles.emptyState}>
-            <SearchNormal1 size={48} color={tc.textTertiary} />
-            <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No results found</Text>
-            <Text style={[styles.emptyText, { color: tc.textSecondary }]}>Try different keywords or filters</Text>
           </View>
-        ) : (
-          <>
-            <Text style={[styles.resultsCount, { color: tc.textSecondary }]}>
-              {results.length} result{results.length !== 1 ? 's' : ''}
-            </Text>
-            {results.map(renderResult)}
-          </>
-        )}
-        
-        <View style={{ height: 100 }} />
-      </ScrollView>
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      ) : (
+        <FlatList
+          data={results}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => renderResult(item)}
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={
+            results.length > 0 ? (
+              <Text style={[styles.resultsCount, { color: tc.textSecondary }]}>
+                {results.length} result{results.length !== 1 ? 's' : ''}
+              </Text>
+            ) : null
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <SearchNormal1 size={48} color={tc.textTertiary} />
+              <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>{t('community.search.noResults')}</Text>
+              <Text style={[styles.emptyText, { color: tc.textSecondary }]}>{t('community.search.tryDifferent')}</Text>
+            </View>
+          }
+          ListFooterComponent={<View style={{ height: 100 }} />}
+        />
+      )}
     </View>
   );
 }

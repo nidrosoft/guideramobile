@@ -17,12 +17,6 @@ export const MODELS = {
   ORDER_GENERATION: 'gemini-2.0-flash',
 } as const;
 
-// ─── API Endpoints ────────────────────────────────────────────
-export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
-
-export const getGeminiEndpoint = (model: string) =>
-  `${GEMINI_API_BASE}/models/${model}:generateContent`;
-
 // ─── Frame Analysis Config ────────────────────────────────────
 export const FRAME_DIFF_CONFIG: FrameDiffConfig = {
   changeThreshold: 0.15,   // 15% pixel change required to send new frame

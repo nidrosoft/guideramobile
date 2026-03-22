@@ -36,7 +36,7 @@ import {
   Briefcase,
   ShoppingBag,
 } from 'iconsax-react-native';
-import { colors, spacing, borderRadius } from '@/styles';
+import { colors, spacing, borderRadius, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import {
   GuideProfile,
@@ -98,7 +98,7 @@ export default function GuidesTabContent() {
         supabase.from('groups').select('*').eq('status', 'active').order('member_count', { ascending: false }).limit(5),
       ]);
 
-      if (guidesRes.data) setGuides(guidesRes.data as any);
+      if (guidesRes.data) setGuides(guidesRes.data);
       if (listingsRes.data) {
         setListings(listingsRes.data.map((l: any) => ({
           id: l.id,
@@ -248,7 +248,7 @@ export default function GuidesTabContent() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Featured Local Guides</Text>
-                <TouchableOpacity style={styles.seeAllBtn} onPress={() => router.push('/community/trending' as any)}>
+                <TouchableOpacity style={styles.seeAllBtn} onPress={() => router.push('/community/trending')}>
                   <Text style={[styles.seeAllText, { color: tc.primary }]}>See All</Text>
                   <ArrowRight2 size={14} color={tc.primary} />
                 </TouchableOpacity>
@@ -338,7 +338,7 @@ export default function GuidesTabContent() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Top Groups with Guides</Text>
-                <TouchableOpacity style={styles.seeAllBtn} onPress={() => router.push('/community/trending' as any)}>
+                <TouchableOpacity style={styles.seeAllBtn} onPress={() => router.push('/community/trending')}>
                   <Text style={[styles.seeAllText, { color: tc.primary }]}>See All</Text>
                   <ArrowRight2 size={14} color={tc.primary} />
                 </TouchableOpacity>
@@ -346,7 +346,7 @@ export default function GuidesTabContent() {
 
               <View style={styles.sectionPadded}>
                 {communities.map(comm => (
-                  <TouchableOpacity key={comm.id} style={[styles.communityCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]} onPress={() => router.push(`/community/${comm.id}` as any)} activeOpacity={0.7}>
+                  <TouchableOpacity key={comm.id} style={[styles.communityCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]} onPress={() => router.push(`/community/${comm.id}`)} activeOpacity={0.7}>
                     <Image source={{ uri: comm.coverImage }} style={styles.communityCover} />
                     <View style={[styles.trustBadgeOverlay, { backgroundColor: tc.bgElevated }]}> 
                       <Star1 size={12} color="#F59E0B" variant="Bold" />
@@ -383,7 +383,7 @@ export default function GuidesTabContent() {
       onClose={() => setShowPartnerSheet(false)}
       onApply={() => {
         setShowPartnerSheet(false);
-        router.push('/community/partner-apply' as any);
+        router.push('/community/partner-apply');
       }}
     />
   </>);
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: typography.fontSize.heading3,
     color: colors.textPrimary,
     paddingVertical: 0,
   },
@@ -430,8 +430,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: typography.fontSize.heading2,
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
   },
   seeAllBtn: {
@@ -440,9 +440,9 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   seeAllText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: typography.fontWeight.semibold,
   },
 
   filterScroll: {
@@ -468,16 +468,16 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   filterChipText: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textSecondary,
-    fontWeight: '500',
+    fontWeight: typography.fontWeight.medium,
   },
   filterChipTextActive: {
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: typography.fontWeight.semibold,
   },
   filterEmoji: {
-    fontSize: 14,
+    fontSize: typography.fontSize.bodyLg,
   },
 
   guideList: {
@@ -522,20 +522,20 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   trustBadgeText: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: typography.fontSize.body,
+    fontWeight: typography.fontWeight.bold,
   },
   communityCardContent: {
     padding: 14,
   },
   communityName: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary,
     marginBottom: 4,
   },
   communityDesc: {
-    fontSize: 13,
+    fontSize: typography.fontSize.body,
     color: colors.textSecondary,
     lineHeight: 18,
     marginBottom: 10,
@@ -551,12 +551,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   communityStatText: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textSecondary,
-    fontWeight: '500',
+    fontWeight: typography.fontWeight.medium,
   },
   communityStatDot: {
-    fontSize: 12,
+    fontSize: typography.fontSize.bodySm,
     color: colors.textTertiary,
   },
 
@@ -588,13 +588,13 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: typography.fontWeight.bold,
     textAlign: 'center',
     marginBottom: 6,
   },
   fullEmptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: typography.fontSize.kpiValue,
+    fontWeight: typography.fontWeight.bold,
     textAlign: 'center',
     marginBottom: 10,
   },
@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
     maxWidth: 280,
   },
   fullEmptySubtitle: {
-    fontSize: 14,
+    fontSize: typography.fontSize.bodyLg,
     lineHeight: 21,
     textAlign: 'center',
     maxWidth: 300,

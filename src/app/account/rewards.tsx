@@ -39,12 +39,13 @@ import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { rewardsService, RewardPoints, PointsType } from '@/services/rewards.service';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: screenHeight } = Dimensions.get('window');
 
 // Header animation constants
-const HEADER_MAX_HEIGHT = 240;
+const HEADER_MAX_HEIGHT = Math.min(240, screenHeight * 0.33);
 const HEADER_MIN_HEIGHT = 80;
 const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
 
@@ -70,6 +71,7 @@ export default function RewardsScreen() {
   const { user, profile } = useAuth();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { t } = useTranslation();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [pointsHistory, setPointsHistory] = useState<RewardPoints[]>([]);
   const [summary, setSummary] = useState({
@@ -175,11 +177,11 @@ export default function RewardsScreen() {
         >
           {/* Fixed Navigation Row - always visible and touchable */}
           <View style={[styles.header, { backgroundColor: 'transparent', borderBottomColor: 'transparent' }]}>
-            <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel="Go back">
               <ArrowLeft2 size={24} color={colors.white} />
             </TouchableOpacity>
             <Animated.Text style={[styles.headerTitle, { opacity: compactHeaderOpacity }]}>
-              Rewards Points
+              {t('account.rewards.title')}
             </Animated.Text>
             <View style={styles.placeholder} />
           </View>
@@ -190,12 +192,12 @@ export default function RewardsScreen() {
             pointerEvents="none"
           >
             <Gift size={32} color={colors.white} variant="Bold" />
-            <Text style={styles.balanceLabel}>Available Points</Text>
+            <Text style={styles.balanceLabel}>{t('account.rewards.availablePoints')}</Text>
             <Text style={styles.balanceAmount}>
               {summary.balance.toLocaleString()}
             </Text>
             <Text style={styles.balanceValue}>
-              ≈ ${(summary.balance * 0.01).toFixed(2)} value
+              {t('account.rewards.approxValue', { value: (summary.balance * 0.01).toFixed(2) })}
             </Text>
           </Animated.View>
 
@@ -244,52 +246,52 @@ export default function RewardsScreen() {
                   <ArrowUp size={18} color={tc.success} />
                 </View>
                 <Text style={[styles.statValue, { color: tc.textPrimary }]}>{summary.totalEarned.toLocaleString()}</Text>
-                <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Total Earned</Text>
+                <Text style={[styles.statLabel, { color: tc.textSecondary }]}>{t('account.rewards.totalEarned')}</Text>
               </View>
-              
+
               <View style={[styles.statCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
                 <View style={[styles.statIcon, { backgroundColor: `${tc.error}15` }]}>
                   <ArrowDown size={18} color={tc.error} />
                 </View>
                 <Text style={[styles.statValue, { color: tc.textPrimary }]}>{summary.totalRedeemed.toLocaleString()}</Text>
-                <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Redeemed</Text>
+                <Text style={[styles.statLabel, { color: tc.textSecondary }]}>{t('account.rewards.redeemed')}</Text>
               </View>
-              
+
               <View style={[styles.statCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
                 <View style={[styles.statIcon, { backgroundColor: `${tc.warning}15` }]}>
                   <Warning2 size={18} color={tc.warning} />
                 </View>
                 <Text style={[styles.statValue, { color: tc.textPrimary }]}>{summary.expiringThisMonth.toLocaleString()}</Text>
-                <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Expiring Soon</Text>
+                <Text style={[styles.statLabel, { color: tc.textSecondary }]}>{t('account.rewards.expiringSoon')}</Text>
               </View>
             </View>
 
             {/* Ways to Earn */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>Ways to Earn</Text>
+              <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>{t('account.rewards.waysToEarn')}</Text>
               <View style={[styles.earnCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
-                <EarnOption 
+                <EarnOption
                   icon={Airplane}
-                  title="Book Flights"
-                  description="Earn 1 point per $1 spent"
+                  title={t('account.rewards.bookFlights')}
+                  description={t('account.rewards.earnPerDollarFlights')}
                   color={colors.info}
                 />
-                <EarnOption 
+                <EarnOption
                   icon={Building}
-                  title="Book Hotels"
-                  description="Earn 2 points per $1 spent"
+                  title={t('account.rewards.bookHotels')}
+                  description={t('account.rewards.earnPerDollarHotels')}
                   color={colors.primary}
                 />
-                <EarnOption 
+                <EarnOption
                   icon={People}
-                  title="Refer Friends"
-                  description="Earn 500 points per referral"
+                  title={t('account.rewards.referFriends')}
+                  description={t('account.rewards.earnPerReferral')}
                   color={colors.success}
                 />
-                <EarnOption 
+                <EarnOption
                   icon={Star1}
-                  title="Write Reviews"
-                  description="Earn 50 points per review"
+                  title={t('account.rewards.writeReviews')}
+                  description={t('account.rewards.earnPerReview')}
                   color={colors.warning}
                   isLast
                 />
@@ -298,14 +300,14 @@ export default function RewardsScreen() {
 
             {/* Points History */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>Points History</Text>
-              
+              <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>{t('account.rewards.pointsHistory')}</Text>
+
               {pointsHistory.length === 0 ? (
                 <View style={[styles.emptyState, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
                   <Gift size={48} color={tc.textTertiary} variant="Bold" />
-                  <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No points yet</Text>
+                  <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>{t('account.rewards.noPointsYet')}</Text>
                   <Text style={[styles.emptyText, { color: tc.textSecondary }]}>
-                    Start earning points by making bookings
+                    {t('account.rewards.startEarning')}
                   </Text>
                 </View>
               ) : (

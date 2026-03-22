@@ -126,17 +126,19 @@ export default function TripReminder({
       </TouchableOpacity>
 
       {/* Departure Advisor Sheet */}
-      <DepartureAdvisorSheet
-        visible={showAdvisor}
-        onClose={() => setShowAdvisor(false)}
-        flightNumber={flightNumber || 'AV123'}
-        departureAirport={departureAirport || 'LAX'}
-        departureTime={tripDate.toISOString()}
-        destination={destination}
-        isInternational={isInternational}
-        tripId={tripId}
-        bookingId={bookingId}
-      />
+      {hasFlightData && (
+        <DepartureAdvisorSheet
+          visible={showAdvisor}
+          onClose={() => setShowAdvisor(false)}
+          flightNumber={flightNumber!}
+          departureAirport={departureAirport!}
+          departureTime={tripDate.toISOString()}
+          destination={destination}
+          isInternational={isInternational}
+          tripId={tripId}
+          bookingId={bookingId}
+        />
+      )}
     </>
   );
 }

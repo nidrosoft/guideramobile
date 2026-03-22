@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -35,7 +35,7 @@ import {
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// SCREEN_WIDTH computed inside component via useWindowDimensions
 
 interface FlightDetailSheetProps {
   visible: boolean;
@@ -70,6 +70,7 @@ export default function FlightDetailSheet({
   flightInfo,
 }: FlightDetailSheetProps) {
   const insets = useSafeAreaInsets();
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
   const { colors: tc } = useTheme();
   const [logoError, setLogoError] = useState(false);
 
@@ -131,10 +132,10 @@ export default function FlightDetailSheet({
           colors={['#1a1a2e', '#16213e', '#0f3460']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.headerGradient}
+          style={[styles.headerGradient, { paddingTop: insets.top + 8 }]}
         >
           {/* Close Button */}
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+          <TouchableOpacity style={[styles.closeButton, { top: insets.top + 12 }]} onPress={onClose}>
             <CloseCircle size={28} color="rgba(255,255,255,0.8)" variant="Bold" />
           </TouchableOpacity>
 
@@ -265,7 +266,7 @@ export default function FlightDetailSheet({
             <View style={styles.timelineRow}>
               <View style={styles.timelineLeftColumn}>
                 <View style={[styles.arrivalDot, { backgroundColor: tc.success }]}>
-                  <TickCircle size={14} color="#FFFFFF" variant="Bold" />
+                  <TickCircle size={14} color={tc.white} variant="Bold" />
                 </View>
               </View>
               <View style={styles.timelineRightColumn}>
@@ -295,25 +296,25 @@ export default function FlightDetailSheet({
           <Animated.View entering={FadeInDown.delay(500).duration(400)} style={[styles.amenitiesCard, { backgroundColor: tc.bgElevated }]}>
             <Text style={[styles.cardTitle, { color: tc.textPrimary }]}>Onboard Experience</Text>
             <View style={styles.amenitiesGrid}>
-              <View style={styles.amenityItem}>
+              <View style={[styles.amenityItem, { width: (SCREEN_WIDTH - spacing.lg * 4 - spacing.md) / 2 }]}>
                 <View style={[styles.amenityIcon, { backgroundColor: `${tc.primary}10` }]}>
                   <Briefcase size={18} color={tc.primary} />
                 </View>
                 <Text style={[styles.amenityText, { color: tc.textPrimary }]}>Cabin Bag</Text>
               </View>
-              <View style={styles.amenityItem}>
+              <View style={[styles.amenityItem, { width: (SCREEN_WIDTH - spacing.lg * 4 - spacing.md) / 2 }]}>
                 <View style={[styles.amenityIcon, { backgroundColor: `${tc.primary}10` }]}>
                   <Coffee size={18} color={tc.primary} />
                 </View>
                 <Text style={[styles.amenityText, { color: tc.textPrimary }]}>Meals</Text>
               </View>
-              <View style={styles.amenityItem}>
+              <View style={[styles.amenityItem, { width: (SCREEN_WIDTH - spacing.lg * 4 - spacing.md) / 2 }]}>
                 <View style={[styles.amenityIcon, { backgroundColor: `${tc.primary}10` }]}>
                   <Wifi size={18} color={tc.primary} />
                 </View>
                 <Text style={[styles.amenityText, { color: tc.textPrimary }]}>Wi-Fi</Text>
               </View>
-              <View style={styles.amenityItem}>
+              <View style={[styles.amenityItem, { width: (SCREEN_WIDTH - spacing.lg * 4 - spacing.md) / 2 }]}>
                 <View style={[styles.amenityIcon, { backgroundColor: `${tc.primary}10` }]}>
                   <Monitor size={18} color={tc.primary} />
                 </View>
@@ -348,9 +349,9 @@ export default function FlightDetailSheet({
               <View style={styles.fareRuleItem}>
                 <View style={[styles.fareRuleIcon, flightInfo.changeable && styles.fareRuleIconActive]}>
                   {flightInfo.changeable ? (
-                    <TickCircle size={16} color="#FFFFFF" variant="Bold" />
+                    <TickCircle size={16} color={tc.white} variant="Bold" />
                   ) : (
-                    <CloseCircle size={16} color="#FFFFFF" variant="Bold" />
+                    <CloseCircle size={16} color={tc.white} variant="Bold" />
                   )}
                 </View>
                 <View style={styles.fareRuleInfo}>
@@ -399,18 +400,18 @@ export default function FlightDetailSheet({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: colors.bgPrimary,
   },
   
   // Premium Gradient Header - Compact
   headerGradient: {
-    paddingTop: 44,
+    paddingTop: 44, // overridden inline with insets.top + 8
     paddingBottom: spacing.lg,
     paddingHorizontal: spacing.lg,
   },
   closeButton: {
     position: 'absolute',
-    top: 50,
+    top: 50, // overridden inline with insets.top + 12
     right: spacing.lg,
     width: 40,
     height: 40,
@@ -625,7 +626,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#10B981',
+    backgroundColor: colors.success,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -654,10 +655,10 @@ const styles = StyleSheet.create({
     fontWeight: '600' as any,
   },
   arrivalBadgeStyle: {
-    backgroundColor: '#10B98115',
+    backgroundColor: `${colors.success}15`,
   },
   arrivalBadgeText: {
-    color: '#10B981',
+    color: colors.success,
   },
   timelineAirport: {
     fontSize: typography.fontSize.base,
@@ -677,7 +678,7 @@ const styles = StyleSheet.create({
   },
   terminalBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.bgElevated,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: 4,
@@ -730,7 +731,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   amenityItem: {
-    width: (SCREEN_WIDTH - spacing.lg * 4 - spacing.md) / 2,
+    // width applied inline with useWindowDimensions
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -773,12 +774,12 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F87171',
+    backgroundColor: colors.error,
     justifyContent: 'center',
     alignItems: 'center',
   },
   fareRuleIconActive: {
-    backgroundColor: '#34D399',
+    backgroundColor: colors.success,
   },
   fareRuleInfo: {
     flex: 1,

@@ -35,7 +35,7 @@ import {
   CloseCircle,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/styles';
+import { colors, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { ListingCategory, LISTING_CATEGORIES, CreateListingInput } from '../types/guide.types';
 
@@ -403,11 +403,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated, alignItems: 'center', justifyContent: 'center',
   },
   headerTitle: {
-    flex: 1, fontSize: 17, fontWeight: '700',
+    flex: 1, fontSize: 17, fontWeight: typography.fontWeight.bold,
     color: colors.textPrimary, textAlign: 'center',
   },
   stepIndicator: {
-    fontSize: 13, color: colors.textTertiary, fontWeight: '500',
+    fontSize: typography.fontSize.body, color: colors.textTertiary, fontWeight: typography.fontWeight.medium,
     minWidth: 40, textAlign: 'right',
   },
   progressContainer: {
@@ -421,25 +421,25 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 100 },
   stepContent: { padding: 20 },
   stepTitle: {
-    fontSize: 24, fontWeight: '800', color: colors.textPrimary, marginBottom: 6,
+    fontSize: typography.fontSize['2xl'], fontWeight: '800', color: colors.textPrimary, marginBottom: 6,
   },
   stepSubtitle: {
-    fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: 24,
+    fontSize: typography.fontSize.bodyLg, color: colors.textSecondary, lineHeight: 20, marginBottom: 24,
   },
   inputLabel: {
-    fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginBottom: 6,
+    fontSize: typography.fontSize.bodyLg, fontWeight: typography.fontWeight.semibold, color: colors.textPrimary, marginBottom: 6,
   },
   inputHint: {
-    fontSize: 12, color: colors.textTertiary, marginBottom: 8,
+    fontSize: typography.fontSize.bodySm, color: colors.textTertiary, marginBottom: 8,
   },
   textInput: {
     backgroundColor: colors.bgElevated, borderRadius: 12, padding: 14,
-    fontSize: 15, color: colors.textPrimary, borderWidth: 1,
+    fontSize: typography.fontSize.heading3, color: colors.textPrimary, borderWidth: 1,
     borderColor: colors.borderSubtle, marginBottom: 16,
   },
   textArea: { height: 120, textAlignVertical: 'top' },
   charCount: {
-    fontSize: 11, color: colors.textTertiary, textAlign: 'right', marginTop: -12, marginBottom: 16,
+    fontSize: typography.fontSize.caption, color: colors.textTertiary, textAlign: 'right', marginTop: -12, marginBottom: 16,
   },
 
   // Category Cards
@@ -452,10 +452,10 @@ const styles = StyleSheet.create({
   },
   categoryInfo: { flex: 1 },
   categoryLabel: {
-    fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 2,
+    fontSize: typography.fontSize.heading3, fontWeight: typography.fontWeight.bold, color: colors.textPrimary, marginBottom: 2,
   },
   categoryDesc: {
-    fontSize: 12, color: colors.textSecondary,
+    fontSize: typography.fontSize.bodySm, color: colors.textSecondary,
   },
 
   // Photo
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated, borderRadius: 12, padding: 16,
     borderWidth: 2, borderColor: colors.borderSubtle, borderStyle: 'dashed', marginBottom: 16,
   },
-  photoUploadText: { fontSize: 14, fontWeight: '600', color: colors.primary },
+  photoUploadText: { fontSize: typography.fontSize.bodyLg, fontWeight: typography.fontWeight.semibold, color: colors.primary },
 
   // Included items
   addItemRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#22C55E10', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 6,
   },
-  includedItemText: { fontSize: 13, color: '#22C55E', fontWeight: '500' },
+  includedItemText: { fontSize: typography.fontSize.body, color: '#22C55E', fontWeight: typography.fontWeight.medium },
 
   // Review
   reviewCard: {
@@ -490,29 +490,29 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4,
     borderRadius: 10, marginBottom: 10,
   },
-  reviewCatText: { fontSize: 12, fontWeight: '600' },
+  reviewCatText: { fontSize: typography.fontSize.bodySm, fontWeight: typography.fontWeight.semibold },
   reviewTitle: {
-    fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginBottom: 8, lineHeight: 24,
+    fontSize: typography.fontSize.heading2, fontWeight: typography.fontWeight.bold, color: colors.textPrimary, marginBottom: 8, lineHeight: 24,
   },
   reviewDesc: {
-    fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: 14,
+    fontSize: typography.fontSize.bodyLg, color: colors.textSecondary, lineHeight: 20, marginBottom: 14,
   },
   reviewRow: {
     flexDirection: 'row', paddingVertical: 8,
     borderTopWidth: 1, borderTopColor: colors.borderSubtle,
   },
   reviewLabel: {
-    fontSize: 13, color: colors.textTertiary, fontWeight: '500', width: 90,
+    fontSize: typography.fontSize.body, color: colors.textTertiary, fontWeight: typography.fontWeight.medium, width: 90,
   },
   reviewValue: {
-    flex: 1, fontSize: 13, color: colors.textPrimary, fontWeight: '500',
+    flex: 1, fontSize: typography.fontSize.body, color: colors.textPrimary, fontWeight: typography.fontWeight.medium,
   },
   publishButton: {
     backgroundColor: '#22C55E', borderRadius: 14, paddingVertical: 16, alignItems: 'center',
   },
-  publishButtonText: { fontSize: 16, fontWeight: '700', color: colors.white },
+  publishButtonText: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, color: colors.white },
   publishNote: {
-    fontSize: 12, color: colors.textTertiary, textAlign: 'center', marginTop: 10,
+    fontSize: typography.fontSize.bodySm, color: colors.textTertiary, textAlign: 'center', marginTop: 10,
   },
 
   // Bottom Bar
@@ -526,6 +526,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 16,
   },
   nextButtonDisabled: { backgroundColor: colors.borderSubtle },
-  nextButtonText: { fontSize: 16, fontWeight: '700', color: colors.white },
+  nextButtonText: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, color: colors.white },
   nextButtonTextDisabled: { color: colors.textTertiary },
 });

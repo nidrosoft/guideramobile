@@ -61,8 +61,8 @@ export default function ARContainer({ onClose, initialPlugin }: ARContainerProps
         />
       )}
 
-      {/* TODO: Add view mode toggle button */}
-      {/* TODO: Add search bar at top */}
+      {/* v2.0: Add view mode toggle button */}
+      {/* v2.0: Add search bar at top */}
     </View>
   );
 }

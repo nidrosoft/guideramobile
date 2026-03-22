@@ -8,6 +8,7 @@
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView } from 'expo-camera';
 import { VolumeHigh, VolumeCross, Microphone2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
@@ -25,6 +26,7 @@ interface LiveCameraModeProps {
 }
 
 export default function LiveCameraMode({ userLanguage, onLanguageChange, onClose, onVoiceSettings }: LiveCameraModeProps) {
+  const insets = useSafeAreaInsets();
   const cameraRef = useRef<any>(null);
   const { isActive, isProcessing, currentResult, error, start, stop } = useFrameAnalysis();
   const [isMuted, setIsMuted] = useState(false);
@@ -128,7 +130,7 @@ export default function LiveCameraMode({ userLanguage, onLanguageChange, onClose
       />
 
       {/* Top controls — live indicator, language picker, close */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { top: insets.top + 8 }]}>
         <View style={styles.liveIndicator}>
           <View style={[styles.liveDot, isListening && styles.liveDotActive]} />
           <Text style={styles.liveText}>

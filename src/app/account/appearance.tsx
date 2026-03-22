@@ -19,8 +19,9 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft2, Sun1, Moon, Mobile, TickCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors as lightColors, darkColors } from '@/styles/colors';
+import { colors as staticColors, lightColors, darkColors } from '@/styles/colors';
 import { spacing, typography, borderRadius } from '@/styles';
+import { useTranslation } from 'react-i18next';
 import { useTheme, ThemeMode } from '@/context/ThemeContext';
 
 export default function AppearanceSettingsScreen() {
@@ -29,6 +30,7 @@ export default function AppearanceSettingsScreen() {
   const { colors: tc } = useTheme();
   const systemColorScheme = useColorScheme();
   const { themeMode, isDark, colors, setThemeMode } = useTheme();
+  const { t } = useTranslation();
   
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -43,20 +45,20 @@ export default function AppearanceSettingsScreen() {
   const themeOptions = useMemo(() => [
     {
       id: 'light' as ThemeMode,
-      title: 'Light',
-      description: 'Always use light mode',
-      icon: <Sun1 size={24} color="#F59E0B" variant="Bold" />,
+      title: t('account.appearance.light'),
+      description: t('account.appearance.lightDesc'),
+      icon: <Sun1 size={24} color={colors.warning} variant="Bold" />,
     },
     {
       id: 'dark' as ThemeMode,
-      title: 'Dark',
-      description: 'Always use dark mode',
+      title: t('account.appearance.dark'),
+      description: t('account.appearance.darkDesc'),
       icon: <Moon size={24} color={colors.primary} variant="Bold" />,
     },
     {
       id: 'system' as ThemeMode,
-      title: 'System',
-      description: 'Follow your device settings',
+      title: t('account.appearance.system'),
+      description: t('account.appearance.systemDesc'),
       icon: <Mobile size={24} color={colors.textSecondary} variant="Bold" />,
     },
   ], [colors]);
@@ -132,7 +134,7 @@ export default function AppearanceSettingsScreen() {
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>Appearance</Text>
+        <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>{t('account.appearance.title')}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -143,8 +145,8 @@ export default function AppearanceSettingsScreen() {
       >
         {/* Theme Preview */}
         <View style={styles.previewSection}>
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Preview</Text>
-          <Text style={[styles.sectionSubtitle, dynamicStyles.sectionSubtitle]}>See how the app will look</Text>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('account.appearance.preview')}</Text>
+          <Text style={[styles.sectionSubtitle, dynamicStyles.sectionSubtitle]}>{t('account.appearance.seeHowLooks')}</Text>
           
           <View style={styles.previewContainer}>
             {/* Light Preview */}
@@ -171,7 +173,7 @@ export default function AppearanceSettingsScreen() {
                   <View style={styles.previewNavDot} />
                 </View>
               </View>
-              <Text style={[styles.previewLabel, dynamicStyles.previewLabel]}>Light</Text>
+              <Text style={[styles.previewLabel, dynamicStyles.previewLabel]}>{t('account.appearance.light')}</Text>
             </TouchableOpacity>
 
             {/* Dark Preview */}
@@ -198,15 +200,15 @@ export default function AppearanceSettingsScreen() {
                   <View style={styles.previewNavDotDark} />
                 </View>
               </View>
-              <Text style={[styles.previewLabel, dynamicStyles.previewLabel]}>Dark</Text>
+              <Text style={[styles.previewLabel, dynamicStyles.previewLabel]}>{t('account.appearance.dark')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Theme Options */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Theme Mode</Text>
-          <Text style={[styles.sectionSubtitle, dynamicStyles.sectionSubtitle]}>Choose your preferred appearance</Text>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>{t('account.appearance.themeMode')}</Text>
+          <Text style={[styles.sectionSubtitle, dynamicStyles.sectionSubtitle]}>{t('account.appearance.choosePreferred')}</Text>
           
           <View style={styles.optionsList}>
             {themeOptions.map((option) => (
@@ -253,22 +255,22 @@ export default function AppearanceSettingsScreen() {
               {systemColorScheme === 'dark' ? (
                 <Moon size={20} color={colors.primary} variant="Bold" />
               ) : (
-                <Sun1 size={20} color="#F59E0B" variant="Bold" />
+                <Sun1 size={20} color={colors.warning} variant="Bold" />
               )}
             </View>
             <Text style={[styles.statusText, dynamicStyles.statusText]}>
-              Your device is currently using <Text style={[styles.statusHighlight, dynamicStyles.statusHighlight]}>
-                {systemColorScheme === 'dark' ? 'dark' : 'light'}
-              </Text> mode
+              {t('account.appearance.deviceUsing')} <Text style={[styles.statusHighlight, dynamicStyles.statusHighlight]}>
+                {systemColorScheme === 'dark' ? t('account.appearance.dark').toLowerCase() : t('account.appearance.light').toLowerCase()}
+              </Text> {t('account.appearance.mode')}
             </Text>
           </View>
         )}
 
         {/* Info Card */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>About Dark Mode</Text>
+          <Text style={styles.infoTitle}>{t('account.appearance.aboutDarkMode')}</Text>
           <Text style={styles.infoText}>
-            Dark mode provides a comfortable viewing experience in low-light environments while reducing eye strain and battery consumption on OLED screens.
+            {t('account.appearance.aboutDarkModeDesc')}
           </Text>
         </View>
       </ScrollView>
@@ -495,21 +497,21 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.semibold,
   },
   infoCard: {
-    backgroundColor: '#3B82F610',
+    backgroundColor: `${staticColors.info}10`,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: '#3B82F620',
+    borderColor: `${staticColors.info}20`,
   },
   infoTitle: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: '#3B82F6',
+    color: staticColors.info,
     marginBottom: spacing.xs,
   },
   infoText: {
     fontSize: typography.fontSize.sm,
-    color: '#6B7280',
+    color: staticColors.gray300,
     lineHeight: 20,
   },
 });

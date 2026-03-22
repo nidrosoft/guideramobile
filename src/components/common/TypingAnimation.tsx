@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Text, StyleSheet, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, typography } from '@/styles';
+import { typography } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 interface TypingAnimationProps {
   phrases: string[];
@@ -10,12 +11,13 @@ interface TypingAnimationProps {
   pauseTime?: number;
 }
 
-export default function TypingAnimation({ 
-  phrases, 
+export default function TypingAnimation({
+  phrases,
   typingSpeed = 80,
   deletingSpeed = 50,
   pauseTime = 800,
 }: TypingAnimationProps) {
+  const { colors } = useTheme();
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
   const [currentText, setCurrentText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -54,7 +56,7 @@ export default function TypingAnimation({
   }, [currentText, isDeleting, currentPhraseIndex, phrases, typingSpeed, deletingSpeed, pauseTime]);
 
   return (
-    <Text style={styles.text}>
+    <Text style={[styles.text, { color: colors.white }]}>
       {currentText}
       <Text style={styles.cursor}>|</Text>
     </Text>
@@ -65,7 +67,6 @@ const styles = StyleSheet.create({
   text: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colors.white,
     textAlign: 'center',
     lineHeight: typography.fontSize['2xl'] * 1.3,
   },
