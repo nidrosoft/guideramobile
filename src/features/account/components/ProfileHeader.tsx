@@ -15,7 +15,6 @@ import { spacing, typography, borderRadius, colors as staticColors } from '@/sty
 import { useTheme } from '@/context/ThemeContext';
 import { UserProfile } from '../types/account.types';
 import { partnerService } from '@/services/community/partner.service';
-import DSButton from '@/components/ds/DSButton';
 
 interface ProfileHeaderProps {
   user: UserProfile;
@@ -139,15 +138,14 @@ export default function ProfileHeader({ user, onEditPress, onAvatarPress }: Prof
           )}
         </View>
         
-        {/* Edit button */}
-        <DSButton
-          title=""
+        {/* Settings button */}
+        <TouchableOpacity
           onPress={onEditPress || (() => {})}
-          variant="ghost"
-          size="sm"
-          icon={<Setting2 size={20} color={colors.white} variant="TwoTone" />}
-          style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 12, width: 40, height: 40, paddingHorizontal: 0 }}
-        />
+          activeOpacity={0.7}
+          style={styles.settingsButton}
+        >
+          <Setting2 size={20} color={colors.white} variant="TwoTone" />
+        </TouchableOpacity>
       </View>
       
       {/* Stats */}
@@ -293,12 +291,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     lineHeight: 20,
   },
-  editButton: {
+  settingsButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'center',
   },
   statsContainer: {
     flexDirection: 'row',

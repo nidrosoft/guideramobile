@@ -108,7 +108,7 @@ export default function CountryScreen() {
         'Vietnam',
       ]}
       currentStep={5}
-      totalSteps={10}
+      totalSteps={11}
       nextRoute="/(onboarding)/language"
       showBackButton={true}
       fieldName="country"

@@ -5,7 +5,7 @@
 
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, SafeAreaView } from 'react-native';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTripStore } from '../../stores/trip.store';
 import { TripState } from '../../types/trip.types';
@@ -58,12 +58,14 @@ export default function TripListScreen() {
     emptyButtonText: { color: colors.white },
   }), [colors]);
   
-  // Fetch trips on mount — ALWAYS filter by current user
-  useEffect(() => {
-    if (profile?.id) {
-      fetchTrips(profile.id);
-    }
-  }, [profile?.id]);
+  // Fetch trips on mount and whenever the screen gains focus (e.g. after import)
+  useFocusEffect(
+    useCallback(() => {
+      if (profile?.id) {
+        fetchTrips(profile.id);
+      }
+    }, [profile?.id])
+  );
 
   // Auto-scroll to specific trip when navigated with scrollToTripId
   useEffect(() => {

@@ -11,7 +11,7 @@ export default function EmergencyContactScreen() {
       inputType="text"
       keyboardType="phone-pad"
       currentStep={7}
-      totalSteps={10}
+      totalSteps={11}
       nextRoute="/(onboarding)/travel-preferences"
       showBackButton={true}
       fieldName="emergencyContactPhone"

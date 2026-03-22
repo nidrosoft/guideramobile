@@ -113,9 +113,9 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.container}>
-      <ErrorBoundary level="global">
         <QueryClientProvider client={queryClient}>
             <ThemeProvider>
+              <ErrorBoundary level="global">
               <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
                 <AuthProvider>
                   <AuthGuard>
@@ -136,9 +136,9 @@ export default function RootLayout() {
                   </AuthGuard>
                 </AuthProvider>
               </ClerkProvider>
+              </ErrorBoundary>
             </ThemeProvider>
         </QueryClientProvider>
-      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }

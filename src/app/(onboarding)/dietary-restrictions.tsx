@@ -22,7 +22,7 @@ export default function DietaryRestrictionsScreen() {
       ]}
       minSelections={1}
       currentStep={9}
-      totalSteps={10}
+      totalSteps={11}
       nextRoute="/(onboarding)/accessibility-needs"
       showBackButton={true}
       fieldName="dietaryRestrictions"

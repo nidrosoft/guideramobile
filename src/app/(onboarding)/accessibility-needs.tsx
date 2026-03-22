@@ -20,9 +20,8 @@ export default function AccessibilityNeedsScreen() {
       ]}
       minSelections={1}
       currentStep={10}
-      totalSteps={10}
-      nextRoute="/(onboarding)/setup"
-      isLast={true}
+      totalSteps={11}
+      nextRoute="/(onboarding)/location"
       showBackButton={true}
       fieldName="accessibilityNeeds"
     />

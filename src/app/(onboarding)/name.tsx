@@ -10,7 +10,7 @@ export default function NameScreen() {
       placeholder="Enter your first name"
       inputType="text"
       currentStep={1}
-      totalSteps={10}
+      totalSteps={11}
       nextRoute="/(onboarding)/dob"
       fieldName="firstName"
     />

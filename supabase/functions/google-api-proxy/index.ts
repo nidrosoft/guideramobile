@@ -231,22 +231,31 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // ── Place Photo (proxied to hide API key) ──
+    // ── Place Photo (returns the redirect URL for client to use directly) ──
     if (action === "place_photo") {
       const { photoReference, maxWidth } = body;
       if (!photoReference) return Response.json({ error: "Missing photoReference" }, { status: 400, headers: corsHeaders });
       try {
         const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth || 800}&photo_reference=${photoReference}&key=${GOOGLE_API_KEY}`;
-        const photoResp = await fetch(photoUrl, { redirect: 'follow' });
-        if (!photoResp.ok) {
-          return Response.json({ error: "Failed to fetch photo" }, { status: 502, headers: corsHeaders });
+        // Don't follow redirects — capture the final URL from the redirect
+        const photoResp = await fetch(photoUrl, { redirect: 'manual' });
+        
+        // Google Places Photo API returns a 302 redirect to the actual image URL
+        if (photoResp.status === 302 || photoResp.status === 301) {
+          const redirectUrl = photoResp.headers.get('location');
+          if (redirectUrl) {
+            return Response.json({ url: redirectUrl }, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
         }
-        const imageData = await photoResp.arrayBuffer();
-        const contentType = photoResp.headers.get('content-type') || 'image/jpeg';
-        return new Response(imageData, {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': contentType, 'Cache-Control': 'public, max-age=86400' },
-        });
+        
+        // If no redirect, follow and get final URL
+        const followResp = await fetch(photoUrl, { redirect: 'follow' });
+        if (followResp.ok) {
+          // Return the final URL after redirects
+          return Response.json({ url: followResp.url }, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        
+        return Response.json({ error: "Failed to fetch photo URL" }, { status: 502, headers: corsHeaders });
       } catch (photoErr) {
         console.error("[google-api-proxy] Photo proxy error:", photoErr);
         return Response.json({ error: "Photo proxy failed" }, { status: 500, headers: corsHeaders });

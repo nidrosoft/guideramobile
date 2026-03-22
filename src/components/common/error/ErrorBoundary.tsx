@@ -109,7 +109,23 @@ interface ErrorFallbackProps {
 }
 
 function ErrorFallback({ error, errorInfo, onReset, level }: ErrorFallbackProps) {
-  const { colors: tc, isDark } = useTheme();
+  // Safely access theme — fall back to static colors if ThemeProvider isn't available
+  let tc: Record<string, string>;
+  let isDark = false;
+  try {
+    const theme = useTheme();
+    tc = theme.colors as unknown as Record<string, string>;
+    isDark = theme.isDark;
+  } catch {
+    // Fallback colors when ErrorBoundary is outside ThemeProvider
+    tc = {
+      background: '#1A1A2E', textPrimary: '#FFFFFF', textSecondary: '#A0A0B0',
+      textTertiary: '#707080', primary: '#3FC39E', error: '#EF4444', success: '#22C55E',
+      white: '#FFFFFF', black: '#000000', bgElevated: '#252540', bgCard: '#202035',
+      borderSubtle: '#333350', borderMedium: '#444460',
+    };
+    isDark = true;
+  }
   const isGlobal = level === 'global';
   const [userEmail, setUserEmail] = useState('');
   const [isSending, setIsSending] = useState(false);

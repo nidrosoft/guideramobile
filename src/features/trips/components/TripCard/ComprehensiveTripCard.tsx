@@ -181,8 +181,8 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
         .eq('modules_generated', true)
         .gte('modules_generated_at', new Date(Date.now() - 30 * 86400000).toISOString());
 
-      if ((count ?? 0) >= 10) {
-        showError('You\'ve reached the limit of 10 Smart Plans per month. Please try again next month.');
+      if ((count ?? 0) >= 20) {
+        showError('You\'ve reached the limit of 20 Smart Plans per month. Please try again next month.');
         setGenerating(false);
         return;
       }
@@ -262,7 +262,8 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
         // Fire notification for Smart Plan completion
         try {
           const { notifySmartPlanComplete } = await import('@/services/notifications/community-notifications');
-          await notifySmartPlanComplete(currentUserId, trip.id, trip.title || trip.destination || 'Your trip', finalDone);
+          const destName = typeof trip.destination === 'string' ? trip.destination : trip.destination?.name || '';
+          await notifySmartPlanComplete(currentUserId, trip.id, trip.title || destName || 'Your trip', finalDone);
         } catch (e) { if (__DEV__) console.warn('Smart plan notification failed:', e); }
         router.push({ pathname: '/planner/[tripId]', params: { tripId: trip.id } });
       } else {

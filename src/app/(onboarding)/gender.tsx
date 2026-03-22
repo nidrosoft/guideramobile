@@ -17,7 +17,7 @@ export default function GenderScreen() {
         'Prefer not to say',
       ]}
       currentStep={3}
-      totalSteps={10}
+      totalSteps={11}
       nextRoute="/(onboarding)/ethnicity"
       showBackButton={true}
       fieldName="gender"

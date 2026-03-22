@@ -19,7 +19,7 @@ export default function EthnicityScreen() {
         'Prefer not to say',
       ]}
       currentStep={4}
-      totalSteps={10}
+      totalSteps={11}
       nextRoute="/(onboarding)/country"
       showBackButton={true}
       fieldName="ethnicity"

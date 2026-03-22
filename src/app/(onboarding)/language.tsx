@@ -45,7 +45,7 @@ export default function LanguageScreen() {
       ]}
       minSelections={1}
       currentStep={6}
-      totalSteps={10}
+      totalSteps={11}
       nextRoute="/(onboarding)/emergency-contact"
       showBackButton={true}
       fieldName="languages"

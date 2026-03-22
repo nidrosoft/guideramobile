@@ -40,7 +40,7 @@ export function matchesCategory(
     name?: string;
     type?: string;
     deal_type?: string;
-    bestFor?: string[];
+    bestFor?: string[] | string;
   },
   activeCategory: string
 ): boolean {
@@ -62,9 +62,12 @@ export function matchesCategory(
   }
 
   // Check bestFor array (e.g. ['families', 'couples'])
-  if (item.bestFor?.length) {
+  if (Array.isArray(item.bestFor) && item.bestFor.length) {
     const bestLower = item.bestFor.map(b => b.toLowerCase());
     if (keywords.some(kw => bestLower.some(b => b.includes(kw)))) return true;
+  } else if (typeof item.bestFor === 'string' && item.bestFor.length) {
+    const bestLower = item.bestFor.toLowerCase();
+    if (keywords.some(kw => bestLower.includes(kw))) return true;
   }
 
   // Check title/name
@@ -83,7 +86,7 @@ export function matchesCategory(
  * Filter an array of items by the active category.
  * Returns the full array if activeCategory is 'all'.
  */
-export function filterByCategory<T extends { tags?: string[]; category?: string; title?: string; name?: string; type?: string; bestFor?: string[] }>(
+export function filterByCategory<T extends { tags?: string[]; category?: string; title?: string; name?: string; type?: string; bestFor?: string[] | string }>(
   items: T[],
   activeCategory: string
 ): T[] {

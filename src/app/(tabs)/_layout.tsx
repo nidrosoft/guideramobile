@@ -1,5 +1,5 @@
 import { Tabs, useRouter } from 'expo-router';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
@@ -12,6 +12,8 @@ import { Home2, Airplane, Category, People, User } from 'iconsax-react-native';
 import ScanBottomSheet, { ScanActionType } from '@/components/features/ar/ScanBottomSheet';
 import AIChatSheet from '@/components/features/ai/AIChatSheet';
 import ImportTripFlow from '@/features/trip-import/components/ImportTripFlow';
+import { useTripStore } from '@/features/trips/stores/trip.store';
+import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
 
 // Custom Tab Bar with launcher button and bottom sheet
@@ -24,16 +26,25 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const { unreadCount: communityUnread } = useNotifications({ category: 'social', autoRefresh: true });
+  const { fetchTrips } = useTripStore();
+  const { profile } = useAuth();
 
-  // Animated launcher icon — spins when user returns to a tab
+  // Animated launcher icon — spins directionally based on tab navigation
   const launcherRotation = useSharedValue(0);
   const focusedIndex = state.index;
+  const prevIndexRef = useRef(focusedIndex);
 
   useEffect(() => {
-    // Trigger spin animation whenever focused tab changes (user navigated back)
+    const prevIndex = prevIndexRef.current;
+    prevIndexRef.current = focusedIndex;
+    if (prevIndex === focusedIndex) return;
+
+    // Spin direction: navigating to a lower-index (left) tab → spin counter-clockwise (-360)
+    //                 navigating to a higher-index (right) tab → spin clockwise (+360)
+    const spinAngle = focusedIndex < prevIndex ? -360 : 360;
     launcherRotation.value = withSequence(
       withTiming(0, { duration: 0 }),
-      withTiming(360, { duration: 800, easing: Easing.out(Easing.cubic) })
+      withTiming(spinAngle, { duration: 800, easing: Easing.out(Easing.cubic) })
     );
   }, [focusedIndex]);
 
@@ -265,6 +276,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         onClose={() => setShowImportFlow(false)}
         onComplete={() => {
           setShowImportFlow(false);
+          if (profile?.id) fetchTrips(profile.id);
           router.push('/(tabs)/trips');
         }}
         initialMethod="scan"

@@ -22,7 +22,7 @@ export default function TravelPreferencesScreen() {
       ]}
       minSelections={3}
       currentStep={8}
-      totalSteps={10}
+      totalSteps={11}
       nextRoute="/(onboarding)/dietary-restrictions"
       showBackButton={true}
       fieldName="travelStyles"
