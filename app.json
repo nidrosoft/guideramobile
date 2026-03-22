@@ -3,7 +3,7 @@
     "name": "Guidera",
     "slug": "Guidera",
     "scheme": "guidera",
-    "version": "0.2.1",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "one.guidera.app",
-      "buildNumber": "2",
+      "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera for AR navigation",
         "NSLocationWhenInUseUsageDescription": "This app needs your location for navigation",
@@ -33,7 +33,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "one.guidera.app",
-      "versionCode": 2,
+      "versionCode": 1,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
