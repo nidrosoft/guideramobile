@@ -527,7 +527,7 @@ function FullScreenCarousel({
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <View style={carouselStyles.overlay}>
         <TouchableOpacity style={carouselStyles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-          <Ionicons name="close" size={28} color={colors.white} />
+          <Ionicons name="close" size={28} color="#FFFFFF" />
         </TouchableOpacity>
 
         <View style={carouselStyles.counter}>

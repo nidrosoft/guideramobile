@@ -35,7 +35,7 @@ export default function TrendingLocationCard({
   const { colors } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
   return (
-    <View style={[styles.container, { height: Math.min(360, screenHeight * 0.5) }]}>
+    <View style={[styles.container, { height: Math.min(360, screenHeight * 0.5), borderColor: colors.borderSubtle }]}>
       {/* Background Image */}
       <Image source={imageUrl} style={styles.backgroundImage} contentFit="cover" transition={200} />
       
@@ -89,7 +89,6 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
     position: 'relative',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   backgroundImage: {
     width: '100%',

@@ -15,6 +15,12 @@ const BACKOFF_SCHEDULES: Record<RetryTier, number[]> = {
 
 function isRetryableError(error: any): boolean {
   const msg = (error?.message || error?.toString() || '').toLowerCase();
+
+  // Never retry client errors (4xx) — they won't succeed on retry
+  if (msg.includes('404') || msg.includes('401') || msg.includes('403') || msg.includes('400') || msg.includes('422')) {
+    return false;
+  }
+
   return (
     msg.includes('network') ||
     msg.includes('fetch') ||

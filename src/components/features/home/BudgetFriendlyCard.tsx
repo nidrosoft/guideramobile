@@ -29,7 +29,7 @@ export default function BudgetFriendlyCard({
   const { colors } = useTheme();
   const { width: dynamicWidth } = useWindowDimensions();
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgCard }]}>
+    <View style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
       {/* Image Section */}
       <View style={[styles.imageContainer, { width: dynamicWidth * 0.35 }]}>
         <Image source={imageUrl} style={styles.image} contentFit="cover" transition={200} />
@@ -78,7 +78,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginRight: spacing.md,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
     ...shadows.cardLight,
   },
   imageContainer: {

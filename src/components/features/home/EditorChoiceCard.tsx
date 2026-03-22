@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Dimensions, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { typography, spacing, borderRadius } from '@/styles';
+import { useTheme } from '@/context/ThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 const CARD_WIDTH = screenWidth * 0.82;
@@ -17,9 +18,10 @@ interface EditorChoiceCardProps {
 }
 
 export default function EditorChoiceCard({ id, name, location, reason, rating, imageUrl }: EditorChoiceCardProps) {
+  const { colors } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
   return (
-    <View style={[styles.container, { height: Math.min(420, screenHeight * 0.55) }]}>
+    <View style={[styles.container, { height: Math.min(420, screenHeight * 0.55), borderColor: colors.borderSubtle }]}>
       {/* Background Image */}
       <Image source={imageUrl} style={styles.backgroundImage} contentFit="cover" transition={200} />
       
@@ -73,7 +75,6 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
     position: 'relative',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   backgroundImage: {
     width: '100%',

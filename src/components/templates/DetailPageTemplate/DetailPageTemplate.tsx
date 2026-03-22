@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { View, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Alert, Share } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Share } from 'react-native';
 import Animated, { 
   useAnimatedScrollHandler, 
   useSharedValue, 
@@ -16,15 +16,15 @@ import Animated, {
 } from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MessageQuestion } from 'iconsax-react-native';
+import { MessageQuestion, Eye } from 'iconsax-react-native';
+import { useRouter } from 'expo-router';
 import { spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useSaveDestination } from '@/hooks/useSaveDestination';
 import * as Haptics from 'expo-haptics';
-import { Linking } from 'react-native';
-import { PlanTripSheet } from '@/components/features/search';
+import { SearchOverlay } from '@/components/features/search';
 import AIChatSheet from '@/components/features/ai/AIChatSheet';
-import type { TripPlanData } from '@/components/features/search/PlanTripSheet';
+import { useAuth } from '@/context/AuthContext';
 
 const { width } = Dimensions.get('window');
 const IMAGE_HEIGHT = width * 1.2;
@@ -40,7 +40,6 @@ import VibesAroundSection from '@/components/organisms/VibesAroundSection/VibesA
 import LocalEventSection from '@/components/organisms/LocalEventSection/LocalEventSection';
 import ReviewsSection from '@/components/organisms/ReviewsSection/ReviewsSection';
 import SimilarItemsSection from '@/components/organisms/SimilarItemsSection/SimilarItemsSection';
-import ActionButton from '@/components/organisms/ActionButton/ActionButton';
 
 interface DetailPageTemplateProps {
   type: string;
@@ -69,10 +68,12 @@ interface DetailPageTemplateProps {
 export default function DetailPageTemplate({ type, id, data }: DetailPageTemplateProps) {
   const { colors, isDark } = useTheme();
   const { isSaved, toggleSave } = useSaveDestination(id);
+  const { profile } = useAuth();
+  const router = useRouter();
   const scrollOffset = useSharedValue(0);
   
-  // Plan Trip states
-  const [showPlanSheet, setShowPlanSheet] = useState(false);
+  // Search overlay + AI chat states
+  const [showSearchOverlay, setShowSearchOverlay] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
 
   const scrollHandler = useAnimatedScrollHandler({
@@ -116,16 +117,24 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
     };
   });
 
-  const handleAction = () => {
-    // For destinations, show Plan Trip sheet
-    if (type === 'destination') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setShowPlanSheet(true);
-      return;
-    }
-    // For other types, open maps with directions
-    const query = encodeURIComponent(data.name);
-    Linking.openURL(`https://maps.google.com/?q=${query}`);
+  const handleSneakPeek = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setShowSearchOverlay(true);
+  };
+
+  const handleSelectSearch = (term: string, dates?: { start?: Date; end?: Date }, guests?: { adults: number; children: number; infants: number }) => {
+    setShowSearchOverlay(false);
+    const now = new Date();
+    const defaultStart = new Date(now.getTime() + 86400000);
+    const defaultEnd = new Date(now.getTime() + 8 * 86400000);
+    const startDate = (dates?.start || defaultStart).toISOString().split('T')[0];
+    const endDate = (dates?.end || defaultEnd).toISOString().split('T')[0];
+    const adults = String(guests?.adults || 1);
+    const children = String(guests?.children || 0);
+    const infants = String(guests?.infants || 0);
+    const originCity = profile?.city || '';
+    const nationality = profile?.country || 'US';
+    router.push(`/search/snapshot?destination=${encodeURIComponent(term)}&startDate=${startDate}&endDate=${endDate}&adults=${adults}&children=${children}&infants=${infants}&originCity=${encodeURIComponent(originCity)}&nationality=${encodeURIComponent(nationality)}` as any);
   };
 
   const handleShare = async () => {
@@ -143,21 +152,6 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
     setShowAIChat(true);
   };
 
-  // Trip plan data from destination
-  const tripPlanData: TripPlanData = {
-    destination: data.name,
-    startDate: null,
-    endDate: null,
-    guests: { adults: 1, children: 0, infants: 0 },
-  };
-
-  const handleQuickTrip = (_tripData: TripPlanData) => {
-    // Deprecated — Quick trip flow removed
-  };
-
-  const handleAdvancedTrip = (_tripData: TripPlanData) => {
-    // Deprecated — Advanced trip flow removed
-  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -263,21 +257,26 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
         </LinearGradient>
       </TouchableOpacity>
 
-      {/* Fixed Bottom Action Button */}
-      <View style={[styles.fixedBottomButton, { backgroundColor: colors.background, borderTopColor: colors.gray200, shadowColor: colors.black }]}>
-        <ActionButton 
-          type={type as any}
-          onPress={handleAction}
-        />
+      {/* Fixed Bottom "Get a Sneak Peek" Button */}
+      <View style={[styles.fixedBottomButton, { backgroundColor: colors.background, borderTopColor: colors.borderSubtle, shadowColor: colors.black }]}>
+        <View style={styles.sneakPeekContainer}>
+          <TouchableOpacity
+            style={[styles.sneakPeekBtn, { backgroundColor: isDark ? '#E5E5E5' : '#1A1A1A' }]}
+            onPress={handleSneakPeek}
+            activeOpacity={0.85}
+          >
+            <Eye size={22} color={isDark ? '#1A1A1A' : '#FFFFFF'} variant="Bold" />
+            <Text style={[styles.sneakPeekText, { color: isDark ? '#1A1A1A' : '#FFFFFF' }]}>Get a Sneak Peek</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Plan Trip Sheet */}
-      <PlanTripSheet
-        visible={showPlanSheet}
-        onClose={() => setShowPlanSheet(false)}
-        onSelectQuickTrip={handleQuickTrip}
-        onSelectAdvancedTrip={handleAdvancedTrip}
-        tripData={tripPlanData}
+      {/* Search Overlay — pre-filled with destination */}
+      <SearchOverlay
+        visible={showSearchOverlay}
+        query={data.name}
+        onSelectSearch={handleSelectSearch}
+        onClose={() => setShowSearchOverlay(false)}
       />
 
 
@@ -380,5 +379,21 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  sneakPeekContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  sneakPeekBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: 16,
+    borderRadius: 16,
+  },
+  sneakPeekText: {
+    fontSize: 17,
+    fontWeight: '700',
   },
 });

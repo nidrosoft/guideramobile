@@ -205,11 +205,23 @@ export default function DealDetailScreen() {
   const title = d.title || deal.route_key?.replace('-', ' → ') || 'Deal';
   const bookingUrl = d.bookingUrl || d.productUrl || d.link;
 
-  // Photos
+  // Photos — extract from all possible image fields/structures from various deal providers
+  const extractImageUrl = (img: any): string => {
+    if (typeof img === 'string') return img;
+    if (!img || typeof img !== 'object') return '';
+    // Prefer high-res original, then fall back to smaller versions
+    return img.original_image || img.original || img.url || img.href || img.src 
+      || img.large || img.medium || img.thumbnail || '';
+  };
   const rawImages = d.images && d.images.length > 0 ? d.images.slice(0, 8) : [];
-  const photos: string[] = rawImages.length > 0
-    ? rawImages.map((img: any) => (typeof img === 'string' ? img : img?.url || img?.href || '')).filter(Boolean)
-    : [d.heroImage || d.imageUrl || PLACEHOLDER_IMAGES[dealType] || PLACEHOLDER_IMAGES.flight];
+  const extractedImages: string[] = rawImages.map(extractImageUrl).filter(Boolean);
+  const heroFallback = d.heroImage || d.imageUrl || d.image || d.thumbnailUrl || d.thumbnail 
+    || d.photo || d.propertyImage || d.cover || d.coverImage || d.mainImage
+    || (d.photos && d.photos.length > 0 ? extractImageUrl(d.photos[0]) : null)
+    || deal.deal_image_url || null;
+  const photos: string[] = extractedImages.length > 0
+    ? extractedImages
+    : [heroFallback || PLACEHOLDER_IMAGES[dealType] || PLACEHOLDER_IMAGES.flight];
 
   // Quick info items
   const quickInfo: { icon: any; label: string; value: string }[] = [];

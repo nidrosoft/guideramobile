@@ -268,7 +268,7 @@ async function handleDetail(params: any) {
   const experience = await getProductDetails(productCode, currency)
 
   if (!experience) {
-    return json({ error: 'Experience not found' }, 404)
+    return json({ success: false, error: 'Experience not found' })
   }
 
   return json({

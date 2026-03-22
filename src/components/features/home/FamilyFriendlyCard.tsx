@@ -40,7 +40,7 @@ export default function FamilyFriendlyCard({
   const { height: screenHeight } = useWindowDimensions();
   return (
     <View style={styles.container}>
-      <View style={[styles.card, { height: Math.min(480, screenHeight * 0.6) }]}>
+      <View style={[styles.card, { height: Math.min(480, screenHeight * 0.6), borderColor: colors.borderSubtle }]}>
         {/* Background Image */}
         <Image source={imageUrl} style={styles.backgroundImage} contentFit="cover" transition={200} />
         
@@ -117,7 +117,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   backgroundImage: {
     width: '100%',

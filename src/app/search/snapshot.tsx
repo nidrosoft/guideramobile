@@ -36,31 +36,36 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 // ─── Dynamic Loading Messages (25 steps, ~3s each = ~75s coverage) ───
 
 const LOADING_STEPS = [
-  { icon: '🔍', text: 'Searching for the best flights...' },
-  { icon: '🏨', text: 'Finding places to stay...' },
-  { icon: '🎯', text: 'Discovering top experiences...' },
-  { icon: '📅', text: 'Checking local events & happenings...' },
-  { icon: '🌍', text: 'Searching real-time travel data...' },
-  { icon: '🛂', text: 'Looking up visa & entry requirements...' },
-  { icon: '🛡️', text: 'Reviewing safety information...' },
-  { icon: '⚠️', text: 'Checking for common scams & risks...' },
-  { icon: '📶', text: 'Finding eSIM & connectivity options...' },
-  { icon: '🚕', text: 'Mapping transport from airport to city...' },
-  { icon: '🗺️', text: 'Exploring best neighborhoods to stay...' },
-  { icon: '🍜', text: 'Gathering food & dining tips...' },
-  { icon: '�', text: 'Checking currency & tipping customs...' },
-  { icon: '🌤️', text: 'Checking weather for your dates...' },
-  { icon: '⏰', text: 'Finding best times to visit key spots...' },
-  { icon: '�', text: 'Calculating your trip budget...' },
-  { icon: '🤖', text: 'AI is writing your destination brief...' },
-  { icon: '🧳', text: 'Building your packing suggestions...' },
-  { icon: '💡', text: 'Putting together money-saving tips...' },
-  { icon: '🗣️', text: 'Learning essential local phrases...' },
-  { icon: '📊', text: 'Comparing budget, mid-range & luxury...' },
-  { icon: '✍️', text: 'Writing personalized travel insights...' },
-  { icon: '🔒', text: 'Double-checking all information...' },
-  { icon: '📦', text: 'Packaging everything together...' },
-  { icon: '✨', text: 'Almost there, polishing your trip brief...' },
+  'Searching for the best flights...',
+  'Finding places to stay...',
+  'Discovering top experiences...',
+  'Checking local events and happenings...',
+  'Searching real-time travel data...',
+  'Looking up visa and entry requirements...',
+  'Reviewing safety information...',
+  'Checking for common scams and risks...',
+  'Finding eSIM and connectivity options...',
+  'Mapping transport from airport to city...',
+  'Exploring best neighborhoods to stay...',
+  'Gathering food and dining tips...',
+  'Checking currency and tipping customs...',
+  'Checking weather for your dates...',
+  'Finding best times to visit key spots...',
+  'Calculating your trip budget...',
+  'AI is writing your destination brief...',
+  'Building your packing suggestions...',
+  'Putting together money-saving tips...',
+  'Learning essential local phrases...',
+  'Comparing budget, mid-range and luxury...',
+  'Writing personalized travel insights...',
+  'Reviewing local transportation options...',
+  'Checking travel insurance recommendations...',
+  'Looking into cultural etiquette tips...',
+  'Scanning for seasonal travel advisories...',
+  'Finding the best local markets and shops...',
+  'Double-checking all information...',
+  'Packaging everything together...',
+  'Almost there, polishing your trip brief...',
 ];
 
 // Patience quotes shown at the bottom during loading
@@ -77,6 +82,11 @@ const PATIENCE_QUOTES = [
   { text: '"Traveling — it leaves you speechless, then turns you into a storyteller."', author: 'Ibn Battuta' },
   { text: '"The real voyage of discovery consists not in seeking new landscapes, but in having new eyes."', author: 'Marcel Proust' },
   { text: '"We travel not to escape life, but for life not to escape us."', author: 'Anonymous' },
+  { text: '"A journey is best measured in friends, rather than miles."', author: 'Tim Cahill' },
+  { text: '"The gladdest moment in human life is a departure into unknown lands."', author: 'Sir Richard Burton' },
+  { text: '"Travel far enough, you meet yourself."', author: 'David Mitchell' },
+  { text: '"Wherever you go, go with all your heart."', author: 'Confucius' },
+  { text: '"Take only memories, leave only footprints."', author: 'Chief Seattle' },
 ];
 
 function LoadingAnimation({ destination, tc }: { destination: string; tc: any }) {
@@ -155,8 +165,7 @@ function LoadingAnimation({ destination, tc }: { destination: string; tc: any })
               { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
             ]}
           >
-            <Text style={styles.loadingStepIcon}>{step.icon}</Text>
-            <Text style={[styles.loadingStepText, { color: tc.textSecondary }]}>{step.text}</Text>
+            <Text style={[styles.loadingStepText, { color: tc.textSecondary }]}>{step}</Text>
           </Animated.View>
         </View>
       </View>
@@ -686,7 +695,6 @@ const styles = StyleSheet.create({
   },
   loadingStepContainer: { height: 40, justifyContent: 'center', alignItems: 'center', marginTop: spacing.lg },
   loadingStepRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  loadingStepIcon: { fontSize: 22 },
   loadingStepText: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium },
   progressBarTrack: {
     width: '75%', height: 6, borderRadius: 3, overflow: 'hidden',

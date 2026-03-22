@@ -35,7 +35,7 @@ export default function LuxuryEscapeCard({
   return (
     <View style={styles.container}>
       {/* Card with shadow */}
-      <View style={[styles.card, { height: Math.min(420, screenHeight * 0.55) }]}>
+      <View style={[styles.card, { height: Math.min(420, screenHeight * 0.55), borderColor: colors.borderSubtle }]}>
         {/* Background Image */}
         <Image source={imageUrl} style={styles.backgroundImage} contentFit="cover" transition={200} />
         
@@ -106,7 +106,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius['2xl'],
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
     ...shadows.cardHover,
   },
   backgroundImage: {

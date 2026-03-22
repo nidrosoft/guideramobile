@@ -133,17 +133,18 @@ class LocalExperiencesService {
 
   /**
    * Get detailed info for a single experience.
-   * Tries the API first for full data (all images, highlights, inclusions),
-   * then falls back to cached search data if API fails.
+   * Returns cached search data immediately if available, then tries
+   * the API for richer data (all images, highlights, inclusions).
+   * If the API fails, the cached data is still returned.
    */
   async getExperienceDetail(productCode: string): Promise<LocalExperience | null> {
     const cached = this.experienceCache.get(productCode);
 
     try {
-      // Always try API for the richest data (all images, full descriptions)
+      // Try API for the richest data (all images, full descriptions)
       const { data, error: detailError } = await invokeEdgeFn(supabase, 'local-experiences', { action: 'detail', productCode }, 'fast');
 
-      if (!detailError && data?.experience) {
+      if (!detailError && data?.success && data?.experience) {
         const experience = data.experience;
         this.experienceCache.set(experience.productCode, experience);
         return experience;

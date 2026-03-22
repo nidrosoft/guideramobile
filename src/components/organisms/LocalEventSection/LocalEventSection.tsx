@@ -149,7 +149,7 @@ export default function LocalEventSection({ events }: LocalEventSectionProps) {
         {events.map((event, index) => {
           const position = (index - currentIndex + events.length) % events.length;
           
-          if (position > 2) return null; // Show 3 cards max
+          if (position > 2) return <View key={`hidden-${event.id}-${index}`} />; // Show 3 cards max
 
           const scale = 1 - (position * 0.03);
           const translateY = position * -12;
@@ -161,7 +161,7 @@ export default function LocalEventSection({ events }: LocalEventSectionProps) {
 
           return (
             <TouchableOpacity
-              key={event.id}
+              key={`event-${event.id}-${index}`}
               style={[
                 styles.card,
                 { backgroundColor: colors.bgElevated },

@@ -40,7 +40,7 @@ export default function LocalExperienceCard({
   const { colors } = useTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgCard }]}>
+    <View style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
       {/* Image Section */}
       <View style={styles.imageContainer}>
         <Image source={{ uri: imageUrl }} style={styles.image} contentFit="cover" />
@@ -114,7 +114,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.xl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
     ...shadows.cardLight,
   },
   imageContainer: {

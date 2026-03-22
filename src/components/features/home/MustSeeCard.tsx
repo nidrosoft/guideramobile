@@ -31,7 +31,7 @@ export default function MustSeeCard({
 }: MustSeeCardProps) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgCard }]}>
+    <View style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
       {/* Image Section */}
       <View style={styles.imageContainer}>
         <Image source={imageUrl} style={styles.image} contentFit="cover" transition={200} />
@@ -80,7 +80,6 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     marginRight: spacing.md,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   imageContainer: {
     width: '100%',
