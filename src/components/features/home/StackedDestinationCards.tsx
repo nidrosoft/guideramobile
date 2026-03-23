@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
@@ -19,6 +19,7 @@ import { ArrowRight, Star1, Ticket } from 'iconsax-react-native';
 import { useHomepageDataSafe, useInteractionTracking, filterByCategory, useSectionVisibility } from '@/features/homepage';
 import { useTheme } from '@/context/ThemeContext';
 import SaveButton from '@/components/common/SaveButton';
+import CachedImage from '@/components/common/CachedImage';
 import { SkeletonStackedDestination } from '@/components/common/SkeletonLoader';
 
 const SWIPE_VELOCITY_THRESHOLD = 500;
@@ -186,7 +187,7 @@ export default function StackedDestinationCards() {
             ]}
           >
             {/* Background Image */}
-            <Image source={{ uri: destination.image }} style={styles.cardImage} />
+            <CachedImage uri={destination.image} style={styles.cardImage} />
 
             {/* Top Badges */}
             <View style={styles.topContainer}>

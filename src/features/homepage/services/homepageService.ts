@@ -16,36 +16,82 @@ import type {
 } from '../types/homepage.types'
 
 const EDGE_FUNCTION_NAME = 'homepage'
+const SECTION_REFRESH_FN = 'section-refresh'
+const PERSONALIZE_FN = 'personalize-homepage'
+
+// Section metadata: maps cache slugs to display properties
+const SECTION_META: Record<string, {
+  id: string
+  title: string
+  subtitle: string
+  layoutType: 'horizontal_scroll' | 'featured_large'
+  cardSize: 'small' | 'medium' | 'large'
+  priority: number
+  isPersonalized: boolean
+}> = {
+  'for-you': { id: 'for-you', title: 'For You', subtitle: 'Personalized picks based on your interests', layoutType: 'horizontal_scroll', cardSize: 'large', priority: 0, isPersonalized: true },
+  'popular-destinations': { id: 'popular', title: 'Popular Destinations', subtitle: "Travelers' top picks this season", layoutType: 'horizontal_scroll', cardSize: 'medium', priority: 1, isPersonalized: false },
+  'places': { id: 'places', title: 'Popular Places', subtitle: 'Most visited attractions worldwide', layoutType: 'horizontal_scroll', cardSize: 'medium', priority: 3, isPersonalized: false },
+  'must-see': { id: 'must-see', title: 'Must See', subtitle: 'Iconic landmarks worldwide', layoutType: 'horizontal_scroll', cardSize: 'medium', priority: 4, isPersonalized: false },
+  'editors-choice': { id: 'editors-choice', title: "Editor's Choice", subtitle: 'Handpicked by our travel experts', layoutType: 'featured_large', cardSize: 'large', priority: 5, isPersonalized: false },
+  'trending': { id: 'trending', title: 'Trending Now', subtitle: 'What travelers are loving right now', layoutType: 'horizontal_scroll', cardSize: 'medium', priority: 6, isPersonalized: false },
+  'hidden-gems': { id: 'hidden-gems', title: 'Best Discover', subtitle: 'Hidden gems & off the beaten path', layoutType: 'horizontal_scroll', cardSize: 'medium', priority: 7, isPersonalized: false },
+  'budget-friendly': { id: 'budget-friendly', title: 'Budget Friendly', subtitle: "Amazing experiences that won't break the bank", layoutType: 'horizontal_scroll', cardSize: 'medium', priority: 8, isPersonalized: false },
+  'luxury-escapes': { id: 'luxury', title: 'Luxury Escapes', subtitle: 'Indulge in extraordinary experiences', layoutType: 'horizontal_scroll', cardSize: 'large', priority: 9, isPersonalized: false },
+  'adventure': { id: 'adventure', title: 'Adventure Awaits', subtitle: 'For the thrill seekers and explorers', layoutType: 'horizontal_scroll', cardSize: 'medium', priority: 10, isPersonalized: false },
+  'family-friendly': { id: 'family', title: 'Family Friendly', subtitle: 'Perfect destinations for the whole family', layoutType: 'horizontal_scroll', cardSize: 'medium', priority: 11, isPersonalized: false },
+  'beach-islands': { id: 'beach', title: 'Beach & Islands', subtitle: 'Sun, sand, and paradise found', layoutType: 'horizontal_scroll', cardSize: 'medium', priority: 12, isPersonalized: false },
+}
 
 class HomepageService {
   /**
    * Fetch personalized homepage from Edge Function
    */
   async getHomepage(params: GetHomepageParams): Promise<HomepageResponse> {
+    const startTime = Date.now()
+
     try {
-      // Build query string
-      const queryParams = new URLSearchParams({
-        user_id: params.userId,
-      })
-      
-      if (params.latitude !== undefined && params.longitude !== undefined) {
-        queryParams.set('lat', params.latitude.toString())
-        queryParams.set('lng', params.longitude.toString())
-      }
-      
-      if (params.timezone) {
-        queryParams.set('timezone', params.timezone)
-      }
-      
-      if (params.refresh) {
-        queryParams.set('refresh', 'true')
-      }
-      
-      if (params.categories?.length) {
-        queryParams.set('categories', params.categories.join(','))
+      // 1. Try section_cache first (fastest path)
+      if (!params.refresh) {
+        try {
+          const cacheResult = await this.getSectionsFromCache(params.userId)
+          if (cacheResult.sections.length >= 3) {
+            if (__DEV__) console.log(`[HomepageService] Cache hit: ${cacheResult.sections.length} sections, ${cacheResult.expiredSlugs.length} expired`)
+
+            // Trigger background refresh for expired sections
+            if (cacheResult.expiredSlugs.length > 0) {
+              this.triggerBackgroundRefresh(cacheResult.expiredSlugs)
+            }
+
+            // Personalize cached sections for this user
+            const personalizedSections = await this.personalizeSections(
+              cacheResult.sections,
+              params
+            )
+
+            return {
+              success: true,
+              data: {
+                sections: personalizedSections.sections,
+                meta: {
+                  userId: params.userId,
+                  personalizationScore: personalizedSections.confidenceScore,
+                  strategyUsed: personalizedSections.strategy,
+                  sectionsReturned: personalizedSections.sections.length,
+                  totalItemsReturned: personalizedSections.sections.reduce((sum: number, s: HomepageSection) => sum + s.items.length, 0),
+                  generatedAt: new Date().toISOString(),
+                  cacheHit: true,
+                  responseTimeMs: Date.now() - startTime,
+                },
+              },
+            }
+          }
+        } catch (cacheErr) {
+          if (__DEV__) console.warn('[HomepageService] Cache read failed, continuing to edge function:', cacheErr)
+        }
       }
 
-      // Try Edge Function first (deployed with verify_jwt: false, no auth token needed)
+      // 2. Try Edge Function (personalized path)
       try {
         const { data, error } = await invokeEdgeFn(supabase, EDGE_FUNCTION_NAME, {
             user_id: params.userId,
@@ -63,7 +109,7 @@ class HomepageService {
         if (__DEV__) console.warn('Edge Function unavailable, falling back to direct query:', edgeFunctionError)
       }
 
-      // Fallback: Direct database query
+      // 3. Fallback: Direct database query
       return await this.getHomepageFallback(params)
       
     } catch (error: any) {
@@ -73,6 +119,136 @@ class HomepageService {
         data: { sections: [], meta: this.getEmptyMeta(params.userId) },
         error: error.message || 'Failed to fetch homepage',
       }
+    }
+  }
+
+  /**
+   * Read pre-computed sections from section_cache table.
+   * Returns cached sections + list of expired slugs that need refresh.
+   */
+  private async getSectionsFromCache(userId: string): Promise<{
+    sections: HomepageSection[]
+    expiredSlugs: string[]
+  }> {
+    const { data: cacheRows, error } = await supabase
+      .from('section_cache')
+      .select('section_slug, data, item_count, expires_at, refresh_error')
+      .gt('item_count', 0)
+      .order('section_slug')
+
+    if (error || !cacheRows || cacheRows.length === 0) {
+      return { sections: [], expiredSlugs: [] }
+    }
+
+    // Fetch user's saved items to overlay isSaved status
+    const { data: savedItems } = await supabase
+      .from('user_saved_items')
+      .select('destination_id')
+      .eq('user_id', userId)
+
+    const savedIds = new Set(savedItems?.map(s => s.destination_id) || [])
+    const now = new Date()
+    const sections: HomepageSection[] = []
+    const expiredSlugs: string[] = []
+
+    for (const row of cacheRows) {
+      const meta = SECTION_META[row.section_slug]
+      if (!meta) continue // unknown slug, skip
+
+      const items = (row.data as ContentItem[]) || []
+      if (items.length === 0) continue
+
+      // Overlay isSaved from user's saved items
+      const itemsWithSaved = items.map(item => ({
+        ...item,
+        isSaved: savedIds.has(item.id),
+      }))
+
+      sections.push({
+        id: meta.id,
+        slug: row.section_slug,
+        title: meta.title,
+        subtitle: meta.subtitle,
+        layoutType: meta.layoutType,
+        cardSize: meta.cardSize,
+        items: itemsWithSaved,
+        itemCount: itemsWithSaved.length,
+        hasMore: true,
+        isPersonalized: meta.isPersonalized,
+        priority: meta.priority,
+      })
+
+      // Track expired sections for background refresh
+      if (new Date(row.expires_at) < now) {
+        expiredSlugs.push(row.section_slug)
+      }
+    }
+
+    // Sort by priority
+    sections.sort((a, b) => a.priority - b.priority)
+
+    return { sections, expiredSlugs }
+  }
+
+  /**
+   * Personalize cached sections via the personalize-homepage edge function.
+   * Falls back to raw cached sections if personalization fails.
+   */
+  private async personalizeSections(
+    cachedSections: HomepageSection[],
+    params: GetHomepageParams
+  ): Promise<{ sections: HomepageSection[]; strategy: 'cold' | 'warm' | 'hot'; confidenceScore: number }> {
+    try {
+      const { data, error } = await invokeEdgeFn(supabase, PERSONALIZE_FN, {
+        user_id: params.userId,
+        sections: cachedSections,
+        lat: params.latitude,
+        lng: params.longitude,
+        timezone: params.timezone,
+      }, 'fast')
+
+      if (!error && data?.success && data.sections) {
+        // Map personalized sections back to HomepageSection format
+        const sections: HomepageSection[] = data.sections.map((sec: any) => {
+          const meta = SECTION_META[sec.slug]
+          return {
+            id: sec.id || meta?.id || sec.slug,
+            slug: sec.slug,
+            title: sec.title || meta?.title || sec.slug,
+            subtitle: sec.subtitle || meta?.subtitle || null,
+            layoutType: sec.layoutType || meta?.layoutType || 'horizontal_scroll',
+            cardSize: sec.cardSize || meta?.cardSize || 'medium',
+            items: sec.items || [],
+            itemCount: sec.items?.length || 0,
+            hasMore: sec.hasMore ?? true,
+            isPersonalized: sec.isPersonalized ?? true,
+            priority: sec.priority ?? 50,
+          }
+        })
+
+        return {
+          sections,
+          strategy: data.meta?.strategy || 'cold',
+          confidenceScore: data.meta?.confidenceScore || 50,
+        }
+      }
+    } catch (err) {
+      if (__DEV__) console.warn('[HomepageService] Personalization failed, using cached sections:', err)
+    }
+
+    // Fallback: return cached sections as-is
+    return { sections: cachedSections, strategy: 'cold', confidenceScore: 30 }
+  }
+
+  /**
+   * Fire-and-forget background refresh for expired sections.
+   */
+  private triggerBackgroundRefresh(slugs: string[]): void {
+    for (const slug of slugs) {
+      invokeEdgeFn(supabase, SECTION_REFRESH_FN, { section_slug: slug }, 'fast')
+        .catch((err) => {
+          if (__DEV__) console.warn(`[HomepageService] Background refresh failed for ${slug}:`, err)
+        })
     }
   }
 
@@ -352,7 +528,7 @@ class HomepageService {
     position?: number
   }): Promise<void> {
     try {
-      await supabase.from('user_interactions').insert({
+      const { error } = await supabase.from('user_interactions').insert({
         user_id: params.userId,
         destination_id: params.itemType === 'destination' ? params.itemId : null,
         experience_id: params.itemType === 'experience' ? params.itemId : null,
@@ -364,8 +540,12 @@ class HomepageService {
           timestamp: new Date().toISOString(),
         },
       })
+
+      if (error) {
+        if (__DEV__) console.warn('[HomepageService] Interaction tracking failed:', error.message, error.code)
+      }
     } catch (error) {
-      console.error('Failed to track interaction:', error)
+      if (__DEV__) console.error('[HomepageService] Failed to track interaction:', error)
     }
   }
 

@@ -7,7 +7,7 @@
  */
 
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Image } from 'expo-image';
+import CachedImage from '@/components/common/CachedImage';
 import { Star1, Location, DollarCircle, TrendUp, Crown, Bookmark } from 'iconsax-react-native';
 import { typography, spacing, fontFamily } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -41,7 +41,7 @@ export default function DestinationListCard({ destination, onPress, onBookmark }
     >
       {/* Image */}
       <View style={styles.imageContainer}>
-        <Image source={imageUrl} style={styles.image} contentFit="cover" />
+        <CachedImage uri={imageUrl} style={styles.image} />
         {/* Trending badge */}
         {destination.is_trending ? (
           <View style={styles.trendingBadge}>

@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, Dimensions, useWindowDimensions } from 'react-native';
-import { Image } from 'expo-image';
+import CachedImage from '@/components/common/CachedImage';
 import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -23,7 +23,7 @@ export default function EditorChoiceCard({ id, name, location, reason, rating, i
   return (
     <View style={[styles.container, { height: Math.min(420, screenHeight * 0.55), borderColor: colors.borderSubtle }]}>
       {/* Background Image */}
-      <Image source={imageUrl} style={styles.backgroundImage} contentFit="cover" transition={200} />
+      <CachedImage uri={imageUrl} style={styles.backgroundImage} />
       
       {/* Gradient Overlay */}
       <View style={styles.overlay} />

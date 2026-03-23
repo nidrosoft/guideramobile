@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { Image } from 'expo-image';
+import CachedImage from '@/components/common/CachedImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { typography, spacing, borderRadius, shadows } from '@/styles';
 
@@ -43,7 +43,7 @@ export default function LocalExperienceCard({
     <View style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
       {/* Image Section */}
       <View style={styles.imageContainer}>
-        <Image source={{ uri: imageUrl }} style={styles.image} contentFit="cover" />
+        <CachedImage uri={imageUrl} style={styles.image} />
         
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.5)']}

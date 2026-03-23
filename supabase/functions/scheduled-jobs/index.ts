@@ -87,6 +87,15 @@ serve(async (req: Request) => {
       case 'expire_activities':
         results.push(await expireActivities());
         break;
+      case 'section_refresh_all':
+        results.push(await refreshSectionCache());
+        break;
+      case 'classify_new_destinations':
+        results.push(await classifyNewDestinations());
+        break;
+      case 'discover_destinations':
+        results.push(await discoverNewDestinations());
+        break;
       case 'all':
       default:
         results.push(await scanDeals());
@@ -95,6 +104,9 @@ serve(async (req: Request) => {
         results.push(await updateSavedDeals());
         results.push(await monitorFlights());
         results.push(await expireActivities());
+        results.push(await discoverNewDestinations());
+        results.push(await classifyNewDestinations());
+        results.push(await refreshSectionCache());
         break;
     }
 
@@ -852,6 +864,87 @@ async function expireActivities(): Promise<JobResult> {
   }
 
   return { job: 'expire_activities', success: errors.length === 0, processed, errors };
+}
+
+// ============================================
+// REFRESH SECTION CACHE — Invoke section-refresh edge function
+// ============================================
+
+async function refreshSectionCache(): Promise<JobResult> {
+  const errors: string[] = [];
+  let processed = 0;
+
+  try {
+    const { data, error } = await supabase.functions.invoke('section-refresh', {
+      body: { section_slug: 'all' },
+    });
+    if (error) throw error;
+    processed = data?.totalRefreshed || 0;
+    if (data?.totalFailed > 0) {
+      for (const r of data.results || []) {
+        if (!r.success) errors.push(`${r.slug}: ${r.error}`);
+      }
+    }
+  } catch (err: any) {
+    errors.push(err.message);
+  }
+
+  return { job: 'section_refresh_all', success: errors.length === 0, processed, errors };
+}
+
+// ============================================
+// CLASSIFY NEW DESTINATIONS — Auto-classify unclassified destinations via AI
+// ============================================
+
+async function classifyNewDestinations(): Promise<JobResult> {
+  const errors: string[] = [];
+  let processed = 0;
+
+  try {
+    // Invoke classify-destination in batch mode without force
+    // The edge function internally skips already-classified destinations
+    const { data, error } = await supabase.functions.invoke('classify-destination', {
+      body: { mode: 'batch', force: false },
+    });
+    if (error) throw error;
+    processed = data?.classified || 0;
+    if (data?.errors?.length > 0) {
+      for (const e of data.errors) {
+        errors.push(typeof e === 'string' ? e : JSON.stringify(e));
+      }
+    }
+  } catch (err: any) {
+    errors.push(err.message);
+  }
+
+  return { job: 'classify_new_destinations', success: errors.length === 0, processed, errors };
+}
+
+// ============================================
+// DISCOVER DESTINATIONS — Expand catalog via AI gap-filling
+// ============================================
+
+async function discoverNewDestinations(): Promise<JobResult> {
+  const errors: string[] = [];
+  let processed = 0;
+
+  try {
+    // Use 'gaps' mode to only discover for under-represented continents
+    const { data, error } = await supabase.functions.invoke('discover-destinations', {
+      body: { mode: 'gaps', count: 8, classify: true, dryRun: false },
+    });
+    if (error) throw error;
+    processed = data?.totalInserted || 0;
+    if (data?.insertErrors?.length > 0) {
+      for (const e of data.insertErrors) {
+        errors.push(typeof e === 'string' ? e : JSON.stringify(e));
+      }
+    }
+  } catch (err: any) {
+    errors.push(err.message);
+  }
+
+  return { job: 'discover_destinations', success: errors.length === 0, processed, errors };
 }
 
 function shouldSendAlert(alert: any, currentPrice: number): boolean {

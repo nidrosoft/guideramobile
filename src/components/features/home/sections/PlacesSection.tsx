@@ -8,15 +8,13 @@
 
 import { ScrollView, StyleSheet } from 'react-native';
 import { useMemo } from 'react';
-import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
 import PopularPlaceCard from '@/components/features/home/PopularPlaceCard';
+import { TrackableCard } from '@/features/homepage/components/TrackableCard';
 import { useHomepageDataSafe, filterByCategory, useSectionVisibility } from '@/features/homepage';
 import { spacing } from '@/styles';
 import { SkeletonPlaceCards } from '@/components/common/SkeletonLoader';
 
 export default function PlacesSection() {
-  const router = useRouter();
   const homepageData = useHomepageDataSafe();
   
   // Map database data to card props format
@@ -53,19 +51,22 @@ export default function PlacesSection() {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.placesContainer}
     >
-      {filteredData.map((place) => (
-        <PopularPlaceCard
+      {filteredData.map((place, index) => (
+        <TrackableCard
           key={place.id}
-          name={place.name}
-          country={place.country}
-          visitors={place.visitors}
-          rating={place.rating}
-          imageUrl={place.imageUrl}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push({ pathname: '/destinations/[id]' as any, params: { id: place.id } });
-          }}
-        />
+          itemId={String(place.id)}
+          sectionSlug="places"
+          position={index}
+          navigateTo={`/destinations/${place.id}`}
+        >
+          <PopularPlaceCard
+            name={place.name}
+            country={place.country}
+            visitors={place.visitors}
+            rating={place.rating}
+            imageUrl={place.imageUrl}
+          />
+        </TrackableCard>
       ))}
     </ScrollView>
   );

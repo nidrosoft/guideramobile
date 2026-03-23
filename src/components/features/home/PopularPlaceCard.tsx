@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
-import { Image } from 'expo-image';
+import CachedImage from '@/components/common/CachedImage';
 import { typography, spacing, borderRadius, shadows } from '@/styles';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -29,7 +29,7 @@ export default function PopularPlaceCard({
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
       <View style={styles.imageContainer}>
-        <Image source={imageUrl} style={styles.image} contentFit="cover" transition={200} />
+        <CachedImage uri={imageUrl} style={styles.image} />
         
         {/* Rating Badge */}
         <View style={[styles.ratingBadge, { backgroundColor: colors.bgOverlay }]}>

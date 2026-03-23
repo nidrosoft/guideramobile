@@ -6,23 +6,16 @@
  * Uses real data from the homepage API.
  */
 
-import { ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import { useMemo } from 'react';
-import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
 import LuxuryEscapeCard from '@/components/features/home/LuxuryEscapeCard';
+import { TrackableCard } from '@/features/homepage/components/TrackableCard';
 import { useHomepageDataSafe, filterByCategory, useSectionVisibility } from '@/features/homepage';
 import { spacing } from '@/styles';
 import { SkeletonFullBleedCards } from '@/components/common/SkeletonLoader';
 
 export default function LuxuryEscapesSection() {
-  const router = useRouter();
   const homepageData = useHomepageDataSafe();
-
-  const handleCardPress = (id: string | number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({ pathname: '/destinations/[id]' as any, params: { id: String(id) } });
-  };
   
   // Map database data to card props format, fallback to mock data
   const displayData = useMemo(() => {
@@ -60,8 +53,14 @@ export default function LuxuryEscapesSection() {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.luxuryContainer}
     >
-      {filteredData.map((escape) => (
-        <TouchableOpacity key={escape.id} activeOpacity={0.8} onPress={() => handleCardPress(escape.id)}>
+      {filteredData.map((escape, index) => (
+        <TrackableCard
+          key={escape.id}
+          itemId={String(escape.id)}
+          sectionSlug="luxury-escapes"
+          position={index}
+          navigateTo={`/destinations/${escape.id}`}
+        >
           <LuxuryEscapeCard
             id={String(escape.id)}
             name={escape.name}
@@ -72,7 +71,7 @@ export default function LuxuryEscapesSection() {
             category={escape.category}
             imageUrl={escape.imageUrl}
           />
-        </TouchableOpacity>
+        </TrackableCard>
       ))}
     </ScrollView>
   );

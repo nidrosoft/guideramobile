@@ -6,23 +6,16 @@
  * Uses real data from the homepage API.
  */
 
-import { ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import { useMemo } from 'react';
-import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
 import FamilyFriendlyCard from '@/components/features/home/FamilyFriendlyCard';
+import { TrackableCard } from '@/features/homepage/components/TrackableCard';
 import { useHomepageDataSafe, filterByCategory, useSectionVisibility } from '@/features/homepage';
 import { spacing } from '@/styles';
 import { SkeletonFullBleedCards } from '@/components/common/SkeletonLoader';
 
 export default function FamilyFriendlySection() {
-  const router = useRouter();
   const homepageData = useHomepageDataSafe();
-
-  const handleCardPress = (id: string | number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({ pathname: '/destinations/[id]' as any, params: { id: String(id) } });
-  };
   
   // Map database data to card props format, fallback to mock data
   const displayData = useMemo(() => {
@@ -63,7 +56,13 @@ export default function FamilyFriendlySection() {
       contentContainerStyle={styles.familyContainer}
     >
       {filteredData.map((place, index) => (
-        <TouchableOpacity key={place.id} activeOpacity={0.8} onPress={() => handleCardPress(place.id)}>
+        <TrackableCard
+          key={place.id}
+          itemId={String(place.id)}
+          sectionSlug="family-friendly"
+          position={index}
+          navigateTo={`/destinations/${place.id}`}
+        >
           <FamilyFriendlyCard
             id={String(place.id)}
             name={place.name}
@@ -77,7 +76,7 @@ export default function FamilyFriendlySection() {
             imageUrl={place.imageUrl}
             index={index}
           />
-        </TouchableOpacity>
+        </TrackableCard>
       ))}
     </ScrollView>
   );

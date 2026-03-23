@@ -60,9 +60,11 @@ export default function Setup() {
       }
 
       // Also upsert travel_preferences table so it's the single source of truth
-      if (profile?.id) {
+      const profileId = profile?.id;
+      if (__DEV__) console.log('[Setup] travel_preferences upsert — profile.id:', profileId);
+      if (profileId) {
         const travelPrefsRow: Record<string, any> = {
-          user_id: profile.id,
+          user_id: profileId,
           preferences_completed: true,
           updated_at: new Date().toISOString(),
         };
@@ -98,13 +100,28 @@ export default function Setup() {
           }
         }
 
+        if (__DEV__) console.log('[Setup] travel_preferences payload:', JSON.stringify(travelPrefsRow));
+
         const { error: tpError } = await supabase
           .from('travel_preferences')
           .upsert(travelPrefsRow, { onConflict: 'user_id' });
 
         if (tpError) {
-          if (__DEV__) console.warn('Error saving travel_preferences row:', tpError.message);
+          if (__DEV__) console.warn('[Setup] travel_preferences upsert failed:', tpError.message, tpError.code, tpError.details);
+          // Fallback: try plain insert if upsert failed (e.g. RLS issue with ON CONFLICT)
+          const { error: insertError } = await supabase
+            .from('travel_preferences')
+            .insert(travelPrefsRow);
+          if (insertError) {
+            if (__DEV__) console.warn('[Setup] travel_preferences insert fallback also failed:', insertError.message, insertError.code);
+          } else {
+            if (__DEV__) console.log('[Setup] travel_preferences saved via insert fallback');
+          }
+        } else {
+          if (__DEV__) console.log('[Setup] travel_preferences saved successfully');
         }
+      } else {
+        if (__DEV__) console.warn('[Setup] Skipping travel_preferences — profile.id is null/undefined');
       }
 
       await completeOnboarding();

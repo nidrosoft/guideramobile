@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, Dimensions, useWindowDimensions } from 'react-native';
-import { Image } from 'expo-image';
+import CachedImage from '@/components/common/CachedImage';
 import { BlurView } from 'expo-blur';
 import { typography, spacing, borderRadius } from '@/styles';
 
@@ -37,7 +37,7 @@ export default function TrendingLocationCard({
   return (
     <View style={[styles.container, { height: Math.min(360, screenHeight * 0.5), borderColor: colors.borderSubtle }]}>
       {/* Background Image */}
-      <Image source={imageUrl} style={styles.backgroundImage} contentFit="cover" transition={200} />
+      <CachedImage uri={imageUrl} style={styles.backgroundImage} />
       
       {/* Top Section */}
       <View style={styles.topSection}>

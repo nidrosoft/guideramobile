@@ -6,11 +6,11 @@
  * Uses real data from the homepage API.
  */
 
-import { ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import { useMemo } from 'react';
 import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
 import TrendingLocationCard from '@/components/features/home/TrendingLocationCard';
+import { TrackableCard } from '@/features/homepage/components/TrackableCard';
 import { useHomepageDataSafe, filterByCategory, useSectionVisibility } from '@/features/homepage';
 import { spacing } from '@/styles';
 import { SkeletonFullBleedCards } from '@/components/common/SkeletonLoader';
@@ -19,10 +19,6 @@ export default function TrendingSection() {
   const router = useRouter();
   const homepageData = useHomepageDataSafe();
 
-  const handleCardPress = (id: string | number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({ pathname: '/destinations/[id]' as any, params: { id: String(id) } });
-  };
   
   // Map database data to card props format, fallback to mock data
   const displayData = useMemo(() => {
@@ -61,8 +57,14 @@ export default function TrendingSection() {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.trendingContainer}
     >
-      {filteredData.map((location) => (
-        <TouchableOpacity key={location.id} activeOpacity={0.8} onPress={() => handleCardPress(location.id)}>
+      {filteredData.map((location, index) => (
+        <TrackableCard
+          key={location.id}
+          itemId={String(location.id)}
+          sectionSlug="trending"
+          position={index}
+          navigateTo={`/destinations/${location.id}`}
+        >
           <TrendingLocationCard
             id={String(location.id)}
             city={location.city}
@@ -74,7 +76,7 @@ export default function TrendingSection() {
             category={location.category}
             imageUrl={location.imageUrl}
           />
-        </TouchableOpacity>
+        </TrackableCard>
       ))}
     </ScrollView>
   );

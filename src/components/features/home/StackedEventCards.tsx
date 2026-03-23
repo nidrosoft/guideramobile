@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
+import CachedImage from '@/components/common/CachedImage';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
@@ -238,7 +239,7 @@ export default function StackedEventCards({ events = [], loading = false }: Stac
             {/* Event Image */}
             {event.image ? (
               <View style={styles.imageContainer}>
-                <Image source={{ uri: event.image }} style={styles.eventImage} />
+                <CachedImage uri={event.image} style={styles.eventImage} />
               </View>
             ) : null}
           </Animated.View>

@@ -113,8 +113,8 @@ export function useLocalExperiences(
       setSearchedCity(result.searchedCity);
       setUsedFallback(result.usedFallback);
     } catch (err: any) {
-      console.error('Local experiences fetch error:', err);
-      setError(err.message || 'Failed to load experiences');
+      if (__DEV__) console.warn('Local experiences fetch error:', err?.message);
+      setError('Unable to load experiences');
     } finally {
       setIsLoading(false);
     }

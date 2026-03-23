@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { Image } from 'expo-image';
+import CachedImage from '@/components/common/CachedImage';
 import { typography, spacing, borderRadius } from '@/styles';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -34,7 +34,7 @@ export default function MustSeeCard({
     <View style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
       {/* Image Section */}
       <View style={styles.imageContainer}>
-        <Image source={imageUrl} style={styles.image} contentFit="cover" transition={200} />
+        <CachedImage uri={imageUrl} style={styles.image} />
         
         {/* Badge */}
         <View style={styles.badge}>
