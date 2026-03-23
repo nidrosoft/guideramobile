@@ -14,6 +14,7 @@
 
 import { supabase } from '@/lib/supabase/client';
 import { invokeEdgeFn } from '@/utils/retry';
+import { fetchDestinationCoverImage } from '@/utils/destinationImage';
 
 // ============================================
 // TYPES
@@ -105,125 +106,6 @@ export interface ImportResult {
     bookingsImported: number;
   }>;
   totalBookingsImported: number;
-}
-
-// ============================================
-// DESTINATION COVER IMAGES (curated Unsplash direct URLs)
-// ============================================
-
-const DESTINATION_PHOTOS: Record<string, string> = {
-  // Asia
-  'tokyo': 'photo-1540959733332-eab4deabeeaf',
-  'seoul': 'photo-1534274988757-a28bf1a57c17',
-  'singapore': 'photo-1525625293386-3f8f99389edd',
-  'bangkok': 'photo-1508009603885-50cf7c579365',
-  'bali': 'photo-1537996194471-e657df975ab4',
-  'hong kong': 'photo-1536599018102-9f803c140fc1',
-  'osaka': 'photo-1590559899731-a382839e5549',
-  'kuala lumpur': 'photo-1596422846543-75c6fc197f07',
-  'mumbai': 'photo-1529253355930-ddbe423a2ac7',
-  'delhi': 'photo-1587474260584-136574528ed5',
-  'shanghai': 'photo-1474181487882-5abf3f0ba6c2',
-  'beijing': 'photo-1508804185872-d7badad00f7d',
-  'taipei': 'photo-1470004914212-05527e49370b',
-  // Europe
-  'paris': 'photo-1502602898657-3e91760cbb34',
-  'london': 'photo-1513635269975-59663e0ac1ad',
-  'rome': 'photo-1552832230-c0197dd311b5',
-  'barcelona': 'photo-1583422409516-2895a77efded',
-  'amsterdam': 'photo-1534351590666-13e3e96b5017',
-  'berlin': 'photo-1560969184-10fe8719e047',
-  'madrid': 'photo-1539037116277-4db20889f2d7',
-  'lisbon': 'photo-1555881400-74d7acaacd8b',
-  'prague': 'photo-1519677100203-a0e668c92439',
-  'vienna': 'photo-1516550893923-42d28e5677af',
-  'athens': 'photo-1555993539-1732b0258235',
-  'istanbul': 'photo-1524231757912-21f4fe3a7200',
-  'dublin': 'photo-1549918864-48ac978761a4',
-  'zurich': 'photo-1515488764276-beab7607c1e6',
-  'milan': 'photo-1520440229-6469a149ac59',
-  // Americas
-  'new york': 'photo-1496442226666-8d4d0e62e6e9',
-  'los angeles': 'photo-1534190760961-74e8c1c5c3da',
-  'miami': 'photo-1535498730771-e735b998cd64',
-  'cancun': 'photo-1510097467424-192d713fd8b2',
-  'san francisco': 'photo-1501594907352-04cda38ebc29',
-  'chicago': 'photo-1494522855154-9297ac14b55f',
-  'toronto': 'photo-1517935706615-2717063c2225',
-  'mexico city': 'photo-1518659526054-190340b32735',
-  'rio de janeiro': 'photo-1483729558449-99ef09a8c325',
-  'bogota': 'photo-1536364652836-e85bedb21e6d',
-  'lima': 'photo-1531968455001-5c5272a67c71',
-  'buenos aires': 'photo-1589909202802-8f4aadce1849',
-  'montego bay': 'photo-1580541631950-7282082b53ce',
-  // Middle East & Africa
-  'dubai': 'photo-1512453979798-5ea266f8880c',
-  'doha': 'photo-1549927681-0b673b8243ab',
-  'cairo': 'photo-1572252009286-268acec5ca0a',
-  'marrakech': 'photo-1489749798305-4fea3ae63d43',
-  'cape town': 'photo-1580060839134-75a5edca2e99',
-  'nairobi': 'photo-1611348524140-53c9a25263d6',
-  // Oceania
-  'sydney': 'photo-1506973035872-a4ec16b8e8d9',
-  'melbourne': 'photo-1514395462725-fb4566210144',
-  'auckland': 'photo-1507699622108-4be3abd695ad',
-};
-
-/**
- * Fetch a destination cover image using Google Places API (primary) with Unsplash fallback.
- * Google Places returns real photos from Google Maps — accurate for any destination.
- */
-async function fetchDestinationCoverImage(cityName: string): Promise<string> {
-  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://pkydmdygctojtfzbqcud.supabase.co';
-  const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
-
-  if (supabaseUrl && cityName) {
-    try {
-      // Step 1: Text Search via proxy to get photo_reference
-      const searchRes = await fetch(`${supabaseUrl}/functions/v1/google-api-proxy`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey },
-        body: JSON.stringify({ action: 'places_search', query: cityName + ' city' }),
-      });
-      const searchData = await searchRes.json();
-
-      if (searchData.results?.[0]?.photos?.[0]?.photo_reference) {
-        const photoRef = searchData.results[0].photos[0].photo_reference;
-        // Step 2: Get photo URL via proxy
-        const photoRes = await fetch(`${supabaseUrl}/functions/v1/google-api-proxy`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey },
-          body: JSON.stringify({ action: 'place_photo', photoReference: photoRef, maxWidth: 800 }),
-        });
-        const photoData = await photoRes.json();
-        if (photoData.url) return photoData.url;
-      }
-    } catch (err) {
-      if (__DEV__) console.warn('Places photo fetch failed, using fallback:', err);
-    }
-  }
-
-  // Fallback: curated Unsplash photos
-  return getDestinationCoverImage(cityName);
-}
-
-function getDestinationCoverImage(cityName: string): string {
-  const city = cityName.toLowerCase().trim();
-
-  // Direct match
-  if (DESTINATION_PHOTOS[city]) {
-    return `https://images.unsplash.com/${DESTINATION_PHOTOS[city]}?w=800&h=600&fit=crop&q=80`;
-  }
-
-  // Partial match (e.g., "New York City" matches "new york")
-  for (const [key, photoId] of Object.entries(DESTINATION_PHOTOS)) {
-    if (city.includes(key) || key.includes(city)) {
-      return `https://images.unsplash.com/${photoId}?w=800&h=600&fit=crop&q=80`;
-    }
-  }
-
-  // Fallback: generic beautiful travel landscape
-  return 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&h=600&fit=crop&q=80';
 }
 
 // ============================================
@@ -458,7 +340,7 @@ class TripImportEngineService {
 
     const title = `${destination} ${new Date(startDate).toLocaleString('en-US', { month: 'short' })} ${new Date(startDate).getFullYear()}`;
 
-    // Get destination cover image — Google Places API (primary) with Unsplash fallback
+    // Get destination cover image — Google Places API with multi-strategy retry
     const destCity = (booking.endLocation?.city || booking.endLocation?.name || destination || '').trim();
     const coverImageUrl = await fetchDestinationCoverImage(destCity);
 
@@ -468,7 +350,7 @@ class TripImportEngineService {
       owner_id: userId,
       title,
       cover_image_url: coverImageUrl,
-      cover_image_source: 'unsplash',
+      cover_image_source: 'google_places',
       destination: {
         name: destination,
         city: booking.endLocation?.city || destination,

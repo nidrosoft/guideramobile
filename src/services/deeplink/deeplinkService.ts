@@ -39,8 +39,8 @@ export const DEEP_LINK_ROUTES = {
 // URL scheme configuration
 const URL_SCHEMES = {
   APP_SCHEME: 'guidera://',
-  WEB_DOMAIN: 'https://guidera.app',
-  UNIVERSAL_LINK_DOMAIN: 'https://links.guidera.app',
+  WEB_DOMAIN: 'https://guidera.one',
+  UNIVERSAL_LINK_DOMAIN: 'https://links.guidera.one',
 };
 
 interface DeepLinkParams {

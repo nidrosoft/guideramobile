@@ -7,6 +7,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Setting2, Verify, Star1, Location, Clock, CloseCircle, TickCircle } from 'iconsax-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -76,8 +77,14 @@ export default function ProfileHeader({ user, onEditPress, onAvatarPress }: Prof
   
   return (
     <View style={styles.container}>
-      {/* Dark solid background - matches safe area exactly */}
-      <View style={[styles.backgroundSolid, { backgroundColor: isDark ? colors.bgSecondary : '#1C1C1E' }]} />
+      {/* Primary gradient background - matches splash screen */}
+      <LinearGradient
+        colors={['#10B981', '#059669', '#047857', '#065F46']}
+        locations={[0, 0.35, 0.7, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.backgroundSolid}
+      />
       
       {/* Profile content */}
       <View style={[styles.content, { paddingTop: insets.top + spacing.lg }]}>
@@ -180,14 +187,14 @@ const { height: _screenHeight } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.lg + spacing.md,
   },
   backgroundSolid: {
     position: 'absolute',
     top: -(_screenHeight * 0.25),
     left: 0,
     right: 0,
-    height: _screenHeight * 0.55,
+    height: _screenHeight * 0.48,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },

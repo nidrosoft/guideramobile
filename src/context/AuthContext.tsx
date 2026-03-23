@@ -4,7 +4,6 @@ import { Profile, AuthContextType } from '@/types/auth.types';
 import { 
   syncClerkUserToSupabase, 
   getProfileByClerkId, 
-  updateSupabaseProfile 
 } from '@/lib/clerk/profileSync';
 import { supabase, setClerkTokenGetter } from '@/lib/supabase/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -84,9 +83,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     let isMounted = true;
 
     const syncProfile = async () => {
-      if (!clerkUser || !isSignedIn) {
+      if (!isSignedIn) {
         setProfile(null);
         setIsProfileLoading(false);
+        return;
+      }
+
+      if (!clerkUser) {
+        // Signed in but Clerk user object not yet available — keep loading
+        // so AuthGuard doesn't prematurely redirect to onboarding
+        setIsProfileLoading(true);
         return;
       }
 
@@ -194,12 +200,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (!clerkUser?.id) return { error: new Error('No user logged in') };
     
     try {
-      const { data, error } = await updateSupabaseProfile(clerkUser.id, updates);
-      if (data) {
-        setProfile(data);
+      // Use the authenticated supabase client (with Clerk token) so the
+      // RLS policy `requesting_user_id() = id` can resolve the caller.
+      // The old path used supabaseNoAuth which has no token → RLS silently
+      // rejected every UPDATE, causing onboarding data (name, etc.) to be lost.
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('clerk_id', clerkUser.id)
+        .select()
+        .single();
+
+      if (error) {
+        if (__DEV__) console.warn('[Auth] updateProfile failed:', error.message);
+        return { error: new Error(error.message) };
       }
-      return { error };
+      if (data) {
+        setProfile(data as Profile);
+      }
+      return { error: null };
     } catch (error) {
+      if (__DEV__) console.warn('[Auth] updateProfile exception:', error);
       return { error: error as Error };
     }
   };

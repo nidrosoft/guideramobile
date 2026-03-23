@@ -37,8 +37,6 @@ import { profileService } from '@/services/profile.service';
 import { savedService } from '@/services/saved.service';
 import { partnerService } from '@/services/community/partner.service';
 
-// Apple-style dark color (same as ProfileHeader)
-const DARK_BG = '#1C1C1E';
 // Scroll threshold for header transition (when stats card reaches top)
 const SCROLL_THRESHOLD = 220;
 
@@ -200,12 +198,12 @@ export default function AccountScreen() {
     }
   }, [isHeaderLight]);
   
-  // Interpolate header background color based on scroll
-  const headerBackgroundColor = useMemo(() => scrollY.interpolate({
+  // Interpolate status bar overlay opacity: transparent at top, solid theme bg when scrolled
+  const headerBgOpacity = useMemo(() => scrollY.interpolate({
     inputRange: [0, SCROLL_THRESHOLD],
-    outputRange: [DARK_BG, colors.background],
+    outputRange: [0, 1],
     extrapolate: 'clamp',
-  }), [scrollY, colors.background]);
+  }), [scrollY]);
   
   // Handle pull to refresh
   const onRefresh = useCallback(async () => {
@@ -295,13 +293,14 @@ export default function AccountScreen() {
     <View style={[styles.screen, dynamicStyles.screen]}>
       <StatusBar style={isHeaderLight ? 'dark' : 'light'} />
       
-      {/* Animated status bar background */}
+      {/* Animated status bar background — transparent at top so gradient shows, fades to theme bg on scroll */}
       <Animated.View 
         style={[
           styles.statusBarBg, 
           { 
             height: insets.top,
-            backgroundColor: headerBackgroundColor,
+            backgroundColor: colors.background,
+            opacity: headerBgOpacity,
           }
         ]} 
       />
@@ -353,9 +352,9 @@ export default function AccountScreen() {
         onRequestClose={() => setShowLogoutModal(false)}
       >
         <TouchableWithoutFeedback onPress={() => setShowLogoutModal(false)}>
-          <View style={styles.modalOverlay}>
+          <View style={[styles.modalOverlay, isDark && styles.modalOverlayDark]}>
             <TouchableWithoutFeedback>
-              <View style={[styles.modalContent, { backgroundColor: colors.bgCard }]}>
+              <View style={[styles.modalContent, { backgroundColor: isDark ? '#1A1A1A' : colors.bgCard, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                 <View style={styles.modalIcon}>
                   <Logout size={32} color={colors.error} variant="Bold" />
                 </View>
@@ -424,6 +423,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.lg,
+  },
+  modalOverlayDark: {
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
   },
   modalContent: {
     width: '100%',

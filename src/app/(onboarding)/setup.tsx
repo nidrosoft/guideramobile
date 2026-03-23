@@ -8,6 +8,7 @@ import ConfettiCannon from 'react-native-confetti-cannon';
 import { User, Location, Heart, ShieldTick, Airplane, Magicpen, Map1 } from 'iconsax-react-native';
 import { colors, typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useUser } from '@clerk/clerk-expo';
 import { useOnboardingStore } from '@/stores/useOnboardingStore';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
@@ -32,6 +33,7 @@ export default function Setup() {
   const confettiRef = useRef<any>(null);
   const [hasSavedProfile, setHasSavedProfile] = useState(false);
   
+  const { user: clerkUser } = useUser();
   const { updateProfile, completeOnboarding, profile } = useAuth();
   const { getProfileUpdates, reset: resetOnboarding, data: onboardingData } = useOnboardingStore();
 
@@ -40,7 +42,22 @@ export default function Setup() {
     
     try {
       const profileUpdates = getProfileUpdates();
-      await updateProfile(profileUpdates);
+      if (__DEV__) console.log('[Setup] Saving profile updates:', Object.keys(profileUpdates));
+      const { error: profileError } = await updateProfile(profileUpdates);
+      if (profileError) {
+        if (__DEV__) console.warn('[Setup] Profile update failed:', profileError.message);
+      }
+
+      // Push the onboarding name to Clerk so it stays in sync with Supabase.
+      // This ensures subsequent syncClerkUserToSupabase calls carry the correct name.
+      if (onboardingData.firstName && clerkUser) {
+        try {
+          await clerkUser.update({ firstName: onboardingData.firstName });
+          if (__DEV__) console.log('[Setup] Clerk user name updated to:', onboardingData.firstName);
+        } catch (e) {
+          if (__DEV__) console.warn('[Setup] Failed to update Clerk name:', e);
+        }
+      }
 
       // Also upsert travel_preferences table so it's the single source of truth
       if (profile?.id) {
@@ -261,7 +278,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   stepsContainer: {
-    gap: spacing.md,
+    gap: spacing.lg,
     flex: 1,
   },
   stepItem: {
@@ -281,7 +298,7 @@ const styles = StyleSheet.create({
   },
   stepText: {
     fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
+    fontWeight: typography.fontWeight.medium,
   },
   loadingDots: {
     flexDirection: 'row',

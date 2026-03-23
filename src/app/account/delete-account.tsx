@@ -31,10 +31,11 @@ import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useUser } from '@clerk/clerk-expo';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase/client';
 
-const CONFIRMATION_TEXT = 'delete';
+const CONFIRMATION_TEXT = 'DELETE';
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
@@ -42,11 +43,12 @@ export default function DeleteAccountScreen() {
   const { colors: tc, isDark } = useTheme();
   const { t } = useTranslation();
   const { user, profile, signOut } = useAuth();
+  const { user: clerkUser } = useUser();
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [understood, setUnderstood] = useState(false);
 
-  const isConfirmValid = confirmText.toLowerCase() === CONFIRMATION_TEXT;
+  const isConfirmValid = confirmText === CONFIRMATION_TEXT;
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -54,7 +56,18 @@ export default function DeleteAccountScreen() {
   };
 
   const handleDeleteAccount = async () => {
-    if (!isConfirmValid || !understood) return;
+    if (!understood) return;
+
+    // If the user typed "delete" in lowercase, show an alert
+    if (confirmText.toLowerCase() === 'delete' && confirmText !== CONFIRMATION_TEXT) {
+      Alert.alert(
+        'Uppercase Required',
+        'Please type DELETE in uppercase letters to confirm.',
+      );
+      return;
+    }
+
+    if (!isConfirmValid) return;
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     
@@ -130,6 +143,13 @@ export default function DeleteAccountScreen() {
               // Finally, delete the profile itself (hard delete for GDPR compliance)
               await supabase.from('profiles').delete().eq('id', profileId);
 
+              // Delete the Clerk user so the email/phone is freed for re-registration
+              try {
+                await clerkUser?.delete();
+              } catch (clerkErr) {
+                if (__DEV__) console.warn('Clerk user deletion failed (will sign out anyway):', clerkErr);
+              }
+
               // Sign out from Clerk
               await signOut();
               
@@ -186,7 +206,7 @@ export default function DeleteAccountScreen() {
         </View>
 
         {/* What will be deleted */}
-        <View style={[styles.infoSection, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.gray50 }]}>
+        <View style={[styles.infoSection, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : tc.gray50 }]}>
           <Text style={[styles.infoTitle, { color: tc.textPrimary }]}>{t('account.deleteAccount.whatDeleted')}</Text>
           <View style={styles.infoList}>
             <Text style={[styles.infoItem, { color: tc.textSecondary }]}>{t('account.deleteAccount.deleteItem1')}</Text>
@@ -199,7 +219,7 @@ export default function DeleteAccountScreen() {
         </View>
 
         {/* What will NOT be deleted */}
-        <View style={[styles.infoSection, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.gray50 }]}>
+        <View style={[styles.infoSection, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : tc.gray50 }]}>
           <Text style={[styles.infoTitle, { color: tc.textPrimary }]}>{t('account.deleteAccount.whatNotDeleted')}</Text>
           <View style={styles.infoList}>
             <Text style={[styles.infoItem, { color: tc.textSecondary }]}>{t('account.deleteAccount.keepItem1')}</Text>
@@ -227,7 +247,7 @@ export default function DeleteAccountScreen() {
         {/* Confirmation Input */}
         <View style={styles.confirmSection}>
           <Text style={[styles.confirmLabel, { color: tc.textPrimary }]}>
-            {t('account.deleteAccount.typeToConfirm')} <Text style={[styles.confirmHighlight, { color: tc.error }]}>delete</Text> {t('account.deleteAccount.toConfirm')}:
+            {t('account.deleteAccount.typeToConfirm')} <Text style={[styles.confirmHighlight, { color: tc.error }]}>DELETE</Text> {t('account.deleteAccount.toConfirm')}:
           </Text>
           <TextInput
             style={[
@@ -235,11 +255,11 @@ export default function DeleteAccountScreen() {
               { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, color: tc.textPrimary },
               isConfirmValid && { borderColor: tc.error },
             ]}
-            placeholder="Type 'delete' here"
+            placeholder="Type 'DELETE' here"
             placeholderTextColor={tc.textTertiary}
             value={confirmText}
             onChangeText={setConfirmText}
-            autoCapitalize="none"
+            autoCapitalize="characters"
             autoCorrect={false}
           />
         </View>
@@ -249,7 +269,7 @@ export default function DeleteAccountScreen() {
           style={[
             styles.deleteButton,
             { backgroundColor: tc.error },
-            (!isConfirmValid || !understood) && { backgroundColor: isDark ? '#444' : colors.gray300 },
+            (!isConfirmValid || !understood) && { backgroundColor: isDark ? '#444' : tc.gray300 },
           ]}
           onPress={handleDeleteAccount}
           disabled={!isConfirmValid || !understood || isDeleting}

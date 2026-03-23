@@ -206,7 +206,7 @@ export default function PrivacySettingsScreen() {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } catch (err) {
               if (__DEV__) console.error('Data export error:', err);
-              Alert.alert('Export Failed', 'Something went wrong. Please try again or contact support@guidera.app.');
+              Alert.alert('Export Failed', 'Something went wrong. Please try again or contact support@guidera.one.');
             } finally {
               setIsExporting(false);
             }
@@ -278,7 +278,7 @@ export default function PrivacySettingsScreen() {
             </TouchableOpacity>
             
             {showProfileVisibility && (
-              <View style={[styles.optionsContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.gray50 }]}>
+              <View style={[styles.optionsContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : tc.gray50 }]}>
                 {VISIBILITY_OPTIONS.map((option) => (
                   <TouchableOpacity
                     key={option.value}
@@ -316,8 +316,8 @@ export default function PrivacySettingsScreen() {
               <Switch
                 value={settings.activity_status}
                 onValueChange={() => handleToggle('activity_status')}
-                trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
-                thumbColor={settings.activity_status ? tc.primary : isDark ? '#666' : colors.gray400}
+                trackColor={{ false: isDark ? '#39393D' : '#E9E9EA', true: tc.primary }}
+                thumbColor={'#FFFFFF'}
                 accessibilityRole="switch"
                 accessibilityLabel="Activity status"
               />
@@ -337,8 +337,8 @@ export default function PrivacySettingsScreen() {
               <Switch
                 value={settings.search_visibility}
                 onValueChange={() => handleToggle('search_visibility')}
-                trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
-                thumbColor={settings.search_visibility ? tc.primary : isDark ? '#666' : colors.gray400}
+                trackColor={{ false: isDark ? '#39393D' : '#E9E9EA', true: tc.primary }}
+                thumbColor={'#FFFFFF'}
                 accessibilityRole="switch"
                 accessibilityLabel="Search visibility"
               />
@@ -374,7 +374,7 @@ export default function PrivacySettingsScreen() {
             </TouchableOpacity>
             
             {showTripSharing && (
-              <View style={[styles.optionsContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.gray50 }]}>
+              <View style={[styles.optionsContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : tc.gray50 }]}>
                 {VISIBILITY_OPTIONS.map((option) => (
                   <TouchableOpacity
                     key={option.value}
@@ -412,8 +412,8 @@ export default function PrivacySettingsScreen() {
               <Switch
                 value={settings.location_sharing}
                 onValueChange={() => handleToggle('location_sharing')}
-                trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
-                thumbColor={settings.location_sharing ? tc.primary : isDark ? '#666' : colors.gray400}
+                trackColor={{ false: isDark ? '#39393D' : '#E9E9EA', true: tc.primary }}
+                thumbColor={'#FFFFFF'}
                 accessibilityRole="switch"
                 accessibilityLabel="Location sharing"
               />
@@ -439,8 +439,8 @@ export default function PrivacySettingsScreen() {
               <Switch
                 value={settings.personalization}
                 onValueChange={() => handleToggle('personalization')}
-                trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
-                thumbColor={settings.personalization ? tc.primary : isDark ? '#666' : colors.gray400}
+                trackColor={{ false: isDark ? '#39393D' : '#E9E9EA', true: tc.primary }}
+                thumbColor={'#FFFFFF'}
                 accessibilityRole="switch"
                 accessibilityLabel="Personalized recommendations"
               />

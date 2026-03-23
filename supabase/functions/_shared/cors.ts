@@ -9,9 +9,8 @@
  */
 
 const ALLOWED_ORIGINS = [
-  'https://guidera.app',
-  'https://www.guidera.app',
   'https://guidera.one',
+  'https://www.guidera.one',
 ];
 
 export function getCorsHeaders(request?: Request): Record<string, string> {

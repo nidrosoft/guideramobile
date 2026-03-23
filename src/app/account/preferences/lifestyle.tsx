@@ -36,7 +36,7 @@ import {
 
 export default function LifestylePreferencesScreen() {
   const router = useRouter();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const { profile } = useAuth();
   const insets = useSafeAreaInsets();
   const [preferences, setPreferences] = useState<TravelPreferences | null>(null);
@@ -218,8 +218,8 @@ export default function LifestylePreferencesScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setMorningPerson(value);
               }}
-              trackColor={{ false: tc.borderSubtle, true: `${tc.primary}50` }}
-              thumbColor={morningPerson ? tc.primary : tc.textSecondary}
+              trackColor={{ false: isDark ? '#39393D' : '#E9E9EA', true: tc.primary }}
+              thumbColor={'#FFFFFF'}
             />
           </View>
         </View>

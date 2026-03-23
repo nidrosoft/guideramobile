@@ -293,8 +293,8 @@ export default function NotificationsSettingsScreen() {
             value={preferences?.enabled ?? false}
             onValueChange={handleMasterToggle}
             disabled={!permissionGranted}
-            trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '50' }}
-            thumbColor={preferences?.enabled ? tc.primary : isDark ? '#666' : colors.gray400}
+            trackColor={{ false: isDark ? '#39393D' : '#E9E9EA', true: tc.primary }}
+            thumbColor={'#FFFFFF'}
             accessibilityRole="switch"
             accessibilityLabel="All notifications"
           />
@@ -304,7 +304,7 @@ export default function NotificationsSettingsScreen() {
         {NOTIFICATION_CATEGORIES.map((category) => (
           <View key={category.id} style={[styles.categoryCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             <View style={[styles.categoryHeader, { borderBottomColor: tc.borderSubtle }]}>
-              <View style={[styles.categoryIconContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.gray50 }]}>
+              <View style={[styles.categoryIconContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : tc.gray50 }]}>
                 {category.icon}
               </View>
               <View style={styles.categoryHeaderText}>
@@ -338,8 +338,8 @@ export default function NotificationsSettingsScreen() {
                       value={preferences?.[item.key] ?? false}
                       onValueChange={(value) => handleToggle(item.key, value)}
                       disabled={!permissionGranted || !preferences?.enabled}
-                      trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '50' }}
-                      thumbColor={preferences?.[item.key] ? tc.primary : isDark ? '#666' : colors.gray400}
+                      trackColor={{ false: isDark ? '#39393D' : '#E9E9EA', true: tc.primary }}
+                      thumbColor={'#FFFFFF'}
                       accessibilityRole="switch"
                       accessibilityLabel={item.title}
                     />

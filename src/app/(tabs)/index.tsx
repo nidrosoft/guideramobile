@@ -17,6 +17,7 @@ import { SearchNormal1, Archive, Location } from 'iconsax-react-native';
 import NotificationBell from '@/components/features/notifications/NotificationBell';
 import TripReminder from '@/components/features/home/TripReminder';
 import SectionRenderer from '@/components/features/home/SectionRenderer';
+import AnimatedSearchPlaceholder from '@/components/features/home/AnimatedSearchPlaceholder';
 import PlanBottomSheet from '@/components/features/home/PlanBottomSheet';
 import { SearchOverlay } from '@/components/features/search';
 import { FlightBookingFlow, HotelBookingFlow, PackageBookingFlow, CarBookingFlow, ExperienceFlow } from '@/features/booking';
@@ -72,6 +73,16 @@ export default function Home() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await refresh();
   }, [refresh]);
+
+  // Time-based greeting
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    const name = profile?.first_name || 'Traveler';
+    if (hour >= 5 && hour < 12) return `Good morning, ${name}`;
+    if (hour >= 12 && hour < 17) return `Good afternoon, ${name}`;
+    if (hour >= 17 && hour < 21) return `Good evening, ${name}`;
+    return `Hey, ${name}`;
+  }, [profile?.first_name]);
 
   // Dynamic styles based on theme
   const dynamicStyles = useMemo(() => ({
@@ -178,7 +189,7 @@ export default function Home() {
           )}
           <View style={styles.welcomeContainer}>
             <Text style={[styles.welcomeText, dynamicStyles.welcomeText]}>
-              {t('home.welcomeUser', { name: profile?.first_name || 'Traveler' })}
+              {greeting} 👋
             </Text>
             <TouchableOpacity
               style={styles.locationRow}
@@ -219,9 +230,7 @@ export default function Home() {
           accessibilityHint="Opens the search overlay"
         >
           <SearchNormal1 size={20} color={colors.textSecondary} />
-          <Text style={[styles.searchPlaceholder, { color: colors.textSecondary }]}>
-            {t('home.searchPlaceholder')}
-          </Text>
+          <AnimatedSearchPlaceholder style={[styles.searchPlaceholder, { color: colors.textSecondary }]} userCity={profile?.city} userCountry={profile?.country} />
         </TouchableOpacity>
 
         {/* Categories */}

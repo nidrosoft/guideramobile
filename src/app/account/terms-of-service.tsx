@@ -51,7 +51,7 @@ export default function TermsOfServiceScreen() {
         contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + spacing.xl }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.dateInfo, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.gray50 }]}>
+        <View style={[styles.dateInfo, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : tc.gray50 }]}>
           <Text style={[styles.dateText, { color: tc.textSecondary }]}>Last Updated: {LAST_UPDATED}</Text>
           <Text style={[styles.dateText, { color: tc.textSecondary }]}>Effective Date: {EFFECTIVE_DATE}</Text>
         </View>
@@ -264,8 +264,8 @@ export default function TermsOfServiceScreen() {
           If you have any questions about these Terms, please contact us at:
         </Text>
         <Text style={[styles.contactInfo, { color: tc.textPrimary }]}>Guidera Inc.</Text>
-        <Text style={[styles.contactInfo, { color: tc.textPrimary }]}>Email: legal@guidera.app</Text>
-        <Text style={[styles.contactInfo, { color: tc.textPrimary }]}>Website: https://guidera.app/terms</Text>
+        <Text style={[styles.contactInfo, { color: tc.textPrimary }]}>Email: legal@guidera.one</Text>
+        <Text style={[styles.contactInfo, { color: tc.textPrimary }]}>Website: https://guidera.one/terms</Text>
 
         <View style={[styles.footer, { borderTopColor: tc.borderSubtle }]}>
           <Text style={[styles.footerText, { color: tc.textSecondary }]}>

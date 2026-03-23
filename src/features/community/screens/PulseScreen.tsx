@@ -211,18 +211,24 @@ export default function PulseScreen() {
           }}
           showsUserLocation
           showsMyLocationButton={false}
+          mapPadding={{ top: 0, right: 0, bottom: showList ? 260 : 0, left: 0 }}
         >
-          {filteredActivities.map(activity => (
-            <Marker
-              key={activity.id}
-              coordinate={{ latitude: activity.latitude || 0, longitude: activity.longitude || 0 }}
-              onPress={() => handleActivityPress(activity)}
-            >
-              <View style={styles.marker}>
-                <Text style={styles.markerEmoji}>{getActivityIcon(activity.type)}</Text>
-              </View>
-            </Marker>
-          ))}
+          {filteredActivities.map(activity => {
+            const isMine = activity.createdBy === userId;
+            return (
+              <Marker
+                key={activity.id}
+                coordinate={{ latitude: activity.latitude || 0, longitude: activity.longitude || 0 }}
+                onPress={() => handleActivityPress(activity)}
+                tracksViewChanges={false}
+                zIndex={isMine ? 999 : 1}
+              >
+                <View style={[styles.marker, isMine && styles.markerMine]}>
+                  <Text style={styles.markerEmoji}>{getActivityIcon(activity.type)}</Text>
+                </View>
+              </Marker>
+            );
+          })}
         </MapView>
       )}
 
@@ -398,6 +404,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 4,
+  },
+  markerMine: {
+    borderColor: '#34C759',
+    borderWidth: 3,
+    shadowColor: '#34C759',
+    shadowOpacity: 0.4,
   },
   markerEmoji: { fontSize: 20 },
 });

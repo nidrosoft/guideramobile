@@ -288,6 +288,64 @@ export default function PartnerApplicationScreen() {
   // Step 6: Review
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
+  // Date of birth formatting — auto-inserts slashes for MM/DD/YYYY
+  const [dobError, setDobError] = useState('');
+
+  const handleDateOfBirthChange = (text: string) => {
+    // Strip non-numeric characters
+    const digits = text.replace(/\D/g, '');
+
+    // Auto-format with slashes
+    let formatted = '';
+    if (digits.length <= 2) {
+      formatted = digits;
+    } else if (digits.length <= 4) {
+      formatted = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    } else {
+      formatted = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
+    }
+
+    setDateOfBirth(formatted);
+
+    // Validate once fully entered (MM/DD/YYYY = 10 chars)
+    if (formatted.length === 10) {
+      const parts = formatted.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (!parts) {
+        setDobError('Use format MM/DD/YYYY');
+        return;
+      }
+      const month = parseInt(parts[1], 10);
+      const day = parseInt(parts[2], 10);
+      const year = parseInt(parts[3], 10);
+      const now = new Date();
+      const currentYear = now.getFullYear();
+
+      if (month < 1 || month > 12) {
+        setDobError('Invalid month (01-12)');
+      } else if (day < 1 || day > 31) {
+        setDobError('Invalid day (01-31)');
+      } else if (year < 1900 || year > currentYear) {
+        setDobError(`Year must be 1900-${currentYear}`);
+      } else {
+        // Check the date is actually valid (e.g., Feb 30 is not)
+        const dateObj = new Date(year, month - 1, day);
+        if (dateObj.getMonth() !== month - 1 || dateObj.getDate() !== day) {
+          setDobError('Invalid date');
+        } else {
+          // Must be at least 18
+          const age = currentYear - year - (now < new Date(currentYear, month - 1, day) ? 1 : 0);
+          if (age < 18) {
+            setDobError('Must be at least 18 years old');
+          } else {
+            setDobError('');
+          }
+        }
+      }
+    } else {
+      setDobError('');
+    }
+  };
+
   // Helpers
   const toggleLanguage = (lang: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -854,7 +912,24 @@ export default function PartnerApplicationScreen() {
       </View>
 
       {renderInput('Email Address', email, setEmail, 'john.smith@email.com', { keyboardType: 'email-address' })}
-      {renderInput('Date of Birth', dateOfBirth, setDateOfBirth, 'MM/DD/YYYY')}
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: tc.textSecondary }]}>Date of Birth *</Text>
+        <TextInput
+          style={[
+            styles.textInput,
+            { backgroundColor: tc.bgElevated, borderColor: dobError ? tc.error : tc.borderSubtle, color: tc.textPrimary },
+          ]}
+          placeholder="MM/DD/YYYY"
+          placeholderTextColor={tc.textTertiary}
+          value={dateOfBirth}
+          onChangeText={handleDateOfBirthChange}
+          keyboardType="number-pad"
+          maxLength={10}
+        />
+        {dobError ? (
+          <Text style={[styles.dobErrorText, { color: tc.error }]}>{dobError}</Text>
+        ) : null}
+      </View>
       {renderDropdown('Gender', GENDER_OPTIONS, gender, setGender, false)}
       {renderInput('Nationality', nationality, setNationality, 'e.g., American')}
     </View>
@@ -1670,6 +1745,11 @@ const styles = StyleSheet.create({
   textArea: {
     height: 120,
     textAlignVertical: 'top',
+  },
+  dobErrorText: {
+    fontSize: typography.fontSize.xs,
+    marginTop: 4,
+    marginLeft: 4,
   },
   charCount: {
     fontSize: typography.fontSize.caption,

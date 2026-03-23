@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { Video, ResizeMode } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +11,7 @@ import { colors, typography, spacing, borderRadius, shadows } from '@/styles';
 import PrimaryButton from '@/components/common/buttons/PrimaryButton';
 import TypingAnimation from '@/components/common/TypingAnimation';
 import DSButton from '@/components/ds/DSButton';
+import { Sms, Call } from 'iconsax-react-native';
 import { useSSO, useUser } from '@clerk/clerk-expo';
 import { syncClerkUserToSupabase } from '@/lib/clerk/profileSync';
 import * as WebBrowser from 'expo-web-browser';
@@ -29,6 +31,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function Landing() {
   useWarmUpBrowser();
+  const isFocused = useIsFocused();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -145,6 +148,7 @@ export default function Landing() {
             typingSpeed={80}
             deletingSpeed={50}
             pauseTime={800}
+            isActive={isFocused}
           />
         </View>
 
@@ -223,22 +227,24 @@ export default function Landing() {
                 accessibilityRole="button"
                 accessibilityLabel="Sign up with email"
               >
+                <Sms size={20} color={colors.white} variant="Bold" />
                 <Text style={styles.signUpButtonText}>Email</Text>
               </TouchableOpacity>
             </LinearGradient>
 
-            <DSButton
-              title="Phone"
+            <TouchableOpacity
+              style={styles.phoneSignUpButton}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 router.push('/(auth)/phone-signup');
               }}
-              variant="secondary"
-              size="xl"
-              haptic={false}
-              style={{ flex: 1, borderColor: colors.white, borderRadius: borderRadius.lg }}
-              textStyle={{ color: colors.white, fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold }}
-            />
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Sign up with phone"
+            >
+              <Call size={20} color={colors.white} variant="Bold" />
+              <Text style={styles.phoneSignUpButtonText}>Phone</Text>
+            </TouchableOpacity>
           </View>
 
           {error ? <Text style={styles.errorBadge}>{error}</Text> : null}
@@ -361,8 +367,10 @@ const styles = StyleSheet.create({
   },
   signUpButtonInner: {
     flex: 1,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: spacing.sm,
   },
   signUpButtonText: {
     fontSize: typography.fontSize.lg,
@@ -376,8 +384,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: colors.white,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: spacing.sm,
   },
   phoneSignUpButtonText: {
     fontSize: typography.fontSize.lg,

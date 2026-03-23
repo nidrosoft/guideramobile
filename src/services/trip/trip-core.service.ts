@@ -610,7 +610,7 @@ export async function enableShareLink(
 
   return {
     token,
-    url: `https://guidera.app/trip/join/${token}`,
+    url: `https://guidera.one/trip/join/${token}`,
   };
 }
 

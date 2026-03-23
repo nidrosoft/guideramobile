@@ -66,7 +66,7 @@ const AUTO_RESPONSES: Record<string, string> = {
   'account': "For account-related issues, you can manage most settings in the Account tab. If you're having trouble accessing your account, try resetting your password or contact us with your registered email.",
   'password': "To reset your password, go to the login screen and tap 'Forgot Password'. We'll send you a reset link to your registered email address.",
   'delete': "To delete your account, go to Settings > Account > Delete Account. Please note this action is permanent and cannot be undone.",
-  'default': "Thank you for your message. Our support team typically responds within 24 hours. For urgent issues, you can also email us at support@guidera.app",
+  'default': "Thank you for your message. Our support team typically responds within 24 hours. For urgent issues, you can also email us at support@guidera.one",
 };
 
 export default function ContactSupportScreen() {
@@ -127,7 +127,7 @@ export default function ContactSupportScreen() {
 
   const handleEmailSupport = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const email = 'support@guidera.app';
+    const email = 'support@guidera.one';
     const subject = encodeURIComponent('Support Request');
     const body = encodeURIComponent(`
 Hi Guidera Support,
@@ -277,7 +277,7 @@ Device: ${Platform.OS} ${Platform.Version}
               </View>
               <View style={styles.contactOptionContent}>
                 <Text style={[styles.contactOptionTitle, { color: tc.textPrimary }]}>Email Support</Text>
-                <Text style={[styles.contactOptionSubtitle, { color: tc.textSecondary }]}>support@guidera.app</Text>
+                <Text style={[styles.contactOptionSubtitle, { color: tc.textSecondary }]}>support@guidera.one</Text>
               </View>
               <ArrowLeft2 size={16} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
@@ -333,7 +333,7 @@ Device: ${Platform.OS} ${Platform.Version}
         {/* Input Area */}
         <View style={[styles.inputContainer, { paddingBottom: insets.bottom + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.white, borderTopColor: tc.borderSubtle }]}>
           <TextInput
-            style={[styles.textInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.gray50, color: tc.textPrimary }]}
+            style={[styles.textInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : tc.gray50, color: tc.textPrimary }]}
             placeholder="Type your message..."
             placeholderTextColor={tc.textTertiary}
             value={inputText}
@@ -342,7 +342,7 @@ Device: ${Platform.OS} ${Platform.Version}
             maxLength={500}
           />
           <TouchableOpacity
-            style={[styles.sendButton, { backgroundColor: tc.primary }, !inputText.trim() && { backgroundColor: isDark ? '#444' : colors.gray300 }]}
+            style={[styles.sendButton, { backgroundColor: tc.primary }, !inputText.trim() && { backgroundColor: isDark ? '#444' : tc.gray300 }]}
             onPress={handleSendMessage}
             disabled={!inputText.trim() || isSending}
             activeOpacity={0.8}

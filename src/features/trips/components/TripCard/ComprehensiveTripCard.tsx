@@ -3,7 +3,7 @@
  * Rich trip card showing all bookings and details at a glance
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Modal, TouchableWithoutFeedback } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -21,6 +21,7 @@ import { safetyService } from '@/services/safety.service';
 import { languageService } from '@/services/language.service';
 import { documentService } from '@/services/document.service';
 import { supabase } from '@/lib/supabase/client';
+import { fetchDestinationCoverImage } from '@/utils/destinationImage';
 import * as Haptics from 'expo-haptics';
 import { 
   Calendar, 
@@ -72,11 +73,30 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
     (startDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  // Default cover image if none provided (empty string check needed)
-  // Use direct images.unsplash.com URLs — source.unsplash.com redirects don't work in RN Image
+  // Cover image — lazy-fetch from Google Places if missing
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [fetchedCoverImage, setFetchedCoverImage] = useState<string>('');
+  const [isFetchingImage, setIsFetchingImage] = useState(false);
+
+  useEffect(() => {
+    if (trip.coverImage && trip.coverImage.length > 0) return;
+    const cityName = trip.destination?.city || trip.destination?.name || trip.title || '';
+    if (!cityName.trim()) return;
+    let cancelled = false;
+    setIsFetchingImage(true);
+    fetchDestinationCoverImage(cityName).then(url => {
+      if (cancelled) return;
+      setIsFetchingImage(false);
+      if (url) {
+        setFetchedCoverImage(url);
+        // Persist to DB so we don't re-fetch next time
+        supabase.from('trips').update({ cover_image_url: url, cover_image_source: 'google_places' }).eq('id', trip.id).then();
+      }
+    }).catch(() => { if (!cancelled) setIsFetchingImage(false); });
+    return () => { cancelled = true; };
+  }, [trip.id, trip.coverImage]);
   const [smartPlanSheetVisible, setSmartPlanSheetVisible] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(trip._db?.modulesGenerated || false);
@@ -287,12 +307,12 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
     modulesRef.current = [];
   };
 
-  const coverImageUri = trip.coverImage && trip.coverImage.length > 0 && !trip.coverImage.includes('source.unsplash.com')
+  const coverImageUri = (trip.coverImage && trip.coverImage.length > 0)
     ? trip.coverImage
-    : `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&h=600&fit=crop`;
+    : fetchedCoverImage;
 
   return (
-    <View style={[styles.wrapper, { backgroundColor: colors.bgCard, borderWidth: 1, borderColor: colors.borderSubtle }]}>
+    <View style={[styles.wrapper, { backgroundColor: colors.bgCard, borderColor: colors.borderMedium }]}>
       <TouchableOpacity
         style={[styles.container, { backgroundColor: colors.bgCard }]}
         onPress={onPress}
@@ -300,17 +320,36 @@ export default function ComprehensiveTripCard({ trip, onPress }: ComprehensiveTr
       >
         {/* Cover Image with Gradient Overlay */}
         <View style={styles.imageContainer}>
-        {!imageLoaded && (
+        {coverImageUri ? (
+          <>
+            {!imageLoaded && (
+              <View style={styles.imageSkeleton}>
+                <Skeleton width="100%" height={200} borderRadius={0} />
+              </View>
+            )}
+            <Image
+              source={{ uri: coverImageUri }}
+              style={styles.coverImage}
+              resizeMode="cover"
+              onLoad={() => setImageLoaded(true)}
+            />
+          </>
+        ) : isFetchingImage ? (
           <View style={styles.imageSkeleton}>
             <Skeleton width="100%" height={200} borderRadius={0} />
           </View>
+        ) : (
+          <LinearGradient
+            colors={['#2C3E50', '#3498DB', '#2980B9']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.coverImage}
+          >
+            <View style={styles.placeholderIcon}>
+              <Location size={36} color="rgba(255,255,255,0.25)" variant="Bold" />
+            </View>
+          </LinearGradient>
         )}
-        <Image
-          source={{ uri: coverImageUri }}
-          style={styles.coverImage}
-          resizeMode="cover"
-          onLoad={() => setImageLoaded(true)}
-        />
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.75)']}
           locations={[0, 0.3, 0.7, 1]}
@@ -613,6 +652,11 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 1,
+  },
+  placeholderIcon: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   gradientOverlay: {
     position: 'absolute',

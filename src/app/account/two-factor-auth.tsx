@@ -27,7 +27,9 @@ import {
   ShieldTick,
   TickCircle,
   InfoCircle,
+  Copy,
 } from 'iconsax-react-native';
+import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -44,7 +46,7 @@ export default function TwoFactorAuthScreen() {
   const { colors: tc, isDark } = useTheme();
   const { user, profile } = useAuth();
   const { user: clerkUser } = useUser();
-  const { showError } = require('@/contexts/ToastContext').useToast();
+  const { showError, showSuccess } = require('@/contexts/ToastContext').useToast();
   const [step, setStep] = useState<SetupStep>('select');
   const [method, setMethod] = useState<TwoFactorMethod | null>(null);
   const [verificationCode, setVerificationCode] = useState('');
@@ -199,8 +201,8 @@ export default function TwoFactorAuthScreen() {
       </View>
 
       {/* Info Card */}
-      <View style={[styles.infoCard, { backgroundColor: colors.info + '10', borderColor: colors.info + '20' }]}>
-        <InfoCircle size={18} color={colors.info} variant="Bold" />
+      <View style={[styles.infoCard, { backgroundColor: tc.info + '10', borderColor: tc.info + '20' }]}>
+        <InfoCircle size={18} color={tc.info} variant="Bold" />
         <Text style={[styles.infoText, { color: tc.textSecondary }]}>
           We recommend using an authenticator app for the most secure experience.
         </Text>
@@ -251,16 +253,50 @@ export default function TwoFactorAuthScreen() {
 
       {/* Authenticator Setup Instructions */}
       {method === 'authenticator' && (
-        <View style={[styles.authenticatorInstructions, { backgroundColor: isDark ? tc.bgElevated : colors.gray50 }]}>
+        <View style={[styles.authenticatorInstructions, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : tc.gray50 }]}>
           <Text style={[styles.instructionsTitle, { color: tc.textPrimary }]}>Setup Instructions</Text>
           <Text style={[styles.instructionStep, { color: tc.textSecondary }]}>1. Download an authenticator app (Google Authenticator, Authy)</Text>
-          <Text style={[styles.instructionStep, { color: tc.textSecondary }]}>2. Scan the QR code or enter the setup key</Text>
+          <Text style={[styles.instructionStep, { color: tc.textSecondary }]}>2. Copy the setup key below into your authenticator app</Text>
           <Text style={[styles.instructionStep, { color: tc.textSecondary }]}>3. Enter the 6-digit code shown in the app</Text>
 
-          {/* Mock QR Code placeholder */}
-          <View style={[styles.qrPlaceholder, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
-            <Text style={[styles.qrPlaceholderText, { color: tc.textTertiary }]}>QR Code</Text>
-            <Text style={[styles.setupKey, { color: tc.textPrimary }]}>Setup Key: ABCD-EFGH-IJKL-MNOP</Text>
+          {/* Setup Key from Clerk */}
+          <View style={[styles.setupKeyContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF', borderColor: tc.borderSubtle }]}>
+            {isLoading && !totpSecret ? (
+              <ActivityIndicator size="small" color={tc.primary} />
+            ) : totpSecret ? (
+              <>
+                <Text style={[styles.setupKeyLabel, { color: tc.textSecondary }]}>Setup Key</Text>
+                <View style={styles.setupKeyRow}>
+                  <Text style={[styles.setupKey, { color: tc.textPrimary }]} selectable>{totpSecret}</Text>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      await Clipboard.setStringAsync(totpSecret);
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      showSuccess('Setup key copied to clipboard');
+                    }}
+                    style={[styles.copyButton, { backgroundColor: tc.primary + '10' }]}
+                    activeOpacity={0.7}
+                  >
+                    <Copy size={16} color={tc.primary} variant="Bold" />
+                  </TouchableOpacity>
+                </View>
+                {totpUri ? (
+                  <TouchableOpacity
+                    onPress={async () => {
+                      await Clipboard.setStringAsync(totpUri);
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      showSuccess('TOTP URI copied to clipboard');
+                    }}
+                    style={styles.copyUriButton}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.copyUriText, { color: tc.primary }]}>Copy full URI for app import</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </>
+            ) : (
+              <Text style={[styles.setupKeyError, { color: tc.error }]}>Failed to generate setup key. Tap back and try again.</Text>
+            )}
           </View>
         </View>
       )}
@@ -543,25 +579,49 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 4,
   },
-  qrPlaceholder: {
+  setupKeyContainer: {
     alignItems: 'center',
-    backgroundColor: colors.bgElevated,
-    borderRadius: 20,
-    padding: spacing.lg,
+    borderRadius: 16,
+    padding: spacing.md,
     marginTop: spacing.md,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
   },
-  qrPlaceholderText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.gray400,
-    marginBottom: spacing.sm,
+  setupKeyLabel: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    marginBottom: spacing.xs,
+  },
+  setupKeyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   setupKey: {
     fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.textPrimary,
+    fontWeight: typography.fontWeight.semibold,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    flex: 1,
+    textAlign: 'center',
+  },
+  copyButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  copyUriButton: {
+    marginTop: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  copyUriText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    textDecorationLine: 'underline',
+  },
+  setupKeyError: {
+    fontSize: typography.fontSize.sm,
+    textAlign: 'center',
   },
   verifyButton: {
     backgroundColor: colors.primary,

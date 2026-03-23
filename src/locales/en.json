@@ -274,7 +274,7 @@
       "shareAndEarn": "Share your code and earn rewards when friends book",
       "share": "Share",
       "codeCopied": "Referral code copied to clipboard",
-      "shareMessage": "Join me on Guidera and get $20 off your first booking! Use my referral code: {{code}}\n\nDownload now: https://guidera.app/invite/{{code}}",
+      "shareMessage": "Join me on Guidera and get $20 off your first booking! Use my referral code: {{code}}\n\nDownload now: https://guidera.one/invite/{{code}}",
       "shareTitle": "Join Guidera",
       "inviteFailed": "Failed to send invite. Please try again.",
       "inviteSent": "Invitation sent to {{email}}!",
@@ -330,8 +330,8 @@
       "title": "Delete Account",
       "finalConfirmation": "Final Confirmation",
       "cannotBeUndone": "This action cannot be undone. Your account and all associated data will be permanently deleted.",
-      "deleteForever": "Delete Forever",
-      "deleteFailed": "Failed to delete account. Please contact support at support@guidera.app",
+      "deleteForever": "DELETE FOREVER",
+      "deleteFailed": "Failed to delete account. Please contact support at support@guidera.one",
       "warningTitle": "Delete Your Account?",
       "warningText": "This action is permanent and cannot be undone. All your data will be permanently removed.",
       "whatDeleted": "What will be deleted:",
@@ -347,7 +347,7 @@
       "understandPermanent": "I understand that this action is permanent and all my data will be deleted.",
       "typeToConfirm": "Type",
       "toConfirm": "to confirm",
-      "deleteMyAccount": "Delete My Account",
+      "deleteMyAccount": "DELETE MY ACCOUNT",
       "cancelKeep": "Cancel and keep my account"
     },
     "changePassword": {

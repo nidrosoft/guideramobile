@@ -224,7 +224,7 @@ export default function CommunityDetailScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Share.share({
       message: `Check out ${group.name} on Guidera!`,
-      url: `https://guidera.app/community/${group.id}`,
+      url: `https://guidera.one/community/${group.id}`,
     }).catch(() => {});
   }, [group.name, group.id]);
 
@@ -267,7 +267,7 @@ export default function CommunityDetailScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Share.share({
       message: `Check out this post on Guidera!`,
-      url: `https://guidera.app/community/post/${postId}`,
+      url: `https://guidera.one/community/post/${postId}`,
     }).catch(() => {});
     // post_shares tracking is handled by DB triggers on saved_posts
     // No explicit sharePost method needed — the Share sheet handles it

@@ -244,19 +244,21 @@ export default function StackedEventCards({ events = [], loading = false }: Stac
           </Animated.View>
         );
 
+        const uniqueKey = event.id != null ? String(event.id) : `evt-${index}`;
+
         if (position === 0) {
           const tapGesture = Gesture.Tap().onEnd(() => {
             runOnJS(handleCardTap)();
           });
           const composed = Gesture.Race(panGesture, tapGesture);
           return (
-            <GestureDetector key={`gd-${event.id}`} gesture={composed}>
-              {cardContent(`card-${event.id}`)}
+            <GestureDetector key={`gd-${uniqueKey}`} gesture={composed}>
+              {cardContent(`card-${uniqueKey}`)}
             </GestureDetector>
           );
         }
 
-        return cardContent(String(event.id));
+        return cardContent(uniqueKey);
       })}
     </View>
   );

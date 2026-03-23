@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { Trip, TripState, CreateTripData, UpdateTripData } from '../types/trip.types';
 import { canTransitionTo } from '../config/trip-states.config';
 import { supabase } from '@/lib/supabase/client';
+import { fetchDestinationCoverImage } from '@/utils/destinationImage';
 
 /** Shape of a trip row from the Supabase trips table */
 interface DbTripRow {
@@ -318,6 +319,22 @@ export const useTripStore = create<TripStore>((set, get) => ({
         state: 'draft',
         cover_image_url: data.coverImage || null,
       };
+
+      // Auto-fetch Google Places cover image if none provided
+      if (!insertPayload.cover_image_url) {
+        const cityName = data.destination.city || data.destination.name || '';
+        if (cityName) {
+          try {
+            const placesImage = await fetchDestinationCoverImage(cityName);
+            if (placesImage) {
+              insertPayload.cover_image_url = placesImage;
+              insertPayload.cover_image_source = 'google_places';
+            }
+          } catch {
+            // Non-blocking — trip creation proceeds without cover image
+          }
+        }
+      }
 
       if (data.budget) {
         insertPayload.budget_total = data.budget.amount;

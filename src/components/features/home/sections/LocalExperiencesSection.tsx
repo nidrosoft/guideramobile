@@ -13,14 +13,19 @@ import LocalExperienceCard from '@/components/features/home/LocalExperienceCard'
 import { useLocalExperiences } from '@/hooks/useLocalExperiences';
 import { useHomepageDataSafe, matchesCategory, useSectionVisibility } from '@/features/homepage';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import { spacing, typography } from '@/styles';
 import { SkeletonLocalExperienceCards } from '@/components/common/SkeletonLoader';
 
 export default function LocalExperiencesSection() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { profile } = useAuth();
   const homepageCtx = useHomepageDataSafe();
-  const { experiences, city, usedFallback, isLoading, error, refresh } = useLocalExperiences({ limit: 8 });
+  const { experiences, city, usedFallback, isLoading, error, refresh } = useLocalExperiences({
+    limit: 8,
+    cityOverride: profile?.city || undefined,
+  });
 
   // Re-fetch when homepage pull-to-refresh triggers
   const lastRefreshKey = useRef(homepageCtx?.refreshKey ?? 0);

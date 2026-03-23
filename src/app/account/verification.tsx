@@ -6,7 +6,7 @@
  * If already verified as a Partner (Local Guide), auto-verified here.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -15,7 +15,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Modal,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -47,7 +49,7 @@ import { supabase } from '@/lib/supabase/client';
 import { partnerService } from '@/services/community/partner.service';
 
 type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'rejected';
-type VerificationStep = 'intro' | 'document-select' | 'document-capture' | 'selfie' | 'review' | 'submitted';
+type VerificationStep = 'intro' | 'document-select' | 'verifying' | 'submitted';
 
 interface VerificationData {
   status: VerificationStatus;
@@ -86,6 +88,20 @@ export default function VerificationScreen() {
   const [step, setStep] = useState<VerificationStep>('intro');
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
 
+  // Didit WebView state
+  const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
+  const [webViewVisible, setWebViewVisible] = useState(false);
+  const [applicationId, setApplicationId] = useState<string | null>(null);
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, []);
+
   // Load verification status — also check partner verification
   const loadVerificationStatus = useCallback(async () => {
     if (!profile?.id) return;
@@ -107,8 +123,15 @@ export default function VerificationScreen() {
           setIsLoading(false);
           return;
         }
-        if (partnerData.didit_verification_status === 'in_progress' || 
-            ['submitted', 'under_review', 'identity_verification'].includes(partnerData.status)) {
+        // Only show pending if Didit verification is actually in progress (user completed WebView)
+        // If didit status is still not_started, user may have crashed before completing — let them restart
+        if (partnerData.didit_verification_status === 'in_progress') {
+          setVerificationData({ status: 'pending', source: 'partner', submitted_at: partnerData.submitted_at });
+          setIsLoading(false);
+          return;
+        }
+        if (['submitted', 'under_review'].includes(partnerData.status) && 
+            partnerData.didit_verification_status !== 'not_started') {
           setVerificationData({ status: 'pending', source: 'partner', submitted_at: partnerData.submitted_at });
           setIsLoading(false);
           return;
@@ -161,11 +184,11 @@ export default function VerificationScreen() {
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (step !== 'intro' && step !== 'submitted') {
-      if (step === 'document-select') setStep('intro');
-      else if (step === 'document-capture') setStep('document-select');
-      else if (step === 'selfie') setStep('document-capture');
-      else if (step === 'review') setStep('selfie');
+    if (step === 'document-select') {
+      setStep('intro');
+    } else if (step === 'verifying') {
+      // Don't go back from verifying — let them wait or go to intro
+      setStep('intro');
     } else {
       router.back();
     }
@@ -176,65 +199,109 @@ export default function VerificationScreen() {
     setStep('document-select');
   };
 
-  const handleSelectDocument = (docType: string) => {
+  const handleSelectDocument = async (docType: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedDocument(docType);
-    setStep('document-capture');
+    await handleStartDiditVerification(docType);
   };
 
-  const handleDocumentCapture = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // TODO: Integrate with Didit for real document capture
-    Alert.alert(
-      'Document Capture',
-      'In production, this would open the camera to capture your ID document.',
-      [{ text: 'Continue', onPress: () => setStep('selfie') }]
-    );
-  };
+  /**
+   * Create a partner application (source: traveler) + Didit session, then open WebView
+   */
+  const handleStartDiditVerification = async (docType: string) => {
+    if (!profile?.id) return;
+    setIsCreatingSession(true);
 
-  const handleSelfieCapture = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // TODO: Integrate with Didit for real selfie capture
-    Alert.alert(
-      'Selfie Capture',
-      'In production, this would open the camera for a selfie to match with your ID.',
-      [{ text: 'Continue', onPress: () => setStep('review') }]
-    );
-  };
-
-  const handleSubmitVerification = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setIsLoading(true);
-    
     try {
-      if (!profile?.id) return;
-      const { error } = await supabase
-        .from('identity_verifications')
-        .upsert({
-          user_id: profile.id,
-          status: 'pending',
-          document_type: selectedDocument,
-          submitted_at: new Date().toISOString(),
-        });
+      // Create or reuse a partner application for tracking the Didit session
+      const app = await partnerService.getOrCreateApplication(profile.id);
+      setApplicationId(app.id);
 
-      if (error) throw error;
-
-      setVerificationData({
-        status: 'pending',
-        submitted_at: new Date().toISOString(),
-        document_type: selectedDocument || undefined,
-        source: 'traveler',
+      // Save document type + mark as identity_verification
+      await partnerService.updateApplication(app.id, {
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        email: profile.email || '',
       });
-      
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setStep('submitted');
-    } catch (error) {
-      console.error('Error submitting verification:', error);
-      showError('Failed to submit verification. Please try again.');
+
+      // Create Didit verification session
+      const session = await partnerService.createVerificationSession(app.id, {
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        email: profile.email || '',
+      });
+
+      setVerificationUrl(session.verification_url);
+      setWebViewVisible(true);
+    } catch (err: any) {
+      if (__DEV__) console.warn('Didit session error:', err);
+      showError(err.message || 'Failed to start verification. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsCreatingSession(false);
     }
   };
+
+  /**
+   * When the Didit WebView is closed, start polling for verification result
+   */
+  const handleWebViewClose = useCallback(() => {
+    setWebViewVisible(false);
+    setVerificationUrl(null);
+
+    if (!applicationId) return;
+
+    // Show verifying step while we poll
+    setStep('verifying');
+
+    // Poll every 5 seconds for up to 2 minutes
+    let attempts = 0;
+    const maxAttempts = 24;
+
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+
+    pollIntervalRef.current = setInterval(async () => {
+      attempts++;
+      try {
+        const statusRes = await partnerService.checkVerificationStatus(applicationId);
+
+        if (statusRes.verification_status === 'approved') {
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+          // Update profile as verified
+          if (profile?.id) {
+            await supabase
+              .from('profiles')
+              .update({ is_verified: true, verified_at: new Date().toISOString() })
+              .eq('id', profile.id);
+          }
+          setVerificationData({ status: 'verified', reviewed_at: new Date().toISOString(), source: 'traveler' });
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          setStep('submitted');
+          return;
+        }
+
+        if (statusRes.verification_status === 'declined') {
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+          setVerificationData({ status: 'rejected', source: 'traveler' });
+          setStep('intro');
+          return;
+        }
+
+        // in_progress — keep polling
+        if (statusRes.verification_status === 'in_progress' || statusRes.didit_live_status === 'In Review') {
+          setVerificationData({ status: 'pending', submitted_at: new Date().toISOString(), source: 'traveler' });
+        }
+      } catch (err) {
+        if (__DEV__) console.warn('Poll error:', err);
+      }
+
+      if (attempts >= maxAttempts) {
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        // Mark as pending and stop polling — auto-poll in useEffect will continue
+        setVerificationData({ status: 'pending', submitted_at: new Date().toISOString(), source: 'traveler' });
+        setStep('submitted');
+      }
+    }, 5000);
+  }, [applicationId, profile?.id]);
 
   // Status helpers using dynamic theme colors
   const STATUS_COLORS: Record<VerificationStatus, string> = {
@@ -492,128 +559,19 @@ export default function VerificationScreen() {
     </>
   );
 
-  const renderDocumentCapture = () => (
-    <>
-      <View style={styles.stepHeader}>
-        <Text style={[styles.stepTitle, { color: tc.textPrimary }]}>Capture Your Document</Text>
-        <Text style={[styles.stepDesc, { color: tc.textSecondary }]}>
-          Take a clear photo of your {DOCUMENT_TYPES.find(d => d.id === selectedDocument)?.label}
-        </Text>
-      </View>
-
-      <View style={{ marginBottom: spacing.lg }}>
-        <View style={[styles.captureFrame, { backgroundColor: subtleBg, borderColor: cardBorder }]}>
-          <Camera size={48} color={tc.textTertiary} variant="Bulk" />
-          <Text style={[styles.captureHintText, { color: tc.textTertiary }]}>Position your document within the frame</Text>
-        </View>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.primaryButton, { backgroundColor: tc.primary, flexDirection: 'row', marginBottom: spacing.lg }]}
-        onPress={handleDocumentCapture}
-        activeOpacity={0.8}
-      >
-        <Camera size={24} color={tc.white} variant="Bold" />
-        <Text style={[styles.primaryButtonText, { color: tc.white, marginLeft: spacing.sm }]}>Take Photo</Text>
-      </TouchableOpacity>
-
+  const renderVerifying = () => (
+    <View style={styles.centeredSection}>
+      <ActivityIndicator size="large" color={tc.primary} style={{ marginBottom: spacing.lg }} />
+      <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Verifying Your Identity</Text>
+      <Text style={[styles.sectionText, { color: tc.textSecondary, marginBottom: spacing.lg }]}>
+        We're processing your verification. This may take a moment...
+      </Text>
       <View style={[styles.tipsCard, { backgroundColor: subtleBg }]}>
-        <Text style={[styles.tipsTitle, { color: tc.textPrimary }]}>Tips for a good photo:</Text>
-        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>- Use good lighting</Text>
-        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>- Hold your phone steady</Text>
-        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>- Avoid shadows and glare</Text>
-      </View>
-    </>
-  );
-
-  const renderSelfie = () => (
-    <>
-      <View style={styles.stepHeader}>
-        <Text style={[styles.stepTitle, { color: tc.textPrimary }]}>Take a Selfie</Text>
-        <Text style={[styles.stepDesc, { color: tc.textSecondary }]}>
-          We'll match your selfie with your ID photo to verify it's really you
+        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>
+          Please don't close the app. We'll update your status automatically.
         </Text>
       </View>
-
-      <View style={{ marginBottom: spacing.lg }}>
-        <View style={[styles.selfieFrame, { backgroundColor: subtleBg, borderColor: cardBorder }]}>
-          <User size={48} color={tc.textTertiary} variant="Bulk" />
-          <Text style={[styles.captureHintText, { color: tc.textTertiary }]}>Position your face in the circle</Text>
-        </View>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.primaryButton, { backgroundColor: tc.primary, flexDirection: 'row', marginBottom: spacing.lg }]}
-        onPress={handleSelfieCapture}
-        activeOpacity={0.8}
-      >
-        <Camera size={24} color={tc.white} variant="Bold" />
-        <Text style={[styles.primaryButtonText, { color: tc.white, marginLeft: spacing.sm }]}>Take Selfie</Text>
-      </TouchableOpacity>
-
-      <View style={[styles.tipsCard, { backgroundColor: subtleBg }]}>
-        <Text style={[styles.tipsTitle, { color: tc.textPrimary }]}>Selfie tips:</Text>
-        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>- Look directly at the camera</Text>
-        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>- Remove glasses and hats</Text>
-        <Text style={[styles.tipItem, { color: tc.textSecondary }]}>- Ensure your face is well-lit</Text>
-      </View>
-    </>
-  );
-
-  const renderReview = () => (
-    <>
-      <View style={styles.stepHeader}>
-        <Text style={[styles.stepTitle, { color: tc.textPrimary }]}>Review & Submit</Text>
-        <Text style={[styles.stepDesc, { color: tc.textSecondary }]}>
-          Please review your information before submitting
-        </Text>
-      </View>
-
-      <View style={[styles.reviewCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-        <View style={styles.reviewItem}>
-          <Text style={[styles.reviewLabel, { color: tc.textSecondary }]}>Document Type</Text>
-          <Text style={[styles.reviewValue, { color: tc.textPrimary }]}>
-            {DOCUMENT_TYPES.find(d => d.id === selectedDocument)?.label}
-          </Text>
-        </View>
-        <View style={[styles.reviewDivider, { backgroundColor: cardBorder }]} />
-        <View style={styles.reviewItem}>
-          <Text style={[styles.reviewLabel, { color: tc.textSecondary }]}>Document Photo</Text>
-          <View style={styles.reviewCheck}>
-            <TickCircle size={16} color={tc.success} variant="Bold" />
-            <Text style={[styles.reviewCheckText, { color: tc.success }]}>Captured</Text>
-          </View>
-        </View>
-        <View style={[styles.reviewDivider, { backgroundColor: cardBorder }]} />
-        <View style={styles.reviewItem}>
-          <Text style={[styles.reviewLabel, { color: tc.textSecondary }]}>Selfie</Text>
-          <View style={styles.reviewCheck}>
-            <TickCircle size={16} color={tc.success} variant="Bold" />
-            <Text style={[styles.reviewCheckText, { color: tc.success }]}>Captured</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={[styles.tipsCard, { backgroundColor: subtleBg, marginBottom: spacing.lg }]}>
-        <Text style={[styles.tipItem, { color: tc.textSecondary, lineHeight: 18, fontSize: typography.fontSize.xs }]}>
-          By submitting, you confirm that the information provided is accurate and you consent 
-          to our verification process. Your data will be handled according to our Privacy Policy.
-        </Text>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.primaryButton, { backgroundColor: tc.primary }]}
-        onPress={handleSubmitVerification}
-        disabled={isLoading}
-        activeOpacity={0.8}
-      >
-        {isLoading ? (
-          <ActivityIndicator color={tc.white} />
-        ) : (
-          <Text style={[styles.primaryButtonText, { color: tc.white }]}>Submit for Verification</Text>
-        )}
-      </TouchableOpacity>
-    </>
+    </View>
   );
 
   const renderSubmitted = () => (
@@ -657,11 +615,70 @@ export default function VerificationScreen() {
       >
         {step === 'intro' && renderIntro()}
         {step === 'document-select' && renderDocumentSelect()}
-        {step === 'document-capture' && renderDocumentCapture()}
-        {step === 'selfie' && renderSelfie()}
-        {step === 'review' && renderReview()}
+        {step === 'verifying' && renderVerifying()}
         {step === 'submitted' && renderSubmitted()}
       </ScrollView>
+
+      {/* Loading overlay while creating Didit session */}
+      {isCreatingSession && (
+        <View style={styles.sessionLoadingOverlay}>
+          <View style={[styles.sessionLoadingCard, { backgroundColor: tc.bgCard }]}>
+            <ActivityIndicator size="large" color={tc.primary} />
+            <Text style={[styles.sessionLoadingText, { color: tc.textPrimary }]}>
+              Setting up verification...
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Didit Verification WebView Modal */}
+      <Modal
+        visible={webViewVisible}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={handleWebViewClose}
+      >
+        <View style={[styles.webViewContainer, { paddingTop: insets.top, backgroundColor: tc.background }]}>
+          <View style={[styles.webViewHeader, { borderBottomColor: tc.borderSubtle }]}>
+            <TouchableOpacity
+              style={[styles.backButton, { backgroundColor: tc.bgElevated }]}
+              onPress={handleWebViewClose}
+            >
+              <ArrowLeft2 size={20} color={tc.textPrimary} />
+            </TouchableOpacity>
+            <Text style={[styles.webViewTitle, { color: tc.textPrimary }]}>Identity Verification</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          {verificationUrl ? (
+            <WebView
+              source={{ uri: verificationUrl }}
+              style={{ flex: 1 }}
+              javaScriptEnabled
+              domStorageEnabled
+              mediaPlaybackRequiresUserAction={false}
+              allowsInlineMediaPlayback
+              startInLoadingState
+              renderLoading={() => (
+                <View style={styles.webViewLoading}>
+                  <ActivityIndicator size="large" color={tc.primary} />
+                  <Text style={[styles.webViewLoadingText, { color: tc.textSecondary }]}>
+                    Loading verification...
+                  </Text>
+                </View>
+              )}
+              onNavigationStateChange={(navState) => {
+                if (navState.url?.includes('/session/complete') || navState.url?.includes('/callback')) {
+                  handleWebViewClose();
+                }
+              }}
+            />
+          ) : (
+            <View style={styles.webViewLoading}>
+              <ActivityIndicator size="large" color={tc.primary} />
+            </View>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1045,5 +1062,49 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.caption,
     marginTop: 1,
     lineHeight: 14,
+  },
+  // WebView Modal
+  webViewContainer: {
+    flex: 1,
+  },
+  webViewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  webViewTitle: {
+    fontSize: 17,
+    fontWeight: typography.fontWeight.bold,
+    textAlign: 'center',
+  },
+  webViewLoading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  webViewLoadingText: {
+    fontSize: typography.fontSize.base,
+    marginTop: 12,
+  },
+  // Session loading overlay
+  sessionLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sessionLoadingCard: {
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    alignItems: 'center',
+    width: 200,
+  },
+  sessionLoadingText: {
+    fontSize: typography.fontSize.sm,
+    marginTop: spacing.md,
+    textAlign: 'center',
   },
 });

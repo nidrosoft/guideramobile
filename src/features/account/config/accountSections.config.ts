@@ -330,7 +330,7 @@ export const PROFILE_QUICK_ACTIONS = [
       try {
         const { Share } = require('react-native');
         await Share.share({
-          message: 'Check out my Guidera travel profile! Download Guidera: https://guidera.app',
+          message: 'Check out my Guidera travel profile! Download Guidera: https://guidera.one',
           title: 'Share Profile',
         });
       } catch {}

@@ -9,7 +9,7 @@ interface AuthGuardProps {
 }
 
 export function AuthGuard({ children }: AuthGuardProps) {
-  const { isAuthenticated, isLoading, hasCompletedOnboarding } = useAuth();
+  const { isAuthenticated, isLoading, hasCompletedOnboarding, profile } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const navigationState = useRootNavigationState();
@@ -39,7 +39,10 @@ export function AuthGuard({ children }: AuthGuardProps) {
       }
     } else {
       if (!hasCompletedOnboarding) {
-        if (!inOnboardingGroup) {
+        // Only redirect when profile is loaded — profile being null means it's
+        // still syncing, not that onboarding isn't complete.  Avoids a race
+        // condition where the user logs back in and gets a spurious redirect.
+        if (!inOnboardingGroup && profile) {
           if (__DEV__) console.log('[AuthGuard] → Redirecting to onboarding (authenticated, not onboarded)');
           router.replace('/(onboarding)/intro');
         }

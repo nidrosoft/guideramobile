@@ -133,13 +133,17 @@ export const useOnboardingStore = create<OnboardingStore>()(
 
   getProfileUpdates: () => {
     const { data } = get();
+    // Only include fields that have actual values so we don't overwrite
+    // existing profile data (e.g., first_name set during Clerk signup)
+    const updates: Record<string, any> = {};
+    if (data.firstName) updates.first_name = data.firstName;
+    if (data.lastName) updates.last_name = data.lastName;
+    if (data.dateOfBirth) updates.date_of_birth = data.dateOfBirth.toISOString().split('T')[0];
+    if (data.gender) updates.gender = data.gender;
+    if (data.ethnicity) updates.ethnicity = data.ethnicity;
+    if (data.country) updates.country = data.country;
     return {
-      first_name: data.firstName,
-      last_name: data.lastName,
-      date_of_birth: data.dateOfBirth?.toISOString().split('T')[0],
-      gender: data.gender,
-      ethnicity: data.ethnicity,
-      country: data.country,
+      ...updates,
       preferences: {
         language: data.language || 'en',
         currency: 'USD',

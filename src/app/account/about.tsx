@@ -194,11 +194,11 @@ export default function AboutScreen() {
           <View style={styles.socialLinks}>
             <TouchableOpacity
               style={[styles.socialButton, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
-              onPress={() => handleOpenLink('https://guidera.app')}
+              onPress={() => handleOpenLink('https://guidera.one')}
               activeOpacity={0.7}
             >
               <Global size={20} color={tc.primary} variant="Bold" />
-              <Text style={[styles.socialText, { color: tc.primary }]}>guidera.app</Text>
+              <Text style={[styles.socialText, { color: tc.primary }]}>guidera.one</Text>
             </TouchableOpacity>
             
             <TouchableOpacity

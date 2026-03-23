@@ -39,7 +39,7 @@ const MAX_CUISINES = 8;
 
 export default function AccessibilityPreferencesScreen() {
   const router = useRouter();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const { profile, updateProfile } = useAuth();
   const insets = useSafeAreaInsets();
   const [preferences, setPreferences] = useState<TravelPreferences | null>(null);
@@ -490,8 +490,8 @@ export default function AccessibilityPreferencesScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setWearsContacts(value);
               }}
-              trackColor={{ false: tc.borderSubtle, true: `${tc.primary}50` }}
-              thumbColor={wearsContacts ? tc.primary : tc.textSecondary}
+              trackColor={{ false: isDark ? '#39393D' : '#E9E9EA', true: tc.primary }}
+              thumbColor={'#FFFFFF'}
             />
           </View>
 
@@ -511,8 +511,8 @@ export default function AccessibilityPreferencesScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setWearsGlasses(value);
               }}
-              trackColor={{ false: tc.borderSubtle, true: `${tc.primary}50` }}
-              thumbColor={wearsGlasses ? tc.primary : tc.textSecondary}
+              trackColor={{ false: isDark ? '#39393D' : '#E9E9EA', true: tc.primary }}
+              thumbColor={'#FFFFFF'}
             />
           </View>
 
@@ -532,8 +532,8 @@ export default function AccessibilityPreferencesScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setWearsHearingAid(value);
               }}
-              trackColor={{ false: tc.borderSubtle, true: `${tc.primary}50` }}
-              thumbColor={wearsHearingAid ? tc.primary : tc.textSecondary}
+              trackColor={{ false: isDark ? '#39393D' : '#E9E9EA', true: tc.primary }}
+              thumbColor={'#FFFFFF'}
             />
           </View>
         </View>
@@ -558,8 +558,8 @@ export default function AccessibilityPreferencesScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setWheelchairAccessible(value);
               }}
-              trackColor={{ false: tc.borderSubtle, true: `${tc.primary}50` }}
-              thumbColor={wheelchairAccessible ? tc.primary : tc.textSecondary}
+              trackColor={{ false: isDark ? '#39393D' : '#E9E9EA', true: tc.primary }}
+              thumbColor={'#FFFFFF'}
             />
           </View>
 
@@ -579,8 +579,8 @@ export default function AccessibilityPreferencesScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setTravelingWithPet(value);
               }}
-              trackColor={{ false: tc.borderSubtle, true: `${tc.primary}50` }}
-              thumbColor={travelingWithPet ? tc.primary : tc.textSecondary}
+              trackColor={{ false: isDark ? '#39393D' : '#E9E9EA', true: tc.primary }}
+              thumbColor={'#FFFFFF'}
             />
           </View>
         </View>

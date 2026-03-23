@@ -339,8 +339,8 @@ export default function EditProfileScreen() {
       <Switch
         value={visibility[field]}
         onValueChange={() => toggleVisibility(field)}
-        trackColor={{ false: tc.borderSubtle, true: tc.primary + '50' }}
-        thumbColor={visibility[field] ? tc.primary : isDark ? '#666' : '#ccc'}
+        trackColor={{ false: isDark ? '#39393D' : '#E9E9EA', true: tc.primary }}
+        thumbColor={'#FFFFFF'}
         accessibilityRole="switch"
         accessibilityLabel={`Show ${label}`}
       />

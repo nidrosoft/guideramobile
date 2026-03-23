@@ -264,13 +264,33 @@ class ActivityService {
       throw new Error('Only creator can cancel');
     }
 
+    // Notify all participants BEFORE cleanup (so we can still read participants)
+    await this.notifyActivityEvent(activityId, userId, 'cancel').catch(() => {});
+
+    // Mark activity as cancelled
     await supabase
       .from('community_activities')
       .update({ status: 'cancelled' })
       .eq('id', activityId);
 
-    // Notify all participants that the activity was cancelled
-    this.notifyActivityEvent(activityId, userId, 'cancel').catch(() => {});
+    // Remove all participants
+    await supabase
+      .from('activity_participants')
+      .delete()
+      .eq('activity_id', activityId);
+
+    // Remove associated chat room
+    await supabase
+      .from('chat_rooms')
+      .delete()
+      .eq('reference_id', activityId)
+      .eq('type', 'activity');
+
+    // Remove any pending invites
+    await supabase
+      .from('activity_invites')
+      .delete()
+      .eq('activity_id', activityId);
   }
 
   /**
@@ -365,7 +385,7 @@ class ActivityService {
     if (error) throw new Error(error.message);
 
     return (data || [])
-      .filter((d) => d.activity)
+      .filter((d) => d.activity && (d.activity as any).status !== 'cancelled')
       .map((d) => this.mapActivity(d.activity));
   }
 

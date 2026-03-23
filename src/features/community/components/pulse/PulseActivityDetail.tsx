@@ -66,7 +66,7 @@ export default function PulseActivityDetail({
   const handleShare = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Share.share({
-      message: `Join ${creatorFirst} for "${activity.title}" on Guidera!\n\nhttps://guidera.app/pulse/${activity.id}`,
+      message: `Join ${creatorFirst} for "${activity.title}" on Guidera!\n\nhttps://guidera.one/pulse/${activity.id}`,
     }).catch(() => {});
   };
 

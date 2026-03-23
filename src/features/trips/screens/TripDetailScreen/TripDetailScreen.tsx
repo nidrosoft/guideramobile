@@ -16,6 +16,8 @@ import { Skeleton } from '@/components/common/SkeletonLoader';
 import { useTranslation } from 'react-i18next';
 import { packingService } from '@/services/packing.service';
 import { invitationService, TripInvitation } from '@/services/invitation.service';
+import { fetchDestinationCoverImage } from '@/utils/destinationImage';
+import { supabase } from '@/lib/supabase/client';
 
 // IMAGE_HEIGHT computed inside components using useWindowDimensions
 
@@ -161,6 +163,9 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
   const [invitations, setInvitations] = useState<TripInvitation[]>([]);
   const scrollOffset = useSharedValue(0);
 
+  const [fetchedCoverImage, setFetchedCoverImage] = useState('');
+  const [isFetchingImage, setIsFetchingImage] = useState(false);
+
   const loadTripData = () => {
     if (!tripId) return;
     packingService.getProgress(tripId).then(setPackingProgress).catch((err) => { if (__DEV__) console.warn('Failed to load packing progress:', err); });
@@ -170,6 +175,24 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
   useEffect(() => {
     loadTripData();
   }, [tripId]);
+
+  // Lazy-fetch cover image from Google Places if missing
+  useEffect(() => {
+    if (trip?.coverImage && trip.coverImage.length > 0) return;
+    const cityName = trip?.destination?.city || trip?.destination?.name || trip?.title || '';
+    if (!cityName.trim()) return;
+    let cancelled = false;
+    setIsFetchingImage(true);
+    fetchDestinationCoverImage(cityName).then(url => {
+      if (cancelled) return;
+      setIsFetchingImage(false);
+      if (url) {
+        setFetchedCoverImage(url);
+        if (trip?.id) supabase.from('trips').update({ cover_image_url: url, cover_image_source: 'google_places' }).eq('id', trip.id).then();
+      }
+    }).catch(() => { if (!cancelled) setIsFetchingImage(false); });
+    return () => { cancelled = true; };
+  }, [trip?.id, trip?.coverImage]);
 
   if (!trip && !isLoading) {
     // TRIP-02: Show error state instead of infinite skeleton when trip is not found
@@ -237,7 +260,13 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
     <View style={styles.container}>
       {/* Hero Image with Overlay - Both move together */}
       <Animated.View style={[styles.heroContainer, { height: IMAGE_HEIGHT }, imageAnimatedStyle]}>
-        <Animated.Image source={{ uri: trip.coverImage }} style={styles.heroImage} />
+        {(trip.coverImage || fetchedCoverImage) ? (
+          <Animated.Image source={{ uri: trip.coverImage || fetchedCoverImage }} style={styles.heroImage} />
+        ) : isFetchingImage ? (
+          <Skeleton width="100%" height={IMAGE_HEIGHT} borderRadius={0} />
+        ) : (
+          <LinearGradient colors={['#2C3E50', '#3498DB', '#2980B9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroImage} />
+        )}
 
         {/* Gradient Overlay for Text Visibility */}
         <LinearGradient

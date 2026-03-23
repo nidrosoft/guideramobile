@@ -336,8 +336,8 @@ export default function SecuritySettingsScreen() {
                 <Switch
                   value={settings.biometric_enabled}
                   onValueChange={handleBiometricToggle}
-                  trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
-                  thumbColor={settings.biometric_enabled ? tc.primary : isDark ? '#666' : colors.gray400}
+                  trackColor={{ false: isDark ? '#39393D' : '#E9E9EA', true: tc.primary }}
+                  thumbColor={'#FFFFFF'}
                   accessibilityRole="switch"
                   accessibilityLabel={biometricType}
                 />
@@ -378,8 +378,8 @@ export default function SecuritySettingsScreen() {
               <Switch
                 value={settings.login_alerts}
                 onValueChange={handleLoginAlertsToggle}
-                trackColor={{ false: isDark ? '#333' : colors.gray200, true: tc.primary + '40' }}
-                thumbColor={settings.login_alerts ? tc.primary : isDark ? '#666' : colors.gray400}
+                trackColor={{ false: isDark ? '#39393D' : '#E9E9EA', true: tc.primary }}
+                thumbColor={'#FFFFFF'}
                 accessibilityRole="switch"
                 accessibilityLabel="Login alerts"
               />

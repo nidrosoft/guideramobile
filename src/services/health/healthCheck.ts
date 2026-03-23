@@ -25,7 +25,7 @@ export interface ServiceStatus {
   error?: string;
 }
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.guidera.app';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.guidera.one';
 const HEALTH_CHECK_TIMEOUT = 5000; // 5 seconds
 
 class HealthCheckService {

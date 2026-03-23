@@ -12,6 +12,17 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 
+// ─── Module-level event bus for cross-instance sync ──────────────
+type Listener = () => void;
+const _listeners = new Set<Listener>();
+function emitNotificationsChanged() {
+  _listeners.forEach(fn => fn());
+}
+function onNotificationsChanged(fn: Listener) {
+  _listeners.add(fn);
+  return () => { _listeners.delete(fn); };
+}
+
 export interface AppNotification {
   id: string;
   typeCode: string;
@@ -143,16 +154,22 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     if (!userId) return;
 
     try {
-      await supabase
+      const { error: updateError } = await supabase
         .from('alerts')
         .update({ read_at: new Date().toISOString(), status: 'read' })
         .eq('id', notificationId)
         .eq('user_id', userId);
 
+      if (updateError) {
+        if (__DEV__) console.warn('Mark as read DB error:', updateError.message);
+        return;
+      }
+
       setNotifications(prev =>
         prev.map(n => n.id === notificationId ? { ...n, isRead: true, status: 'read' } : n)
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
+      emitNotificationsChanged();
     } catch (err) {
       if (__DEV__) console.warn('Mark as read error:', err);
     }
@@ -172,15 +189,89 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       if (category) {
         query = query.eq('category_code', category);
       }
+      if (excludeCategory) {
+        query = query.neq('category_code', excludeCategory);
+      }
 
-      await query;
+      const { error: updateError } = await query;
+
+      if (updateError) {
+        if (__DEV__) console.warn('Mark all as read DB error:', updateError.message);
+        // Fallback: refetch to get accurate state
+        await fetchNotifications();
+        return;
+      }
 
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true, status: 'read' })));
       setUnreadCount(0);
+      emitNotificationsChanged();
     } catch (err) {
       if (__DEV__) console.warn('Mark all as read error:', err);
+      // Refetch on failure to sync state
+      await fetchNotifications();
     }
-  }, [userId, category]);
+  }, [userId, category, excludeCategory, fetchNotifications]);
+
+  // Delete a single notification
+  const deleteNotification = useCallback(async (notificationId: string) => {
+    if (!userId) return;
+
+    try {
+      const { error: delError } = await supabase
+        .from('alerts')
+        .delete()
+        .eq('id', notificationId)
+        .eq('user_id', userId);
+
+      if (delError) {
+        if (__DEV__) console.warn('Delete notification DB error:', delError.message);
+        return;
+      }
+
+      setNotifications(prev => {
+        const updated = prev.filter(n => n.id !== notificationId);
+        setUnreadCount(updated.filter(n => !n.isRead).length);
+        return updated;
+      });
+      emitNotificationsChanged();
+    } catch (err) {
+      if (__DEV__) console.warn('Delete notification error:', err);
+    }
+  }, [userId]);
+
+  // Clear all notifications
+  const clearAll = useCallback(async () => {
+    if (!userId) return;
+
+    try {
+      let query = supabase
+        .from('alerts')
+        .delete()
+        .eq('user_id', userId);
+
+      if (category) {
+        query = query.eq('category_code', category);
+      }
+      if (excludeCategory) {
+        query = query.neq('category_code', excludeCategory);
+      }
+
+      const { error: delError } = await query;
+
+      if (delError) {
+        if (__DEV__) console.warn('Clear all notifications DB error:', delError.message);
+        await fetchNotifications();
+        return;
+      }
+
+      setNotifications([]);
+      setUnreadCount(0);
+      emitNotificationsChanged();
+    } catch (err) {
+      if (__DEV__) console.warn('Clear all notifications error:', err);
+      await fetchNotifications();
+    }
+  }, [userId, category, excludeCategory, fetchNotifications]);
 
   // Subscribe to Realtime for new alerts
   useEffect(() => {
@@ -223,6 +314,29 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
           setUnreadCount(prev => prev + 1);
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'alerts',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const alert = payload.new as any;
+          if (category && alert.category_code !== category) return;
+          if (excludeCategory && alert.category_code === excludeCategory) return;
+
+          // Sync read status from other screens (e.g. mark-all-as-read)
+          setNotifications(prev => {
+            const updated = prev.map(n =>
+              n.id === alert.id ? { ...n, isRead: !!alert.read_at, status: alert.status } : n
+            );
+            setUnreadCount(updated.filter(n => !n.isRead).length);
+            return updated;
+          });
+        }
+      )
       .subscribe();
 
     channelRef.current = channel;
@@ -242,6 +356,13 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     }
   }, [userId, fetchNotifications]);
 
+  // Listen for cross-instance sync events (e.g. another screen marked all as read)
+  useEffect(() => {
+    return onNotificationsChanged(() => {
+      fetchUnreadCount();
+    });
+  }, [fetchUnreadCount]);
+
   return {
     notifications,
     unreadCount,
@@ -249,6 +370,8 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     error,
     markAsRead,
     markAllAsRead,
+    deleteNotification,
+    clearAll,
     refresh: fetchNotifications,
     refreshUnreadCount: fetchUnreadCount,
   };

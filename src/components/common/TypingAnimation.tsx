@@ -9,6 +9,8 @@ interface TypingAnimationProps {
   typingSpeed?: number;
   deletingSpeed?: number;
   pauseTime?: number;
+  /** When false the animation and haptic feedback are paused */
+  isActive?: boolean;
 }
 
 export default function TypingAnimation({
@@ -16,6 +18,7 @@ export default function TypingAnimation({
   typingSpeed = 80,
   deletingSpeed = 50,
   pauseTime = 800,
+  isActive = true,
 }: TypingAnimationProps) {
   const { colors } = useTheme();
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
@@ -23,6 +26,8 @@ export default function TypingAnimation({
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
+    if (!isActive) return;
+
     const currentPhrase = phrases[currentPhraseIndex];
 
     const timeout = setTimeout(() => {
@@ -53,7 +58,7 @@ export default function TypingAnimation({
     }, isDeleting ? deletingSpeed : typingSpeed);
 
     return () => clearTimeout(timeout);
-  }, [currentText, isDeleting, currentPhraseIndex, phrases, typingSpeed, deletingSpeed, pauseTime]);
+  }, [isActive, currentText, isDeleting, currentPhraseIndex, phrases, typingSpeed, deletingSpeed, pauseTime]);
 
   return (
     <Text style={[styles.text, { color: colors.white }]}>

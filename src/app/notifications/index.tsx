@@ -5,7 +5,7 @@
  * Supports mark as read, mark all as read, and deep link navigation.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Alert,
+  Animated as RNAnimated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -31,11 +33,17 @@ import {
   MessageText,
   Location,
   Heart,
+  More,
+  Trash,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
+import { Swipeable } from 'react-native-gesture-handler';
 import { spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useNotifications, AppNotification } from '@/hooks/useNotifications';
+import { useTripStore } from '@/features/trips/stores/trip.store';
+import { TripState } from '@/features/trips/types/trip.types';
+import { useAuth } from '@/context/AuthContext';
 
 type FilterCategory = 'all' | 'trip' | 'safety' | 'financial' | 'social' | 'system';
 
@@ -52,35 +60,122 @@ export default function NotificationCenterScreen() {
   const { colors: tc } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { profile } = useAuth();
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
+  const [showMenu, setShowMenu] = useState(false);
+  const swipeableRefs = useRef<Map<string, Swipeable>>(new Map());
 
-  const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead, refresh } =
+  const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead, deleteNotification, clearAll, refresh } =
     useNotifications({
       category: activeFilter === 'all' ? undefined : activeFilter,
       limit: 100,
     });
+
+  const trips = useTripStore(state => state.trips);
+  const fetchTrips = useTripStore(state => state.fetchTrips);
 
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await refresh();
+    if (profile?.id) await fetchTrips(profile.id);
     setRefreshing(false);
-  }, [refresh]);
+  }, [refresh, profile?.id, fetchTrips]);
+
+  // Resolve the trip status for a trip-related notification
+  const getTripStatus = (notif: AppNotification): 'ok' | 'cancelled' | 'missing' | null => {
+    if (notif.category !== 'trip' || !notif.actionUrl) return null;
+    const match = notif.actionUrl.match(/^\/trip\/([a-f0-9-]+)/);
+    if (!match) return null;
+    const trip = trips.find(t => t.id === match[1]);
+    if (!trip) return 'missing';
+    if (trip.state === TripState.CANCELLED) return 'cancelled';
+    return 'ok';
+  };
 
   const handleNotificationPress = async (notif: AppNotification) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (!notif.isRead) {
       await markAsRead(notif.id);
     }
-    if (notif.actionUrl) {
-      router.push(notif.actionUrl as any);
+
+    if (!notif.actionUrl) return;
+
+    // For trip-related URLs, verify the trip exists in the store
+    const tripMatch = notif.actionUrl.match(/^\/trip\/([a-f0-9-]+)/);
+    if (tripMatch) {
+      const tripId = tripMatch[1];
+      const trip = trips.find(t => t.id === tripId);
+
+      if (!trip && profile?.id) {
+        // Refresh trips from DB in case they haven't been loaded
+        await fetchTrips(profile.id);
+      }
+
+      // Re-check after refresh
+      const updatedTrip = useTripStore.getState().trips.find(t => t.id === tripId);
+      if (updatedTrip?.state === TripState.CANCELLED) {
+        Alert.alert(
+          'Trip Cancelled',
+          'This trip has been cancelled. You can still view its details.',
+          [{ text: 'View Details', onPress: () => router.push(notif.actionUrl as any) }, { text: 'Dismiss', style: 'cancel' }],
+        );
+        return;
+      }
     }
+
+    router.push(notif.actionUrl as any);
   };
 
   const handleMarkAllRead = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     markAllAsRead();
+  };
+
+  const handleClearAll = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setShowMenu(false);
+    Alert.alert(
+      'Clear All Notifications',
+      'This will permanently delete all your notifications. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: () => clearAll(),
+        },
+      ],
+    );
+  };
+
+  const handleDeleteNotification = (notifId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    deleteNotification(notifId);
+  };
+
+  const renderRightActions = (
+    _progress: RNAnimated.AnimatedInterpolation<number>,
+    dragX: RNAnimated.AnimatedInterpolation<number>,
+    notifId: string,
+  ) => {
+    const scale = dragX.interpolate({
+      inputRange: [-80, 0],
+      outputRange: [1, 0.5],
+      extrapolate: 'clamp',
+    });
+    return (
+      <TouchableOpacity
+        style={[styles.deleteAction, { backgroundColor: tc.error }]}
+        onPress={() => handleDeleteNotification(notifId)}
+        activeOpacity={0.8}
+      >
+        <RNAnimated.View style={{ transform: [{ scale }] }}>
+          <Trash size={22} color="#FFFFFF" variant="Bold" />
+        </RNAnimated.View>
+      </TouchableOpacity>
+    );
   };
 
   const getCategoryIcon = (category: string, typeCode: string) => {
@@ -155,14 +250,36 @@ export default function NotificationCenterScreen() {
           <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Notifications</Text>
-        {unreadCount > 0 ? (
-          <TouchableOpacity onPress={handleMarkAllRead}>
-            <Text style={[styles.markAllText, { color: tc.primary }]}>Mark all read</Text>
+        <View style={styles.headerActions}>
+          {unreadCount > 0 && (
+            <TouchableOpacity onPress={handleMarkAllRead} style={{ marginRight: spacing.sm }}>
+              <Text style={[styles.markAllText, { color: tc.primary }]}>Mark all read</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            onPress={() => setShowMenu(!showMenu)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <More size={22} color={tc.textPrimary} variant="Linear" />
           </TouchableOpacity>
-        ) : (
-          <View style={{ width: 80 }} />
-        )}
+        </View>
       </View>
+
+      {/* Dropdown menu */}
+      {showMenu && (
+        <TouchableOpacity
+          style={styles.menuOverlay}
+          activeOpacity={1}
+          onPress={() => setShowMenu(false)}
+        >
+          <View style={[styles.menuDropdown, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, right: spacing.lg, top: insets.top + 52 }]}>
+            <TouchableOpacity style={styles.menuItem} onPress={handleClearAll}>
+              <Trash size={18} color={tc.error} variant="Linear" />
+              <Text style={[styles.menuItemText, { color: tc.error }]}>Clear All</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* Category Filters */}
       <View style={styles.filtersRow}>
@@ -220,33 +337,50 @@ export default function NotificationCenterScreen() {
           <View key={group.title} style={styles.group}>
             <Text style={[styles.groupTitle, { color: tc.textTertiary }]}>{group.title}</Text>
             {group.data.map((notif) => (
-              <TouchableOpacity
+              <Swipeable
                 key={notif.id}
-                style={[
-                  styles.notifRow,
-                  { backgroundColor: notif.isRead ? 'transparent' : `${tc.primary}05`, borderBottomColor: tc.borderSubtle },
-                ]}
-                onPress={() => handleNotificationPress(notif)}
-                activeOpacity={0.7}
+                ref={(ref) => {
+                  if (ref) swipeableRefs.current.set(notif.id, ref);
+                  else swipeableRefs.current.delete(notif.id);
+                }}
+                renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, notif.id)}
+                overshootRight={false}
+                friction={2}
               >
-                <View style={[styles.notifIconCircle, { backgroundColor: `${tc.primary}10` }]}>
-                  {getCategoryIcon(notif.category, notif.typeCode)}
-                </View>
-                <View style={styles.notifContent}>
-                  <Text style={[styles.notifTitle, { color: tc.textPrimary, fontWeight: notif.isRead ? '500' : '700' }]} numberOfLines={1}>
-                    {notif.title}
-                  </Text>
-                  <Text style={[styles.notifBody, { color: tc.textSecondary }]} numberOfLines={2}>
-                    {notif.body}
-                  </Text>
-                  <Text style={[styles.notifTime, { color: tc.textTertiary }]}>
-                    {getTimeAgo(notif.createdAt)}
-                  </Text>
-                </View>
-                {!notif.isRead && (
-                  <View style={[styles.unreadDot, { backgroundColor: tc.primary }]} />
-                )}
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.notifRow,
+                    { backgroundColor: notif.isRead ? tc.bgPrimary || 'transparent' : `${tc.primary}05`, borderBottomColor: tc.borderSubtle },
+                  ]}
+                  onPress={() => handleNotificationPress(notif)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.notifIconCircle, { backgroundColor: `${tc.primary}10` }]}>
+                    {getCategoryIcon(notif.category, notif.typeCode)}
+                  </View>
+                  <View style={styles.notifContent}>
+                    <Text style={[styles.notifTitle, { color: tc.textPrimary, fontWeight: notif.isRead ? '500' : '700' }]} numberOfLines={1}>
+                      {notif.title}
+                    </Text>
+                    <Text style={[styles.notifBody, { color: tc.textSecondary }]} numberOfLines={2}>
+                      {notif.body}
+                    </Text>
+                    <View style={styles.notifMeta}>
+                      <Text style={[styles.notifTime, { color: tc.textTertiary }]}>
+                        {getTimeAgo(notif.createdAt)}
+                      </Text>
+                      {getTripStatus(notif) === 'cancelled' && (
+                        <View style={[styles.cancelledTag, { backgroundColor: `${tc.error}15` }]}>
+                          <Text style={[styles.cancelledTagText, { color: tc.error }]}>Cancelled</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                  {!notif.isRead && (
+                    <View style={[styles.unreadDot, { backgroundColor: tc.primary }]} />
+                  )}
+                </TouchableOpacity>
+              </Swipeable>
             ))}
           </View>
         ))}
@@ -267,7 +401,41 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   headerTitle: { fontSize: 20, fontWeight: '700' },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
   markAllText: { fontSize: 13, fontWeight: '600' },
+  menuOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100,
+  },
+  menuDropdown: {
+    position: 'absolute',
+    zIndex: 101,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 4,
+    minWidth: 160,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  menuItemText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deleteAction: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+  },
   filtersRow: {
     flexDirection: 'row',
   },
@@ -316,6 +484,16 @@ const styles = StyleSheet.create({
   notifContent: { flex: 1 },
   notifTitle: { fontSize: 14, marginBottom: 2 },
   notifBody: { fontSize: 13, lineHeight: 18, marginBottom: 4 },
+  notifMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   notifTime: { fontSize: 11 },
+  cancelledTag: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  cancelledTagText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
   unreadDot: { width: 8, height: 8, borderRadius: 4, marginLeft: spacing.sm },
 });

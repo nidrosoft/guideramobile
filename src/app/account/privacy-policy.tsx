@@ -35,7 +35,7 @@ export default function PrivacyPolicyScreen() {
   };
 
   const handleEmailLink = () => {
-    Linking.openURL('mailto:privacy@guidera.app');
+    Linking.openURL('mailto:privacy@guidera.one');
   };
 
   return (
@@ -56,7 +56,7 @@ export default function PrivacyPolicyScreen() {
         contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + spacing.xl }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.dateInfo, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.gray50 }]}>
+        <View style={[styles.dateInfo, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : tc.gray50 }]}>
           <Text style={[styles.dateText, { color: tc.textSecondary }]}>Last Updated: {LAST_UPDATED}</Text>
           <Text style={[styles.dateText, { color: tc.textSecondary }]}>Effective Date: {EFFECTIVE_DATE}</Text>
         </View>
@@ -196,7 +196,7 @@ export default function PrivacyPolicyScreen() {
 
         <Text style={[styles.paragraph, { color: tc.textSecondary }]}>
           To exercise any of these rights, contact us at{' '}
-          <Text style={[styles.link, { color: tc.primary }]} onPress={handleEmailLink}>privacy@guidera.app</Text>
+          <Text style={[styles.link, { color: tc.primary }]} onPress={handleEmailLink}>privacy@guidera.one</Text>
         </Text>
 
         {/* Section 6 */}
@@ -280,8 +280,8 @@ export default function PrivacyPolicyScreen() {
         </Text>
         <Text style={[styles.contactInfo, { color: tc.textPrimary }]}>Guidera Inc.</Text>
         <Text style={[styles.contactInfo, { color: tc.textPrimary }]}>Data Protection Officer</Text>
-        <Text style={[styles.contactInfo, { color: tc.textPrimary }]}>Email: privacy@guidera.app</Text>
-        <Text style={[styles.contactInfo, { color: tc.textPrimary }]}>Website: https://guidera.app/privacy</Text>
+        <Text style={[styles.contactInfo, { color: tc.textPrimary }]}>Email: privacy@guidera.one</Text>
+        <Text style={[styles.contactInfo, { color: tc.textPrimary }]}>Website: https://guidera.one/privacy</Text>
         
         <Text style={[styles.paragraph, { color: tc.textSecondary }]}>
           For GDPR-related inquiries, you may also contact your local data protection authority.
