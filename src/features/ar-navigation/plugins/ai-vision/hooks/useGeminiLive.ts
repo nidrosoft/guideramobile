@@ -262,10 +262,10 @@ export function useGeminiLive(): UseGeminiLiveReturn {
 
   // ─── Audio Session Setup ─────────────────────────────────
 
-  const configureAudioSession = useCallback(async () => {
+  const configureAudioSession = useCallback(async (forPlayback = false) => {
     try {
       await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
+        allowsRecordingIOS: !forPlayback,
         playsInSilentModeIOS: true,
         staysActiveInBackground: false,
         interruptionModeIOS: InterruptionModeIOS.DuckOthers,
@@ -411,7 +411,9 @@ export function useGeminiLive(): UseGeminiLiveReturn {
           if (!aiSpeakingRef.current) {
             aiSpeakingRef.current = true;
             doStopListening();
-            if (__DEV__) console.log('[useGeminiLive] AI started speaking, pausing mic');
+            // Switch to playback mode so audio routes through main speaker (not earpiece)
+            configureAudioSession(true);
+            if (__DEV__) console.log('[useGeminiLive] AI started speaking, pausing mic, switching to speaker');
           }
           // Accumulate audio chunks
           audioPcmAccumulator.current.push(base64Audio);
@@ -479,7 +481,7 @@ export function useGeminiLive(): UseGeminiLiveReturn {
               hasGreetedRef.current = true;
               setTimeout(() => {
                 if (sessionRef.current?.isConnected()) {
-                  sessionRef.current.sendText('Hello! Please introduce yourself briefly as Meena, the user\'s AI travel expert and vision assistant. Be warm and excited to help.');
+                  sessionRef.current.sendText('Greet the user in 1-2 short sentences. Say hi, your name is Meena, and invite them to point their camera at anything or ask you a travel question. Do NOT describe anything you see — the camera may not be active yet. Keep it brief and warm. Stop after the greeting — wait for the user to respond.');
                 }
               }, 100);
             }
@@ -494,7 +496,7 @@ export function useGeminiLive(): UseGeminiLiveReturn {
       setIsConnecting(false);
       setError(err.message || 'Failed to connect');
     }
-  }, [addConversation, flushPlaybackChunks, stopPlayback, doStartListening, doStopListening]);
+  }, [addConversation, flushPlaybackChunks, stopPlayback, doStartListening, doStopListening, configureAudioSession]);
 
   const disconnect = useCallback(async () => {
     doStopListening();
