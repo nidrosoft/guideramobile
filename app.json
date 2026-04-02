@@ -3,7 +3,7 @@
     "name": "Guidera",
     "slug": "Guidera",
     "scheme": "guidera",
-    "version": "0.1.8.2",
+    "version": "0.1.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
