@@ -24,6 +24,7 @@ export default function AccessibilityNeedsScreen() {
       nextRoute="/(onboarding)/location"
       showBackButton={true}
       fieldName="accessibilityNeeds"
+      exclusiveOption="None"
     />
   );
 }

@@ -21,6 +21,7 @@ import { useTheme } from '@/context/ThemeContext';
 import SaveButton from '@/components/common/SaveButton';
 import CachedImage from '@/components/common/CachedImage';
 import { SkeletonStackedDestination } from '@/components/common/SkeletonLoader';
+import { prefetchMissingImages, getCachedImageUrl } from '@/hooks/useImageFallback';
 
 const SWIPE_VELOCITY_THRESHOLD = 500;
 const MAX_ROTATION = 12; // degrees
@@ -39,12 +40,14 @@ export default function StackedDestinationCards() {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
 
+  const [imageVersion, setImageVersion] = useState(0);
+
   const destinations = useMemo(() => {
     const popularSection = homepageData?.sections?.find(s => s.slug === 'popular-destinations');
     if (popularSection?.items?.length) {
       return popularSection.items.slice(0, 5).map((item, index) => ({
         id: item.id || String(index),
-        city: item.location?.city || 'Unknown',
+        city: item.location?.city || item.title?.split(' - ')[0] || 'Unknown',
         country: item.location?.country || 'Unknown',
         name: item.title,
         rating: item.rating || 0,
@@ -55,6 +58,16 @@ export default function StackedDestinationCards() {
     }
     return [];
   }, [homepageData?.sections]);
+
+  // Prefetch Google Places images for any items with missing image
+  useEffect(() => {
+    if (destinations.length === 0) return;
+    const missing = destinations.filter(d => !d.image || d.image.trim().length <= 10);
+    if (missing.length === 0) return;
+    prefetchMissingImages(
+      missing.map(d => ({ imageUrl: d.image, cityName: d.city }))
+    ).then(() => setImageVersion(v => v + 1));
+  }, [destinations]);
 
   const activeCategory = homepageData?.activeCategory ?? 'all';
   const filteredDestinations = useMemo(
@@ -187,7 +200,7 @@ export default function StackedDestinationCards() {
             ]}
           >
             {/* Background Image */}
-            <CachedImage uri={destination.image} style={styles.cardImage} />
+            <CachedImage uri={getCachedImageUrl(destination.image, destination.city)} style={styles.cardImage} />
 
             {/* Top Badges */}
             <View style={styles.topContainer}>

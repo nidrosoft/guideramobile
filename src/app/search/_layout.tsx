@@ -15,7 +15,7 @@ export default function SearchLayout() {
       }}
     >
       <Stack.Screen name="results" />
-      <Stack.Screen name="snapshot" />
+      <Stack.Screen name="snapshot" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
     </Stack>
   );
 }

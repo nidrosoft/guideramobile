@@ -152,14 +152,30 @@ export default function CreatorsContentSection({ content, destinationName }: Cre
         ))}
       </ScrollView>
 
-      {/* Loading State */}
-      {loading && videos.length === 0 && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textTertiary }]}>
-            Loading {selectedCategory.label.toLowerCase()} videos...
-          </Text>
-        </View>
+      {/* Loading State — skeleton cards during initial load OR category switch */}
+      {loading && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.cardsContent}
+          style={styles.cardsScroll}
+        >
+          {[1, 2, 3].map((i) => (
+            <View
+              key={`skel-${i}`}
+              style={[styles.card, { borderColor: isDark ? 'rgba(255,255,255,0.06)' : colors.gray200, backgroundColor: isDark ? '#1A1A1A' : colors.gray100 }]}
+            >
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                {i === 1 && (
+                  <Text style={[styles.loadingText, { color: colors.textTertiary, marginTop: 8 }]}>
+                    Loading {selectedCategory.label.toLowerCase()}...
+                  </Text>
+                )}
+              </View>
+            </View>
+          ))}
+        </ScrollView>
       )}
 
       {/* Error / Empty State */}
@@ -175,7 +191,7 @@ export default function CreatorsContentSection({ content, destinationName }: Cre
       )}
 
       {/* Horizontal Scrollable Video Cards */}
-      {videos.length > 0 && (
+      {!loading && videos.length > 0 && (
         <ScrollView 
           horizontal
           showsHorizontalScrollIndicator={false}

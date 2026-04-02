@@ -187,6 +187,10 @@ class ActivityService {
       .single();
 
     if (error) throw new Error(error.message);
+
+    // Notify all participants that activity details changed
+    this.notifyActivityEvent(activityId, userId, 'update').catch(() => {});
+
     return this.mapActivity(data);
   }
 
@@ -225,8 +229,12 @@ class ActivityService {
 
     if (error) throw new Error(error.message);
 
-    // Notify activity creator that someone joined
+    // Notify all participants that someone joined + check milestones
     this.notifyActivityEvent(activityId, userId, 'join').catch(() => {});
+
+    // Check milestone thresholds (newCount = current + 1 since DB trigger hasn't fired yet)
+    const newCount = (activity.participantCount || 0) + 1;
+    this.checkMilestone(activityId, activity.createdBy, activity.title, newCount, activity.maxParticipants).catch(() => {});
   }
 
   /**
@@ -458,8 +466,8 @@ class ActivityService {
 
     if (error) throw new Error(error.message);
 
-    // B5: Notify activity creator about new comment
-    this.notifyActivityEvent(activityId, userId, 'comment').catch(() => {});
+    // Notify all participants about new comment (with content preview)
+    this.notifyActivityEvent(activityId, userId, 'comment', content).catch(() => {});
 
     return this.mapComment(data, false);
   }
@@ -583,13 +591,23 @@ class ActivityService {
   // ============================================
 
   /**
-   * Send push notification for activity events (join, leave, cancel).
-   * Uses the alerts table which triggers the send-notification edge function.
+   * Comment notification cooldown cache.
+   * Key: `${recipientId}_${activityId}`, Value: last notification timestamp.
+   * Prevents a user from receiving more than 1 comment notification per activity per minute.
+   */
+  private commentCooldowns = new Map<string, number>();
+
+  /**
+   * Send in-app + push notifications for activity events.
+   * Notifies ALL relevant participants (not just the creator).
+   *
+   * Events: join, leave, cancel, comment, update
    */
   private async notifyActivityEvent(
     activityId: string,
     triggerUserId: string,
-    event: 'join' | 'leave' | 'cancel' | 'comment'
+    event: 'join' | 'leave' | 'cancel' | 'comment' | 'update',
+    commentContent?: string
   ): Promise<void> {
     try {
       const activity = await this.getActivity(activityId);
@@ -606,52 +624,94 @@ class ActivityService {
         ? `${triggerProfile.first_name} ${triggerProfile.last_name}`.trim()
         : 'Someone';
 
-      // Determine who to notify and what to say
+      // Collect all participant user IDs (excluding the trigger user)
+      const allParticipantIds = (activity.participants || [])
+        .map(p => p.userId)
+        .filter(uid => uid !== triggerUserId);
+
+      // Determine recipients, title, and body based on event type
       let recipientIds: string[] = [];
       let title = '';
       let body = '';
 
       switch (event) {
-        case 'join':
-          // Notify activity creator
-          if (activity.createdBy !== triggerUserId) {
-            recipientIds = [activity.createdBy];
+        case 'join': {
+          // Notify ALL existing participants (the joiner just inserted, so
+          // they may or may not be in the participant list yet)
+          recipientIds = allParticipantIds;
+          // Make sure creator is included even if not in participants list
+          if (activity.createdBy !== triggerUserId && !recipientIds.includes(activity.createdBy)) {
+            recipientIds.push(activity.createdBy);
           }
           title = `${triggerName} joined your activity`;
           body = `${triggerName} is going to "${activity.title}"`;
           break;
+        }
 
-        case 'leave':
-          // Notify activity creator
-          if (activity.createdBy !== triggerUserId) {
-            recipientIds = [activity.createdBy];
+        case 'leave': {
+          // Notify remaining participants (only if 3+ people were in the activity,
+          // to avoid noise for small groups)
+          const totalBefore = (activity.participantCount || 0);
+          if (totalBefore >= 3) {
+            recipientIds = allParticipantIds;
+          } else {
+            // Small group — only notify creator
+            if (activity.createdBy !== triggerUserId) {
+              recipientIds = [activity.createdBy];
+            }
           }
           title = `${triggerName} left your activity`;
           body = `${triggerName} is no longer going to "${activity.title}"`;
           break;
+        }
 
-        case 'cancel':
-          // Notify all participants except the creator
-          recipientIds = (activity.participants || [])
-            .filter(p => p.userId !== triggerUserId)
-            .map(p => p.userId);
+        case 'cancel': {
+          // Notify ALL participants except the creator (who triggered the cancel)
+          recipientIds = allParticipantIds;
           title = 'Activity cancelled';
           body = `"${activity.title}" has been cancelled by the host`;
           break;
+        }
 
-        case 'comment':
-          // Notify activity creator about new comment
-          if (activity.createdBy !== triggerUserId) {
-            recipientIds = [activity.createdBy];
+        case 'comment': {
+          // Notify ALL participants except the commenter
+          recipientIds = allParticipantIds;
+          // Apply 1-minute cooldown per recipient per activity to prevent spam
+          const now = Date.now();
+          recipientIds = recipientIds.filter(uid => {
+            const key = `${uid}_${activityId}`;
+            const lastNotif = this.commentCooldowns.get(key);
+            if (lastNotif && now - lastNotif < 60_000) return false;
+            this.commentCooldowns.set(key, now);
+            return true;
+          });
+          // Clean up old cooldown entries (older than 5 minutes)
+          for (const [key, ts] of this.commentCooldowns) {
+            if (now - ts > 300_000) this.commentCooldowns.delete(key);
           }
-          title = `${triggerName} commented on your activity`;
-          body = `New comment on "${activity.title}"`;
+          title = `New comment on "${activity.title}"`;
+          const preview = commentContent
+            ? commentContent.length > 50 ? commentContent.substring(0, 47) + '...' : commentContent
+            : '';
+          body = preview ? `${triggerName}: ${preview}` : `${triggerName} commented`;
           break;
+        }
+
+        case 'update': {
+          // Notify ALL participants except the creator (who made the update)
+          recipientIds = allParticipantIds;
+          title = `"${activity.title}" updated`;
+          body = 'The host updated the activity details';
+          break;
+        }
       }
 
       if (recipientIds.length === 0) return;
 
-      // Insert alerts for each recipient — use correct column names matching alerts table
+      // De-duplicate recipient IDs
+      recipientIds = [...new Set(recipientIds)];
+
+      // Insert alerts for each recipient
       const actionUrl = `/community/activity/${activityId}`;
       const alerts = recipientIds.map(uid => ({
         user_id: uid,
@@ -664,14 +724,113 @@ class ActivityService {
           activityTitle: activity.title,
           triggerUserId,
           triggerName,
+          event,
         },
         action_url: actionUrl,
         status: 'delivered',
+        channels_requested: ['push', 'in_app'],
       }));
 
-      await supabase.from('alerts').insert(alerts);
+      const { data: insertedAlerts } = await supabase.from('alerts').insert(alerts).select('id, user_id');
+
+      // Fire-and-forget: trigger push delivery for each recipient
+      if (insertedAlerts && insertedAlerts.length > 0) {
+        this.dispatchPushNotifications(insertedAlerts, title, body, actionUrl, {
+          activityId,
+          event,
+        }).catch(() => {});
+      }
     } catch (err) {
       if (__DEV__) console.warn('notifyActivityEvent error:', err);
+    }
+  }
+
+  /**
+   * Check milestone thresholds and notify the activity creator.
+   * Milestones: 5, 10, 20, and full capacity.
+   */
+  private async checkMilestone(
+    activityId: string,
+    creatorId: string,
+    activityTitle: string,
+    newCount: number,
+    maxParticipants?: number | null
+  ): Promise<void> {
+    try {
+      const milestones: { threshold: number; emoji: string; label: string }[] = [
+        { threshold: 5, emoji: '🎉', label: 'Growing fast!' },
+        { threshold: 10, emoji: '🔥', label: '10 going!' },
+        { threshold: 20, emoji: '🚀', label: '20 and counting!' },
+        { threshold: 50, emoji: '⭐', label: '50 people!' },
+      ];
+
+      let title = '';
+      let body = '';
+
+      // Check if we just crossed a milestone threshold
+      for (const m of milestones) {
+        if (newCount === m.threshold) {
+          title = `${m.emoji} ${m.label}`;
+          body = `${newCount} people are going to "${activityTitle}"!`;
+          break;
+        }
+      }
+
+      // Check if activity just became full
+      if (!title && maxParticipants && newCount >= maxParticipants) {
+        title = '🎊 Activity is full!';
+        body = `"${activityTitle}" has reached capacity (${maxParticipants})`;
+      }
+
+      if (!title) return;
+
+      const actionUrl = `/community/activity/${activityId}`;
+      const { data: inserted } = await supabase.from('alerts').insert({
+        user_id: creatorId,
+        category_code: 'social',
+        alert_type_code: 'activity_milestone',
+        title,
+        body,
+        context: { activityId, activityTitle, participantCount: newCount },
+        action_url: actionUrl,
+        status: 'delivered',
+        channels_requested: ['push', 'in_app'],
+      }).select('id, user_id');
+
+      if (inserted && inserted.length > 0) {
+        this.dispatchPushNotifications(inserted, title, body, actionUrl, {
+          activityId,
+          event: 'milestone',
+        }).catch(() => {});
+      }
+    } catch (err) {
+      if (__DEV__) console.warn('checkMilestone error:', err);
+    }
+  }
+
+  /**
+   * Dispatch push notifications via SECURITY DEFINER RPC.
+   * The RPC reads device tokens server-side (bypasses client RLS restrictions).
+   */
+  private async dispatchPushNotifications(
+    alerts: { id: string; user_id: string }[],
+    title: string,
+    body: string,
+    actionUrl: string,
+    data: Record<string, unknown>
+  ): Promise<void> {
+    try {
+      const userIds = [...new Set(alerts.map(a => a.user_id))];
+      if (userIds.length === 0) return;
+
+      await supabase.rpc('send_push_to_users', {
+        user_ids: userIds,
+        push_title: title,
+        push_body: body,
+        push_data: { actionUrl, ...data },
+      });
+    } catch (err) {
+      if (__DEV__) console.warn('dispatchPushNotifications error:', err);
     }
   }
 

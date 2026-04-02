@@ -78,7 +78,7 @@ export function TrackableCard({
     if (onPress) {
       onPress();
     } else if (navigateTo) {
-      router.push(navigateTo);
+      router.push(navigateTo as any);
     }
   }, [disabled, profile?.id, itemId, itemType, sectionSlug, position, onPress, navigateTo, router]);
 

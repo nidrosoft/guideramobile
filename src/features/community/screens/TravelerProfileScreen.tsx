@@ -207,7 +207,7 @@ export default function TravelerProfileScreen() {
 
   const handleMessage = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/community/chat/${userId || profile.id}` as any);
+    router.push(`/community/chat/${userId || profile?.id}` as any);
   };
 
   if (isFetching || !profile) {

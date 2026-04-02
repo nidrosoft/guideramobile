@@ -38,7 +38,7 @@ export default function MyActivitiesScreen() {
   const { profile } = useAuth();
   const userId = profile?.id;
 
-  const { activities, loading } = useUserActivities(userId);
+  const { activities, loading, refetch } = useUserActivities(userId);
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -52,8 +52,8 @@ export default function MyActivitiesScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    // useUserActivities auto-fetches on mount; trigger re-render
-    setTimeout(() => setRefreshing(false), 1000);
+    await refetch();
+    setRefreshing(false);
   };
 
   const renderActivity = ({ item }: { item: Activity }) => {

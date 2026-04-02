@@ -3,7 +3,7 @@
     "name": "Guidera",
     "slug": "Guidera",
     "scheme": "guidera",
-    "version": "0.1.4",
+    "version": "0.1.8.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,17 +14,28 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
+      "jsEngine": "jsc",
+      "supportsTablet": false,
       "bundleIdentifier": "com.guidera.one",
-      "buildNumber": "4",
+      "buildNumber": "9",
       "infoPlist": {
-        "NSCameraUsageDescription": "This app uses the camera for AR navigation",
-        "NSLocationWhenInUseUsageDescription": "This app needs your location for navigation",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs your location for navigation",
-        "ITSAppUsesNonExemptEncryption": false
+        "NSCameraUsageDescription": "Guidera uses the camera to scan receipts, translate signs, and capture travel moments",
+        "NSLocationWhenInUseUsageDescription": "Guidera uses your location to show nearby destinations, provide safety alerts, and navigate to places",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Guidera uses your location in the background to send safety alerts and geofencing notifications about high-risk or low-risk areas near you",
+        "NSPhotoLibraryUsageDescription": "Guidera needs access to your photos to upload profile pictures, share travel photos, and scan receipts",
+        "NSMicrophoneUsageDescription": "Guidera uses the microphone for voice input with the AI travel assistant",
+        "NSSpeechRecognitionUsageDescription": "Guidera uses speech recognition to understand your voice commands and have conversations with the AI travel assistant",
+        "NSCalendarsUsageDescription": "Guidera can add your trip events and flight schedules to your calendar",
+        "NSFaceIDUsageDescription": "Use Face ID to securely unlock Guidera and protect your account",
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "location",
+          "fetch",
+          "remote-notification"
+        ]
       },
       "config": {
-        "googleMapsApiKey": "AIzaSyAQ88Ge0rJ9W0SpmBKoOQ9o_6wAUwpO_ns"
+        "googleMapsApiKey": "AIzaSyCQQHzcb35EoM5wpO5FVlrbiutSt5NgddQ"
       }
     },
     "android": {
@@ -33,7 +44,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.guidera.one",
-      "versionCode": 4,
+      "versionCode": 9,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
@@ -47,7 +58,7 @@
       ],
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyAQ88Ge0rJ9W0SpmBKoOQ9o_6wAUwpO_ns"
+          "apiKey": "AIzaSyCQQHzcb35EoM5wpO5FVlrbiutSt5NgddQ"
         }
       }
     },
@@ -56,8 +67,49 @@
     },
     "plugins": [
       "expo-router",
-      "expo-camera",
-      "expo-location",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Guidera uses the camera to scan receipts, translate signs, and capture travel moments",
+          "microphonePermission": "Guidera uses the microphone for voice input with the AI travel assistant"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Guidera uses your location in the background to send safety alerts and geofencing notifications about high-risk or low-risk areas near you",
+          "locationAlwaysPermission": "Guidera uses your location in the background to send safety alerts and geofencing notifications about high-risk or low-risk areas near you",
+          "locationWhenInUsePermission": "Guidera uses your location to show nearby destinations, provide safety alerts, and navigate to places",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Guidera needs access to your photos to upload profile pictures, share travel photos, and scan receipts",
+          "cameraPermission": "Guidera uses the camera to take photos for your trips and profile"
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Guidera can add your trip events and flight schedules to your calendar"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0066FF"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Use Face ID to securely unlock Guidera and protect your account"
+        }
+      ],
       "@rnmapbox/maps",
       [
         "expo-build-properties",
@@ -75,7 +127,9 @@
       "@sentry/react-native",
       "expo-maps",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-av",
+      "expo-speech-recognition"
     ],
     "experiments": {
       "typedRoutes": true

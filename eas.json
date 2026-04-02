@@ -11,7 +11,11 @@
       }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "environment": "production",
+      "env": {
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      }
     },
     "production": {
       "env": {

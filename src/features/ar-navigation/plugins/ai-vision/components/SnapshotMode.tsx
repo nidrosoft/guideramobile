@@ -1,9 +1,9 @@
 /**
  * SNAPSHOT MODE
  *
- * Photo capture → OCR → full translation display.
- * User captures a photo (or picks from gallery), Vision API extracts text,
- * Translation API translates it, and a scrollable card shows the result.
+ * Photo capture → Gemini translate-snapshot → full translation display.
+ * Uses a single Gemini API call for OCR + translation + menu detection,
+ * replacing the previous Cloud Vision OCR → Cloud Translation chain.
  * Includes "Ask Gemini" follow-up and "Build Order" bridge to menu scan.
  */
 
@@ -36,10 +36,9 @@ import {
   ArrowLeft2,
 } from 'iconsax-react-native';
 import LanguagePicker from './LanguagePicker';
-import { useVisionOCR } from '../hooks/useVisionOCR';
-import { useTranslation } from '../hooks/useTranslation';
-import { askFollowUp, isMenuImage } from '../services/gemini.service';
+import { translateSnapshot, askFollowUp } from '../services/gemini.service';
 import { getLanguageName, getLanguageFlag } from '../constants/translatorConfig';
+import type { SnapshotTranslationResult } from '../types/aiVision.types';
 
 const ExpoFileSystem = require('expo-file-system');
 
@@ -57,11 +56,12 @@ export default function SnapshotMode({
 }: SnapshotModeProps) {
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<any>(null);
-  const { ocrResult, isProcessing: isOCRProcessing, error: ocrError, extractText, clear: clearOCR } = useVisionOCR();
-  const { translation, isTranslating, error: transError, translate, clear: clearTrans } = useTranslation();
 
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [base64Image, setBase64Image] = useState<string | null>(null);
+  const [translation, setTranslation] = useState<SnapshotTranslationResult | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isMenuDetected, setIsMenuDetected] = useState(false);
   const [followUpQuestion, setFollowUpQuestion] = useState('');
   const [followUpAnswer, setFollowUpAnswer] = useState('');
@@ -72,27 +72,39 @@ export default function SnapshotMode({
     async (uri: string) => {
       setShowCamera(false);
       setCapturedImage(uri);
+      setIsProcessing(true);
+      setError(null);
 
-      // Read base64
       let b64: string | null = null;
       try {
         b64 = await ExpoFileSystem.readAsStringAsync(uri, { encoding: 'base64' });
         setBase64Image(b64);
       } catch {}
 
-      // OCR
-      const ocr = await extractText(uri);
-      if (!ocr) return;
+      if (!b64) {
+        setError('Could not read image. Please try again.');
+        setIsProcessing(false);
+        return;
+      }
 
-      // Translate
-      await translate(ocr.fullText, userLanguage);
+      try {
+        const result = await translateSnapshot(b64, userLanguage);
 
-      // Check if it's a menu (non-blocking)
-      if (b64) {
-        isMenuImage(b64).then(setIsMenuDetected).catch(() => {});
+        if (!result.originalText && !result.translatedText) {
+          setError('No text detected. Try pointing at text with better lighting.');
+          setIsProcessing(false);
+          return;
+        }
+
+        setTranslation(result);
+        setIsMenuDetected(result.isMenu);
+      } catch (e: any) {
+        setError(e?.message || 'Translation failed. Please try again.');
+      } finally {
+        setIsProcessing(false);
       }
     },
-    [userLanguage, extractText, translate],
+    [userLanguage],
   );
 
   const handleCapture = async () => {
@@ -123,11 +135,11 @@ export default function SnapshotMode({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setCapturedImage(null);
     setBase64Image(null);
+    setTranslation(null);
+    setError(null);
     setIsMenuDetected(false);
     setFollowUpQuestion('');
     setFollowUpAnswer('');
-    clearOCR();
-    clearTrans();
     setShowCamera(true);
   };
 
@@ -164,8 +176,7 @@ export default function SnapshotMode({
     }
   };
 
-  const error = ocrError || transError;
-  const isLoading = isOCRProcessing || isTranslating;
+  const isLoading = isProcessing;
 
   // ── Camera View ──────────────────────────────────────────
   if (showCamera) {
@@ -233,9 +244,7 @@ export default function SnapshotMode({
         {isLoading && (
           <View style={styles.loadingCard}>
             <ActivityIndicator color="#3FC39E" size="small" />
-            <Text style={styles.loadingText}>
-              {isOCRProcessing ? 'Extracting text...' : 'Translating...'}
-            </Text>
+            <Text style={styles.loadingText}>Extracting & translating...</Text>
           </View>
         )}
 
@@ -259,7 +268,7 @@ export default function SnapshotMode({
               <Text style={styles.langArrow}>→</Text>
               <View style={styles.langTag}>
                 <Text style={styles.langTagText}>
-                  {getLanguageFlag(translation.targetLanguage)} {getLanguageName(translation.targetLanguage)}
+                  {getLanguageFlag(userLanguage)} {getLanguageName(userLanguage)}
                 </Text>
               </View>
             </View>
@@ -337,10 +346,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   camera: { flex: 1 },
   topBar: {
-    position: 'absolute',
-    top: 56,
-    left: 60,
-    right: 16,
+    position: 'absolute', top: 56, left: 60, right: 60,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',

@@ -26,6 +26,7 @@ export interface TripSnapshotRequest {
     travelStyle?: string;
     accommodationType?: string;
   };
+  selectedTopics?: string[];
 }
 
 export interface FlightPreview {
@@ -145,6 +146,15 @@ class TripSnapshotService {
         }
 
         if (data?.error) {
+          // Rate limit — don't retry, show the message to user
+          if (data.error.includes?.('wait') && data.error.includes?.('seconds')) {
+            throw new Error(data.error);
+          }
+          // Server busy (503) — retryable
+          if (data.error.includes?.('busy') || data.error.includes?.('try again')) {
+            lastError = new Error(data.error);
+            continue;
+          }
           // Server 5xx errors are retryable
           if (data.error.includes?.('500') || data.error.includes?.('timeout')) {
             lastError = new Error(data.error);

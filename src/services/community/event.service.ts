@@ -145,6 +145,11 @@ class EventService {
         await this.updateAttendeeCount(eventId, 1);
       }
     }
+
+    // Notify organizer about the RSVP
+    if (status === 'going') {
+      this.notifyEventAction(eventId, userId, 'rsvp', event.title, event.createdBy).catch(() => {});
+    }
   }
 
   /**
@@ -185,6 +190,17 @@ class EventService {
       .from('community_events')
       .update({ status: 'cancelled' })
       .eq('id', eventId);
+
+    // Notify all attendees about cancellation
+    const { data: attendees } = await supabase
+      .from('event_attendees')
+      .select('user_id')
+      .eq('event_id', eventId)
+      .neq('user_id', userId);
+    if (attendees && attendees.length > 0) {
+      const recipientIds = attendees.map(a => a.user_id);
+      this.notifyEventAction(eventId, userId, 'cancelled', event.title, null, recipientIds).catch(() => {});
+    }
   }
 
   /**
@@ -297,18 +313,7 @@ class EventService {
   // ============================================
 
   private async updateAttendeeCount(eventId: string, delta: number): Promise<void> {
-    const { data: event } = await supabase
-      .from('community_events')
-      .select('attendee_count')
-      .eq('id', eventId)
-      .single();
-
-    if (event) {
-      await supabase
-        .from('community_events')
-        .update({ attendee_count: Math.max(0, event.attendee_count + delta) })
-        .eq('id', eventId);
-    }
+    await supabase.rpc('increment_event_attendee_count', { p_event_id: eventId, p_delta: delta });
   }
 
   private async promoteFromWaitlist(eventId: string): Promise<void> {
@@ -331,7 +336,81 @@ class EventService {
           .eq('id', waitlisted[0].id);
 
         await this.updateAttendeeCount(eventId, 1);
+
+        // Notify the promoted user
+        this.notifyEventAction(eventId, waitlisted[0].user_id, 'waitlist_promoted', event.title, null, [waitlisted[0].user_id]).catch(() => {});
       }
+    }
+  }
+
+  /**
+   * Fire notifications for event actions (H4)
+   */
+  private async notifyEventAction(
+    eventId: string,
+    triggerUserId: string,
+    event: 'rsvp' | 'cancelled' | 'waitlist_promoted',
+    eventTitle: string,
+    organizerId: string | null,
+    recipientIds?: string[],
+  ): Promise<void> {
+    try {
+      const { data: triggerProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', triggerUserId)
+        .single();
+      const triggerName = triggerProfile
+        ? `${triggerProfile.first_name} ${triggerProfile.last_name}`.trim()
+        : 'Someone';
+
+      let recipients: string[] = recipientIds || [];
+      let title = '';
+      let body = '';
+
+      switch (event) {
+        case 'rsvp':
+          if (organizerId) recipients = [organizerId];
+          title = `New RSVP for "${eventTitle}"`;
+          body = `${triggerName} is going!`;
+          break;
+        case 'cancelled':
+          title = `Event cancelled`;
+          body = `"${eventTitle}" has been cancelled by the organizer`;
+          break;
+        case 'waitlist_promoted':
+          title = `You're in! \ud83c\udf89`;
+          body = `A spot opened up — you're now going to "${eventTitle}"`;
+          break;
+      }
+
+      recipients = recipients.filter(id => id !== triggerUserId);
+      if (recipients.length === 0) return;
+
+      const actionUrl = `/community/event/${eventId}`;
+      const alerts = recipients.map(uid => ({
+        user_id: uid,
+        category_code: 'social',
+        alert_type_code: `event_${event}`,
+        title,
+        body,
+        context: { eventId, eventTitle, triggerUserId, triggerName, event },
+        action_url: actionUrl,
+        status: 'delivered',
+        channels_requested: ['push', 'in_app'],
+      }));
+
+      await supabase.from('alerts').insert(alerts);
+      try {
+        await supabase.rpc('send_push_to_users', {
+          user_ids: recipients,
+          push_title: title,
+          push_body: body,
+          push_data: { actionUrl, eventId, event },
+        });
+      } catch { /* push is best-effort */ }
+    } catch (err) {
+      if (__DEV__) console.warn('notifyEventAction error:', err);
     }
   }
 

@@ -2,15 +2,15 @@
  * MODE SELECTOR
  *
  * Bottom tab switcher between the 4 vision modes.
- * Animated indicator slides between tabs.
+ * Only the active tab shows its text label — inactive tabs show icon only.
+ * Gear icon at the end opens voice settings.
  */
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Eye, Camera, Receipt21, VolumeHigh, Microphone2 } from 'iconsax-react-native';
+import { Eye, Camera, Receipt21, VolumeHigh, Translate, Setting2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import type { VisionMode } from '../types/aiVision.types';
 
 interface ModeSelectorProps {
@@ -40,6 +40,11 @@ const MODES: { id: VisionMode; label: string; icon: (color: string) => React.Rea
     label: 'Order',
     icon: (c) => <VolumeHigh size={20} color={c} variant="Bold" />,
   },
+  {
+    id: 'interpreter',
+    label: 'Interpret',
+    icon: (c) => <Translate size={20} color={c} variant="Bold" />,
+  },
 ];
 
 const ACTIVE_COLOR = '#3FC39E';
@@ -66,14 +71,16 @@ export default function ModeSelector({ activeMode, onModeChange, onVoiceSettings
               activeOpacity={0.7}
             >
               {mode.icon(isActive ? ACTIVE_COLOR : INACTIVE_COLOR)}
-              <Text style={[styles.label, isActive && styles.labelActive]}>
-                {mode.label}
-              </Text>
+              {isActive && (
+                <Text style={styles.labelActive}>
+                  {mode.label}
+                </Text>
+              )}
             </TouchableOpacity>
           );
         })}
 
-        {/* Voice settings button */}
+        {/* Voice settings — gear icon */}
         {onVoiceSettings && (
           <TouchableOpacity
             style={styles.settingsBtn}
@@ -83,7 +90,7 @@ export default function ModeSelector({ activeMode, onModeChange, onVoiceSettings
             }}
             activeOpacity={0.7}
           >
-            <Microphone2 size={18} color={INACTIVE_COLOR} variant="Bold" />
+            <Setting2 size={18} color={INACTIVE_COLOR} variant="Bold" />
           </TouchableOpacity>
         )}
       </View>
@@ -105,27 +112,25 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.8)',
     borderRadius: 28,
     padding: 4,
-    gap: 2,
+    gap: 1,
+    alignItems: 'center',
   },
   tab: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 24,
+    gap: 5,
+    paddingVertical: 11,
+    paddingHorizontal: 10,
+    borderRadius: 22,
   },
   tabActive: {
     backgroundColor: 'rgba(63,195,158,0.15)',
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: INACTIVE_COLOR,
+    paddingHorizontal: 12,
   },
   labelActive: {
+    fontSize: 13,
+    fontWeight: '600',
     color: ACTIVE_COLOR,
   },
   settingsBtn: {

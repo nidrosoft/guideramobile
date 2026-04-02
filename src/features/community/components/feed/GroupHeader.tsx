@@ -18,7 +18,6 @@ import {
   ArrowLeft2,
   More,
   Verify,
-  Setting2,
   ExportSquare,
   Global,
   Lock,
@@ -38,13 +37,13 @@ interface GroupHeaderProps {
   memberCount: number;
   activeCount: number;
   isMember: boolean;
+  myRole?: 'owner' | 'admin' | 'moderator' | 'member';
   isPending?: boolean;
   paddingTop: number;
   onBack: () => void;
   onMore: () => void;
   onJoin: () => void;
   onShare: () => void;
-  onSettings?: () => void;
 }
 
 function GroupHeader({
@@ -56,13 +55,13 @@ function GroupHeader({
   memberCount,
   activeCount,
   isMember,
+  myRole,
   isPending,
   paddingTop,
   onBack,
   onMore,
   onJoin,
   onShare,
-  onSettings,
 }: GroupHeaderProps) {
   const { colors: tc } = useTheme();
 
@@ -74,15 +73,20 @@ function GroupHeader({
     onJoin();
   };
 
+  const hasBanner = bannerImage && bannerImage.length > 0;
+
   return (
     <View style={styles.container}>
       <ImageBackground
-        source={{ uri: bannerImage }}
-        style={styles.bannerImage}
+        source={hasBanner ? { uri: bannerImage } : undefined}
+        style={[styles.bannerImage, !hasBanner && { backgroundColor: tc.primary }]}
         resizeMode="cover"
       >
         <LinearGradient
-          colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.0)', 'rgba(0,0,0,0.65)']}
+          colors={hasBanner
+            ? ['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.0)', 'rgba(0,0,0,0.65)']
+            : ['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.0)', 'rgba(0,0,0,0.5)']
+          }
           locations={[0, 0.3, 1]}
           style={StyleSheet.absoluteFillObject}
         />
@@ -128,16 +132,17 @@ function GroupHeader({
           {/* Action buttons */}
           <View style={styles.actionRow}>
             {isMember ? (
-              <>
-                <View style={styles.joinedBadge}>
-                  <Text style={styles.joinedText}>Joined</Text>
-                </View>
-                {onSettings && (
-                  <TouchableOpacity style={styles.iconButton} onPress={onSettings}>
-                    <Setting2 size={18} color="rgba(255,255,255,0.9)" />
-                  </TouchableOpacity>
-                )}
-              </>
+              <View style={[
+                styles.joinedBadge,
+                (myRole === 'owner' || myRole === 'admin') && styles.roleBadge,
+              ]}>
+                <Text style={[
+                  styles.joinedText,
+                  (myRole === 'owner' || myRole === 'admin') && styles.roleText,
+                ]}>
+                  {myRole === 'owner' ? 'Owner' : myRole === 'admin' ? 'Admin' : 'Joined'}
+                </Text>
+              </View>
             ) : isPending ? (
               <View style={[styles.pendingBadge]}>
                 <Clock size={14} color="rgba(255,255,255,0.7)" />
@@ -261,6 +266,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'rgba(255,255,255,0.9)',
   },
+  roleBadge: {
+    borderColor: '#3FC39E',
+    backgroundColor: 'rgba(63,195,158,0.2)',
+  },
+  roleText: {
+    color: '#3FC39E',
+    fontWeight: '700',
+  },
   pendingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -289,13 +302,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.9)',
-  },
-  iconButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

@@ -227,7 +227,7 @@ export default function StackedEventCards({ events = [], loading = false }: Stac
               <View style={styles.bottomInfoRow}>
                 <View style={styles.attendeesContainer}>
                   <People size={14} color={colors.textSecondary} variant="Bold" />
-                  <Text style={[styles.attendeesText, { color: colors.textSecondary }]}>{event.attendees} going</Text>
+                  <Text style={[styles.attendeesText, { color: colors.textSecondary }]}>{event.attendees} expected</Text>
                 </View>
                 <View style={styles.priceContainer}>
                   <Ticket size={14} color={colors.primary} variant="Bold" />

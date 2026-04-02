@@ -18,6 +18,7 @@ import type { CuratedDestination } from '@/hooks/useSectionDestinations';
 import { useEvents } from '@/hooks/useEvents';
 import { eventsService, DiscoveredEvent } from '@/services/events.service';
 import { SkeletonDetailPage } from '@/components/common/SkeletonLoader';
+import { prefetchMissingImages } from '@/hooks/useImageFallback';
 
 const PRIMARY = '#3FC39E';
 
@@ -37,7 +38,7 @@ const SEASON_LABELS: Record<string, string> = {
 };
 
 /** Maps curated_destinations row → DetailPageTemplate data shape */
-function mapToDetailData(dest: CuratedDestination, similarItems: any[], poiData: any, aiEnrichment?: any) {
+function mapToDetailData(dest: CuratedDestination, similarItems: any[], poiData: any, aiEnrichment?: any, galleryPhotos?: string[]) {
   const bestSeasons = (dest.seasons || [])
     .map(s => SEASON_LABELS[s] || s)
     .join(', ');
@@ -45,8 +46,13 @@ function mapToDetailData(dest: CuratedDestination, similarItems: any[], poiData:
   const city = dest.city;
   const country = dest.country;
   const heroImg = dest.hero_image_url;
-  const gallery = dest.gallery_urls || [];
-  const allImages = [heroImg, ...gallery].filter(Boolean) as string[];
+  const dbGallery = dest.gallery_urls || [];
+  // Merge: hero + DB gallery + edge function gallery (deduped)
+  const seen = new Set<string>();
+  const allImages: string[] = [];
+  for (const url of [heroImg, ...dbGallery, ...(galleryPhotos || [])]) {
+    if (url && !seen.has(url)) { seen.add(url); allImages.push(url); }
+  }
   const tags = dest.tags || [];
   const travelStyles = dest.travel_style || [];
 
@@ -76,7 +82,7 @@ function mapToDetailData(dest: CuratedDestination, similarItems: any[], poiData:
           { icon: 'calendar', label: 'Recommended Duration', value: aiEnrichment?.recommended_duration || '5-7 days' },
           ...(dest.safety_rating ? [{ icon: 'phone', label: 'Safety Rating', value: `${dest.safety_rating}/5` }] : []),
         ],
-    images: allImages.length > 0 ? allImages : ['https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800'],
+    images: allImages.length > 0 ? allImages : [],
 
     // Places to Visit — from Edge Function (Google Places) or contextual fallback
     places: poiData?.nearbyPlaces?.length > 0 ? poiData.nearbyPlaces.map((p: any, idx: number) => {
@@ -96,7 +102,7 @@ function mapToDetailData(dest: CuratedDestination, similarItems: any[], poiData:
         id: p.id || String(idx),
         name: p.name,
         description: p.vicinity || `A popular ${category.toLowerCase()} in ${city}.`,
-        image: p.photo || allImages[idx % allImages.length] || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
+        image: p.photo || (allImages.length > 0 ? allImages[idx % allImages.length] : ''),
         distance: 'Nearby',
         category,
         latitude: p.location?.lat || 0,
@@ -156,7 +162,7 @@ function mapToDetailData(dest: CuratedDestination, similarItems: any[], poiData:
         name: s.title,
         description: s.short_description || `Explore the unique atmosphere and experiences of ${s.city}, ${s.country}.`,
         distance: 'Nearby',
-        image: s.thumbnail_url || s.hero_image_url || allImages[idx % allImages.length] || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
+        image: s.thumbnail_url || s.hero_image_url || (allImages.length > 0 ? allImages[idx % allImages.length] : ''),
         tags: vibeTags.slice(0, 3),
       };
     }),
@@ -164,14 +170,14 @@ function mapToDetailData(dest: CuratedDestination, similarItems: any[], poiData:
     // Local Events — populated from AI event discovery (Gemini + Google Search)
     localEvents: [] as any[], // Will be injected from useEvents hook
 
-    // Reviews — real Google Places reviews only, no mock fallback
+    // Reviews — real Google Places reviews from top attractions
     reviews: poiData?.reviews?.length > 0 ? poiData.reviews.map((r: any, idx: number) => ({
       id: String(idx),
       userName: r.author,
       userAvatar: r.avatar || '',
       rating: r.rating || 5,
       date: r.time,
-      reviewText: r.text,
+      reviewText: r.placeName ? `${r.text}\n\n— at ${r.placeName}` : r.text,
     })) : [],
 
     similarItems: similarItems.map(s => ({
@@ -188,7 +194,7 @@ function mapToDetailData(dest: CuratedDestination, similarItems: any[], poiData:
 export default function DestinationDetailPage() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
 
   const [destination, setDestination] = useState<CuratedDestination | null>(null);
   const [similarItems, setSimilarItems] = useState<any[]>([]);
@@ -245,28 +251,36 @@ export default function DestinationDetailPage() {
           setEventCountry(dest.country);
         }
 
-        // Fetch similar items (same continent, different id)
-        const { data: similar } = await supabase
-          .from('curated_destinations')
-          .select('id, title, city, country, thumbnail_url, hero_image_url, editor_rating, primary_category, tags, travel_style, short_description')
-          .eq('status', 'published')
-          .eq('continent', dest.continent)
-          .neq('id', dest.id)
-          .order('popularity_score', { ascending: false })
-          .limit(6);
+        // Fire similar items + edge function in parallel for speed
+        const [similarResult, poiResult] = await Promise.allSettled([
+          supabase
+            .from('curated_destinations')
+            .select('id, title, city, country, thumbnail_url, hero_image_url, editor_rating, primary_category, tags, travel_style, short_description')
+            .eq('status', 'published')
+            .eq('continent', dest.continent)
+            .neq('id', dest.id)
+            .order('popularity_score', { ascending: false })
+            .limit(6),
+          invokeEdgeFn(supabase, 'destination-details', { id: dest.id }, 'fast'),
+        ]);
 
         if (!cancelled) {
-          setSimilarItems(similar || []);
-        }
+          const similar = similarResult.status === 'fulfilled' ? (similarResult.value.data || []) : [];
+          setSimilarItems(similar);
 
-        // Fetch POIs from Edge Function
-        try {
-          const { data: poiRes } = await invokeEdgeFn(supabase, 'destination-details', { id: dest.id }, 'fast');
-          if (!cancelled && poiRes?.success) {
-            setPoiData(poiRes.data);
+          if (poiResult.status === 'fulfilled' && poiResult.value.data?.success) {
+            setPoiData(poiResult.value.data.data);
           }
-        } catch (poiErr) {
-          console.error('Failed to fetch POIs:', poiErr);
+
+          // Prefetch missing images for similar destinations (Vibes + Similar Items)
+          if (similar.length > 0) {
+            prefetchMissingImages(
+              similar.map((s: any) => ({
+                imageUrl: s.thumbnail_url || s.hero_image_url,
+                cityName: s.city || s.title,
+              }))
+            );
+          }
         }
       } catch (err: any) {
         console.error('DestinationDetail fetch error:', err);
@@ -309,7 +323,7 @@ export default function DestinationDetailPage() {
   }
 
   const detailData = {
-    ...mapToDetailData(destination, similarItems, poiData, poiData?.enrichment),
+    ...mapToDetailData(destination, similarItems, poiData, poiData?.enrichment, poiData?.galleryPhotos),
     localEvents,
   };
 
@@ -329,11 +343,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingHorizontal: 24,
-  },
-  loadingText: {
-    fontFamily: 'Rubik-Regular',
-    fontSize: 14,
-    marginTop: 8,
   },
   errorTitle: {
     fontFamily: 'Rubik-SemiBold',

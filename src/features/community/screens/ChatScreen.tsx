@@ -57,7 +57,6 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const [loading, setLoading] = useState(true);
   const [inputText, setInputText] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
   const [reactionMessageId, setReactionMessageId] = useState<string | null>(null);
   const reactionScaleAnim = useRef(new RNAnimated.Value(0)).current;
@@ -144,6 +143,18 @@ export default function ChatScreen() {
     load();
     return () => { cancelled = true; };
   }, [id, profile?.id]);
+
+  // M4: Mark DM alerts as read when chat is opened
+  useEffect(() => {
+    if (!conversationId || !profile?.id || !buddy.id) return;
+    supabase
+      .from('alerts')
+      .update({ status: 'read' })
+      .eq('user_id', profile.id)
+      .eq('alert_type_code', 'dm_message')
+      .eq('status', 'delivered')
+      .then(() => {});
+  }, [conversationId, profile?.id, buddy.id]);
 
   // Realtime: listen for new messages in this conversation
   useEffect(() => {
@@ -365,20 +376,7 @@ export default function ChatScreen() {
           onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
         />
         
-        {/* Typing indicator */}
-        {isTyping && (
-          <View style={styles.typingContainer}>
-            <Image source={{ uri: buddy.avatar }} style={styles.typingAvatar} />
-            <View style={[styles.typingBubble, { backgroundColor: tc.bgElevated }]}>
-              <View style={styles.typingDots}>
-                <View style={[styles.typingDot, { backgroundColor: tc.textTertiary }, styles.typingDot1]} />
-                <View style={[styles.typingDot, { backgroundColor: tc.textTertiary }, styles.typingDot2]} />
-                <View style={[styles.typingDot, { backgroundColor: tc.textTertiary }, styles.typingDot3]} />
-              </View>
-            </View>
-          </View>
-        )}
-        
+
         {/* Input */}
         <View style={[styles.inputContainer, { backgroundColor: tc.bgElevated, borderTopColor: tc.borderSubtle, paddingBottom: insets.bottom || spacing.md }]}>
           {/* Attachments hidden until implemented — Camera, Gallery, Location buttons had no onPress handlers */}

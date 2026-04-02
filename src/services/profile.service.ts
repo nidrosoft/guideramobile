@@ -5,7 +5,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
-import { decode } from 'base64-arraybuffer';
+
 
 export interface ProfileData {
   id: string;
@@ -162,13 +162,15 @@ export const profileService = {
       // Determine content type
       const contentType = fileExt === 'png' ? 'image/png' : 'image/jpeg';
       
-      // Decode base64 to ArrayBuffer using base64-arraybuffer
-      const arrayBuffer = decode(base64Data);
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
       
-      // Upload to Supabase Storage
       const { data, error } = await supabase.storage
         .from('avatars')
-        .upload(fileName, arrayBuffer, {
+        .upload(fileName, bytes, {
           cacheControl: '3600',
           upsert: true,
           contentType,

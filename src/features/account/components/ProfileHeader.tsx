@@ -37,7 +37,7 @@ function getVerificationDisplay(appStatus: string | null, diditStatus: string | 
     return { status: 'none', label: '', color: '', bgColor: '', Icon: null };
   }
   if (appStatus === 'approved' || diditStatus === 'approved') {
-    return { status: 'verified', label: 'Verified Partner', color: '#16A34A', bgColor: 'rgba(22,163,74,0.12)', Icon: TickCircle };
+    return { status: 'verified', label: 'Verified Partner', color: '#FBBF24', bgColor: 'rgba(251,191,36,0.18)', Icon: TickCircle };
   }
   if (appStatus === 'rejected' || diditStatus === 'declined') {
     return { status: 'declined', label: 'Verification Declined', color: staticColors.error, bgColor: 'rgba(239,68,68,0.12)', Icon: CloseCircle };

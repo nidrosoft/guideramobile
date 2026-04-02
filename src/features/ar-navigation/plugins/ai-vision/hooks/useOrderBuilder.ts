@@ -4,7 +4,10 @@
  * Manages the order compilation flow:
  * 1. User selects menu items with quantities
  * 2. Gemini generates a natural spoken order in the local language
- * 3. expo-speech reads it aloud for the waiter
+ * 3. Gemini TTS reads it aloud for the waiter
+ *
+ * Tracks isLoadingAudio separately so the UI can show a buffering state
+ * while the TTS call is in-flight (before audio actually starts playing).
  */
 
 import { useState, useCallback, useRef } from 'react';
@@ -42,6 +45,7 @@ export function useOrderBuilder(): UseOrderBuilderReturn {
   const [generatedOrder, setGeneratedOrder] = useState<GeneratedOrder | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const addItem = useCallback((item: OrderItem) => {
@@ -129,40 +133,40 @@ export function useOrderBuilder(): UseOrderBuilderReturn {
       return;
     }
 
-    setIsPlaying(true);
+    // Show loading state immediately (TTS network call takes time)
+    setIsLoadingAudio(true);
     setError(null);
 
     try {
-      // Use a timeout to detect if speech never starts (silent mode / audio issue)
-      let speechStarted = false;
-      const silentModeTimeout = setTimeout(() => {
-        if (!speechStarted) {
-          setError('No audio? Turn off silent mode (flip the switch on the side of your phone) and try again.');
-        }
-      }, 2000);
-
       await speak(generatedOrder.spokenOrder, {
         language: generatedOrder.localLanguage,
         rate: 1.1, // Natural conversational pace
+        onStart: () => {
+          // Audio actually started playing — switch from loading to playing
+          setIsLoadingAudio(false);
+          setIsPlaying(true);
+        },
         onDone: () => {
-          speechStarted = true;
-          clearTimeout(silentModeTimeout);
           setIsPlaying(false);
+          setIsLoadingAudio(false);
         },
         onError: (err) => {
-          clearTimeout(silentModeTimeout);
           if (__DEV__) console.warn('[OrderBuilder] TTS error:', err);
           setIsPlaying(false);
+          setIsLoadingAudio(false);
           setError('Audio playback failed. Turn off silent mode and make sure volume is up.');
         },
       });
 
-      // If speak resolves without calling onDone (some edge cases), mark started
-      speechStarted = true;
-      clearTimeout(silentModeTimeout);
+      // If speak resolves without onStart (some edge cases), clear loading
+      if (isLoadingAudio) {
+        setIsLoadingAudio(false);
+        setIsPlaying(true);
+      }
     } catch (err) {
       if (__DEV__) console.warn('[OrderBuilder] TTS catch:', err);
       setIsPlaying(false);
+      setIsLoadingAudio(false);
       setError('Could not play audio. Turn off silent mode (side switch) and increase volume.');
     }
   }, [generatedOrder]);
@@ -170,6 +174,7 @@ export function useOrderBuilder(): UseOrderBuilderReturn {
   const stopOrder = useCallback(async () => {
     await stopSpeaking();
     setIsPlaying(false);
+    setIsLoadingAudio(false);
   }, []);
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
@@ -179,6 +184,7 @@ export function useOrderBuilder(): UseOrderBuilderReturn {
     generatedOrder,
     isGenerating,
     isPlaying,
+    isLoadingAudio,
     error,
     addItem,
     removeItem,

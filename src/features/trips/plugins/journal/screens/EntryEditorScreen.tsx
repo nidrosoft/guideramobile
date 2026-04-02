@@ -31,6 +31,8 @@ import * as FileSystem from 'expo-file-system';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import { colors, spacing, typography } from '@/styles';
 import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/context/AuthContext';
+import type { Profile } from '@/types/auth.types';
 import { invokeEdgeFn } from '@/utils/retry';
 import { useTheme } from '@/context/ThemeContext';
 import { BlockType, BlockSize, ContentBlock, LayoutType } from '../types/journal.types';
@@ -61,6 +63,7 @@ export default function EntryEditorScreen() {
   const { colors: tc, isDark } = useTheme();
   const params = useLocalSearchParams();
   const { showSuccess, showError } = useToast();
+  const { profile: authProfile } = useAuth();
   
   const tripId = params.tripId as string;
   const entryId = params.entryId as string | undefined;
@@ -413,9 +416,10 @@ export default function EntryEditorScreen() {
       // New entry — create it first, then save blocks
       try {
         setSaving(true);
-        const newEntry = await journalService.createEntry(tripId, {
+        const newEntry = await journalService.createEntry(tripId, authProfile?.id ?? '', {
           title: entryTitle || 'Untitled Entry',
-          entry_date: new Date().toISOString(),
+          date: new Date().toISOString(),
+          layout: 'mixed',
         });
         if (newEntry?.id) {
           const blocksToSave = blocks

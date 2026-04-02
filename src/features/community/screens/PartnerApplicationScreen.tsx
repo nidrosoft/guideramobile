@@ -160,7 +160,7 @@ export default function PartnerApplicationScreen() {
         }
 
         if (savedApp.nationality) setNationality(savedApp.nationality);
-        else if ((profile).nationality) setNationality((profile).nationality);
+        else if ((profile as any).nationality) setNationality((profile as any).nationality);
 
         // Location fields
         if (savedApp.city) setCity(savedApp.city);
@@ -176,7 +176,7 @@ export default function PartnerApplicationScreen() {
 
         // Languages
         if (savedApp.languages?.length > 0) setSelectedLanguages(savedApp.languages);
-        else if ((profile).languages_spoken?.length > 0) setSelectedLanguages((profile).languages_spoken);
+        else if ((profile as any).languages_spoken?.length > 0) setSelectedLanguages((profile as any).languages_spoken);
 
         // Step 3 fields
         if (savedApp.service_categories?.length > 0) setServiceCategories(savedApp.service_categories);

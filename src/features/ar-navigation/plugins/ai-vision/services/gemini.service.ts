@@ -3,10 +3,10 @@
  *
  * Calls the ai-vision Supabase edge function which proxies Gemini API requests.
  * The GOOGLE_AI_API_KEY stays server-side (secure) — no API keys in client bundle.
- * Uses gemini-2.0-flash for all tasks via the edge function.
+ * Uses gemini-3-flash for all vision tasks via the edge function.
  */
 
-import type { LiveFrameResult, MenuItem } from '../types/aiVision.types';
+import type { LiveFrameResult, MenuItem, SnapshotTranslationResult } from '../types/aiVision.types';
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase/client';
 import { retryWithBackoff } from '@/utils/retry';
 
@@ -90,10 +90,16 @@ export async function askFollowUp(
 /**
  * Extract structured menu from a photo using Gemini vision.
  */
+export interface ExtractMenuResult {
+  items: MenuItem[];
+  sourceLanguage: string | null;
+  sourceLanguageName: string | null;
+}
+
 export async function extractMenu(
   base64Image: string,
   userLanguage: string,
-): Promise<MenuItem[]> {
+): Promise<ExtractMenuResult> {
   const result = await callEdgeFunction('extract-menu', {
     image: base64Image,
     userLanguage,
@@ -101,11 +107,17 @@ export async function extractMenu(
 
   if (result.error) throw new Error(result.error);
 
-  return (result.items || []).map((item: any) => ({
+  const items = (result.items || []).map((item: any) => ({
     ...item,
     isSelected: false,
     quantity: 0,
   }));
+
+  return {
+    items,
+    sourceLanguage: result.sourceLanguage || null,
+    sourceLanguageName: result.sourceLanguageName || null,
+  };
 }
 
 /**
@@ -141,5 +153,62 @@ export async function isMenuImage(base64Image: string): Promise<boolean> {
     return result.isMenu ?? false;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Send a conversational message to Gemini.
+ * Optionally include a camera frame for visual context.
+ * Supports conversation history for multi-turn chat.
+ */
+export async function sendChat(
+  message: string,
+  userLanguage: string,
+  options?: {
+    image?: string;
+    conversationHistory?: Array<{ role: 'user' | 'ai'; text: string }>;
+  },
+): Promise<string> {
+  const result = await callEdgeFunction('chat', {
+    message,
+    userLanguage,
+    image: options?.image,
+    conversationHistory: options?.conversationHistory,
+  });
+  return result.response || '';
+}
+
+/**
+ * Extract and translate all visible text from an image in a single Gemini call.
+ * Replaces the separate Cloud Vision OCR → Cloud Translation chain.
+ * Also detects if the image is a menu.
+ */
+export async function translateSnapshot(
+  base64Image: string,
+  userLanguage: string,
+): Promise<SnapshotTranslationResult> {
+  try {
+    const result = await callEdgeFunction('translate-snapshot', {
+      image: base64Image,
+      userLanguage,
+    });
+
+    return {
+      originalText: result.originalText || '',
+      translatedText: result.translatedText || '',
+      sourceLanguage: result.sourceLanguage || 'unknown',
+      targetLanguage: userLanguage,
+      isMenu: result.isMenu ?? false,
+      timestamp: Date.now(),
+    };
+  } catch (e) {
+    return {
+      originalText: '',
+      translatedText: '',
+      sourceLanguage: 'unknown',
+      targetLanguage: userLanguage,
+      isMenu: false,
+      timestamp: Date.now(),
+    };
   }
 }

@@ -9,12 +9,14 @@ import { FrameDiffConfig, LanguageOption } from '../types/aiVision.types';
 
 // ─── Model Configuration ──────────────────────────────────────
 export const MODELS = {
-  /** Used for live mode frame analysis (cheapest capable multimodal model) */
-  LIVE_ANALYSIS: 'gemini-2.0-flash',
-  /** Used for snapshot OCR follow-up and menu scan extraction */
-  SNAPSHOT_ANALYSIS: 'gemini-2.0-flash',
+  /** Used for live mode frame analysis */
+  LIVE_ANALYSIS: 'gemini-2.5-flash',
+  /** Used for snapshot translation, menu scan extraction, and follow-ups */
+  SNAPSHOT_ANALYSIS: 'gemini-2.5-flash',
   /** Used for order builder text generation */
-  ORDER_GENERATION: 'gemini-2.0-flash',
+  ORDER_GENERATION: 'gemini-2.5-flash',
+  /** Used for text-to-speech synthesis */
+  TTS: 'gemini-2.5-flash-preview-tts',
 } as const;
 
 // ─── Frame Analysis Config ────────────────────────────────────
@@ -122,33 +124,55 @@ export const SUPPORTED_LANGUAGES: LanguageOption[] = [
   { code: 'cs', name: 'Czech', nativeName: 'Čeština', flag: '🇨🇿' },
 ];
 
-/** Map language code to best expo-speech voice identifier */
-export const TTS_VOICE_MAP: Record<string, string> = {
-  en: 'en-US',
-  es: 'es-ES',
-  fr: 'fr-FR',
-  de: 'de-DE',
-  it: 'it-IT',
-  pt: 'pt-BR',
-  ja: 'ja-JP',
-  ko: 'ko-KR',
-  zh: 'zh-CN',
-  ar: 'ar-SA',
-  hi: 'hi-IN',
-  ru: 'ru-RU',
-  th: 'th-TH',
-  vi: 'vi-VN',
-  tr: 'tr-TR',
-  nl: 'nl-NL',
-  pl: 'pl-PL',
-  sv: 'sv-SE',
-  el: 'el-GR',
-  he: 'he-IL',
-  id: 'id-ID',
-  ms: 'ms-MY',
-  uk: 'uk-UA',
-  cs: 'cs-CZ',
-};
+// ─── Gemini TTS Voice Options ─────────────────────────────────
+export interface GeminiVoiceOption {
+  name: string;
+  trait: string;
+  category: 'feminine' | 'masculine';
+  previewText: string;
+}
+
+/**
+ * All 30 Gemini TTS voices with official gender categorization from Google.
+ * See: https://ai.google.dev/gemini-api/docs/speech-generation#voices
+ */
+export const GEMINI_VOICES: GeminiVoiceOption[] = [
+  // ── Female Voices (13) ──
+  { name: 'Zephyr', trait: 'Bright', category: 'feminine', previewText: "Hi there! I'm Zephyr, your travel companion." },
+  { name: 'Kore', trait: 'Firm', category: 'feminine', previewText: "Hello, I'm Kore. Let me help you navigate." },
+  { name: 'Leda', trait: 'Youthful', category: 'feminine', previewText: "Hey! I'm Leda — let's explore this place!" },
+  { name: 'Aoede', trait: 'Breezy', category: 'feminine', previewText: "Hi, I'm Aoede. What a lovely spot this is!" },
+  { name: 'Callirrhoe', trait: 'Easy-going', category: 'feminine', previewText: "Hello! I'm Callirrhoe, ready when you are." },
+  { name: 'Autonoe', trait: 'Bright', category: 'feminine', previewText: "Hi! I'm Autonoe — let me translate that for you." },
+  { name: 'Despina', trait: 'Smooth', category: 'feminine', previewText: "Hi there, I'm Despina. Ready to help!" },
+  { name: 'Erinome', trait: 'Clear', category: 'feminine', previewText: "Hello, I'm Erinome. Let me read that menu." },
+  { name: 'Laomedeia', trait: 'Upbeat', category: 'feminine', previewText: "Hey there! I'm Laomedeia, your guide today!" },
+  { name: 'Achernar', trait: 'Soft', category: 'feminine', previewText: "Hello, I'm Achernar. Let me read that for you." },
+  { name: 'Gacrux', trait: 'Mature', category: 'feminine', previewText: "Good evening. I'm Gacrux — pleasure to help." },
+  { name: 'Vindemiatrix', trait: 'Gentle', category: 'feminine', previewText: "Hello, I'm Vindemiatrix. I'll help you communicate." },
+  { name: 'Sulafat', trait: 'Warm', category: 'feminine', previewText: "Hello! I'm Sulafat — how can I help today?" },
+
+  // ── Male Voices (17) ──
+  { name: 'Puck', trait: 'Upbeat', category: 'masculine', previewText: "Hello! I'm Puck — this menu looks amazing!" },
+  { name: 'Charon', trait: 'Informative', category: 'masculine', previewText: "Good evening. I'm Charon, at your service." },
+  { name: 'Fenrir', trait: 'Excitable', category: 'masculine', previewText: "Hey! I'm Fenrir — let's figure this out!" },
+  { name: 'Orus', trait: 'Firm', category: 'masculine', previewText: "Hello, I'm Orus. I'll help you place your order." },
+  { name: 'Enceladus', trait: 'Breathy', category: 'masculine', previewText: "Hi there. I'm Enceladus — let me help." },
+  { name: 'Iapetus', trait: 'Clear', category: 'masculine', previewText: "Hello, I'm Iapetus. Let me translate for you." },
+  { name: 'Umbriel', trait: 'Easy-going', category: 'masculine', previewText: "Hi, I'm Umbriel. Let me translate for you." },
+  { name: 'Algieba', trait: 'Smooth', category: 'masculine', previewText: "Hello! I'm Algieba — this looks interesting." },
+  { name: 'Algenib', trait: 'Gravelly', category: 'masculine', previewText: "Hey. I'm Algenib — what can I help with?" },
+  { name: 'Rasalgethi', trait: 'Informative', category: 'masculine', previewText: "Good day. I'm Rasalgethi, ready to assist." },
+  { name: 'Alnilam', trait: 'Firm', category: 'masculine', previewText: "Hello, I'm Alnilam. Let me get you sorted." },
+  { name: 'Schedar', trait: 'Even', category: 'masculine', previewText: "Hi, I'm Schedar. What would you like to know?" },
+  { name: 'Pulcherrima', trait: 'Forward', category: 'masculine', previewText: "Hi, I'm Pulcherrima. Let's get your order placed." },
+  { name: 'Achird', trait: 'Friendly', category: 'masculine', previewText: "Hey! I'm Achird — let's explore together." },
+  { name: 'Zubenelgenubi', trait: 'Casual', category: 'masculine', previewText: "Hey, I'm Zubenelgenubi. Ready when you are." },
+  { name: 'Sadachbia', trait: 'Lively', category: 'masculine', previewText: "Hi! I'm Sadachbia — let's see what we've got!" },
+  { name: 'Sadaltager', trait: 'Knowledgeable', category: 'masculine', previewText: "Hello. I'm Sadaltager, here to assist." },
+];
+
+export const DEFAULT_GEMINI_VOICE = 'Kore';
 
 /** Get language name from code */
 export const getLanguageName = (code: string): string => {

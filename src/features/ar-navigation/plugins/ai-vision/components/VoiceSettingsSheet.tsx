@@ -1,8 +1,8 @@
 /**
  * VOICE SETTINGS SHEET
  *
- * Bottom sheet for selecting TTS voice preference.
- * Shows all available OpenAI gpt-4o-mini-tts voices with preview.
+ * Bottom sheet for selecting Gemini TTS voice.
+ * Two tabs: Female and Male. User taps a voice to select, taps speaker icon to preview.
  * Persists selection to AsyncStorage.
  */
 
@@ -21,42 +21,12 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/ThemeContext';
 import { typography } from '@/styles';
-import { speak, stopSpeaking, getVoiceGender, setVoiceGender } from '../services/tts.service';
+import { speak, stopSpeaking, getVoiceName, setVoiceName } from '../services/tts.service';
+import { GEMINI_VOICES, DEFAULT_GEMINI_VOICE } from '../constants/translatorConfig';
+import type { GeminiVoiceOption } from '../constants/translatorConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const VOICE_KEY = '@guidera_tts_voice_id';
-const SPEED_KEY = '@guidera_tts_speed';
-
-interface VoiceOption {
-  id: string;
-  name: string;
-  description: string;
-  gender: 'FEMALE' | 'MALE' | 'NEUTRAL';
-  previewText: string;
-}
-
-const VOICES: VoiceOption[] = [
-  { id: 'coral', name: 'Coral', description: 'Warm & friendly', gender: 'FEMALE', previewText: 'Hi there! I\'m Coral, your travel companion.' },
-  { id: 'nova', name: 'Nova', description: 'Bright & energetic', gender: 'FEMALE', previewText: 'Hello! I\'m Nova — let me help you order!' },
-  { id: 'sage', name: 'Sage', description: 'Calm & composed', gender: 'FEMALE', previewText: 'Good evening. I\'m Sage, ready to assist you.' },
-  { id: 'shimmer', name: 'Shimmer', description: 'Soft & gentle', gender: 'FEMALE', previewText: 'Hi, I\'m Shimmer. Let me read that for you.' },
-  { id: 'marin', name: 'Marin', description: 'Young & fresh', gender: 'FEMALE', previewText: 'Hey! I\'m Marin — let\'s explore this menu!' },
-  { id: 'echo', name: 'Echo', description: 'Clear & articulate', gender: 'MALE', previewText: 'Hello, I\'m Echo. I\'ll help you place your order.' },
-  { id: 'onyx', name: 'Onyx', description: 'Deep & confident', gender: 'MALE', previewText: 'Good evening. I\'m Onyx, at your service.' },
-  { id: 'ash', name: 'Ash', description: 'Mature & steady', gender: 'MALE', previewText: 'Hi there. I\'m Ash — let\'s get you sorted.' },
-  { id: 'fable', name: 'Fable', description: 'Expressive & warm', gender: 'MALE', previewText: 'Hello! I\'m Fable. What a lovely menu this is!' },
-  { id: 'verse', name: 'Verse', description: 'Versatile & smooth', gender: 'MALE', previewText: 'Hey, I\'m Verse. Ready when you are.' },
-  { id: 'cedar', name: 'Cedar', description: 'Warm & rich', gender: 'MALE', previewText: 'Good evening. I\'m Cedar — pleasure to help.' },
-  { id: 'alloy', name: 'Alloy', description: 'Neutral & balanced', gender: 'NEUTRAL', previewText: 'Hi, I\'m Alloy. Let me translate for you.' },
-  { id: 'ballad', name: 'Ballad', description: 'Expressive & dynamic', gender: 'NEUTRAL', previewText: 'Hello! I\'m Ballad — this looks delicious!' },
-];
-
-const SPEED_OPTIONS = [
-  { value: 0.8, label: 'Slow' },
-  { value: 1.0, label: 'Normal' },
-  { value: 1.1, label: 'Natural' },
-  { value: 1.25, label: 'Fast' },
-];
+type VoiceTab = 'female' | 'male';
 
 interface VoiceSettingsSheetProps {
   visible: boolean;
@@ -65,88 +35,83 @@ interface VoiceSettingsSheetProps {
 
 export default function VoiceSettingsSheet({ visible, onClose }: VoiceSettingsSheetProps) {
   const insets = useSafeAreaInsets();
-  const { colors: tc, isDark } = useTheme();
-  const [selectedVoice, setSelectedVoice] = useState('coral');
-  const [selectedSpeed, setSelectedSpeed] = useState(1.1);
+  const { colors: tc } = useTheme();
+  const [selectedVoice, setSelectedVoice] = useState(DEFAULT_GEMINI_VOICE);
+  const [activeTab, setActiveTab] = useState<VoiceTab>('female');
   const [previewingId, setPreviewingId] = useState<string | null>(null);
 
-  // Load saved preferences
+  const femaleVoices = GEMINI_VOICES.filter(v => v.category === 'feminine');
+  const maleVoices = GEMINI_VOICES.filter(v => v.category === 'masculine');
+
   useEffect(() => {
     if (!visible) return;
     (async () => {
       try {
-        const savedVoice = await AsyncStorage.getItem(VOICE_KEY);
-        if (savedVoice) setSelectedVoice(savedVoice);
-        const savedSpeed = await AsyncStorage.getItem(SPEED_KEY);
-        if (savedSpeed) setSelectedSpeed(parseFloat(savedSpeed));
+        const savedVoice = await getVoiceName();
+        if (savedVoice) {
+          setSelectedVoice(savedVoice);
+          const isMale = maleVoices.some(v => v.name === savedVoice);
+          setActiveTab(isMale ? 'male' : 'female');
+        }
       } catch {}
     })();
   }, [visible]);
 
-  const handleSelectVoice = useCallback(async (voiceId: string) => {
+  const handleSelectVoice = useCallback(async (voiceName: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedVoice(voiceId);
-    const voice = VOICES.find(v => v.id === voiceId);
-    if (voice) {
-      await AsyncStorage.setItem(VOICE_KEY, voiceId);
-      await setVoiceGender(voice.gender === 'MALE' ? 'MALE' : 'FEMALE');
-    }
+    setSelectedVoice(voiceName);
+    await setVoiceName(voiceName);
   }, []);
 
-  const handlePreview = useCallback(async (voice: VoiceOption) => {
+  const handlePreview = useCallback(async (voice: GeminiVoiceOption) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (previewingId === voice.id) {
+    if (previewingId === voice.name) {
       await stopSpeaking();
       setPreviewingId(null);
       return;
     }
-    setPreviewingId(voice.id);
+    setPreviewingId(voice.name);
     try {
       await speak(voice.previewText, {
         language: 'en',
-        rate: selectedSpeed,
-        voiceGender: voice.gender === 'MALE' ? 'MALE' : 'FEMALE',
+        voiceName: voice.name,
         onDone: () => setPreviewingId(null),
         onError: () => setPreviewingId(null),
       });
     } catch {
       setPreviewingId(null);
     }
-  }, [previewingId, selectedSpeed]);
-
-  const handleSpeedChange = useCallback(async (speed: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedSpeed(speed);
-    await AsyncStorage.setItem(SPEED_KEY, String(speed));
-  }, []);
+  }, [previewingId]);
 
   const handleClose = useCallback(async () => {
     stopSpeaking();
     setPreviewingId(null);
-    // Mark first-time voice setup as complete so it doesn't auto-show again
     try {
       await AsyncStorage.setItem('@guidera_voice_setup_done', 'true');
     } catch {}
     onClose();
   }, [onClose]);
 
-  const femaleVoices = VOICES.filter(v => v.gender === 'FEMALE');
-  const maleVoices = VOICES.filter(v => v.gender === 'MALE');
-  const neutralVoices = VOICES.filter(v => v.gender === 'NEUTRAL');
+  const handleTabSwitch = useCallback((tab: VoiceTab) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActiveTab(tab);
+  }, []);
 
-  const renderVoiceCard = (voice: VoiceOption) => {
-    const isSelected = selectedVoice === voice.id;
-    const isPreviewing = previewingId === voice.id;
+  const voices = activeTab === 'female' ? femaleVoices : maleVoices;
+
+  const renderVoiceCard = (voice: GeminiVoiceOption) => {
+    const isSelected = selectedVoice === voice.name;
+    const isPreviewing = previewingId === voice.name;
 
     return (
       <TouchableOpacity
-        key={voice.id}
+        key={voice.name}
         style={[
           styles.voiceCard,
           { backgroundColor: tc.bgElevated, borderColor: isSelected ? tc.primary : tc.borderSubtle },
           isSelected && { borderWidth: 2 },
         ]}
-        onPress={() => handleSelectVoice(voice.id)}
+        onPress={() => handleSelectVoice(voice.name)}
         activeOpacity={0.7}
       >
         <View style={styles.voiceInfo}>
@@ -154,7 +119,7 @@ export default function VoiceSettingsSheet({ visible, onClose }: VoiceSettingsSh
             <Text style={[styles.voiceName, { color: tc.textPrimary }]}>{voice.name}</Text>
             {isSelected && <TickCircle size={18} color={tc.primary} variant="Bold" />}
           </View>
-          <Text style={[styles.voiceDesc, { color: tc.textSecondary }]}>{voice.description}</Text>
+          <Text style={[styles.voiceDesc, { color: tc.textSecondary }]}>{voice.trait}</Text>
         </View>
 
         <TouchableOpacity
@@ -180,51 +145,57 @@ export default function VoiceSettingsSheet({ visible, onClose }: VoiceSettingsSh
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Microphone2 size={22} color={tc.primary} variant="Bold" />
-              <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Voice Settings</Text>
+              <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>Choose a Voice</Text>
             </View>
             <TouchableOpacity onPress={handleClose} activeOpacity={0.7}>
               <CloseCircle size={28} color={tc.textSecondary} variant="Bold" />
             </TouchableOpacity>
           </View>
 
+          {/* Tab Selector */}
+          <View style={[styles.tabRow, { backgroundColor: tc.bgElevated }]}>
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === 'female' && [styles.tabActive, { backgroundColor: tc.primary }],
+              ]}
+              onPress={() => handleTabSwitch('female')}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.tabText,
+                { color: activeTab === 'female' ? '#FFFFFF' : tc.textSecondary },
+              ]}>
+                Female
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === 'male' && [styles.tabActive, { backgroundColor: tc.primary }],
+              ]}
+              onPress={() => handleTabSwitch('male')}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.tabText,
+                { color: activeTab === 'male' ? '#FFFFFF' : tc.textSecondary },
+              ]}>
+                Male
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Powered by */}
+          <View style={styles.poweredByRow}>
+            <Text style={[styles.poweredByText, { color: tc.textSecondary }]}>
+              Powered by Guidera Engine
+            </Text>
+          </View>
+
+          {/* Voice List */}
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-            {/* Speed Selection */}
-            <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Speaking Speed</Text>
-            <View style={styles.speedRow}>
-              {SPEED_OPTIONS.map(opt => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.speedChip,
-                    { backgroundColor: tc.bgElevated, borderColor: selectedSpeed === opt.value ? tc.primary : tc.borderSubtle },
-                    selectedSpeed === opt.value && { borderWidth: 2, backgroundColor: tc.primary + '15' },
-                  ]}
-                  onPress={() => handleSpeedChange(opt.value)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    styles.speedLabel,
-                    { color: selectedSpeed === opt.value ? tc.primary : tc.textSecondary },
-                    selectedSpeed === opt.value && { fontWeight: typography.fontWeight.bold },
-                  ]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Female Voices */}
-            <Text style={[styles.sectionTitle, { color: tc.textPrimary, marginTop: 20 }]}>Female Voices</Text>
-            {femaleVoices.map(renderVoiceCard)}
-
-            {/* Male Voices */}
-            <Text style={[styles.sectionTitle, { color: tc.textPrimary, marginTop: 16 }]}>Male Voices</Text>
-            {maleVoices.map(renderVoiceCard)}
-
-            {/* Neutral Voices */}
-            <Text style={[styles.sectionTitle, { color: tc.textPrimary, marginTop: 16 }]}>Neutral Voices</Text>
-            {neutralVoices.map(renderVoiceCard)}
-
+            {voices.map(renderVoiceCard)}
             <View style={{ height: 20 }} />
           </ScrollView>
         </View>
@@ -260,30 +231,40 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.kpiValue,
     fontWeight: typography.fontWeight.bold,
   },
-  content: {
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: typography.fontSize.bodyLg,
-    fontWeight: typography.fontWeight.semibold,
-    marginBottom: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  speedRow: {
+  tabRow: {
     flexDirection: 'row',
-    gap: 8,
+    marginHorizontal: 20,
+    borderRadius: 14,
+    padding: 3,
   },
-  speedChip: {
+  tab: {
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
     borderRadius: 12,
-    borderWidth: 1,
   },
-  speedLabel: {
+  tabActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tabText: {
     fontSize: typography.fontSize.bodyLg,
-    fontWeight: typography.fontWeight.medium,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  poweredByRow: {
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  poweredByText: {
+    fontSize: typography.fontSize.body,
+    fontStyle: 'italic',
+  },
+  content: {
+    paddingHorizontal: 20,
   },
   voiceCard: {
     flexDirection: 'row',

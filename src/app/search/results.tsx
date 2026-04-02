@@ -149,7 +149,7 @@ export default function SearchResultsScreen() {
       place: `/destinations/${result.id}`,
     };
     const route = routes[result.type];
-    if (route) router.push(route);
+    if (route) router.push(route as any);
   };
 
   const filteredResults = useMemo((): SearchResult[] => {

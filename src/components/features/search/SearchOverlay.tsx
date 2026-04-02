@@ -18,13 +18,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { CloseCircle, SearchNormal1 } from 'iconsax-react-native';
+import { Add, SearchNormal1 } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { searchService } from '@/services/search.service';
-import { SearchSectionCard, WhereSection, WhenSection, WhoSection } from './overlay';
+import { SearchSectionCard, WhereSection, WhenSection, WhoSection, WhatSection, DEFAULT_TOPICS } from './overlay';
 
-type ActiveSection = 'where' | 'when' | 'who' | null;
+type ActiveSection = 'where' | 'when' | 'who' | 'what' | null;
 
 interface GuestCounts {
   adults: number;
@@ -36,7 +36,7 @@ interface GuestCounts {
 interface SearchOverlayProps {
   visible: boolean;
   query: string;
-  onSelectSearch: (term: string, dates?: { start?: Date; end?: Date }, guests?: { adults: number; children: number; infants: number }) => void;
+  onSelectSearch: (term: string, dates?: { start?: Date; end?: Date }, guests?: { adults: number; children: number; infants: number }, selectedTopics?: string[]) => void;
   onClose: () => void;
 }
 
@@ -60,6 +60,7 @@ export default function SearchOverlay({
     infants: 0,
     pets: 0,
   });
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([...DEFAULT_TOPICS]);
 
   // Dynamic styles
   const dynamicStyles = useMemo(() => ({
@@ -77,6 +78,7 @@ export default function SearchOverlay({
     if (visible) {
       setDestination(initialQuery || '');
       setActiveSection('where');
+      setSelectedTopics([...DEFAULT_TOPICS]);
     }
   }, [visible, initialQuery]);
 
@@ -100,6 +102,11 @@ export default function SearchOverlay({
     if (guests.pets > 0) text += `, ${guests.pets} pet${guests.pets > 1 ? 's' : ''}`;
     return text;
   }, [guests]);
+
+  const topicDisplayText = useMemo(() => {
+    if (selectedTopics.length === 0) return 'Choose topics';
+    return `${selectedTopics.length} topic${selectedTopics.length > 1 ? 's' : ''} selected`;
+  }, [selectedTopics]);
 
   // Handlers
   const handleClose = () => {
@@ -127,11 +134,15 @@ export default function SearchOverlay({
     setGuests(newGuests);
   };
 
+  const handleTopicsUpdate = (topics: string[]) => {
+    setSelectedTopics(topics);
+  };
+
   const handleSearch = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (destination) {
       searchService.addRecentSearch(destination);
-      onSelectSearch(destination, { start: startDate || undefined, end: endDate || undefined }, { adults: guests.adults, children: guests.children, infants: guests.infants });
+      onSelectSearch(destination, { start: startDate || undefined, end: endDate || undefined }, { adults: guests.adults, children: guests.children, infants: guests.infants }, selectedTopics);
     }
   };
 
@@ -141,6 +152,7 @@ export default function SearchOverlay({
     setStartDate(null);
     setEndDate(null);
     setGuests({ adults: 0, children: 0, infants: 0, pets: 0 });
+    setSelectedTopics([...DEFAULT_TOPICS]);
     setActiveSection('where');
   };
 
@@ -165,7 +177,7 @@ export default function SearchOverlay({
             onPress={handleClose}
             activeOpacity={0.7}
           >
-            <CloseCircle size={24} color={themeColors.textPrimary} variant="Outline" />
+            <Add size={20} color={themeColors.textPrimary} variant="Linear" style={{ transform: [{ rotate: '45deg' }] }} />
           </TouchableOpacity>
         </View>
 
@@ -213,6 +225,20 @@ export default function SearchOverlay({
             <WhoSection
               guests={guests}
               onUpdateGuests={handleGuestsUpdate}
+            />
+          </SearchSectionCard>
+
+          {/* WHAT Section */}
+          <SearchSectionCard
+            title="What"
+            collapsedValue={topicDisplayText}
+            isExpanded={activeSection === 'what'}
+            onPress={() => handleSectionPress('what')}
+          >
+            <WhatSection
+              selectedTopics={selectedTopics}
+              onUpdateTopics={handleTopicsUpdate}
+              destination={destination || undefined}
             />
           </SearchSectionCard>
         </ScrollView>

@@ -104,6 +104,18 @@ export default function ActivityChatScreen() {
     return () => { cancelled = true; };
   }, [activityId, profile?.id]);
 
+  // M5: Mark activity chat alerts as read when opened
+  useEffect(() => {
+    if (!activityId || !profile?.id) return;
+    supabase
+      .from('alerts')
+      .update({ status: 'read' })
+      .eq('user_id', profile.id)
+      .eq('alert_type_code', 'activity_message')
+      .eq('status', 'delivered')
+      .then(() => {});
+  }, [activityId, profile?.id]);
+
   // Realtime subscription for new messages
   useEffect(() => {
     if (!chatRoomId) return;

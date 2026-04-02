@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   fullText: {
     fontSize: typography.fontSize.bodySm,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.bgElevated0,
+    color: colors.bgElevated,
   },
   spotsWarning: {
     marginTop: spacing.sm,

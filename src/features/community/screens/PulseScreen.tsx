@@ -223,7 +223,11 @@ export default function PulseScreen() {
                 tracksViewChanges={false}
                 zIndex={isMine ? 999 : 1}
               >
-                <View style={[styles.marker, isMine && styles.markerMine]}>
+                <View style={[
+                  styles.marker,
+                  { backgroundColor: tc.bgElevated, borderColor: tc.primary },
+                  isMine && { borderColor: tc.success || '#34C759', shadowColor: tc.success || '#34C759', shadowOpacity: 0.4 },
+                ]}>
                   <Text style={styles.markerEmoji}>{getActivityIcon(activity.type)}</Text>
                 </View>
               </Marker>

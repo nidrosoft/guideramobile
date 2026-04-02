@@ -127,7 +127,7 @@ export function useCommunityMembership({
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             
             try {
-              await groupService.leaveGroup(userId, communityId);
+              await groupService.cancelJoinRequest(userId, communityId);
               setState({ status: 'none', isLoading: false });
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } catch (error: any) {

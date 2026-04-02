@@ -504,13 +504,13 @@ class NotificationService {
         // Handle deep link navigation
         if (data?.deepLink) {
           try {
-            router.push(data.deepLink);
+            router.push(data.deepLink as any);
           } catch (navErr) {
             logger.warn('Deep link navigation failed', { deepLink: data.deepLink, error: navErr });
           }
         } else if (data?.actionUrl) {
           try {
-            router.push(data.actionUrl);
+            router.push(data.actionUrl as any);
           } catch (navErr) {
             logger.warn('Action URL navigation failed', { actionUrl: data.actionUrl, error: navErr });
           }

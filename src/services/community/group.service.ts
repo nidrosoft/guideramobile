@@ -77,6 +77,31 @@ class GroupService {
     return this.mapGroup(group);
   }
 
+  async updateGroup(groupId: string, userId: string, updates: {
+    name?: string;
+    description?: string;
+    coverPhotoUrl?: string;
+    groupPhotoUrl?: string;
+  }): Promise<Group> {
+    await this.verifyAdmin(groupId, userId);
+
+    const dbUpdates: Record<string, any> = { updated_at: new Date().toISOString() };
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+    if (updates.coverPhotoUrl !== undefined) dbUpdates.cover_photo_url = updates.coverPhotoUrl;
+    if (updates.groupPhotoUrl !== undefined) dbUpdates.group_photo_url = updates.groupPhotoUrl;
+
+    const { data, error } = await supabase
+      .from('groups')
+      .update(dbUpdates)
+      .eq('id', groupId)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return this.mapGroup(data);
+  }
+
   /**
    * Get group by ID
    */
@@ -135,11 +160,15 @@ class GroupService {
         message,
         status: 'pending',
       });
+      // Notify admins about the join request
+      this.notifyGroupEvent(groupId, userId, 'join_request', group.name).catch(() => {});
       return { status: 'pending' };
     }
 
     // Auto-approve
     await this.addMember(groupId, userId, 'member');
+    // Notify admins about new member
+    this.notifyGroupEvent(groupId, userId, 'join', group.name).catch(() => {});
     return { status: 'joined' };
   }
 
@@ -147,14 +176,18 @@ class GroupService {
    * Add member to group
    */
   async addMember(groupId: string, userId: string, role: GroupRole = 'member'): Promise<void> {
-    await supabase.from('group_members').insert({
+    const { error } = await supabase.from('group_members').insert({
       group_id: groupId,
       user_id: userId,
       role,
       joined_at: new Date().toISOString(),
     });
 
-    // Update member count
+    if (error) {
+      if (__DEV__) console.error('[GroupService] addMember insert error:', error);
+      throw new Error(error.message);
+    }
+
     await supabase.rpc('increment_group_member_count', { group_id: groupId });
   }
 
@@ -245,6 +278,10 @@ class GroupService {
 
     // Add member
     await this.addMember(request.group_id, request.user_id, 'member');
+
+    // Notify the user that their request was approved
+    const group = await this.getGroup(request.group_id);
+    this.notifyGroupEvent(request.group_id, request.user_id, 'approved', group?.name || 'a group', request.user_id).catch(() => {});
   }
 
   /**
@@ -270,6 +307,10 @@ class GroupService {
         rejection_reason: reason,
       })
       .eq('id', requestId);
+
+    // Notify the user that their request was rejected
+    const group = await this.getGroup(request.group_id);
+    this.notifyGroupEvent(request.group_id, request.user_id, 'rejected', group?.name || 'a group', request.user_id).catch(() => {});
   }
 
   /**
@@ -402,6 +443,126 @@ class GroupService {
       .eq('user_id', memberId);
 
     await supabase.rpc('decrement_group_member_count', { group_id: groupId });
+  }
+
+  // ============================================
+  // CANCEL JOIN REQUEST (M1)
+  // ============================================
+
+  /**
+   * Cancel a pending join request (for the requesting user).
+   */
+  async cancelJoinRequest(userId: string, groupId: string): Promise<void> {
+    const { data: request } = await supabase
+      .from('group_join_requests')
+      .select('id')
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (!request) throw new Error('No pending request found');
+
+    await supabase.from('group_join_requests').delete().eq('id', request.id);
+  }
+
+  // ============================================
+  // NOTIFICATION HELPER (H3)
+  // ============================================
+
+  /**
+   * Fire in-app + push alerts for group events.
+   */
+  private async notifyGroupEvent(
+    groupId: string,
+    triggerUserId: string,
+    event: 'join' | 'join_request' | 'approved' | 'rejected',
+    groupName: string,
+    directRecipientId?: string,
+  ): Promise<void> {
+    try {
+      // Resolve trigger user name
+      const { data: triggerProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', triggerUserId)
+        .single();
+      const triggerName = triggerProfile
+        ? `${triggerProfile.first_name} ${triggerProfile.last_name}`.trim()
+        : 'Someone';
+
+      let recipientIds: string[] = [];
+      let title = '';
+      let body = '';
+
+      switch (event) {
+        case 'join': {
+          // Notify admins/owner
+          const { data: admins } = await supabase
+            .from('group_members')
+            .select('user_id')
+            .eq('group_id', groupId)
+            .in('role', ['owner', 'admin']);
+          recipientIds = (admins || []).map(a => a.user_id).filter(id => id !== triggerUserId);
+          title = `New member in "${groupName}"`;
+          body = `${triggerName} joined the group`;
+          break;
+        }
+        case 'join_request': {
+          // Notify admins/owner
+          const { data: admins2 } = await supabase
+            .from('group_members')
+            .select('user_id')
+            .eq('group_id', groupId)
+            .in('role', ['owner', 'admin']);
+          recipientIds = (admins2 || []).map(a => a.user_id);
+          title = `Join request for "${groupName}"`;
+          body = `${triggerName} wants to join`;
+          break;
+        }
+        case 'approved': {
+          if (directRecipientId) recipientIds = [directRecipientId];
+          title = `You're in! 🎉`;
+          body = `Your request to join "${groupName}" was approved`;
+          break;
+        }
+        case 'rejected': {
+          if (directRecipientId) recipientIds = [directRecipientId];
+          title = `Request declined`;
+          body = `Your request to join "${groupName}" was not approved`;
+          break;
+        }
+      }
+
+      if (recipientIds.length === 0) return;
+
+      const actionUrl = `/community/group/${groupId}`;
+      const alerts = recipientIds.map(uid => ({
+        user_id: uid,
+        category_code: 'social',
+        alert_type_code: `group_${event}`,
+        title,
+        body,
+        context: { groupId, groupName, triggerUserId, triggerName, event },
+        action_url: actionUrl,
+        status: 'delivered',
+        channels_requested: ['push', 'in_app'],
+      }));
+
+      await supabase.from('alerts').insert(alerts);
+
+      // Push via RPC
+      try {
+        await supabase.rpc('send_push_to_users', {
+          user_ids: recipientIds,
+          push_title: title,
+          push_body: body,
+          push_data: { actionUrl, groupId, event },
+        });
+      } catch { /* push is best-effort */ }
+    } catch (err) {
+      if (__DEV__) console.warn('notifyGroupEvent error:', err);
+    }
   }
 
   // ============================================

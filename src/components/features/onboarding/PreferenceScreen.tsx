@@ -41,6 +41,8 @@ interface PreferenceScreenProps {
   fieldName?: OnboardingField;
   minSelections?: number;
   maxSelections?: number;
+  /** Option that is mutually exclusive with all others (e.g. 'None') */
+  exclusiveOption?: string;
 }
 
 export default function PreferenceScreen({
@@ -59,6 +61,7 @@ export default function PreferenceScreen({
   fieldName,
   minSelections = 1,
   maxSelections,
+  exclusiveOption,
 }: PreferenceScreenProps) {
   const router = useRouter();
   const { colors: tc, isDark } = useTheme();
@@ -81,6 +84,25 @@ export default function PreferenceScreen({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (inputType === 'multiselect') {
       setSelectedOptions(prev => {
+        // Handle exclusive option logic (e.g. "None")
+        if (exclusiveOption) {
+          // If tapping the exclusive option
+          if (option === exclusiveOption) {
+            // If already selected, deselect it
+            if (prev.includes(exclusiveOption)) return [];
+            // Otherwise select ONLY the exclusive option
+            return [exclusiveOption];
+          }
+          // If tapping a non-exclusive option, remove the exclusive option
+          const withoutExclusive = prev.filter(o => o !== exclusiveOption);
+          if (withoutExclusive.includes(option)) {
+            return withoutExclusive.filter(o => o !== option);
+          }
+          if (maxSelections && withoutExclusive.length >= maxSelections) return withoutExclusive;
+          return [...withoutExclusive, option];
+        }
+
+        // Standard multiselect logic (no exclusive option)
         if (prev.includes(option)) {
           return prev.filter(o => o !== option);
         }
@@ -160,9 +182,9 @@ export default function PreferenceScreen({
     await updateOnboardingStep(currentStep);
     
     if (isLast) {
-      router.push('/(onboarding)/setup');
+      router.push('/(onboarding)/setup' as any);
     } else if (nextRoute) {
-      router.push(nextRoute);
+      router.push(nextRoute as any);
     }
   };
 
@@ -271,7 +293,7 @@ export default function PreferenceScreen({
                   onPress={() => handleSelectOption(option)}
                   activeOpacity={0.7}
                 >
-                  {isSelected && <TickCircle size={16} color={tc.white} variant="Bold" style={{ marginRight: 6 }} />}
+                  {isSelected && <TickCircle size={14} color={tc.white} variant="Bold" style={{ marginRight: 4 }} />}
                   <Text style={[styles.chipText, { color: tc.textPrimary }, isSelected && { color: tc.white, fontWeight: typography.fontWeight.semibold }]}>{option}</Text>
                 </TouchableOpacity>
               );
@@ -445,13 +467,13 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs + 1,
+    paddingHorizontal: spacing.md,
     borderRadius: borderRadius.full,
     borderWidth: 1.5,
   },
   chipText: {
-    fontSize: typography.fontSize.base,
+    fontSize: typography.fontSize.body,
     fontWeight: typography.fontWeight.medium,
   },
 });

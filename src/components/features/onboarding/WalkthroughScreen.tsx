@@ -30,9 +30,9 @@ export default function WalkthroughScreen({
   const handleNext = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (nextRoute) {
-      router.push(nextRoute);
+      router.push(nextRoute as any);
     } else if (isLast) {
-      router.push('/(auth)/landing');
+      router.push('/(auth)/landing' as any);
     }
   };
 

@@ -58,6 +58,10 @@ class BuddyService {
       .single();
 
     if (error) throw new Error(error.message);
+
+    // Notify the target user about the buddy request
+    this.notifyBuddyEvent(requesterId, targetId, 'request').catch(() => {});
+
     return this.mapConnection(connection);
   }
 
@@ -100,6 +104,9 @@ class BuddyService {
       user_id_1: connection.user_id_1,
       user_id_2: connection.user_id_2,
     });
+
+    // Notify the requester that their request was accepted
+    this.notifyBuddyEvent(userId, connection.requested_by, 'accepted').catch(() => {});
   }
 
   /**
@@ -123,6 +130,9 @@ class BuddyService {
     }
 
     await supabase.from('buddy_connections').delete().eq('id', connectionId);
+
+    // Notify the requester that their request was rejected
+    this.notifyBuddyEvent(userId, connection.requested_by, 'rejected').catch(() => {});
   }
 
   /**
@@ -382,6 +392,72 @@ class BuddyService {
       .delete()
       .eq('blocker_id', blockerId)
       .eq('blocked_id', blockedId);
+  }
+
+  // ============================================
+  // NOTIFICATION HELPER (H5)
+  // ============================================
+
+  /**
+   * Fire notifications for buddy actions.
+   */
+  private async notifyBuddyEvent(
+    triggerUserId: string,
+    recipientId: string,
+    event: 'request' | 'accepted' | 'rejected',
+  ): Promise<void> {
+    try {
+      const { data: triggerProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', triggerUserId)
+        .single();
+      const triggerName = triggerProfile
+        ? `${triggerProfile.first_name} ${triggerProfile.last_name}`.trim()
+        : 'Someone';
+
+      let title = '';
+      let body = '';
+
+      switch (event) {
+        case 'request':
+          title = `New buddy request`;
+          body = `${triggerName} wants to connect with you`;
+          break;
+        case 'accepted':
+          title = `Buddy request accepted! \ud83c\udf89`;
+          body = `${triggerName} accepted your buddy request`;
+          break;
+        case 'rejected':
+          title = `Buddy request`;
+          body = `${triggerName} couldn't connect right now`;
+          break;
+      }
+
+      const actionUrl = '/community/buddies';
+      await supabase.from('alerts').insert({
+        user_id: recipientId,
+        category_code: 'social',
+        alert_type_code: `buddy_${event}`,
+        title,
+        body,
+        context: { triggerUserId, triggerName, event },
+        action_url: actionUrl,
+        status: 'delivered',
+        channels_requested: ['push', 'in_app'],
+      });
+
+      try {
+        await supabase.rpc('send_push_to_users', {
+          user_ids: [recipientId],
+          push_title: title,
+          push_body: body,
+          push_data: { actionUrl, event },
+        });
+      } catch { /* push is best-effort */ }
+    } catch (err) {
+      if (__DEV__) console.warn('notifyBuddyEvent error:', err);
+    }
   }
 
   // ============================================

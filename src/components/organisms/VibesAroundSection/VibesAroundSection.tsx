@@ -5,12 +5,13 @@
  * Similar to Must See cards but with vibe tags
  */
 
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { typography, spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { Location } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
+import CachedImage from '@/components/common/CachedImage';
 
 interface Vibe {
   id: string;
@@ -74,10 +75,9 @@ export default function VibesAroundSection({ vibes }: VibesAroundSectionProps) {
           >
             {/* Image */}
             <View style={styles.imageContainer}>
-              <Image 
-                source={{ uri: vibe.image }}
+              <CachedImage 
+                uri={vibe.image}
                 style={styles.image}
-                resizeMode="cover"
               />
             </View>
 

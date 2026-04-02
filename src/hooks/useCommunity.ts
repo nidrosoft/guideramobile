@@ -117,14 +117,21 @@ export function useDiscoverGroups(filters: GroupFilters) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchGroups = useCallback(async () => {
     setLoading(true);
-    groupService.discoverGroups(filters)
-      .then(setGroups)
-      .finally(() => setLoading(false));
-  }, [filters.category, filters.destination, filters.search]);
+    try {
+      const data = await groupService.discoverGroups(filters);
+      setGroups(data);
+    } finally {
+      setLoading(false);
+    }
+  }, [filters.category, filters.destination, filters.search, filters.tags?.join(','), filters.limit, filters.offset]);
 
-  return { groups, loading };
+  useEffect(() => {
+    fetchGroups();
+  }, [fetchGroups]);
+
+  return { groups, loading, refetch: fetchGroups };
 }
 
 export function useGroupActions(userId: string | undefined) {
@@ -392,15 +399,22 @@ export function useUserActivities(userId: string | undefined) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchActivities = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
-    activityService.getUserActivities(userId)
-      .then(setActivities)
-      .finally(() => setLoading(false));
+    try {
+      const data = await activityService.getUserActivities(userId);
+      setActivities(data);
+    } finally {
+      setLoading(false);
+    }
   }, [userId]);
 
-  return { activities, loading };
+  useEffect(() => {
+    fetchActivities();
+  }, [fetchActivities]);
+
+  return { activities, loading, refetch: fetchActivities };
 }
 
 export function useActivityActions(userId: string | undefined) {

@@ -70,6 +70,32 @@ class ChatService {
 
     if (error) throw new Error(error.message);
 
+    // H1: Compute unread counts from alerts table
+    const convIds = (data || []).map((r: any) => r.id);
+    const unreadMap: Record<string, number> = {};
+    if (convIds.length > 0) {
+      const { data: unreadAlerts } = await supabase
+        .from('alerts')
+        .select('context')
+        .eq('user_id', userId)
+        .eq('alert_type_code', 'dm_message')
+        .eq('status', 'delivered');
+      // Count alerts per sender (each DM alert stores senderId in context)
+      for (const alert of unreadAlerts || []) {
+        const senderId = (alert.context as any)?.senderId;
+        if (senderId) {
+          // Find the conversation that has this sender as the other user
+          const conv = (data || []).find((r: any) => {
+            const otherId = r.user_id_1 === userId ? r.user_id_2 : r.user_id_1;
+            return otherId === senderId;
+          });
+          if (conv) {
+            unreadMap[conv.id] = (unreadMap[conv.id] || 0) + 1;
+          }
+        }
+      }
+    }
+
     return (data || []).map((row: any) => {
       const isUser1 = row.user_id_1 === userId;
       const otherProfile = isUser1 ? row.user2 : row.user1;
@@ -88,6 +114,7 @@ class ChatService {
         lastMessage: row.last_message_preview,
         lastMessageAt: row.last_message_at,
         messageCount: row.message_count || 0,
+        unreadCount: unreadMap[row.id] || 0,
       } satisfies Conversation;
     });
   }
@@ -299,38 +326,45 @@ class ChatService {
     };
 
     if (room) {
+      // M6: Use atomic counter RPC instead of read-modify-write
+      await supabase.rpc('increment_chat_message_count', { p_room_id: conversationId, p_delta: 1 });
+
+      // Update last_message fields
+      await supabase
+        .from('chat_rooms')
+        .update(lastMsgFields)
+        .eq('id', conversationId);
+
+      // Get room metadata for notifications
       const { data: roomData } = await supabase
         .from('chat_rooms')
-        .select('message_count, name, reference_id, type')
+        .select('name, reference_id, type')
         .eq('id', conversationId)
         .single();
 
-      await supabase
-        .from('chat_rooms')
-        .update({
-          ...lastMsgFields,
-          message_count: (roomData?.message_count || 0) + 1,
-        })
-        .eq('id', conversationId);
-
-      // B6: Notify other participants about new message (activity group chats)
+      // H2: Only notify for activity chats if no recent activity_comment alert (dedup)
       if (roomData?.type === 'activity' && roomData?.reference_id) {
-        this.notifyGroupChatMessage(roomData.reference_id, userId, roomData.name || 'Activity', content).catch(() => {});
+        this.notifyGroupChatMessage(roomData.reference_id, userId, roomData.name || 'Activity', content, 'activity').catch(() => {});
+      }
+      // M9: Also notify for regular group chats
+      if (roomData?.type === 'group' && roomData?.reference_id) {
+        this.notifyGroupChatMessage(roomData.reference_id, userId, roomData.name || 'Group', content, 'group').catch(() => {});
       }
     } else {
-      const { data: convData } = await supabase
-        .from('direct_conversations')
-        .select('message_count, user_id_1, user_id_2')
-        .eq('id', conversationId)
-        .single();
+      // DM: atomic increment
+      await supabase.rpc('increment_conversation_message_count', { p_conv_id: conversationId, p_delta: 1 });
 
       await supabase
         .from('direct_conversations')
-        .update({
-          ...lastMsgFields,
-          message_count: (convData?.message_count || 0) + 1,
-        })
+        .update(lastMsgFields)
         .eq('id', conversationId);
+
+      // Get conversation to find recipient
+      const { data: convData } = await supabase
+        .from('direct_conversations')
+        .select('user_id_1, user_id_2')
+        .eq('id', conversationId)
+        .single();
 
       // Create alert for the other user so it shows on badges + notifications
       if (convData) {
@@ -379,13 +413,16 @@ class ChatService {
   }
 
   /**
-   * B6: Notify other activity participants about a new chat message.
+   * Notify other participants about a new chat message.
+   * Handles both activity group chats and regular group chats (M9).
+   * H2: Skips activity chat alerts if a recent activity_comment alert exists (dedup).
    */
   private async notifyGroupChatMessage(
-    activityId: string,
+    referenceId: string,
     senderId: string,
-    activityName: string,
+    chatName: string,
     content: string,
+    chatType: 'activity' | 'group' = 'activity',
   ): Promise<void> {
     try {
       const { data: senderProfile } = await supabase
@@ -396,23 +433,39 @@ class ChatService {
 
       const senderName = senderProfile?.first_name || 'Someone';
 
-      // Get all participants except sender
-      const { data: participants } = await supabase
-        .from('activity_participants')
-        .select('user_id')
-        .eq('activity_id', activityId)
-        .neq('user_id', senderId);
+      // Get participants based on chat type
+      let participantIds: string[] = [];
+      if (chatType === 'activity') {
+        const { data: participants } = await supabase
+          .from('activity_participants')
+          .select('user_id')
+          .eq('activity_id', referenceId)
+          .neq('user_id', senderId);
+        participantIds = (participants || []).map((p: any) => p.user_id);
+      } else {
+        const { data: members } = await supabase
+          .from('group_members')
+          .select('user_id')
+          .eq('group_id', referenceId)
+          .neq('user_id', senderId);
+        participantIds = (members || []).map((m: any) => m.user_id);
+      }
 
-      if (!participants?.length) return;
+      if (participantIds.length === 0) return;
 
-      const alerts = participants.map((p: any) => ({
-        user_id: p.user_id,
+      const alertType = chatType === 'activity' ? 'activity_message' : 'group_message';
+      const actionUrl = chatType === 'activity'
+        ? `/community/activity-chat/${referenceId}`
+        : `/community/${referenceId}`;
+
+      const alerts = participantIds.map((uid: string) => ({
+        user_id: uid,
         category_code: 'social',
-        alert_type_code: 'activity_message',
-        title: `${senderName} in "${activityName}"`,
+        alert_type_code: alertType,
+        title: `${senderName} in "${chatName}"`,
         body: content.length > 80 ? content.substring(0, 80) + '...' : content,
-        context: { activityId, senderId, senderName },
-        action_url: `/community/activity-chat/${activityId}`,
+        context: { referenceId, senderId, senderName, chatType },
+        action_url: actionUrl,
         status: 'delivered',
       }));
 

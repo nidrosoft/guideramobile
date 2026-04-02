@@ -17,6 +17,7 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
+
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useToast } from '@/contexts/ToastContext';
@@ -44,6 +45,7 @@ import { supabase } from '@/lib/supabase/client';
 type EventType = 'in_person' | 'virtual' | 'hybrid';
 
 interface EventFormData {
+  coverImageBase64: string | null;
   title: string;
   description: string;
   type: EventType;
@@ -84,9 +86,10 @@ export default function CreateEventScreen() {
     description: '',
     type: 'in_person',
     coverImage: null,
-    date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
+    coverImageBase64: null,
+    date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     startTime: new Date(),
-    endTime: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours later
+    endTime: new Date(Date.now() + 2 * 60 * 60 * 1000),
     location: '',
     address: '',
     virtualLink: '',
@@ -105,10 +108,12 @@ export default function CreateEventScreen() {
       allowsEditing: true,
       aspect: [16, 9],
       quality: 0.8,
+      base64: true,
     });
-    
+
     if (!result.canceled && result.assets[0]) {
-      setFormData(prev => ({ ...prev, coverImage: result.assets[0].uri }));
+      const asset = result.assets[0];
+      setFormData(prev => ({ ...prev, coverImage: asset.uri, coverImageBase64: asset.base64 || null }));
     }
   };
   
@@ -122,21 +127,33 @@ export default function CreateEventScreen() {
     }));
   };
   
-  const uploadImage = async (localUri: string, folder: string): Promise<string | undefined> => {
+  const uploadImage = async (base64Data: string, folder: string, fileExt: string = 'jpg'): Promise<string | undefined> => {
     try {
-      const ext = localUri.split('.').pop() || 'jpg';
-      const path = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
-      const response = await fetch(localUri);
-      const blob = await response.blob();
+      const mimeType = fileExt === 'png' ? 'image/png' : fileExt === 'gif' ? 'image/gif' : 'image/jpeg';
+      const path = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      if (__DEV__) console.log(`[CreateEvent] uploading ${path}: ${bytes.length} bytes`);
+
       const { error: uploadErr } = await supabase.storage
         .from('community')
-        .upload(path, blob, { contentType: `image/${ext}`, upsert: true });
-      if (!uploadErr) {
-        const { data: publicUrl } = supabase.storage.from('community').getPublicUrl(path);
-        return publicUrl.publicUrl;
+        .upload(path, bytes, { contentType: mimeType, upsert: true });
+
+      if (uploadErr) {
+        if (__DEV__) console.warn('[CreateEvent] upload error:', uploadErr);
+        return undefined;
       }
-    } catch { /* non-critical */ }
-    return undefined;
+      const { data: publicUrl } = supabase.storage.from('community').getPublicUrl(path);
+      return publicUrl.publicUrl;
+    } catch (err) {
+      if (__DEV__) console.warn('[CreateEvent] upload exception:', err);
+      return undefined;
+    }
   };
 
   const handleSubmit = async () => {
@@ -163,8 +180,9 @@ export default function CreateEventScreen() {
     try {
       // Upload cover image to Supabase Storage
       let coverImageUrl: string | undefined;
-      if (formData.coverImage) {
-        coverImageUrl = await uploadImage(formData.coverImage, 'event-covers');
+      if (formData.coverImageBase64) {
+        const ext = formData.coverImage?.split('.').pop()?.toLowerCase() || 'jpg';
+        coverImageUrl = await uploadImage(formData.coverImageBase64, 'event-covers', ext);
       }
 
       const locationTypeMap: Record<EventType, string> = {

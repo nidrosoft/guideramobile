@@ -122,19 +122,21 @@ export default function PostDetailScreen() {
     let cancelled = false;
     async function load() {
       try {
-        const [rawPost, rawComments] = await Promise.all([
-          postService.getPost(postId),
-          postService.getComments(postId),
-        ]);
+        const rawPost = await postService.getPost(postId);
         if (cancelled) return;
         if (rawPost) setPost(mapServicePostToFeedPost(rawPost));
+      } catch (err) {
+        if (__DEV__) console.warn('PostDetailScreen post load error:', err);
+      }
+      try {
+        const rawComments = await postService.getComments(postId);
+        if (cancelled) return;
         const mapped = rawComments.map(mapServiceCommentToFeedComment);
         setComments(nestComments(mapped));
       } catch (err) {
-        if (__DEV__) console.warn('PostDetailScreen load error:', err);
-      } finally {
-        if (!cancelled) setLoading(false);
+        if (__DEV__) console.warn('PostDetailScreen comments load error:', err);
       }
+      if (!cancelled) setLoading(false);
     }
     load();
     return () => { cancelled = true; };

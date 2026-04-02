@@ -26,6 +26,7 @@ export default function DietaryRestrictionsScreen() {
       nextRoute="/(onboarding)/accessibility-needs"
       showBackButton={true}
       fieldName="dietaryRestrictions"
+      exclusiveOption="None"
     />
   );
 }

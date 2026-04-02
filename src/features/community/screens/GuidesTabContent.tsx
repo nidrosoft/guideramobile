@@ -72,20 +72,21 @@ export default function GuidesTabContent() {
   // Check if user is an approved partner
   useEffect(() => {
     if (!profile?.id) return;
-    supabase
-      .from('partner_applications')
-      .select('status, didit_verification_status')
-      .eq('user_id', profile.id)
-      .in('status', ['approved', 'submitted', 'under_review'])
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('partner_applications')
+          .select('status, didit_verification_status')
+          .eq('user_id', profile.id)
+          .in('status', ['approved', 'submitted', 'under_review'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
         if (data?.status === 'approved' || data?.didit_verification_status === 'approved') {
           setIsPartner(true);
         }
-      })
-      .catch(() => {});
+      } catch {}
+    })();
   }, [profile?.id]);
 
   const fetchData = useCallback(async () => {
@@ -221,10 +222,10 @@ export default function GuidesTabContent() {
             <Briefcase size={32} color={tc.primary} variant="Bold" />
           </View>
           <Text style={[styles.fullEmptyTitle, { color: tc.textPrimary }]}>
-            Local Guides Coming Soon
+            Discover Local Guides
           </Text>
           <Text style={[styles.fullEmptySubtitle, { color: tc.textSecondary }]}>
-            This is where you'll find verified local guides offering tours, property rentals, transportation, and personalized experiences.{'\n\n'}As guides join Guidera, their profiles, listings, and communities will appear here. Want to be one of them? Tap the card above to get started — it's free!
+            This is where you'll find verified local guides offering tours, property rentals, transportation, and personalized experiences.{'\n\n'}As guides join Guidera, their profiles, listings, and communities will appear here. Want to be one of the first? Tap the card above to apply — it's free!
           </Text>
         </View>
       ) : (

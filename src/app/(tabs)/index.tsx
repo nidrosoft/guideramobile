@@ -130,7 +130,7 @@ export default function Home() {
     setIsSearchFocused(true);
   };
 
-  const handleSelectSearch = (term: string, dates?: { start?: Date; end?: Date }, guests?: { adults: number; children: number; infants: number }) => {
+  const handleSelectSearch = (term: string, dates?: { start?: Date; end?: Date }, guests?: { adults: number; children: number; infants: number }, selectedTopics?: string[]) => {
     setSearchQuery(term);
     setIsSearchFocused(false);
 
@@ -143,10 +143,11 @@ export default function Home() {
     const adults = String(guests?.adults || 1);
     const children = String(guests?.children || 0);
     const infants = String(guests?.infants || 0);
+    const topics = selectedTopics?.length ? selectedTopics.join(',') : '';
 
     const originCity = profile?.city || '';
     const nationality = profile?.country || 'US';
-    router.push(`/search/snapshot?destination=${encodeURIComponent(term)}&startDate=${startDate}&endDate=${endDate}&adults=${adults}&children=${children}&infants=${infants}&originCity=${encodeURIComponent(originCity)}&nationality=${encodeURIComponent(nationality)}` as any);
+    router.push(`/search/snapshot?destination=${encodeURIComponent(term)}&startDate=${startDate}&endDate=${endDate}&adults=${adults}&children=${children}&infants=${infants}&originCity=${encodeURIComponent(originCity)}&nationality=${encodeURIComponent(nationality)}&topics=${encodeURIComponent(topics)}` as any);
   };
 
   const handleCloseSearchOverlay = () => {

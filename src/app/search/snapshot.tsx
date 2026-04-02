@@ -14,12 +14,13 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { AnimatedGradientBackground } from '@/components/common/AnimatedGradientBackground';
 import * as Haptics from 'expo-haptics';
 import {
   ArrowLeft2, Airplane, Building, Building4, Star1, Calendar,
   Clock, Magicpen, MoneyRecive, ArrowDown2, ArrowUp2,
   Sun1, People, Reserve, ShieldTick, Car, Map, Wallet2, LanguageSquare,
-  Warning2, DocumentText, Wifi, Timer1, Moneys,
+  Warning2, DocumentText, Wifi, Timer1, Moneys, MusicPlaylist, CloseCircle, InfoCircle,
 } from 'iconsax-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { typography, spacing, borderRadius } from '@/styles';
@@ -87,11 +88,23 @@ const PATIENCE_QUOTES = [
   { text: '"Travel far enough, you meet yourself."', author: 'David Mitchell' },
   { text: '"Wherever you go, go with all your heart."', author: 'Confucius' },
   { text: '"Take only memories, leave only footprints."', author: 'Chief Seattle' },
+  { text: '"Paris is always a good idea."', author: 'Audrey Hepburn' },
+  { text: '"I haven\'t been everywhere, but it\'s on my list."', author: 'Susan Sontag' },
+  { text: '"Travel is fatal to prejudice, bigotry, and narrow-mindedness."', author: 'Mark Twain' },
+  { text: '"A good traveler has no fixed plans, and is not intent on arriving."', author: 'Lao Tzu' },
+  { text: '"Man cannot discover new oceans unless he has the courage to lose sight of the shore."', author: 'André Gide' },
+  { text: '"The biggest adventure you can take is to live the life of your dreams."', author: 'Oprah Winfrey' },
+  { text: '"Two roads diverged in a wood, and I took the one less traveled by."', author: 'Robert Frost' },
+  { text: '"Jobs fill your pocket, adventures fill your soul."', author: 'Jaime Lyn Beatty' },
+  { text: '"Blessed are the curious for they shall have adventures."', author: 'Lovelle Drachman' },
+  { text: '"Live life with no excuses, travel with no regret."', author: 'Oscar Wilde' },
+  { text: '"One\'s destination is never a place, but a new way of seeing things."', author: 'Henry Miller' },
 ];
 
 function LoadingAnimation({ destination, tc }: { destination: string; tc: any }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [quoteIndex, setQuoteIndex] = useState(() => Math.floor(Math.random() * PATIENCE_QUOTES.length));
+  const [percentText, setPercentText] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -106,7 +119,15 @@ function LoadingAnimation({ destination, tc }: { destination: string; tc: any })
     ]).start();
   }, [progressAnim]);
 
-  // Rotate through steps every 3 seconds
+  // Track percentage from animated value
+  useEffect(() => {
+    const id = progressAnim.addListener(({ value }) => {
+      setPercentText(Math.round(value * 100));
+    });
+    return () => progressAnim.removeListener(id);
+  }, [progressAnim]);
+
+  // Rotate through steps every 4 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       Animated.parallel([
@@ -120,7 +141,7 @@ function LoadingAnimation({ destination, tc }: { destination: string; tc: any })
           Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
         ]).start();
       });
-    }, 3000);
+    }, 4000);
     return () => clearInterval(interval);
   }, [fadeAnim, slideAnim]);
 
@@ -145,17 +166,20 @@ function LoadingAnimation({ destination, tc }: { destination: string; tc: any })
   });
 
   return (
-    <View style={styles.loadingFullScreen}>
+    <AnimatedGradientBackground style={styles.loadingFullScreen}>
       {/* Center content — title, progress bar, current step */}
       <View style={styles.loadingCenterBlock}>
-        <Text style={[styles.loadingTitle, { color: tc.textPrimary }]}>
+        <Text style={[styles.loadingTitle, { color: '#FFFFFF' }]}>
           Analyzing {destination}
         </Text>
 
         {/* Progress Bar */}
-        <View style={[styles.progressBarTrack, { width: TRACK_WIDTH, backgroundColor: tc.borderMedium }]}>
-          <Animated.View style={[styles.progressBarFill, { backgroundColor: tc.primary, width: progressWidth }]} />
+        <View style={[styles.progressBarTrack, { width: TRACK_WIDTH, backgroundColor: 'rgba(255,255,255,0.15)' }]}>
+          <Animated.View style={[styles.progressBarFill, { backgroundColor: '#FFFFFF', width: progressWidth }]} />
         </View>
+
+        {/* Percentage */}
+        <Text style={styles.percentText}>{percentText}%</Text>
 
         {/* Current step message */}
         <View style={styles.loadingStepContainer}>
@@ -165,17 +189,17 @@ function LoadingAnimation({ destination, tc }: { destination: string; tc: any })
               { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
             ]}
           >
-            <Text style={[styles.loadingStepText, { color: tc.textSecondary }]}>{step}</Text>
+            <Text style={[styles.loadingStepText, { color: 'rgba(255,255,255,0.7)' }]}>{step}</Text>
           </Animated.View>
         </View>
       </View>
 
       {/* Quote pinned to bottom */}
       <Animated.View style={[styles.quoteContainer, { opacity: quoteFadeAnim }]}>
-        <Text style={[styles.quoteText, { color: tc.textTertiary }]}>{quote.text}</Text>
-        <Text style={[styles.quoteAuthor, { color: tc.textTertiary }]}>— {quote.author}</Text>
+        <Text style={[styles.quoteText, { color: 'rgba(255,255,255,0.5)' }]}>{quote.text}</Text>
+        <Text style={[styles.quoteAuthor, { color: 'rgba(255,255,255,0.4)' }]}>— {quote.author}</Text>
       </Animated.View>
-    </View>
+    </AnimatedGradientBackground>
   );
 }
 
@@ -206,6 +230,8 @@ const SECTION_ICONS: Record<string, (props: { size: number; color: string }) => 
   saving: ({ size, color }) => <Wallet2 size={size} color={color} variant="Bold" />,
   money: ({ size, color }) => <Wallet2 size={size} color={color} variant="Bold" />,
   language: ({ size, color }) => <LanguageSquare size={size} color={color} variant="Bold" />,
+  nightlife: ({ size, color }) => <MusicPlaylist size={size} color={color} variant="Bold" />,
+  social: ({ size, color }) => <MusicPlaylist size={size} color={color} variant="Bold" />,
 };
 
 function getSectionIcon(iconKey: string, sectionId: string) {
@@ -273,6 +299,7 @@ export default function TripSnapshotScreen() {
     startDate: string; endDate: string;
     adults: string; children: string; infants: string;
     originCity: string; nationality: string;
+    topics: string;
   }>();
 
   const [snapshot, setSnapshot] = useState<TripSnapshot | null>(null);
@@ -307,6 +334,7 @@ export default function TripSnapshotScreen() {
       try {
         setLoading(true);
         setError(null);
+        const selectedTopics = params.topics ? params.topics.split(',').filter(Boolean) : undefined;
         const data = await tripSnapshotService.generateSnapshot({
           destination,
           country: params.country,
@@ -320,6 +348,7 @@ export default function TripSnapshotScreen() {
           originCity: params.originCity || undefined,
           nationality: params.nationality || 'US citizen',
           currency: 'USD',
+          selectedTopics,
         });
         if (!cancelled) {
           setSnapshot(data);
@@ -339,9 +368,9 @@ export default function TripSnapshotScreen() {
     return () => { cancelled = true; };
   }, [destination, params.startDate, params.endDate, params.adults, params.children, params.infants, params.country]);
 
-  const handleBack = useCallback(() => {
+  const handleClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.back();
+    router.dismiss();
   }, [router]);
 
   const handleSearchFlights = useCallback(() => {
@@ -357,8 +386,15 @@ export default function TripSnapshotScreen() {
   // ─── Loading State ───
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: tc.background, paddingTop: insets.top }]}>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
+      <View style={styles.loadingWrapper}>
+        <StatusBar style="light" />
+        <TouchableOpacity
+          onPress={handleClose}
+          style={[styles.loadingCloseBtn, { top: insets.top + spacing.sm }]}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <CloseCircle size={28} color="rgba(255,255,255,0.6)" variant="Bold" />
+        </TouchableOpacity>
         <LoadingAnimation destination={destination} tc={tc} />
       </View>
     );
@@ -371,7 +407,7 @@ export default function TripSnapshotScreen() {
         <StatusBar style={isDark ? 'light' : 'dark'} />
         <Text style={[styles.loadingTitle, { color: tc.textPrimary }]}>Something went wrong</Text>
         <Text style={[{ fontSize: typography.fontSize.sm, marginTop: spacing.sm, textAlign: 'center', lineHeight: 20 }, { color: tc.textSecondary }]}>{error}</Text>
-        <TouchableOpacity onPress={handleBack} style={[styles.retryBtn, { backgroundColor: tc.primary }]}>
+        <TouchableOpacity onPress={handleClose} style={[styles.retryBtn, { backgroundColor: tc.primary }]}>
           <Text style={styles.retryText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -387,16 +423,16 @@ export default function TripSnapshotScreen() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, borderBottomColor: tc.borderSubtle }]}>
-        <TouchableOpacity onPress={handleBack} style={[styles.backBtn, { backgroundColor: tc.bgSunken }]}>
-          <ArrowLeft2 size={20} color={tc.textPrimary} />
-        </TouchableOpacity>
+        <View style={{ width: 44 }} />
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: tc.textPrimary }]} numberOfLines={1}>{destination}</Text>
           <Text style={[styles.headerSub, { color: tc.textSecondary }]}>
             {dateLabel} · {nights} nights · {totalGuests} guest{totalGuests !== 1 ? 's' : ''}
           </Text>
         </View>
-        <View style={{ width: 36 }} />
+        <TouchableOpacity onPress={handleClose} style={[styles.closeBtn, { backgroundColor: tc.bgSunken }]}>
+          <CloseCircle size={22} color={tc.textSecondary} variant="Bold" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -438,8 +474,8 @@ export default function TripSnapshotScreen() {
           )}
           <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
           <View style={styles.breakdownGrid}>
-            {renderBreakdownRow('✈️  Flights (round trip)', cost.breakdown.flights, tc)}
-            {renderBreakdownRow('🏨  Hotels', cost.breakdown.hotels, tc)}
+            {renderBreakdownRow('✈️  Flights (round trip)', cost.breakdown.flights, tc, true)}
+            {renderBreakdownRow('🏨  Hotels', cost.breakdown.hotels, tc, true)}
             {renderBreakdownRow('🍜  Food & Dining', cost.breakdown.food, tc)}
             {renderBreakdownRow('🎯  Experiences', cost.breakdown.experiences, tc)}
             {renderBreakdownRow('🔧  Transport & Misc', cost.breakdown.miscellaneous, tc)}
@@ -614,11 +650,24 @@ export default function TripSnapshotScreen() {
           </View>
         )}
 
+        {/* ─── Trip Import Info Card ─── */}
+        <View style={[styles.tripImportCard, { backgroundColor: `${tc.primary}08`, borderColor: `${tc.primary}18` }]}>
+          <View style={[styles.tripImportIconWrap, { backgroundColor: `${tc.primary}14` }]}>
+            <InfoCircle size={18} color={tc.primary} variant="Bold" />
+          </View>
+          <View style={styles.tripImportContent}>
+            <Text style={[styles.tripImportTitle, { color: tc.textPrimary }]}>Your info is safe</Text>
+            <Text style={[styles.tripImportText, { color: tc.textSecondary }]}>
+              All of this will be available when you add this trip to your Trips tab. No need to save anything now.
+            </Text>
+          </View>
+        </View>
+
         {/* ─── Powered By ─── */}
         <View style={styles.poweredBy}>
           <Magicpen size={12} color={tc.textTertiary} variant="Bold" />
           <Text style={[styles.poweredByText, { color: tc.textTertiary }]}>
-            Powered by Guidera AI
+            Powered by Guidera Engine
           </Text>
         </View>
       </ScrollView>
@@ -648,8 +697,8 @@ export default function TripSnapshotScreen() {
 
 // ─── Helper Renderers ───
 
-function renderBreakdownRow(label: string, range: { low: number; high: number }, tc: any) {
-  if (range.low === 0 && range.high === 0) return null;
+function renderBreakdownRow(label: string, range: { low: number; high: number }, tc: any, alwaysShow = false) {
+  if (!alwaysShow && range.low === 0 && range.high === 0) return null;
   return (
     <View key={label} style={styles.breakdownRow}>
       <Text style={[styles.breakdownLabel, { color: tc.textSecondary }]}>{label}</Text>
@@ -680,6 +729,7 @@ function renderHotelTier(label: string, price: number, stars: number, count: num
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  loadingWrapper: { flex: 1 },
   loadingFullScreen: {
     flex: 1, justifyContent: 'space-between', alignItems: 'center',
     paddingTop: 60, paddingBottom: 40,
@@ -703,6 +753,10 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: '100%', borderRadius: 3,
   },
+  percentText: {
+    fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold,
+    color: 'rgba(255,255,255,0.85)', letterSpacing: 1, marginBottom: spacing.xs,
+  },
   quoteContainer: {
     paddingHorizontal: spacing['2xl'], alignItems: 'center', paddingBottom: spacing.md,
   },
@@ -722,6 +776,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   backBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  closeBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  loadingCloseBtn: { position: 'absolute', right: spacing.md, zIndex: 10, padding: 4 },
   headerCenter: { flex: 1, alignItems: 'center' },
   headerTitle: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold },
   headerSub: { fontSize: typography.fontSize.xs, marginTop: 2 },
@@ -843,6 +899,23 @@ const styles = StyleSheet.create({
   intelDetail: { fontSize: typography.fontSize.sm, lineHeight: 20 },
 
   // Powered By
+  // Trip Import Info Card
+  tripImportCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm,
+    borderRadius: borderRadius.lg, padding: spacing.md, borderWidth: 1,
+  },
+  tripImportIconWrap: {
+    width: 32, height: 32, borderRadius: 10,
+    justifyContent: 'center', alignItems: 'center', marginTop: 2,
+  },
+  tripImportContent: { flex: 1 },
+  tripImportTitle: {
+    fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.bold, marginBottom: 3,
+  },
+  tripImportText: {
+    fontSize: typography.fontSize.xs, lineHeight: 18,
+  },
+
   poweredBy: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 6, paddingVertical: spacing.md,

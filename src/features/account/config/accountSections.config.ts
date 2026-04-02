@@ -92,17 +92,6 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
     title: 'Rewards & Programs',
     items: [
       {
-        id: 'membership',
-        title: 'Guidera Premium',
-        subtitle: 'Upgrade for exclusive perks',
-        icon: Award,
-        iconColor: '#F59E0B',
-        iconVariant: 'TwoTone',
-        route: '/account/membership',
-        premium: true,
-        showChevron: true,
-      },
-      {
         id: 'rewards-points',
         title: 'Rewards Points',
         subtitle: undefined, // Computed dynamically in AccountScreen
@@ -269,6 +258,15 @@ export const ACCOUNT_SECTIONS: AccountSection[] = [
         iconColor: '#6B7280',
         iconVariant: 'TwoTone',
         route: '/account/privacy-policy',
+        showChevron: true,
+      },
+      {
+        id: 'community-guidelines',
+        title: 'Community Guidelines',
+        icon: People,
+        iconColor: '#6B7280',
+        iconVariant: 'TwoTone',
+        route: '/account/community-guidelines',
         showChevron: true,
       },
       {

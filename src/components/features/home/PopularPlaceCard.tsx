@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import CachedImage from '@/components/common/CachedImage';
 import { typography, spacing, borderRadius, shadows } from '@/styles';
 
@@ -13,7 +13,6 @@ interface PopularPlaceCardProps {
   visitors: string;
   rating: number;
   imageUrl: string;
-  onPress?: () => void;
 }
 
 export default function PopularPlaceCard({ 
@@ -22,19 +21,18 @@ export default function PopularPlaceCard({
   visitors, 
   rating, 
   imageUrl,
-  onPress,
 }: PopularPlaceCardProps) {
   const { colors } = useTheme();
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
+    <View style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
       <View style={styles.imageContainer}>
         <CachedImage uri={imageUrl} style={styles.image} />
         
         {/* Rating Badge */}
         <View style={[styles.ratingBadge, { backgroundColor: colors.bgOverlay }]}>
           <Star1 size={12} color={colors.primary} variant="Bold" />
-          <Text style={[styles.ratingText, { color: colors.textPrimary }]}>{rating}</Text>
+          <Text style={[styles.ratingText, { color: '#FFFFFF' }]}>{rating}</Text>
         </View>
       </View>
       
@@ -50,7 +48,7 @@ export default function PopularPlaceCard({
           </View>
         ) : null}
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 

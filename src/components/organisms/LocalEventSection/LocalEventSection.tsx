@@ -6,7 +6,7 @@
  */
 
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ScrollView, Alert, Linking } from 'react-native';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { typography, spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -57,6 +57,33 @@ export default function LocalEventSection({ events }: LocalEventSectionProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const calendarDays = generateCalendarDays();
 
+  // Filter events by selected calendar date
+  const filteredEvents = useMemo(() => {
+    if (events.length === 0) return [];
+    // "All" tab (index 0) shows everything
+    if (selectedDate === 0) return events;
+    // Calendar days are offset by 1 (index 0 = "All")
+    const selectedFullDate = calendarDays[selectedDate - 1]?.fullDate;
+    if (!selectedFullDate) return events;
+    // Try to match events whose date string contains the selected date
+    // Event dates can be in various formats, so be flexible
+    const matched = events.filter(e => {
+      if (!e.date) return false;
+      // Check if event date contains the calendar date (YYYY-MM-DD)
+      if (e.date.includes(selectedFullDate)) return true;
+      // Parse common date formats and compare
+      try {
+        const eventDate = new Date(e.date);
+        if (!isNaN(eventDate.getTime())) {
+          return eventDate.toISOString().split('T')[0] === selectedFullDate;
+        }
+      } catch {}
+      return false;
+    });
+    // Return matched or empty — don't silently fall back to all events
+    return matched;
+  }, [events, selectedDate, calendarDays]);
+
   const handleDateSelect = (index: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedDate(index);
@@ -65,7 +92,7 @@ export default function LocalEventSection({ events }: LocalEventSectionProps) {
 
   const handleSwipe = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setCurrentIndex((prev) => (prev + 1) % events.length);
+    setCurrentIndex((prev) => (prev + 1) % filteredEvents.length);
   };
 
   const handleAddToCalendar = async (event: LocalEvent) => {
@@ -115,28 +142,49 @@ export default function LocalEventSection({ events }: LocalEventSectionProps) {
         contentContainerStyle={styles.calendarContent}
         style={styles.calendarScroll}
       >
+        {/* "All" pill at index 0 */}
+        <TouchableOpacity
+          style={[
+            styles.dayButton,
+            { backgroundColor: colors.bgElevated, borderColor: colors.borderMedium },
+            selectedDate === 0 && { backgroundColor: colors.primary, borderColor: colors.primary }
+          ]}
+          onPress={() => handleDateSelect(0)}
+          activeOpacity={0.7}
+        >
+          <Text style={[
+            styles.dayNumber,
+            { color: colors.textPrimary },
+            selectedDate === 0 && { color: '#FFFFFF' }
+          ]}>All</Text>
+          <Text style={[
+            styles.dayName,
+            { color: colors.textSecondary },
+            selectedDate === 0 && { color: '#FFFFFF' }
+          ]}>Events</Text>
+        </TouchableOpacity>
         {calendarDays.map((day, index) => (
           <TouchableOpacity
             key={index}
             style={[
               styles.dayButton,
               { backgroundColor: colors.bgElevated, borderColor: colors.borderMedium },
-              selectedDate === index && { backgroundColor: colors.primary, borderColor: colors.primary }
+              selectedDate === (index + 1) && { backgroundColor: colors.primary, borderColor: colors.primary }
             ]}
-            onPress={() => handleDateSelect(index)}
+            onPress={() => handleDateSelect(index + 1)}
             activeOpacity={0.7}
           >
             <Text style={[
               styles.dayNumber,
               { color: colors.textPrimary },
-              selectedDate === index && { color: '#FFFFFF' }
+              selectedDate === (index + 1) && { color: '#FFFFFF' }
             ]}>
               {day.day}
             </Text>
             <Text style={[
               styles.dayName,
               { color: colors.textSecondary },
-              selectedDate === index && { color: '#FFFFFF' }
+              selectedDate === (index + 1) && { color: '#FFFFFF' }
             ]}>
               {day.dayName}
             </Text>
@@ -145,9 +193,15 @@ export default function LocalEventSection({ events }: LocalEventSectionProps) {
       </ScrollView>
 
       {/* Stacked Event Cards */}
+      {filteredEvents.length === 0 && (
+        <View style={[styles.cardsContainer, { justifyContent: 'center' }]}>
+          <Text style={[{ color: colors.textSecondary, fontSize: 14, textAlign: 'center' }]}>No events found for this date</Text>
+        </View>
+      )}
+      {filteredEvents.length > 0 && (
       <View style={styles.cardsContainer}>
-        {events.map((event, index) => {
-          const position = (index - currentIndex + events.length) % events.length;
+        {filteredEvents.map((event, index) => {
+          const position = (index - currentIndex + filteredEvents.length) % filteredEvents.length;
           
           if (position > 2) return <View key={`hidden-${event.id}-${index}`} />; // Show 3 cards max
 
@@ -235,6 +289,7 @@ export default function LocalEventSection({ events }: LocalEventSectionProps) {
           );
         })}
       </View>
+      )}
 
     </View>
   );

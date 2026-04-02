@@ -172,6 +172,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         '@guidera_deferred_deeplink',
         // AI Vision / TTS
         '@guidera_translation_cache',
+        '@guidera_tts_voice_name',
         '@guidera_tts_voice_gender',
         '@guidera_tts_voice_id',
         '@guidera_tts_speed',

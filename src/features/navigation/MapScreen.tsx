@@ -1,14 +1,13 @@
 /**
  * MAP SCREEN
  *
- * Unified navigation screen with 4 modes:
+ * Unified navigation screen with 3 modes:
  * - City: Outdoor turn-by-turn with Mapbox 3D, voice guidance, auto-reroute
- * - Airport: Indoor wayfinding (Mappedin — coming soon, needs API key)
- * - Landmarks: POI search with category filters + navigate-to
- * - General: Free explore map
+ * - Airport: Redirects to AI Vision Live Mode for camera-based wayfinding
+ * - Landmarks: POI search with category filters
  *
- * Replaces the old AR camera + sidebar for all navigation features.
- * Part of the Connect feature (formerly Community).
+ * Clean unified header: mode tabs + search + category filters in one panel.
+ * Rich bottom sheet shows place photos, ratings, price level, open status.
  */
 
 import React, { useState, useCallback } from 'react';
@@ -21,11 +20,33 @@ import {
   ScrollView,
   Modal,
   ActivityIndicator,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft2, SearchNormal1, Location, Map1, Airplane, Building } from 'iconsax-react-native';
+import {
+  ArrowLeft2,
+  SearchNormal1,
+  Location,
+  Map1,
+  Airplane,
+  Building,
+  Star1,
+  Clock,
+  CloseCircle,
+  Camera,
+  Routing,
+  Reserve,
+  Gallery,
+  Hospital,
+  Bus,
+  Bag2,
+  Category,
+} from 'iconsax-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { spacing, borderRadius as br, colors, typography } from '@/styles';
+import { shadows } from '@/styles/shadows';
 import { useTheme } from '@/context/ThemeContext';
 import { mapboxService, MapboxPlace } from '@/features/ar-navigation/services/mapbox.service';
 
@@ -33,7 +54,11 @@ import OutdoorMap from './components/OutdoorMap';
 import TurnBanner from './components/TurnBanner';
 import NavigationHUD from './components/NavigationHUD';
 import { useOutdoorNavigation } from './hooks/useOutdoorNavigation';
-import { useLandmarkSearch, POICategory } from './hooks/useLandmarkSearch';
+import {
+  useLandmarkSearch,
+  POICategory,
+  EnrichedPlace,
+} from './hooks/useLandmarkSearch';
 
 export type MapMode = 'city' | 'airport' | 'landmarks';
 
@@ -43,21 +68,24 @@ const MODE_TABS: { id: MapMode; label: string; icon: any }[] = [
   { id: 'landmarks', label: 'Landmarks', icon: Building },
 ];
 
-const LANDMARK_CATEGORIES: { id: POICategory; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'food', label: 'Food' },
-  { id: 'culture', label: 'Culture' },
-  { id: 'emergency', label: 'Emergency' },
-  { id: 'transport', label: 'Transport' },
-  { id: 'shopping', label: 'Shopping' },
+const LANDMARK_CATEGORIES: { id: POICategory; label: string; icon: any }[] = [
+  { id: 'all', label: 'All', icon: Category },
+  { id: 'food', label: 'Food', icon: Reserve },
+  { id: 'culture', label: 'Culture', icon: Gallery },
+  { id: 'emergency', label: 'Emergency', icon: Hospital },
+  { id: 'transport', label: 'Transport', icon: Bus },
+  { id: 'shopping', label: 'Shopping', icon: Bag2 },
 ];
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface MapScreenProps {
   initialMode?: MapMode;
   onClose: () => void;
+  onOpenAIVision?: () => void;
 }
 
-export default function MapScreen({ initialMode = 'city', onClose }: MapScreenProps) {
+export default function MapScreen({ initialMode = 'city', onClose, onOpenAIVision }: MapScreenProps) {
   const insets = useSafeAreaInsets();
   const { colors: tc } = useTheme();
   const [mode, setMode] = useState<MapMode>(initialMode);
@@ -65,7 +93,9 @@ export default function MapScreen({ initialMode = 'city', onClose }: MapScreenPr
   const [showSearch, setShowSearch] = useState(false);
   const [searchResults, setSearchResults] = useState<MapboxPlace[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [selectedPlace, setSelectedPlace] = useState<MapboxPlace | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<EnrichedPlace | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoLoading, setPhotoLoading] = useState(false);
 
   const nav = useOutdoorNavigation();
   const landmarks = useLandmarkSearch();
@@ -74,22 +104,22 @@ export default function MapScreen({ initialMode = 'city', onClose }: MapScreenPr
   const [poisLoaded, setPoisLoaded] = React.useState(false);
   React.useEffect(() => {
     if (!nav.userLocation) return;
-    if (poisLoaded && mode !== 'landmarks') return; // only auto-load once for city, always reload for landmarks
-    if (__DEV__) console.log('📍 MapScreen: Loading POIs for mode:', mode, 'location:', nav.userLocation.latitude.toFixed(4), nav.userLocation.longitude.toFixed(4));
+    if (poisLoaded && mode !== 'landmarks') return;
+    if (__DEV__) console.log('📍 MapScreen: Loading POIs for mode:', mode);
     landmarks.searchNearby(nav.userLocation.latitude, nav.userLocation.longitude, mode === 'landmarks' ? landmarks.activeCategory : 'all');
     if (mode !== 'landmarks') setPoisLoaded(true);
   }, [nav.userLocation, mode, landmarks.activeCategory]);
 
-  // Load landmarks when switching to landmarks mode
   const handleModeChange = useCallback((newMode: MapMode) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setMode(newMode);
+    setSelectedPlace(null);
+    setPhotoUrl(null);
     if (newMode === 'landmarks' && nav.userLocation) {
       landmarks.searchNearby(nav.userLocation.latitude, nav.userLocation.longitude);
     }
   }, [nav.userLocation, landmarks]);
 
-  // Search for a destination
   const handleSearch = useCallback(async (query: string) => {
     if (!query.trim() || !nav.userLocation) return;
     setSearchLoading(true);
@@ -106,29 +136,58 @@ export default function MapScreen({ initialMode = 'city', onClose }: MapScreenPr
     }
   }, [nav.userLocation]);
 
-  // Start navigation to a place
   const handleNavigateToPlace = useCallback((place: MapboxPlace) => {
     setShowSearch(false);
     setSelectedPlace(null);
     setSearchResults([]);
     setSearchText('');
+    setPhotoUrl(null);
     nav.startNavigation(
       { latitude: place.coordinates.latitude, longitude: place.coordinates.longitude, name: place.name },
       nav.profile
     );
   }, [nav]);
 
-  // Handle landmark tap
-  const handleLandmarkPress = useCallback((place: MapboxPlace) => {
-    setSelectedPlace(place);
+  const handleLandmarkPress = useCallback(async (place: MapboxPlace) => {
+    const enriched = place as EnrichedPlace;
+    setSelectedPlace(enriched);
+    setPhotoUrl(null);
+
+    if ((place as any).photoReference) {
+      setPhotoLoading(true);
+      try {
+        const url = await mapboxService.getPlacePhotoUrl((place as any).photoReference, 600);
+        setPhotoUrl(url);
+      } catch {
+        setPhotoUrl(null);
+      } finally {
+        setPhotoLoading(false);
+      }
+    }
   }, []);
 
-  // Handle landmark category change
   const handleCategoryChange = useCallback((cat: POICategory) => {
     if (!nav.userLocation) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     landmarks.searchNearby(nav.userLocation.latitude, nav.userLocation.longitude, cat);
   }, [nav.userLocation, landmarks]);
+
+  // Render star rating
+  const renderStars = (rating: number) => {
+    const fullStars = Math.floor(rating);
+    const stars = [];
+    for (let i = 0; i < 5; i++) {
+      stars.push(
+        <Star1
+          key={i}
+          size={14}
+          color={i < fullStars ? tc.warning : tc.borderSubtle}
+          variant={i < fullStars ? 'Bold' : 'Linear'}
+        />
+      );
+    }
+    return stars;
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: tc.bgSecondary }]}>
@@ -148,101 +207,209 @@ export default function MapScreen({ initialMode = 'city', onClose }: MapScreenPr
         visible={nav.isNavigating}
       />
 
-      {/* Top bar: back + mode tabs (hidden during navigation) */}
+      {/* ═══ Unified Header Panel ═══ */}
       {!nav.isNavigating && (
-        <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity style={[styles.backBtn, { backgroundColor: tc.bgElevated }]} onPress={onClose}>
-            <ArrowLeft2 size={22} color={tc.textPrimary} />
-          </TouchableOpacity>
+        <View style={[styles.headerPanel, { marginTop: insets.top + 6, backgroundColor: tc.bgElevated }]}>
+          {/* Row 1: Back + Mode Tabs */}
+          <View style={styles.topRow}>
+            <TouchableOpacity style={[styles.backBtn, { backgroundColor: tc.bgSecondary }]} onPress={onClose}>
+              <ArrowLeft2 size={20} color={tc.textPrimary} />
+            </TouchableOpacity>
 
-          <View style={[styles.modeRow, { backgroundColor: tc.bgElevated }]}>
-            {MODE_TABS.map(tab => {
-              const isActive = mode === tab.id;
-              const Icon = tab.icon;
-              return (
-                <TouchableOpacity
-                  key={tab.id}
-                  style={[styles.modeTab, isActive && { backgroundColor: tc.primary }]}
-                  onPress={() => handleModeChange(tab.id)}
-                >
-                  <Icon size={16} color={isActive ? tc.white : tc.textSecondary} variant="Bold" />
-                  <Text style={[styles.modeLabel, { color: isActive ? tc.white : tc.textSecondary }]}>
-                    {tab.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+            <View style={[styles.modeRow, { backgroundColor: tc.bgSecondary }]}>
+              {MODE_TABS.map(tab => {
+                const isActive = mode === tab.id;
+                const Icon = tab.icon;
+                return (
+                  <TouchableOpacity
+                    key={tab.id}
+                    style={[styles.modeTab, isActive && { backgroundColor: tc.primary }]}
+                    onPress={() => handleModeChange(tab.id)}
+                  >
+                    <Icon size={15} color={isActive ? tc.white : tc.textSecondary} variant="Bold" />
+                    <Text style={[styles.modeLabel, { color: isActive ? tc.white : tc.textSecondary }]}>
+                      {tab.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
+
+          {/* Row 2: Search Bar (city + landmarks only) */}
+          {mode !== 'airport' && (
+            <View style={styles.searchRow}>
+              <TouchableOpacity
+                style={[styles.searchBar, { backgroundColor: tc.bgSecondary, borderColor: tc.borderSubtle }]}
+                onPress={() => setShowSearch(true)}
+              >
+                <SearchNormal1 size={16} color={tc.textTertiary} />
+                <Text style={[styles.searchPlaceholder, { color: tc.textTertiary }]}>
+                  {mode === 'landmarks' ? 'Search landmarks...' : 'Where do you want to go?'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Row 3: Category chips (landmarks mode only) */}
+          {mode === 'landmarks' && (
+            <View style={styles.categoryDivider}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+                {LANDMARK_CATEGORIES.map(cat => {
+                  const isActive = landmarks.activeCategory === cat.id;
+                  return (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[styles.categoryChip, {
+                        backgroundColor: isActive ? tc.primary : 'transparent',
+                        borderColor: isActive ? tc.primary : tc.borderSubtle,
+                      }]}
+                      onPress={() => handleCategoryChange(cat.id)}
+                    >
+                      <cat.icon size={13} color={isActive ? tc.white : tc.textSecondary} variant="Bold" />
+                      <Text style={[styles.categoryText, { color: isActive ? tc.white : tc.textSecondary }]}>{cat.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
         </View>
       )}
 
-      {/* Search bar (city + landmarks modes, hidden during navigation) */}
-      {!nav.isNavigating && mode !== 'airport' && (
-        <TouchableOpacity
-          style={[styles.searchBar, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle, top: insets.top + 70 }]}
-          onPress={() => setShowSearch(true)}
-        >
-          <SearchNormal1 size={18} color={tc.textTertiary} />
-          <Text style={[styles.searchPlaceholder, { color: tc.textTertiary }]}>
-            {mode === 'landmarks' ? 'Search landmarks...' : 'Where do you want to go?'}
-          </Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Landmark category chips */}
-      {!nav.isNavigating && mode === 'landmarks' && (
-        <View style={[styles.categoryRow, { top: insets.top + 120 }]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
-            {LANDMARK_CATEGORIES.map(cat => {
-              const isActive = landmarks.activeCategory === cat.id;
-              return (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[styles.categoryChip, { backgroundColor: isActive ? tc.primary : tc.bgElevated, borderColor: isActive ? tc.primary : tc.borderSubtle }]}
-                  onPress={() => handleCategoryChange(cat.id)}
-                >
-                  <Text style={[styles.categoryText, { color: isActive ? tc.white : tc.textSecondary }]}>{cat.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* Airport mode placeholder */}
+      {/* Airport mode — redirect to Live Camera */}
       {mode === 'airport' && !nav.isNavigating && (
         <View style={styles.airportPlaceholder}>
           <View style={[styles.airportCard, { backgroundColor: tc.bgElevated }]}>
-            <Airplane size={32} color={tc.primary} variant="Bold" />
-            <Text style={[styles.airportTitle, { color: tc.textPrimary }]}>Airport Navigation</Text>
+            <View style={[styles.airportIconWrap, { backgroundColor: tc.primary + '15' }]}>
+              <Airplane size={36} color={tc.primary} variant="Bold" />
+            </View>
+            <Text style={[styles.airportTitle, { color: tc.textPrimary }]}>Airport Wayfinding</Text>
             <Text style={[styles.airportSub, { color: tc.textSecondary }]}>
-              Indoor airport wayfinding with Mappedin is coming soon.{'\n'}Scan your boarding pass to navigate to your gate.
+              Navigate terminals, find gates, and explore amenities using AI-powered camera guidance.
+            </Text>
+            <TouchableOpacity
+              style={[styles.launchLiveBtn, { backgroundColor: tc.primary }]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                onOpenAIVision?.();
+              }}
+              activeOpacity={0.8}
+            >
+              <Camera size={20} color="#FFF" variant="Bold" />
+              <Text style={styles.launchLiveBtnText}>Launch Live Camera</Text>
+            </TouchableOpacity>
+            <Text style={[styles.airportHint, { color: tc.textTertiary }]}>
+              Point your camera at signs, gates, or shops for instant guidance
             </Text>
           </View>
         </View>
       )}
 
-      {/* Selected landmark bottom sheet */}
+      {/* Selected landmark bottom sheet — ENRICHED */}
       {selectedPlace && !nav.isNavigating && (
         <View style={[styles.placeSheet, { backgroundColor: tc.bgElevated }]}>
-          <View style={styles.placeHeader}>
-            <View style={[styles.placeIcon, { backgroundColor: tc.primary + '15' }]}>
-              <Location size={20} color={tc.primary} variant="Bold" />
+          {/* Close button */}
+          <TouchableOpacity style={styles.sheetClose} onPress={() => { setSelectedPlace(null); setPhotoUrl(null); }}>
+            <CloseCircle size={24} color={tc.textTertiary} variant="Bold" />
+          </TouchableOpacity>
+
+          {/* Handle bar */}
+          <View style={styles.sheetHandle}>
+            <View style={[styles.handleBar, { backgroundColor: tc.borderSubtle }]} />
+          </View>
+
+          {/* Photo */}
+          {(photoUrl || photoLoading) && (
+            <View style={styles.photoContainer}>
+              {photoLoading ? (
+                <View style={[styles.photoPlaceholder, { backgroundColor: tc.bgSecondary }]}>
+                  <ActivityIndicator size="small" color={tc.primary} />
+                </View>
+              ) : photoUrl ? (
+                <Image source={{ uri: photoUrl }} style={styles.placePhoto} resizeMode="cover" />
+              ) : null}
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.placeName, { color: tc.textPrimary }]} numberOfLines={1}>{selectedPlace.name}</Text>
-              <Text style={[styles.placeAddr, { color: tc.textSecondary }]} numberOfLines={1}>{selectedPlace.address}</Text>
+          )}
+
+          {/* Place info */}
+          <View style={styles.placeContent}>
+            <View style={styles.placeHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.placeName, { color: tc.textPrimary }]} numberOfLines={2}>{selectedPlace.name}</Text>
+                <View style={styles.placeMetaRow}>
+                  <Location size={13} color={tc.textTertiary} variant="Bold" />
+                  <Text style={[styles.placeAddr, { color: tc.textSecondary }]} numberOfLines={1}>{selectedPlace.address}</Text>
+                </View>
+              </View>
+
+              {/* Open/Closed badge */}
+              {selectedPlace.isOpen !== undefined && (
+                <View style={[styles.statusBadge, {
+                  backgroundColor: selectedPlace.isOpen ? tc.successBg : tc.errorBg
+                }]}>
+                  <View style={[styles.statusDot, {
+                    backgroundColor: selectedPlace.isOpen ? tc.success : tc.error
+                  }]} />
+                  <Text style={[styles.statusText, {
+                    color: selectedPlace.isOpen ? tc.success : tc.error
+                  }]}>
+                    {selectedPlace.isOpen ? 'Open' : 'Closed'}
+                  </Text>
+                </View>
+              )}
             </View>
-            <TouchableOpacity onPress={() => setSelectedPlace(null)}>
-              <Text style={{ color: tc.textTertiary, fontSize: 18 }}>x</Text>
+
+            {/* Stats row: rating, price, category */}
+            <View style={styles.statsRow}>
+              {selectedPlace.rating && (
+                <View style={styles.statItem}>
+                  <View style={styles.starsRow}>
+                    {renderStars(selectedPlace.rating)}
+                  </View>
+                  <Text style={[styles.statValue, { color: tc.textPrimary }]}>{selectedPlace.rating.toFixed(1)}</Text>
+                  {selectedPlace.reviewCount && (
+                    <Text style={[styles.statSub, { color: tc.textTertiary }]}>
+                      ({selectedPlace.reviewCount > 999 ? `${(selectedPlace.reviewCount / 1000).toFixed(1)}k` : selectedPlace.reviewCount})
+                    </Text>
+                  )}
+                </View>
+              )}
+
+              {selectedPlace.priceLevel !== undefined && selectedPlace.priceLevel > 0 && (
+                <View style={[styles.priceBadge, { backgroundColor: tc.successBg }]}>
+                  <Text style={[styles.priceLabel, { color: tc.success }]}>
+                    {'$'.repeat(selectedPlace.priceLevel)}
+                  </Text>
+                </View>
+              )}
+
+              {selectedPlace.types && selectedPlace.types.length > 0 && (
+                <View style={[styles.typeBadge, { backgroundColor: tc.primary + '12' }]}>
+                  <Text style={[styles.typeLabel, { color: tc.primary }]}>
+                    {(selectedPlace.types[0] || '').replace(/_/g, ' ')}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Navigate button */}
+            <TouchableOpacity
+              style={styles.navigateBtn}
+              onPress={() => handleNavigateToPlace(selectedPlace)}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={[tc.primary, tc.primaryDark || colors.primaryDark]}
+                style={styles.navigateGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Routing size={20} color={tc.white} variant="Bold" />
+                <Text style={[styles.navigateBtnText, { color: tc.white }]}>Navigate Here</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={[styles.navigateBtn, { backgroundColor: tc.primary }]}
-            onPress={() => handleNavigateToPlace(selectedPlace)}
-          >
-            <Text style={styles.navigateBtnText}>Navigate Here</Text>
-          </TouchableOpacity>
         </View>
       )}
 
@@ -308,67 +475,139 @@ export default function MapScreen({ initialMode = 'city', onClose }: MapScreenPr
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  // Top bar
-  topBar: {
+
+  // ═══ Unified Header Panel — Single Card ═══
+  headerPanel: {
     position: 'absolute', top: 0, left: 0, right: 0, zIndex: 50,
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: spacing.md, gap: spacing.sm,
+    marginHorizontal: spacing.md,
+    borderRadius: br['2xl'],        // 28 — matches card.borderRadius
+    paddingBottom: spacing.md,
+    shadowColor: colors.black, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8,
+  },
+  topRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    paddingHorizontal: spacing.sm, paddingTop: spacing.sm,
   },
   backBtn: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 38, height: 38, borderRadius: br.md,   // 10 — matches iconContainer.borderRadius
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: colors.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 4,
   },
   modeRow: {
-    flex: 1, flexDirection: 'row', borderRadius: br.full, padding: 3, gap: 3,
-    shadowColor: colors.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 4,
+    flex: 1, flexDirection: 'row', borderRadius: br.lg, padding: 3, gap: 3,  // 14 — matches card inner elements
   },
   modeTab: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 10, borderRadius: br.full, gap: 4,
+    paddingVertical: 8, borderRadius: br.md, gap: 4,   // 10 — matches input.borderRadius
   },
   modeLabel: { fontSize: typography.fontSize.body, fontWeight: typography.fontWeight.semibold },
-  // Search
-  searchBar: {
-    position: 'absolute', left: spacing.md, right: spacing.md, zIndex: 40,
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    paddingHorizontal: spacing.md, height: 44, borderRadius: br.md, borderWidth: 1,
-    shadowColor: colors.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3,
+
+  // Search bar — proper rounded input inside card
+  searchRow: {
+    paddingHorizontal: spacing.sm, paddingTop: spacing.sm,
   },
-  searchPlaceholder: { fontSize: typography.fontSize.bodyLg },
-  // Categories
-  categoryRow: { position: 'absolute', left: 0, right: 0, zIndex: 35 },
-  categoryScroll: { paddingHorizontal: spacing.md, gap: 8 },
-  categoryChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: br.full, borderWidth: 1 },
-  categoryText: { fontSize: typography.fontSize.bodySm, fontWeight: typography.fontWeight.semibold },
-  // Airport placeholder
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    paddingHorizontal: spacing.md, height: 40, borderRadius: br.full, borderWidth: 1,  // fully rounded — matches home explorer search
+  },
+  searchPlaceholder: { fontSize: typography.fontSize.body },
+
+  // Category chips inside card
+  categoryDivider: {
+    paddingTop: spacing.sm, paddingBottom: spacing.xs || 4,
+  },
+  categoryScroll: { gap: 6, paddingHorizontal: spacing.sm },
+  categoryChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: br.full, borderWidth: 1,  // pills stay fully rounded
+  },
+  categoryText: { fontSize: 12, fontWeight: '600' as any },
+
+  // Airport
   airportPlaceholder: {
     position: 'absolute', bottom: 100, left: spacing.lg, right: spacing.lg, zIndex: 30,
   },
   airportCard: {
-    padding: spacing.xl, borderRadius: 20, alignItems: 'center', gap: spacing.sm,
-    shadowColor: colors.black, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8,
+    padding: spacing.xl, borderRadius: br['2xl'], alignItems: 'center', gap: spacing.sm,
+    ...shadows.lg,
+  },
+  airportIconWrap: {
+    width: 72, height: 72, borderRadius: br.full, alignItems: 'center', justifyContent: 'center', marginBottom: 4,
   },
   airportTitle: { fontSize: typography.fontSize.heading2, fontWeight: typography.fontWeight.bold },
-  airportSub: { fontSize: typography.fontSize.body, textAlign: 'center', lineHeight: 19 },
-  // Place sheet
+  airportSub: { fontSize: typography.fontSize.body, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
+  airportHint: { fontSize: 11, textAlign: 'center', marginTop: 4, lineHeight: 15 },
+  launchLiveBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 14, paddingHorizontal: 28, borderRadius: br.lg,
+    ...shadows.btnPrimary,
+  },
+  launchLiveBtnText: { fontSize: 15, fontWeight: '700' as any, color: colors.white },
+
+  // Place sheet (enriched)
   placeSheet: {
     position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 80,
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: spacing.lg, paddingBottom: 40,
-    shadowColor: colors.black, shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 10,
+    borderTopLeftRadius: br['2xl'], borderTopRightRadius: br['2xl'],
+    ...shadows.lg,
   },
-  placeHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },
-  placeIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  placeName: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold },
-  placeAddr: { fontSize: typography.fontSize.body, marginTop: 2 },
-  navigateBtn: { paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  navigateBtnText: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, color: colors.white },
+  sheetClose: {
+    position: 'absolute', top: 12, right: 16, zIndex: 10, padding: 4,
+  },
+  sheetHandle: { alignItems: 'center', paddingTop: 10, paddingBottom: 6 },
+  handleBar: { width: 40, height: 4, borderRadius: br.sm },
+  photoContainer: {
+    marginHorizontal: spacing.md, marginBottom: spacing.sm, borderRadius: br.lg, overflow: 'hidden',
+  },
+  placePhoto: {
+    width: '100%', height: 160, borderRadius: br.lg,
+  },
+  photoPlaceholder: {
+    width: '100%', height: 120, borderRadius: br.lg, alignItems: 'center', justifyContent: 'center',
+  },
+  placeContent: {
+    paddingHorizontal: spacing.lg, paddingBottom: 40,
+  },
+  placeHeader: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, marginBottom: spacing.sm,
+  },
+  placeName: { fontSize: typography.fontSize.heading2, fontWeight: typography.fontWeight.bold, lineHeight: 24 },
+  placeMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  placeAddr: { fontSize: typography.fontSize.bodySm, flex: 1 },
+  statusBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: br.md,
+  },
+  statusDot: { width: 7, height: 7, borderRadius: br.sm },
+  statusText: { fontSize: typography.fontSize.bodySm, fontWeight: typography.fontWeight.semibold },
+  statsRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: spacing.md, flexWrap: 'wrap',
+  },
+  statItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  starsRow: { flexDirection: 'row', gap: 1 },
+  statValue: { fontSize: typography.fontSize.body, fontWeight: typography.fontWeight.bold },
+  statSub: { fontSize: typography.fontSize.bodySm },
+  priceBadge: {
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: br.md,
+  },
+  priceLabel: { fontSize: typography.fontSize.bodySm, fontWeight: typography.fontWeight.bold },
+  typeBadge: {
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: br.md,
+  },
+  typeLabel: { fontSize: typography.fontSize.bodySm, fontWeight: typography.fontWeight.semibold, textTransform: 'capitalize' },
+  navigateBtn: {
+    ...shadows.btnPrimary,
+  },
+  navigateGradient: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 15, borderRadius: br.lg,
+  },
+  navigateBtnText: { fontSize: typography.fontSize.heading3, fontWeight: typography.fontWeight.bold },
+
   // Loading
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject, zIndex: 200,
     backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center',
   },
+
   // Search modal
   searchModal: { flex: 1 },
   searchModalHeader: {
@@ -376,8 +615,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg, paddingBottom: spacing.md,
   },
   searchInput: {
-    flex: 1, height: 44, borderRadius: 12, borderWidth: 1,
-    paddingHorizontal: spacing.md, fontSize: 15,
+    flex: 1, height: 44, borderRadius: br.md, borderWidth: 1,
+    paddingHorizontal: spacing.md, fontSize: typography.fontSize.body,
   },
   searchResultsList: { paddingHorizontal: spacing.lg },
   searchResultItem: {

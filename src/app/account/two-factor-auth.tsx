@@ -13,7 +13,6 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -155,33 +154,7 @@ export default function TwoFactorAuthScreen() {
       <View style={styles.methodsSection}>
         <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Choose a Method</Text>
 
-        {/* SMS Option - Coming Soon */}
-        <TouchableOpacity
-          style={[styles.methodCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }, styles.methodCardDisabled]}
-          onPress={() => {
-            Alert.alert(
-              'Coming Soon',
-              'SMS-based 2FA will be available in a future update. Please use an Authenticator App for now.',
-              [{ text: 'OK' }]
-            );
-          }}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.methodIcon, { backgroundColor: tc.borderSubtle }]}>
-            <Sms size={24} color={tc.textTertiary} variant="Bold" />
-          </View>
-          <View style={styles.methodContent}>
-            <Text style={[styles.methodTitle, { color: tc.textTertiary }]}>Text Message (SMS)</Text>
-            <Text style={[styles.methodDescription, { color: tc.textSecondary }]}>
-              Coming soon - requires SMS provider integration
-            </Text>
-          </View>
-          <View style={styles.comingSoonBadge}>
-            <Text style={styles.comingSoonText}>Soon</Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Authenticator App Option */}
+        {/* Authenticator App Option - Recommended */}
         <TouchableOpacity
           style={[styles.methodCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
           onPress={() => handleSelectMethod('authenticator')}
@@ -691,22 +664,5 @@ const styles = StyleSheet.create({
   },
   methodCardDisabled: {
     opacity: 0.6,
-  },
-  methodIconDisabled: {
-    backgroundColor: colors.gray100,
-  },
-  methodTitleDisabled: {
-    color: colors.gray400,
-  },
-  comingSoonBadge: {
-    backgroundColor: colors.warning + '20',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.full,
-  },
-  comingSoonText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.warning,
   },
 });

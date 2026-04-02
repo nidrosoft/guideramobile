@@ -11,6 +11,7 @@ import CachedImage from '@/components/common/CachedImage';
 import { Star1, Location, DollarCircle, TrendUp, Crown, Bookmark } from 'iconsax-react-native';
 import { typography, spacing, fontFamily } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useImageFallback } from '@/hooks/useImageFallback';
 import type { CuratedDestination } from '@/hooks/useSectionDestinations';
 
 const BUDGET_LABELS: Record<number, string> = {
@@ -30,7 +31,9 @@ interface DestinationListCardProps {
 export default function DestinationListCard({ destination, onPress, onBookmark }: DestinationListCardProps) {
   const { colors, isDark } = useTheme();
 
-  const imageUrl = destination.hero_image_url || destination.thumbnail_url || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=600';
+  const rawImageUrl = destination.hero_image_url || destination.thumbnail_url || '';
+  const cityName = destination.city || destination.title?.split(' - ')[0] || destination.title;
+  const imageUrl = useImageFallback(rawImageUrl, cityName);
   const budgetLabel = BUDGET_LABELS[destination.budget_level] || 'Moderate';
 
   return (

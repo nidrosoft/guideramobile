@@ -41,7 +41,7 @@ const TOTAL_STEPS = 5;
 export default function CreateActivityScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const { profile } = useAuth();
   const { showError } = useToast();
   const userId = profile?.id;
@@ -74,6 +74,7 @@ export default function CreateActivityScreen() {
   const [cityName, setCityName] = useState<string>('');
   const [countryName, setCountryName] = useState<string>('');
   const [coverImageUri, setCoverImageUri] = useState<string | undefined>(undefined);
+  const [coverImageBase64, setCoverImageBase64] = useState<string | undefined>(undefined);
 
   // Auto-detect location on mount
   useEffect(() => {
@@ -142,15 +143,21 @@ export default function CreateActivityScreen() {
 
       // Upload cover image if selected
       let coverImageUrl: string | undefined;
-      if (coverImageUri) {
+      if (coverImageBase64) {
         try {
-          const ext = coverImageUri.split('.').pop() || 'jpg';
-          const path = `activity-covers/${Date.now()}.${ext}`;
-          const response = await fetch(coverImageUri);
-          const blob = await response.blob();
+          const ext = coverImageUri?.split('.').pop()?.toLowerCase() || 'jpg';
+          const mimeType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
+          const path = `activity-covers/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+
+          const binaryString = atob(coverImageBase64);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          if (__DEV__) console.log(`[CreateActivity] uploading ${path}: ${bytes.length} bytes`);
           const { error: uploadErr } = await supabase.storage
             .from('community')
-            .upload(path, blob, { contentType: `image/${ext}`, upsert: true });
+            .upload(path, bytes, { contentType: mimeType, upsert: true });
           if (!uploadErr) {
             const { data: publicUrl } = supabase.storage.from('community').getPublicUrl(path);
             coverImageUrl = publicUrl.publicUrl;
@@ -213,7 +220,7 @@ export default function CreateActivityScreen() {
             description={description}
             onDescriptionChange={setDescription}
             coverImageUri={coverImageUri}
-            onCoverImageChange={setCoverImageUri}
+            onCoverImageChange={(uri, b64) => { setCoverImageUri(uri); setCoverImageBase64(b64); }}
           />
         );
       case 3:
@@ -259,7 +266,7 @@ export default function CreateActivityScreen() {
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, borderBottomColor: tc.borderSubtle }]}>

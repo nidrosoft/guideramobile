@@ -117,7 +117,7 @@ export function useOutdoorNavigation() {
           // Voice guidance for new step
           if (nextIdx !== lastSpokenStep.current) {
             lastSpokenStep.current = nextIdx;
-            voiceService.speak(nextStep.instruction);
+            voiceService.speak(nextStep.instruction, nextStep.distance);
           }
         }
       }
@@ -130,7 +130,7 @@ export function useOutdoorNavigation() {
         state.destination.latitude, state.destination.longitude
       );
       if (distToDest < 20) {
-        voiceService.speak('You have arrived at your destination.');
+        voiceService.speak("You've arrived at your destination. Enjoy your visit!");
         stopNavigation();
       }
     }
@@ -177,7 +177,7 @@ export function useOutdoorNavigation() {
       }));
 
       lastSpokenStep.current = 0;
-      voiceService.speak(firstStep?.instruction || `Navigating to ${destination.name}`);
+      voiceService.speak(firstStep?.instruction || `Let's head to ${destination.name}`, firstStep?.distance);
 
     } catch (err: any) {
       setState(prev => ({ ...prev, isLoading: false, error: err?.message || 'Navigation failed' }));

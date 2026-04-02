@@ -12,8 +12,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
-  Image,
 } from 'react-native';
+import { Image } from 'expo-image';
 import {
   Location,
   Verify,
@@ -64,7 +64,7 @@ function FeedPostCard({
   const { colors: tc } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  const typeConfig = POST_TYPE_CONFIGS[post.postType];
+  const typeConfig = POST_TYPE_CONFIGS[post.postType] || POST_TYPE_CONFIGS.general;
 
   const handlePressIn = useCallback(() => {
     Animated.timing(scaleAnim, {

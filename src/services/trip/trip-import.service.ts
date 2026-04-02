@@ -458,7 +458,7 @@ export async function processImport(importId: string): Promise<void> {
         const trip = await TripCoreService.createTrip({
           userId,
           name: generateTripNameFromImport(parsed),
-          destination: parsed.destination,
+          destination: parsed.destination as any,
           startDate: parsed.dates?.start,
           endDate: parsed.dates?.end,
           createdVia: `import_${importRecord.import_method}`,

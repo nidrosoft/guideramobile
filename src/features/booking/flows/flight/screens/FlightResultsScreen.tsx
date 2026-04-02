@@ -392,6 +392,8 @@ export default function FlightResultsScreen({
           name: item.originCode,
           code: item.originCode,
           city: item.originCode,
+          country: '',
+          countryCode: '',
           timezone: '',
         },
         destination: {
@@ -400,6 +402,8 @@ export default function FlightResultsScreen({
           name: item.destCode,
           code: item.destCode,
           city: item.destCode,
+          country: '',
+          countryCode: '',
           timezone: '',
         },
         departureTime: item.departureTime instanceof Date ? item.departureTime : new Date(item.departureTime),

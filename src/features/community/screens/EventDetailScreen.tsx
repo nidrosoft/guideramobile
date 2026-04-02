@@ -100,7 +100,7 @@ export default function EventDetailScreen() {
         community: {
           id: data.group?.id || '',
           name: data.group?.name || '',
-          avatar: data.group?.group_photo_url || '',
+          avatar: data.group?.groupPhotoUrl || '',
         },
         host: {
           id: data.creator?.id || data.createdBy,
@@ -434,7 +434,7 @@ export default function EventDetailScreen() {
           >
             <CloseCircle 
               size={20} 
-              color={rsvpStatus === 'not_going' ? colors.white : colors.bgElevated0} 
+              color={rsvpStatus === 'not_going' ? colors.white : colors.bgElevated} 
             />
           </TouchableOpacity>
         </View>
@@ -717,7 +717,7 @@ const styles = StyleSheet.create({
     borderColor: colors.warning,
   },
   rsvpNoActive: {
-    backgroundColor: colors.bgElevated0,
+    backgroundColor: colors.bgElevated,
   },
   rsvpButtonText: {
     fontSize: typography.fontSize.sm,

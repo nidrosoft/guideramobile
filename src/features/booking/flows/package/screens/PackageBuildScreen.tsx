@@ -109,6 +109,11 @@ export default function PackageBuildScreen({
   const [showFlightSheet, setShowFlightSheet] = useState(false);
   const [flightSelectionType, setFlightSelectionType] = useState<'outbound' | 'return'>('outbound');
 
+  // Expanded view states for "View All" buttons
+  const [showAllHotels, setShowAllHotels] = useState(false);
+  const [showAllCars, setShowAllCars] = useState(false);
+  const [showAllExperiences, setShowAllExperiences] = useState(false);
+
   // Filter states for each category - dropdown filters with selected values
   const [flightActiveFilter, setFlightActiveFilter] = useState<string | null>(null);
   const [flightSelectedFilters, setFlightSelectedFilters] = useState<Record<string, string>>({});
@@ -203,17 +208,17 @@ export default function PackageBuildScreen({
       switch (category) {
         case 'flight': {
           const params: ProviderFlightParams = {
-            origin: { type: 'airport', value: tripSetup.origin?.code || 'JFK' },
-            destination: { type: 'airport', value: tripSetup.destination?.code || 'LAX' },
-            departureDate: depDate,
-            returnDate: retDate,
-            passengers: {
+            tripType: 'round_trip',
+            segments: [
+              { origin: tripSetup.origin?.code || 'JFK', destination: tripSetup.destination?.code || 'LAX', departureDate: depDate },
+              { origin: tripSetup.destination?.code || 'LAX', destination: tripSetup.origin?.code || 'JFK', departureDate: retDate },
+            ],
+            travelers: {
               adults: tripSetup.travelers.adults,
               children: tripSetup.travelers.children,
               infants: tripSetup.travelers.infants,
             },
-            cabinClass: 'economy',
-            tripType: 'round_trip',
+            cabinClass: 'economy' as any,
           };
           const result = await providerManagerService.searchFlights(params);
           const mapped = result.results.map((f: any) => ({
@@ -238,8 +243,8 @@ export default function PackageBuildScreen({
         case 'hotel': {
           const params: ProviderHotelParams = {
             destination: { type: 'city', value: tripSetup.destination?.name || tripSetup.destination?.code || 'New York' },
-            checkIn: depDate,
-            checkOut: retDate,
+            checkInDate: depDate,
+            checkOutDate: retDate,
             rooms: [{ adults: tripSetup.travelers.adults, children: tripSetup.travelers.children }],
           };
           const result = await providerManagerService.searchHotels(params);
@@ -521,7 +526,7 @@ export default function PackageBuildScreen({
         </View>
         
         {/* Hotel Cards */}
-        {hotelCardData.slice(0, 3).map((hotel, index) => (
+        {(showAllHotels ? hotelCardData : hotelCardData.slice(0, 3)).map((hotel, index) => (
           <HotelCard
             key={hotel.id}
             hotel={hotel}
@@ -533,17 +538,16 @@ export default function PackageBuildScreen({
           />
         ))}
 
-        {/* View All Button */}
         {hotelCardData.length > 3 && (
           <TouchableOpacity
             style={styles.viewAllButton}
-            onPress={() => {/* TODO: Open hotel selection sheet */}}
+            onPress={() => { setShowAllHotels(!showAllHotels); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
             activeOpacity={0.7}
           >
             <Text style={[styles.viewAllText, { color: tc.primary }]}>
-              View All {hotelCardData.length} Hotels
+              {showAllHotels ? 'Show Less' : `View All ${hotelCardData.length} Hotels`}
             </Text>
-            <ArrowRight2 size={18} color={tc.primary} />
+            <ArrowRight2 size={18} color={tc.primary} style={showAllHotels ? { transform: [{ rotate: '90deg' }] } : undefined} />
           </TouchableOpacity>
         )}
       </View>
@@ -594,7 +598,7 @@ export default function PackageBuildScreen({
         </View>
         
         {/* Car Cards */}
-        {carCardData.slice(0, 3).map((car, index) => (
+        {(showAllCars ? carCardData : carCardData.slice(0, 3)).map((car, index) => (
           <CarCard
             key={car.id}
             car={car}
@@ -606,17 +610,16 @@ export default function PackageBuildScreen({
           />
         ))}
 
-        {/* View All Button */}
         {carCardData.length > 3 && (
           <TouchableOpacity
             style={styles.viewAllButton}
-            onPress={() => {/* TODO: Open car selection sheet */}}
+            onPress={() => { setShowAllCars(!showAllCars); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
             activeOpacity={0.7}
           >
             <Text style={[styles.viewAllText, { color: tc.primary }]}>
-              View All {carCardData.length} Cars
+              {showAllCars ? 'Show Less' : `View All ${carCardData.length} Cars`}
             </Text>
-            <ArrowRight2 size={18} color={tc.primary} />
+            <ArrowRight2 size={18} color={tc.primary} style={showAllCars ? { transform: [{ rotate: '90deg' }] } : undefined} />
           </TouchableOpacity>
         )}
       </View>
@@ -654,7 +657,7 @@ export default function PackageBuildScreen({
         </View>
         
         {/* Experience Cards */}
-        {experienceCardData.slice(0, 3).map((experience, index) => (
+        {(showAllExperiences ? experienceCardData : experienceCardData.slice(0, 3)).map((experience, index) => (
           <ExperienceCard
             key={experience.id}
             experience={experience}
@@ -665,17 +668,16 @@ export default function PackageBuildScreen({
           />
         ))}
 
-        {/* View All Button */}
         {experienceCardData.length > 3 && (
           <TouchableOpacity
             style={styles.viewAllButton}
-            onPress={() => {/* TODO: Open experience selection sheet */}}
+            onPress={() => { setShowAllExperiences(!showAllExperiences); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
             activeOpacity={0.7}
           >
             <Text style={[styles.viewAllText, { color: tc.primary }]}>
-              View All {experienceCardData.length} Experiences
+              {showAllExperiences ? 'Show Less' : `View All ${experienceCardData.length} Experiences`}
             </Text>
-            <ArrowRight2 size={18} color={tc.primary} />
+            <ArrowRight2 size={18} color={tc.primary} style={showAllExperiences ? { transform: [{ rotate: '90deg' }] } : undefined} />
           </TouchableOpacity>
         )}
       </View>

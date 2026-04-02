@@ -1,74 +1,74 @@
 /**
  * TTS SERVICE
  *
- * Text-to-Speech using Google Cloud TTS (Neural2 voices) via the google-api-proxy
- * edge function. Falls back to expo-speech if the API call fails.
- * 
- * Google Neural2 voices sound natural and human-like, supporting 28+ languages
- * with male/female selection.
+ * Text-to-Speech using Gemini TTS (30 HD voices, 70+ languages).
+ * Falls back to expo-speech if the API call fails.
+ *
+ * Voice selection is by name (e.g. 'Kore', 'Puck', 'Sulafat') —
+ * persisted to AsyncStorage.
+ *
+ * Audio session uses playAndRecord category so TTS works alongside
+ * camera and speech recognition on iOS.
  */
 
 import * as Speech from 'expo-speech';
-import { Audio } from 'expo-av';
+import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DEFAULT_GEMINI_VOICE } from '../constants/translatorConfig';
 
-const VOICE_GENDER_KEY = '@guidera_tts_voice_gender';
+const VOICE_NAME_KEY = '@guidera_tts_voice_name';
 let _currentSound: Audio.Sound | null = null;
-
-// Language code to Google TTS locale mapping
-const LANG_TO_LOCALE: Record<string, string> = {
-  en: 'en-US', fr: 'fr-FR', es: 'es-ES', de: 'de-DE', it: 'it-IT',
-  pt: 'pt-BR', ja: 'ja-JP', ko: 'ko-KR', zh: 'zh-CN', hi: 'hi-IN',
-  ar: 'ar-XA', ru: 'ru-RU', nl: 'nl-NL', pl: 'pl-PL', sv: 'sv-SE',
-  tr: 'tr-TR', th: 'th-TH', vi: 'vi-VN', el: 'el-GR', id: 'id-ID',
-  da: 'da-DK', fi: 'fi-FI', nb: 'nb-NO', ms: 'id-ID', uk: 'ru-RU',
-  cs: 'de-DE', he: 'ar-XA',
-};
 
 export interface TTSOptions {
   language: string;
   rate?: number;
   pitch?: number;
-  voiceGender?: 'MALE' | 'FEMALE';
+  voiceName?: string;
+  onStart?: () => void;
   onDone?: () => void;
   onError?: (error: any) => void;
 }
 
-/**
- * Get user's preferred voice gender (persisted to AsyncStorage).
- */
-export async function getVoiceGender(): Promise<'MALE' | 'FEMALE'> {
+export async function getVoiceName(): Promise<string> {
   try {
-    const saved = await AsyncStorage.getItem(VOICE_GENDER_KEY);
-    if (saved === 'MALE' || saved === 'FEMALE') return saved;
+    const saved = await AsyncStorage.getItem(VOICE_NAME_KEY);
+    if (saved) return saved;
   } catch {}
-  return 'FEMALE'; // Default
+  return DEFAULT_GEMINI_VOICE;
 }
 
-/**
- * Set user's preferred voice gender.
- */
-export async function setVoiceGender(gender: 'MALE' | 'FEMALE'): Promise<void> {
+export async function setVoiceName(voiceName: string): Promise<void> {
   try {
-    await AsyncStorage.setItem(VOICE_GENDER_KEY, gender);
+    await AsyncStorage.setItem(VOICE_NAME_KEY, voiceName);
   } catch {}
 }
 
 /**
- * Speak text using Google Cloud TTS (natural Neural2 voices).
- * Falls back to expo-speech if the API call fails.
+ * Configure audio session for playback alongside recording (camera/mic).
+ * Uses playAndRecord category so audio comes out of the speaker
+ * even when the camera or speech recognition is active.
  */
+async function configureAudioSession(): Promise<void> {
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,  // false → routes to main speaker; true → earpiece
+    playsInSilentModeIOS: true,
+    staysActiveInBackground: false,
+    interruptionModeIOS: InterruptionModeIOS.DuckOthers,
+    shouldDuckAndroid: true,
+    interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+    playThroughEarpieceAndroid: false,
+  });
+}
+
 export async function speak(text: string, options: TTSOptions): Promise<void> {
   if (!text.trim()) return;
 
   await stopSpeaking();
 
-  const gender = options.voiceGender || await getVoiceGender();
-  const locale = LANG_TO_LOCALE[options.language] || `${options.language}-${options.language.toUpperCase()}`;
+  const voiceName = options.voiceName || await getVoiceName();
 
   try {
-    // Call dedicated TTS edge function (OpenAI primary, ElevenLabs fallback)
     const response = await fetch(`${supabaseUrl}/functions/v1/tts`, {
       method: 'POST',
       headers: {
@@ -78,29 +78,31 @@ export async function speak(text: string, options: TTSOptions): Promise<void> {
       },
       body: JSON.stringify({
         text,
-        language: locale,
-        voiceGender: gender,
-        speed: options.rate ?? 1.0,
+        voiceName,
+        language: options.language,
       }),
     });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`TTS HTTP ${response.status}: ${errText}`);
+    }
 
     const data = await response.json();
 
     if (data.audioContent) {
-      // Play the MP3 audio using expo-av
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true, // This overrides the silent mode switch!
-        staysActiveInBackground: false,
-        shouldDuckAndroid: true,
-      });
+      await configureAudioSession();
 
+      const audioFormat = data.audioFormat === 'wav' ? 'audio/wav' : 'audio/mp3';
       const { sound } = await Audio.Sound.createAsync(
-        { uri: `data:audio/mp3;base64,${data.audioContent}` },
-        { shouldPlay: true, volume: 1.0, rate: options.rate ?? 1.0 },
+        { uri: `data:${audioFormat};base64,${data.audioContent}` },
+        { shouldPlay: true, volume: 1.0 },
       );
 
       _currentSound = sound;
+
+      // Fire onStart immediately when sound starts playing
+      options.onStart?.();
 
       sound.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded && status.didJustFinish) {
@@ -113,11 +115,9 @@ export async function speak(text: string, options: TTSOptions): Promise<void> {
       return;
     }
 
-    // If API returned an error, fall through to expo-speech fallback
     throw new Error(data.error || 'No audio returned');
   } catch (err) {
-    // Fallback to expo-speech (robotic but works offline)
-    if (__DEV__) console.warn('[TTS] Google Cloud TTS failed, falling back to expo-speech:', err);
+    if (__DEV__) console.warn('[TTS] Gemini TTS failed, falling back to expo-speech:', err);
 
     return new Promise<void>((resolve, reject) => {
       try {
@@ -126,6 +126,7 @@ export async function speak(text: string, options: TTSOptions): Promise<void> {
           rate: options.rate ?? 0.9,
           pitch: options.pitch ?? 1.0,
           volume: 1.0,
+          onStart: () => { options.onStart?.(); },
           onDone: () => { options.onDone?.(); resolve(); },
           onError: (error) => { options.onError?.(error); reject(error); },
           onStopped: () => resolve(),
@@ -138,11 +139,7 @@ export async function speak(text: string, options: TTSOptions): Promise<void> {
   }
 }
 
-/**
- * Stop any currently playing speech.
- */
 export async function stopSpeaking(): Promise<void> {
-  // Stop Google Cloud TTS audio
   if (_currentSound) {
     try {
       await _currentSound.stopAsync();
@@ -150,16 +147,12 @@ export async function stopSpeaking(): Promise<void> {
     } catch {}
     _currentSound = null;
   }
-  // Also stop expo-speech fallback
   try {
     const speaking = await Speech.isSpeakingAsync();
     if (speaking) Speech.stop();
   } catch {}
 }
 
-/**
- * Check if TTS is currently speaking.
- */
 export async function isSpeaking(): Promise<boolean> {
   if (_currentSound) {
     try {

@@ -603,7 +603,7 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
       </Animated.ScrollView>
 
       <Animated.View style={[styles.header, { paddingTop: insets.top + 8 }, headerAnimatedStyle]}>
-        <CircleButton icon={<ArrowLeft2 size={24} color={colors.textPrimary} />} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back" />
+        <CircleButton icon={<ArrowLeft2 size={24} color={colors.textPrimary} />} onPress={() => router.back()} />
         <View style={styles.spacer} />
         {/* Menu removed — trip status managed automatically by the system */}
         <View style={{ width: 40 }} />

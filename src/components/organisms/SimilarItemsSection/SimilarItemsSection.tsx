@@ -5,12 +5,13 @@
  * Universal component used across all detail types
  */
 
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Location, Star1 } from 'iconsax-react-native';
 import { typography, spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import * as Haptics from 'expo-haptics';
+import CachedImage from '@/components/common/CachedImage';
 
 interface SimilarItem {
   id: string;
@@ -46,7 +47,7 @@ export default function SimilarItemsSection({
       onPress={() => handleItemPress(item.id)}
       activeOpacity={0.8}
     >
-      <Image source={{ uri: item.image }} style={[styles.image, { backgroundColor: colors.gray200 }]} />
+      <CachedImage uri={item.image} style={[styles.image, { backgroundColor: colors.gray200 }]} />
       
       <View style={styles.content}>
         <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{item.name}</Text>

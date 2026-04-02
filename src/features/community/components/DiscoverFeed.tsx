@@ -6,7 +6,7 @@
  * Shows trending groups, travelers, events, and popular destinations.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Discover } from 'iconsax-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -258,10 +258,22 @@ export default function DiscoverFeed({
     }
   }, [userId]);
 
+  const hasLoadedOnce = useRef(false);
+
   // Initial load
   useEffect(() => {
     fetchAllData().finally(() => setInitialLoading(false));
+    hasLoadedOnce.current = true;
   }, [fetchAllData]);
+
+  // Re-fetch membership state when screen regains focus (e.g. after joining from detail)
+  useFocusEffect(
+    useCallback(() => {
+      if (hasLoadedOnce.current) {
+        fetchAllData();
+      }
+    }, [fetchAllData])
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);

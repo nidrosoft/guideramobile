@@ -154,7 +154,6 @@ export default function ReportIssueScreen() {
     setIsSubmitting(true);
 
     try {
-      // Create issue report in database
       const { error } = await supabase.from('issue_reports').insert({
         user_id: profile?.id,
         category: selectedCategory,
@@ -166,6 +165,8 @@ export default function ReportIssueScreen() {
         device_info: {
           platform: Platform.OS,
           version: Platform.Version,
+          user_name: [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || undefined,
+          user_location: profile?.location_name || [profile?.city, profile?.country].filter(Boolean).join(', ') || undefined,
         },
         user_email: profile?.email,
       });
@@ -345,33 +346,68 @@ export default function ReportIssueScreen() {
     </>
   );
 
-  const renderSuccess = () => (
-    <View style={styles.successSection}>
-      <View style={styles.successIcon}>
-        <TickCircle size={64} color={tc.success} variant="Bold" />
-      </View>
-      <Text style={[styles.successTitle, { color: tc.textPrimary }]}>Report Submitted!</Text>
-      <Text style={[styles.successText, { color: tc.textSecondary }]}>
-        Thank you for reporting this issue. Our team will review it and get back to you 
-        within 24-48 hours if we need more information.
-      </Text>
-      
-      <View style={[styles.successInfo, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.gray50 }]}>
-        <Text style={[styles.successInfoLabel, { color: tc.textPrimary }]}>What happens next?</Text>
-        <Text style={[styles.successInfoItem, { color: tc.textSecondary }]}>• Our team will investigate the issue</Text>
-        <Text style={[styles.successInfoItem, { color: tc.textSecondary }]}>• You'll receive updates via email</Text>
-        <Text style={[styles.successInfoItem, { color: tc.textSecondary }]}>• We may reach out for more details</Text>
-      </View>
+  const renderSuccess = () => {
+    const categoryLabel = ISSUE_CATEGORIES.find(c => c.id === selectedCategory)?.label || 'Issue';
+    const userName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ');
 
-      <TouchableOpacity
-        style={[styles.doneButton, { backgroundColor: tc.primary }]}
-        onPress={handleDone}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.doneButtonText}>Done</Text>
-      </TouchableOpacity>
-    </View>
-  );
+    return (
+      <View style={styles.successSection}>
+        <View style={[styles.successIconCircle, { backgroundColor: tc.success + '15' }]}>
+          <TickCircle size={48} color={tc.success} variant="Bold" />
+        </View>
+
+        <Text style={[styles.successTitle, { color: tc.textPrimary }]}>
+          {userName ? `Thank you, ${profile?.first_name}!` : 'Thank you!'}
+        </Text>
+        <Text style={[styles.successSubtitle, { color: tc.textSecondary }]}>
+          Your report has been received and our team has been notified. We take every report seriously and will look into this promptly.
+        </Text>
+
+        <View style={[styles.successSummaryCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+          <View style={styles.successSummaryRow}>
+            <Text style={[styles.successSummaryLabel, { color: tc.textTertiary }]}>Category</Text>
+            <Text style={[styles.successSummaryValue, { color: tc.textPrimary }]}>{categoryLabel}</Text>
+          </View>
+          <View style={[styles.successDivider, { backgroundColor: tc.borderSubtle }]} />
+          <View style={styles.successSummaryRow}>
+            <Text style={[styles.successSummaryLabel, { color: tc.textTertiary }]}>Priority</Text>
+            <View style={[styles.successPriorityBadge, { backgroundColor: (PRIORITY_LEVELS.find(l => l.id === priority)?.color || tc.warning) + '15' }]}>
+              <View style={[styles.successPriorityDot, { backgroundColor: PRIORITY_LEVELS.find(l => l.id === priority)?.color || tc.warning }]} />
+              <Text style={[styles.successPriorityText, { color: PRIORITY_LEVELS.find(l => l.id === priority)?.color || tc.warning }]}>
+                {priority.charAt(0).toUpperCase() + priority.slice(1)}
+              </Text>
+            </View>
+          </View>
+          {profile?.email && (
+            <>
+              <View style={[styles.successDivider, { backgroundColor: tc.borderSubtle }]} />
+              <View style={styles.successSummaryRow}>
+                <Text style={[styles.successSummaryLabel, { color: tc.textTertiary }]}>Confirmation sent to</Text>
+                <Text style={[styles.successSummaryValue, { color: tc.textPrimary }]} numberOfLines={1}>{profile.email}</Text>
+              </View>
+            </>
+          )}
+        </View>
+
+        <View style={[styles.successNextCard, { backgroundColor: tc.primary + '08', borderColor: tc.primary + '20' }]}>
+          <Text style={[styles.successNextTitle, { color: tc.primary }]}>What happens next?</Text>
+          <View style={styles.successNextItem}>
+            <Text style={[styles.successNextBullet, { color: tc.primary }]}>1</Text>
+            <Text style={[styles.successNextText, { color: tc.textSecondary }]}>Our team will review and investigate your report</Text>
+          </View>
+          <View style={styles.successNextItem}>
+            <Text style={[styles.successNextBullet, { color: tc.primary }]}>2</Text>
+            <Text style={[styles.successNextText, { color: tc.textSecondary }]}>You'll receive a confirmation and updates via email</Text>
+          </View>
+          <View style={styles.successNextItem}>
+            <Text style={[styles.successNextBullet, { color: tc.primary }]}>3</Text>
+            <Text style={[styles.successNextText, { color: tc.textSecondary }]}>We may reach out if we need more details</Text>
+          </View>
+        </View>
+
+      </View>
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
@@ -386,21 +422,41 @@ export default function ReportIssueScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      <KeyboardAvoidingView 
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView 
-          style={styles.content}
-          contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + spacing.xl }]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+      {step === 'success' ? (
+        <>
+          <ScrollView 
+            style={styles.content}
+            contentContainerStyle={[styles.contentContainer, { paddingBottom: spacing.lg }]}
+            showsVerticalScrollIndicator={false}
+          >
+            {renderSuccess()}
+          </ScrollView>
+          <View style={[styles.doneButtonContainer, { paddingBottom: insets.bottom + spacing.lg, backgroundColor: tc.background, borderTopColor: tc.borderSubtle }]}>
+            <TouchableOpacity
+              style={[styles.doneButton, { backgroundColor: tc.primary }]}
+              onPress={handleDone}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      ) : (
+        <KeyboardAvoidingView 
+          style={styles.keyboardView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          {step === 'category' && renderCategorySelection()}
-          {step === 'details' && renderDetailsForm()}
-          {step === 'success' && renderSuccess()}
-        </ScrollView>
-      </KeyboardAvoidingView>
+          <ScrollView 
+            style={styles.content}
+            contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + spacing.xl }]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {step === 'category' && renderCategorySelection()}
+            {step === 'details' && renderDetailsForm()}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      )}
     </View>
   );
 }
@@ -625,46 +681,123 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   successSection: {
+    flex: 1,
     alignItems: 'center',
-    paddingTop: spacing.xl,
+    paddingTop: spacing['3xl'],
   },
-  successIcon: {
-    marginBottom: spacing.lg,
+  successIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.xl,
   },
   successTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
+    fontSize: 22,
+    fontFamily: 'Rubik-Bold',
     color: colors.textPrimary,
     marginBottom: spacing.sm,
+    textAlign: 'center',
   },
-  successText: {
+  successSubtitle: {
     fontSize: typography.fontSize.sm,
+    fontFamily: 'Rubik-Regular',
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: spacing.xl,
+    marginBottom: spacing['2xl'],
+    paddingHorizontal: spacing.sm,
   },
-  successInfo: {
-    backgroundColor: colors.gray50,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
+  successSummaryCard: {
     width: '100%',
-    marginBottom: spacing.xl,
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
   },
-  successInfoLabel: {
+  successSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  successSummaryLabel: {
     fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
+    fontFamily: 'Rubik-Regular',
+  },
+  successSummaryValue: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: 'Rubik-Medium',
+    flexShrink: 1,
+    textAlign: 'right',
+    maxWidth: '60%',
+  },
+  successDivider: {
+    height: 1,
+    marginVertical: spacing.sm,
+  },
+  successPriorityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    gap: 6,
+  },
+  successPriorityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  successPriorityText: {
+    fontSize: typography.fontSize.xs,
+    fontFamily: 'Rubik-SemiBold',
+    textTransform: 'capitalize',
+  },
+  successNextCard: {
+    width: '100%',
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    padding: spacing.lg,
+    marginBottom: spacing['2xl'],
+  },
+  successNextTitle: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: 'Rubik-SemiBold',
+    marginBottom: spacing.md,
+  },
+  successNextItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     marginBottom: spacing.sm,
+    gap: spacing.md,
   },
-  successInfoItem: {
+  successNextBullet: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    textAlign: 'center',
+    lineHeight: 22,
+    fontSize: typography.fontSize.xs,
+    fontFamily: 'Rubik-Bold',
+    overflow: 'hidden',
+  },
+  successNextText: {
+    flex: 1,
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: 24,
+    fontFamily: 'Rubik-Regular',
+    lineHeight: 22,
+  },
+  doneButtonContainer: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSubtle,
   },
   doneButton: {
     backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.full,
     height: 52,
     justifyContent: 'center',
     alignItems: 'center',
@@ -672,7 +805,7 @@ const styles = StyleSheet.create({
   },
   doneButtonText: {
     fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
+    fontFamily: 'Rubik-SemiBold',
     color: colors.white,
   },
 });

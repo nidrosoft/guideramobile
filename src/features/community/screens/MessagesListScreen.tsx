@@ -82,7 +82,7 @@ export default function MessagesListScreen() {
       }));
 
       const groupMapped: Conversation[] = groupChats.map(g => ({
-        id: g.id,
+        id: g.referenceId,
         type: 'group' as const,
         name: g.name,
         avatar: '',
@@ -116,9 +116,10 @@ export default function MessagesListScreen() {
     fetchConversations();
   }, [fetchConversations]);
 
-  // Realtime: refresh conversation list when new messages arrive
+  // Realtime: refresh conversation list when new messages arrive (H7: debounced)
   useEffect(() => {
     if (!profile?.id) return;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const channel = supabase
       .channel('messages-list-live')
       .on('postgres_changes', {
@@ -126,11 +127,15 @@ export default function MessagesListScreen() {
         schema: 'public',
         table: 'chat_messages',
       }, () => {
-        // Re-fetch the full conversation list to get updated previews + counts
-        fetchConversations();
+        // Debounce to prevent excessive refetching when messages come in bursts
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => fetchConversations(), 1500);
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      supabase.removeChannel(channel);
+    };
   }, [profile?.id, fetchConversations]);
   
   const onRefresh = useCallback(async () => {
@@ -170,6 +175,7 @@ export default function MessagesListScreen() {
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     
+    if (minutes < 1) return 'now';
     if (minutes < 60) return `${minutes}m`;
     if (hours < 24) return `${hours}h`;
     if (days === 1) return 'Yesterday';

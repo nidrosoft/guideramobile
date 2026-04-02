@@ -18,6 +18,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -50,7 +51,9 @@ interface GroupFormData {
   type: CommunityType;
   privacy: CommunityPrivacy;
   coverImage: string | null;
+  coverImageBase64: string | null;
   avatar: string | null;
+  avatarBase64: string | null;
   destination: string;
   tags: string[];
 }
@@ -89,7 +92,9 @@ export default function CreateGroupScreen() {
     type: 'destination',
     privacy: 'public',
     coverImage: null,
+    coverImageBase64: null,
     avatar: null,
+    avatarBase64: null,
     destination: '',
     tags: [],
   });
@@ -119,21 +124,34 @@ export default function CreateGroupScreen() {
     }
   };
   
-  const uploadImage = async (localUri: string, folder: string): Promise<string | undefined> => {
+  const uploadImage = async (base64Data: string, folder: string, fileExt: string = 'jpg'): Promise<string | undefined> => {
     try {
-      const ext = localUri.split('.').pop() || 'jpg';
-      const path = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
-      const response = await fetch(localUri);
-      const blob = await response.blob();
+      const mimeType = fileExt === 'png' ? 'image/png' : fileExt === 'gif' ? 'image/gif' : 'image/jpeg';
+      const path = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      if (__DEV__) console.log(`[CreateGroup] uploading ${path}: ${bytes.length} bytes`);
+
       const { error: uploadErr } = await supabase.storage
         .from('community')
-        .upload(path, blob, { contentType: `image/${ext}`, upsert: true });
-      if (!uploadErr) {
-        const { data: publicUrl } = supabase.storage.from('community').getPublicUrl(path);
-        return publicUrl.publicUrl;
+        .upload(path, bytes, { contentType: mimeType, upsert: true });
+
+      if (uploadErr) {
+        if (__DEV__) console.warn('[CreateGroup] upload error:', uploadErr);
+        return undefined;
       }
-    } catch { /* non-critical */ }
-    return undefined;
+      const { data: publicUrl } = supabase.storage.from('community').getPublicUrl(path);
+      if (__DEV__) console.log('[CreateGroup] upload success:', publicUrl.publicUrl);
+      return publicUrl.publicUrl;
+    } catch (err) {
+      if (__DEV__) console.warn('[CreateGroup] upload exception:', err);
+      return undefined;
+    }
   };
 
   const handleSubmit = async () => {
@@ -147,14 +165,15 @@ export default function CreateGroupScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     
     try {
-      // Upload images to Supabase Storage
       let coverPhotoUrl: string | undefined;
       let groupPhotoUrl: string | undefined;
-      if (formData.coverImage) {
-        coverPhotoUrl = await uploadImage(formData.coverImage, 'group-covers');
+      if (formData.coverImageBase64) {
+        const ext = formData.coverImage?.split('.').pop()?.toLowerCase() || 'jpg';
+        coverPhotoUrl = await uploadImage(formData.coverImageBase64, 'group-covers', ext);
       }
-      if (formData.avatar) {
-        groupPhotoUrl = await uploadImage(formData.avatar, 'group-avatars');
+      if (formData.avatarBase64) {
+        const ext = formData.avatar?.split('.').pop()?.toLowerCase() || 'jpg';
+        groupPhotoUrl = await uploadImage(formData.avatarBase64, 'group-avatars', ext);
       }
 
       const privacyMap: Record<string, 'public' | 'private'> = {
@@ -197,13 +216,16 @@ export default function CreateGroupScreen() {
       allowsEditing: true,
       aspect: type === 'cover' ? [16, 9] : [1, 1],
       quality: 0.8,
+      base64: true,
     });
     
     if (!result.canceled && result.assets[0]) {
-      setFormData(prev => ({
-        ...prev,
-        [type === 'cover' ? 'coverImage' : 'avatar']: result.assets[0].uri,
-      }));
+      const asset = result.assets[0];
+      if (type === 'cover') {
+        setFormData(prev => ({ ...prev, coverImage: asset.uri, coverImageBase64: asset.base64 || null }));
+      } else {
+        setFormData(prev => ({ ...prev, avatar: asset.uri, avatarBase64: asset.base64 || null }));
+      }
     }
   };
   

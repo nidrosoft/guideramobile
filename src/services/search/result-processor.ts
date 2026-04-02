@@ -230,8 +230,8 @@ function calculateSimilarity(a: UnifiedResult, b: UnifiedResult, category: Searc
   }
 
   // Type-specific similarity
-  const aData = a as Record<string, unknown>;
-  const bData = b as Record<string, unknown>;
+  const aData = a as unknown as Record<string, unknown>;
+  const bData = b as unknown as Record<string, unknown>;
 
   if (category === 'flights') {
     // Same flight numbers
@@ -339,7 +339,7 @@ function calculatePriceScore(result: UnifiedResult, allResults: UnifiedResult[])
 // Calculate quality score
 function calculateQualityScore(result: UnifiedResult): number {
   let score = 50;
-  const data = result as Record<string, unknown>;
+  const data = result as unknown as Record<string, unknown>;
 
   // Star rating (hotels)
   if (typeof data.starRating === 'number') {
@@ -362,7 +362,7 @@ function calculateQualityScore(result: UnifiedResult): number {
 // Calculate relevance score
 function calculateRelevanceScore(result: UnifiedResult, query: EnrichedQuery): number {
   let score = 50;
-  const data = result as Record<string, unknown>;
+  const data = result as unknown as Record<string, unknown>;
 
   // Flight relevance
   if (result.type === 'flight') {
@@ -393,7 +393,7 @@ function calculatePersonalizationScore(
   if (!preferences) return 50;
 
   let score = 50;
-  const data = result as Record<string, unknown>;
+  const data = result as unknown as Record<string, unknown>;
 
   // Budget alignment
   if (preferences.budgetLevel) {
@@ -416,7 +416,7 @@ function calculatePersonalizationScore(
 
 // Calculate freshness score (how recent the data is)
 function calculateFreshnessScore(result: UnifiedResult): number {
-  const data = result as Record<string, unknown>;
+  const data = result as unknown as Record<string, unknown>;
   const retrievedAt = data.retrievedAt as string | undefined;
 
   if (!retrievedAt) return 50;

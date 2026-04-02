@@ -69,6 +69,20 @@ export default function NotificationsScreen() {
   };
 
   const getCategoryIcon = (typeCode: string) => {
+    // Pulse activity-specific icons
+    if (typeCode === 'activity_join')
+      return <People size={20} color={tc.success} variant="Bold" />;
+    if (typeCode === 'activity_leave')
+      return <People size={20} color={tc.warning} variant="Bold" />;
+    if (typeCode === 'activity_cancel')
+      return <CloseCircle size={20} color={tc.error} variant="Bold" />;
+    if (typeCode === 'activity_comment')
+      return <MessageText size={20} color={tc.primary} variant="Bold" />;
+    if (typeCode === 'activity_update')
+      return <Calendar size={20} color={tc.info} variant="Bold" />;
+    if (typeCode === 'activity_milestone')
+      return <Notification size={20} color={tc.success} variant="Bold" />;
+    // Generic icon matching
     if (typeCode.includes('message') || typeCode.includes('chat'))
       return <MessageText size={20} color={tc.primary} variant="Bold" />;
     if (typeCode.includes('join_request') || typeCode.includes('request'))

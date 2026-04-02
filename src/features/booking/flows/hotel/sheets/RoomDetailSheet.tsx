@@ -86,8 +86,8 @@ export default function RoomDetailSheet({
             
             <View style={styles.detailsRow}>
               <View style={styles.detail}>
-                <People size={18} color={colors.textSecondary} />
-                <Text style={styles.detailText}>Up to {room.maxOccupancy} guests</Text>
+                <People size={18} color={colors.textSecondary as string} />
+                <Text style={styles.detailText}>Up to {typeof room.maxOccupancy === 'number' ? room.maxOccupancy : room.maxOccupancy?.total ?? room.maxAdults} guests</Text>
               </View>
               <View style={styles.detail}>
                 <Maximize size={18} color={colors.textSecondary} />

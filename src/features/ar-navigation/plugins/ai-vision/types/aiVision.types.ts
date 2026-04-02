@@ -6,7 +6,7 @@
  */
 
 // ─── Mode Types ───────────────────────────────────────────────
-export type VisionMode = 'live' | 'snapshot' | 'menu-scan' | 'order-builder';
+export type VisionMode = 'live' | 'snapshot' | 'menu-scan' | 'order-builder' | 'interpreter';
 
 // ─── Language Types ───────────────────────────────────────────
 export interface LanguageOption {
@@ -113,6 +113,7 @@ export interface OrderBuilderState {
   generatedOrder: GeneratedOrder | null;
   isGenerating: boolean;
   isPlaying: boolean;
+  isLoadingAudio: boolean;
   error: string | null;
 }
 
@@ -122,7 +123,20 @@ export interface SnapshotResult {
   ocrResult: OCRResult;
   translation: TranslationResult;
   isMenuDetected: boolean;
-  geminiContext?: string; // for follow-up questions
+  geminiContext?: string;
+}
+
+/**
+ * Result from the unified Gemini translate-snapshot action.
+ * Replaces the separate OCR → Translation chain with a single API call.
+ */
+export interface SnapshotTranslationResult {
+  originalText: string;
+  translatedText: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  isMenu: boolean;
+  timestamp: number;
 }
 
 // ─── Frame Diff Types ─────────────────────────────────────────

@@ -5,7 +5,7 @@
  * Tabs: Feed | Members | Events | About
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,18 +18,22 @@ import {
   Alert,
   ActionSheetIOS,
   Platform,
+  Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import {
   Edit2,
   People,
   Calendar,
   InfoCircle,
+  ExportSquare,
+  Warning2,
+  CloseCircle,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { spacing, typography, borderRadius } from '@/styles';
+import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -93,6 +97,7 @@ export default function CommunityDetailScreen() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [members, setMembers] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
+  const [menuVisible, setMenuVisible] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [group, setGroup] = useState({
@@ -102,12 +107,12 @@ export default function CommunityDetailScreen() {
     coverImage: '',
     avatar: '',
     bannerImage: '',
-    privacy: 'public' as const,
+    privacy: 'public' as 'public' | 'private' | 'invite_only',
     isVerified: false,
     memberCount: 0,
     activeCount: 0,
     isMember: false,
-    myRole: 'member' as const,
+    myRole: 'member' as 'owner' | 'admin' | 'moderator' | 'member',
     postingRule: 'anyone' as const,
     tags: [] as string[],
     guidelines: [] as string[],
@@ -130,6 +135,20 @@ export default function CommunityDetailScreen() {
         if (cancelled) return;
 
         if (groupData) {
+          let isMember = false;
+          let myRole: 'owner' | 'admin' | 'moderator' | 'member' = 'member';
+
+          if (profile?.id) {
+            try {
+              const userGroups = await groupService.getUserGroups(profile.id);
+              const match = userGroups.find(ug => ug.group.id === groupData.id);
+              if (match) {
+                isMember = true;
+                myRole = match.role as typeof myRole;
+              }
+            } catch { /* membership check failed — treat as non-member */ }
+          }
+
           setGroup({
             id: groupData.id,
             name: groupData.name,
@@ -141,8 +160,8 @@ export default function CommunityDetailScreen() {
             isVerified: groupData.isVerified,
             memberCount: groupData.memberCount,
             activeCount: groupData.activeMemberCount,
-            isMember: true,
-            myRole: 'member',
+            isMember,
+            myRole,
             postingRule: groupData.whoCanPost === 'anyone' ? 'anyone' : 'admins_only' as any,
             tags: groupData.tags || [],
             guidelines: [],
@@ -162,7 +181,7 @@ export default function CommunityDetailScreen() {
             ]);
             feedPosts = feedPosts.map(p => ({
               ...p,
-              myReaction: (reactionsMap[p.id]) || null,
+              myReaction: (reactionsMap[p.id] as any) || null,
               isSaved: savedIds.has(p.id),
             }));
           } catch { /* non-critical — posts still show without user state */ }
@@ -192,6 +211,51 @@ export default function CommunityDetailScreen() {
     return () => { cancelled = true; };
   }, [id]);
 
+  const hasLoadedOnce = useRef(false);
+  useEffect(() => { if (!loading) hasLoadedOnce.current = true; }, [loading]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasLoadedOnce.current || !id) return;
+      (async () => {
+        try {
+          const [groupData, postsData] = await Promise.all([
+            groupService.getGroup(id),
+            postService.getPosts({ communityId: id }),
+          ]);
+          if (groupData) {
+            setGroup(prev => ({
+              ...prev,
+              name: groupData.name,
+              description: groupData.description || '',
+              coverImage: groupData.coverPhotoUrl || '',
+              avatar: groupData.groupPhotoUrl || '',
+              bannerImage: groupData.coverPhotoUrl || '',
+              memberCount: groupData.memberCount,
+              activeCount: groupData.activeMemberCount,
+            }));
+          }
+          let feedPosts = postsData.map(mapServicePostToFeedPost);
+          if (profile?.id && feedPosts.length > 0) {
+            try {
+              const postIds = feedPosts.map(p => p.id);
+              const [reactionsMap, savedIds] = await Promise.all([
+                postService.getUserReactions(profile.id, postIds),
+                postService.getUserSavedPostIds(profile.id, postIds),
+              ]);
+              feedPosts = feedPosts.map(p => ({
+                ...p,
+                myReaction: (reactionsMap[p.id] as any) || null,
+                isSaved: savedIds.has(p.id),
+              }));
+            } catch { /* non-critical */ }
+          }
+          setPosts(feedPosts);
+        } catch { /* silent refresh */ }
+      })();
+    }, [id, profile?.id])
+  );
+
   const handleBack = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.back();
@@ -202,23 +266,40 @@ export default function CommunityDetailScreen() {
     if (!profile?.id || !id) return;
     try {
       if (group.isMember) {
+        if (group.myRole === 'owner') {
+          showError('Owners cannot leave their group. Transfer ownership first.');
+          return;
+        }
         await groupService.leaveGroup(profile.id, id);
-        setGroup(prev => ({ ...prev, isMember: false, memberCount: Math.max(0, prev.memberCount - 1) }));
+        setGroup(prev => ({ ...prev, isMember: false, myRole: 'member', memberCount: Math.max(0, prev.memberCount - 1) }));
         showSuccess(`Left ${group.name}`);
       } else {
         const result = await groupService.joinGroup(profile.id, id);
         if (result.status === 'joined') {
-          setGroup(prev => ({ ...prev, isMember: true, memberCount: prev.memberCount + 1 }));
+          setGroup(prev => ({ ...prev, isMember: true, myRole: 'member', memberCount: prev.memberCount + 1 }));
           showSuccess(`Joined ${group.name}!`);
         } else {
           showInfo('Join request sent!');
         }
       }
-    } catch (err) {
-      showError('Could not update membership');
+    } catch (err: any) {
+      const message = err?.message || '';
+      if (message.includes('Already a member')) {
+        setGroup(prev => ({ ...prev, isMember: true }));
+        showInfo('You are already a member of this group.');
+      } else if (message.includes('Owner cannot leave')) {
+        showError('Owners cannot leave. Transfer ownership first.');
+      } else {
+        showError('Could not update membership');
+      }
       if (__DEV__) console.warn('Join/leave error:', err);
     }
-  }, [profile?.id, id, group.isMember]);
+  }, [profile?.id, id, group.isMember, group.myRole]);
+
+  const handleMore = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setMenuVisible(true);
+  }, []);
 
   const handleShare = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -428,12 +509,22 @@ export default function CommunityDetailScreen() {
         memberCount={group.memberCount}
         activeCount={group.activeCount}
         isMember={group.isMember}
+        myRole={group.myRole}
         paddingTop={insets.top}
         onBack={handleBack}
-        onMore={() => {}}
+        onMore={handleMore}
         onJoin={handleJoin}
         onShare={handleShare}
       />
+
+      {/* Description */}
+      {group.description ? (
+        <View style={[styles.descriptionSection, { backgroundColor: tc.background, borderBottomColor: tc.borderSubtle }]}>
+          <Text style={[styles.descriptionText, { color: tc.textSecondary }]} numberOfLines={3}>
+            {group.description}
+          </Text>
+        </View>
+      ) : null}
 
       {/* Tab Bar */}
       <View style={[styles.tabBar, { backgroundColor: tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
@@ -472,6 +563,74 @@ export default function CommunityDetailScreen() {
       <View style={styles.tabContentWrapper}>
         {renderTabContent()}
       </View>
+
+      {/* Group Menu Bottom Sheet */}
+      <Modal visible={menuVisible} transparent animationType="slide" onRequestClose={() => setMenuVisible(false)} statusBarTranslucent>
+        <TouchableOpacity style={styles.bsOverlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
+          <View
+            style={[styles.bsSheet, { backgroundColor: tc.bgElevated, paddingBottom: insets.bottom + spacing.md }]}
+            onStartShouldSetResponder={() => true}
+          >
+            <View style={styles.bsHandleRow}>
+              <View style={[styles.bsHandle, { backgroundColor: tc.borderSubtle }]} />
+            </View>
+
+            {(group.myRole === 'owner' || group.myRole === 'admin') && (
+              <TouchableOpacity
+                style={[styles.bsOption]}
+                activeOpacity={0.7}
+                onPress={() => {
+                  setMenuVisible(false);
+                  router.push({ pathname: '/community/edit-group', params: { groupId: group.id } });
+                }}
+              >
+                <Edit2 size={20} color={tc.textPrimary} />
+                <View style={styles.bsOptionText}>
+                  <Text style={[styles.bsOptionTitle, { color: tc.textPrimary }]}>Edit Group</Text>
+                  <Text style={[styles.bsOptionSub, { color: tc.textTertiary }]}>Update name, photos & description</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.bsOption]}
+              activeOpacity={0.7}
+              onPress={() => { setMenuVisible(false); handleShare(); }}
+            >
+              <ExportSquare size={20} color={tc.textPrimary} />
+              <View style={styles.bsOptionText}>
+                <Text style={[styles.bsOptionTitle, { color: tc.textPrimary }]}>Share Group</Text>
+                <Text style={[styles.bsOptionSub, { color: tc.textTertiary }]}>Invite others to join</Text>
+              </View>
+            </TouchableOpacity>
+
+            {group.myRole !== 'owner' && group.myRole !== 'admin' && (
+              <TouchableOpacity
+                style={[styles.bsOption]}
+                activeOpacity={0.7}
+                onPress={() => {
+                  setMenuVisible(false);
+                  router.push(`/community/report?type=group&id=${group.id}`);
+                }}
+              >
+                <Warning2 size={20} color={tc.error} />
+                <View style={styles.bsOptionText}>
+                  <Text style={[styles.bsOptionTitle, { color: tc.error }]}>Report Group</Text>
+                  <Text style={[styles.bsOptionSub, { color: tc.textTertiary }]}>Flag inappropriate content</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.bsCancelBtn, { backgroundColor: tc.bgCard }]}
+              activeOpacity={0.8}
+              onPress={() => setMenuVisible(false)}
+            >
+              <Text style={[styles.bsCancelText, { color: tc.textPrimary }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -479,6 +638,16 @@ export default function CommunityDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  descriptionSection: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+  },
+  descriptionText: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: 'Rubik-Regular',
   },
   tabBar: {
     flexDirection: 'row',
@@ -518,5 +687,52 @@ const styles = StyleSheet.create({
   emptyText: {
     ...typography.bodySm,
     marginTop: spacing.xs,
+  },
+  bsOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  bsSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: spacing.lg,
+  },
+  bsHandleRow: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  bsHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+  },
+  bsOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: spacing.md,
+  },
+  bsOptionText: {
+    flex: 1,
+  },
+  bsOptionTitle: {
+    fontSize: 15,
+    fontFamily: 'Rubik-Medium',
+  },
+  bsOptionSub: {
+    fontSize: 12,
+    fontFamily: 'Rubik-Regular',
+    marginTop: 2,
+  },
+  bsCancelBtn: {
+    marginTop: spacing.md,
+    paddingVertical: 14,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+  },
+  bsCancelText: {
+    fontSize: 15,
+    fontFamily: 'Rubik-SemiBold',
   },
 });

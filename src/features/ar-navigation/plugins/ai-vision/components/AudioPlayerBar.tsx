@@ -2,16 +2,19 @@
  * AUDIO PLAYER BAR
  *
  * Prominent play/pause bar for generated order audio.
- * Shows "Tap to play your order to the waiter" with a large play button.
+ * Shows loading state while TTS is generating, then play/pause controls.
+ * Theme-aware: supports light and dark mode.
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Play, Pause, VolumeHigh } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
+import { useTheme } from '@/context/ThemeContext';
 
 interface AudioPlayerBarProps {
   isPlaying: boolean;
+  isLoading?: boolean;
   onPlay: () => void;
   onStop: () => void;
   localLanguage: string;
@@ -19,10 +22,13 @@ interface AudioPlayerBarProps {
 
 export default function AudioPlayerBar({
   isPlaying,
+  isLoading = false,
   onPlay,
   onStop,
   localLanguage,
 }: AudioPlayerBarProps) {
+  const { isDark } = useTheme();
+
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (isPlaying) {
@@ -32,27 +38,53 @@ export default function AudioPlayerBar({
     }
   };
 
+  const getTitle = () => {
+    if (isLoading) return 'Preparing audio...';
+    if (isPlaying) return 'Playing your order...';
+    return 'Tap to play your order';
+  };
+
+  const getSubtitle = () => {
+    if (isLoading) return 'Generating natural voice — just a moment';
+    if (isPlaying) return 'Show your phone to the waiter';
+    return 'The waiter will hear it in their language';
+  };
+
+  const textColor = isDark ? '#FFFFFF' : 'rgba(0,0,0,0.9)';
+  const subtitleColor = isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)';
+
   return (
-    <View style={styles.container}>
-      <View style={styles.iconContainer}>
-        <VolumeHigh size={24} color="#3FC39E" variant="Bold" />
+    <View style={[styles.container, !isDark && styles.containerLight]}>
+      <View style={[styles.iconContainer, !isDark && styles.iconContainerLight]}>
+        {isLoading ? (
+          <ActivityIndicator color="#3FC39E" size="small" />
+        ) : (
+          <VolumeHigh size={24} color="#3FC39E" variant="Bold" />
+        )}
       </View>
 
       <View style={styles.textContainer}>
-        <Text style={styles.title}>
-          {isPlaying ? 'Playing your order...' : 'Tap to play your order'}
+        <Text style={[styles.title, { color: textColor }]}>
+          {getTitle()}
         </Text>
-        <Text style={styles.subtitle}>
-          {isPlaying ? 'Show your phone to the waiter' : 'The waiter will hear it in their language'}
+        <Text style={[styles.subtitle, { color: subtitleColor }]}>
+          {getSubtitle()}
         </Text>
       </View>
 
       <TouchableOpacity
-        style={[styles.playButton, isPlaying && styles.playButtonActive]}
+        style={[
+          styles.playButton,
+          isPlaying && styles.playButtonActive,
+          isLoading && styles.playButtonLoading,
+        ]}
         onPress={handlePress}
         activeOpacity={0.8}
+        disabled={isLoading}
       >
-        {isPlaying ? (
+        {isLoading ? (
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        ) : isPlaying ? (
           <Pause size={28} color="#FFFFFF" variant="Bold" />
         ) : (
           <Play size={28} color="#FFFFFF" variant="Bold" />
@@ -73,6 +105,10 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'rgba(63,195,158,0.3)',
   },
+  containerLight: {
+    backgroundColor: 'rgba(63,195,158,0.08)',
+    borderColor: 'rgba(63,195,158,0.25)',
+  },
   iconContainer: {
     width: 44,
     height: 44,
@@ -81,18 +117,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  iconContainerLight: {
+    backgroundColor: 'rgba(63,195,158,0.10)',
+  },
   textContainer: {
     flex: 1,
   },
   title: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
     marginBottom: 2,
   },
   subtitle: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
   },
   playButton: {
     width: 56,
@@ -104,5 +141,8 @@ const styles = StyleSheet.create({
   },
   playButtonActive: {
     backgroundColor: '#EF4444',
+  },
+  playButtonLoading: {
+    backgroundColor: 'rgba(63,195,158,0.5)',
   },
 });

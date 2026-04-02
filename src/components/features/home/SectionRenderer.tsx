@@ -41,7 +41,7 @@ export default function SectionRenderer({ section }: SectionRendererProps) {
 
   const handleViewAll = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(section.viewAllRoute);
+    router.push(section.viewAllRoute as any);
   };
 
   // Render the appropriate section component based on type

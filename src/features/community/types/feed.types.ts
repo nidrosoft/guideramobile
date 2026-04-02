@@ -64,6 +64,7 @@ export interface FeedPost {
   reactionsCount: ReactionsCount;
   commentCount: number;
   myReaction?: ReactionType | null;
+  isSaved?: boolean;
   createdAt: string;
   updatedAt: string;
   // Buddy request specific

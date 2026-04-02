@@ -56,7 +56,7 @@ class PostService {
       .from('community_posts')
       .select(`
         *,
-        author:profiles(id, first_name, last_name, avatar_url)
+        author:profiles!community_posts_author_id_fkey(id, first_name, last_name, avatar_url)
       `)
       .in('status', ['published', 'active'])
       .order('created_at', { ascending: false })
@@ -80,7 +80,7 @@ class PostService {
       .from('community_posts')
       .select(`
         *,
-        author:profiles(id, first_name, last_name, avatar_url)
+        author:profiles!community_posts_author_id_fkey(id, first_name, last_name, avatar_url)
       `)
       .eq('id', postId)
       .single();
@@ -102,6 +102,22 @@ class PostService {
       locationLng?: number;
     }
   ): Promise<Post> {
+    if (!data.communityId) {
+      throw new Error('A group must be selected to create a post.');
+    }
+
+    // Verify membership before attempting insert (gives a clear error vs opaque RLS denial)
+    const { data: membership } = await supabase
+      .from('group_members')
+      .select('id, status')
+      .eq('group_id', data.communityId)
+      .eq('user_id', userId)
+      .single();
+
+    if (!membership || membership.status !== 'active') {
+      throw new Error('You must be a member of this group to post.');
+    }
+
     const { data: post, error } = await supabase
       .from('community_posts')
       .insert({
@@ -117,11 +133,14 @@ class PostService {
       })
       .select(`
         *,
-        author:profiles(id, first_name, last_name, avatar_url)
+        author:profiles!community_posts_author_id_fkey(id, first_name, last_name, avatar_url)
       `)
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (__DEV__) console.error('[PostService] createPost error:', error);
+      throw new Error(error.message);
+    }
     return this.mapPost(post);
   }
 
@@ -141,7 +160,7 @@ class PostService {
       .eq('id', postId)
       .select(`
         *,
-        author:profiles(id, first_name, last_name, avatar_url)
+        author:profiles!community_posts_author_id_fkey(id, first_name, last_name, avatar_url)
       `)
       .single();
 
@@ -168,7 +187,7 @@ class PostService {
       .from('post_comments')
       .select(`
         *,
-        author:profiles(id, first_name, last_name, avatar_url)
+        author:profiles!post_comments_author_id_fkey(id, first_name, last_name, avatar_url)
       `)
       .eq('post_id', postId)
       .in('status', ['published', 'active'])
@@ -193,7 +212,7 @@ class PostService {
       })
       .select(`
         *,
-        author:profiles(id, first_name, last_name, avatar_url)
+        author:profiles!post_comments_author_id_fkey(id, first_name, last_name, avatar_url)
       `)
       .single();
 
@@ -534,7 +553,7 @@ class PostService {
       .select(`
         post:community_posts(
           *,
-          author:profiles(id, first_name, last_name, avatar_url)
+          author:profiles!community_posts_author_id_fkey(id, first_name, last_name, avatar_url)
         )
       `)
       .eq('user_id', userId)
@@ -569,7 +588,7 @@ class PostService {
       .from('community_posts')
       .select(`
         *,
-        author:profiles(id, first_name, last_name, avatar_url)
+        author:profiles!community_posts_author_id_fkey(id, first_name, last_name, avatar_url)
       `)
       .in('status', ['published', 'active'])
       .order('created_at', { ascending: false })

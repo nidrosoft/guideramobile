@@ -18,7 +18,7 @@ interface StepDetailsProps {
   description: string;
   onDescriptionChange: (text: string) => void;
   coverImageUri?: string;
-  onCoverImageChange?: (uri: string | undefined) => void;
+  onCoverImageChange?: (uri: string | undefined, base64?: string) => void;
 }
 
 export default function StepDetails({
@@ -79,7 +79,7 @@ export default function StepDetails({
           <Image source={{ uri: coverImageUri }} style={styles.coverImage} />
           <TouchableOpacity
             style={[styles.removeCover, { backgroundColor: tc.bgElevated }]}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onCoverImageChange?.(undefined); }}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onCoverImageChange?.(undefined, undefined); }}
           >
             <CloseCircle size={20} color={tc.error} variant="Bold" />
           </TouchableOpacity>
@@ -94,9 +94,10 @@ export default function StepDetails({
               allowsEditing: true,
               aspect: [16, 9],
               quality: 0.8,
+              base64: true,
             });
             if (!result.canceled && result.assets[0]) {
-              onCoverImageChange?.(result.assets[0].uri);
+              onCoverImageChange?.(result.assets[0].uri, result.assets[0].base64 || undefined);
             }
           }}
           activeOpacity={0.7}

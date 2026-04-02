@@ -15,10 +15,16 @@ export default function NavigationRoute() {
 
   const initialMode = (params.mode as MapMode) || 'city';
 
+  const handleOpenAIVision = () => {
+    // Navigate to the AR navigation screen with AI Vision live mode
+    router.push('/ar-navigation' as any);
+  };
+
   return (
     <MapScreen
       initialMode={initialMode}
       onClose={() => router.back()}
+      onOpenAIVision={handleOpenAIVision}
     />
   );
 }

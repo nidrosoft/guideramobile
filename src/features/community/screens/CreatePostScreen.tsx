@@ -38,6 +38,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { spacing, typography, borderRadius } from '@/styles';
 import { PostType, POST_TYPE_CONFIGS } from '../types/feed.types';
 import { postService } from '@/services/community/post.service';
+import { supabase } from '@/lib/supabase/client';
 
 export default function CreatePostScreen() {
   const router = useRouter();
@@ -48,7 +49,7 @@ export default function CreatePostScreen() {
   const { groupId, postType: initialType } = useLocalSearchParams<{ groupId: string; postType: string }>();
 
   const [content, setContent] = useState('');
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<{ uri: string; base64: string }[]>([]);
   const [postType, setPostType] = useState<PostType>((initialType as PostType) || 'general');
   const [locationName, setLocationName] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -63,6 +64,30 @@ export default function CreatePostScreen() {
   }, []);
 
   const canPost = content.trim().length > 0 || photos.length > 0;
+
+  const uploadPostPhoto = async (base64Data: string, ext: string): Promise<string | null> => {
+    try {
+      const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+      const path = `post-photos/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const { error } = await supabase.storage
+        .from('community')
+        .upload(path, bytes, { contentType: mimeType, upsert: true });
+      if (error) {
+        if (__DEV__) console.warn('[CreatePost] photo upload error:', error);
+        return null;
+      }
+      const { data: publicUrl } = supabase.storage.from('community').getPublicUrl(path);
+      return publicUrl.publicUrl;
+    } catch (err) {
+      if (__DEV__) console.warn('[CreatePost] photo upload exception:', err);
+      return null;
+    }
+  };
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -81,10 +106,21 @@ export default function CreatePostScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsPosting(true);
     try {
+      let uploadedUrls: string[] = [];
+      if (photos.length > 0) {
+        const uploadResults = await Promise.all(
+          photos.map(p => {
+            const ext = p.uri.split('.').pop()?.toLowerCase() || 'jpg';
+            return uploadPostPhoto(p.base64, ext);
+          })
+        );
+        uploadedUrls = uploadResults.filter((url): url is string => url !== null);
+      }
+
       await postService.createPost(profile.id, {
         content: content.trim(),
         communityId: groupId || undefined,
-        photos,
+        photos: uploadedUrls,
         postType: postType,
         tags: tags.filter(t => t.trim()),
         locationName: locationName.trim() || undefined,
@@ -105,9 +141,13 @@ export default function CreatePostScreen() {
       allowsMultipleSelection: true,
       selectionLimit: 6 - photos.length,
       quality: 0.8,
+      base64: true,
     });
     if (!result.canceled) {
-      setPhotos(prev => [...prev, ...result.assets.map(a => a.uri)].slice(0, 6));
+      const newPhotos = result.assets
+        .filter(a => a.base64)
+        .map(a => ({ uri: a.uri, base64: a.base64! }));
+      setPhotos(prev => [...prev, ...newPhotos].slice(0, 6));
     }
   };
 
@@ -223,9 +263,9 @@ export default function CreatePostScreen() {
           {/* Photo previews */}
           {photos.length > 0 && (
             <View style={styles.photosGrid}>
-              {photos.map((uri, index) => (
+              {photos.map((photo, index) => (
                 <View key={index} style={styles.photoWrapper}>
-                  <Image source={{ uri }} style={styles.photoPreview} />
+                  <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
                   <TouchableOpacity
                     style={styles.removePhotoButton}
                     onPress={() => handleRemovePhoto(index)}

@@ -12,58 +12,45 @@ import { Text, Animated } from 'react-native';
 // Each phrase is short enough to fit in the search bar (~35 chars max)
 type Continent = 'europe' | 'asia' | 'americas' | 'africa' | 'oceania' | 'middle_east';
 
-const DESTINATION_PHRASES: Record<Continent, string[]> = {
-  europe: [
-    'What\'s Paris like in spring?',
-    'Explore Barcelona for 5 days',
-    'Do\'s & don\'ts in Italy',
-    'Budget trip to Portugal',
-    'A weekend in Amsterdam',
-  ],
-  asia: [
-    'Discover Tokyo on a budget',
-    'What to know before Bali',
-    'Street food tour in Bangkok',
-    'Cultural tips for South Korea',
-    'Explore the Philippines',
-  ],
-  americas: [
-    'What\'s Medellín really like?',
-    'Road trip through Mexico',
-    'Budget guide to Peru',
-    'Explore Buenos Aires culture',
-    'Best of Rio in 4 days',
-  ],
-  africa: [
-    'Safari tips for Kenya',
-    'What to know about Morocco',
-    'Discover Cape Town beaches',
-    'Culture guide to Ghana',
-    'Hidden gems in Tanzania',
-  ],
-  oceania: [
-    'Road trip across Australia',
-    'Best of New Zealand in 7 days',
-    'Explore Fiji on a budget',
-    'Surfing spots in Bali',
-    'What\'s Sydney really like?',
-  ],
-  middle_east: [
-    'Discover Dubai on a budget',
-    'Cultural tips for Jordan',
-    'What to see in Istanbul',
-    'Explore Oman\'s hidden gems',
-    'Best of Egypt in 5 days',
-  ],
+// Countries grouped by continent for random selection
+const CONTINENT_COUNTRIES: Record<Continent, string[]> = {
+  europe: ['France', 'Spain', 'Italy', 'Portugal', 'Greece', 'Netherlands', 'Germany', 'Switzerland', 'Croatia', 'Sweden', 'Austria', 'Ireland', 'Czech Republic', 'Norway', 'Belgium', 'Hungary', 'Poland', 'Romania', 'Denmark', 'Finland'],
+  asia: ['Japan', 'Thailand', 'Vietnam', 'South Korea', 'Indonesia', 'India', 'Philippines', 'Malaysia', 'Taiwan', 'Cambodia', 'Nepal', 'Sri Lanka', 'Singapore', 'Myanmar', 'Laos', 'Mongolia', 'Uzbekistan', 'Georgia', 'Armenia', 'Kazakhstan'],
+  americas: ['Mexico', 'Colombia', 'Peru', 'Brazil', 'Argentina', 'Costa Rica', 'Chile', 'Cuba', 'Ecuador', 'Guatemala', 'Bolivia', 'Uruguay', 'Panama', 'Jamaica', 'Dominican Republic', 'Puerto Rico', 'Honduras', 'Belize', 'Nicaragua', 'Canada'],
+  africa: ['Morocco', 'South Africa', 'Kenya', 'Ghana', 'Tanzania', 'Egypt', 'Ethiopia', 'Senegal', 'Rwanda', 'Uganda', 'Namibia', 'Madagascar', 'Mozambique', 'Tunisia', 'Botswana', 'Zimbabwe', 'Nigeria', 'Zambia', 'Malawi', 'Cape Verde'],
+  oceania: ['Australia', 'New Zealand', 'Fiji', 'Samoa', 'Tonga', 'Vanuatu', 'Papua New Guinea', 'Solomon Islands', 'Palau', 'Tahiti'],
+  middle_east: ['Turkey', 'Jordan', 'Oman', 'UAE', 'Lebanon', 'Israel', 'Qatar', 'Saudi Arabia', 'Bahrain', 'Kuwait'],
 };
 
-// Snapshot-capability phrases — continent-neutral, action-based
-// These highlight what the AI brief can do to invite curiosity
-const CAPABILITY_PHRASES = [
-  'How much is a week abroad?',
-  'Do\'s & don\'ts before you fly',
-  'Scams to avoid while traveling',
-  'Learn key phrases before you go',
+// Snapshot-inspired phrase templates — {c} is replaced with a random country
+// Each maps to a snapshot category to inspire curiosity
+const SNAPSHOT_TEMPLATES = [
+  // Culture & Social
+  'Customs & etiquette in {c}',
+  'Nightlife & social scene in {c}',
+  "Do's & don'ts in {c}",
+  // Getting Around
+  'Public transit guide for {c}',
+  'Airport arrival tips for {c}',
+  // Safety & Risk
+  'Safety tips for traveling in {c}',
+  'Scams to watch for in {c}',
+  'Solo female safety in {c}',
+  // Money & Payments
+  'Money-saving tips for {c}',
+  'How much is a week in {c}?',
+  // Health & Legal
+  'Visa requirements for {c}',
+  'Health & medication in {c}',
+  // Food & Drink
+  'Must-try street food in {c}',
+  'Food etiquette in {c}',
+  // Planning
+  'Best time to visit {c}',
+  'Hidden gems in {c}',
+  // Language & Tech
+  'Key phrases to know in {c}',
+  'Essential apps for {c}',
 ];
 
 // Generic phrases that always work (no destination)
@@ -140,42 +127,47 @@ export default function AnimatedSearchPlaceholder({ style, userCity, userCountry
     const city = (userCity || '').trim();
     const userContinent = COUNTRY_CONTINENT[country];
 
-    // Collect phrases from continents the user is NOT on
-    let pool: string[] = [];
-    const continents = Object.keys(DESTINATION_PHRASES) as Continent[];
-
+    // Collect countries from continents the user is NOT on
+    const continents = Object.keys(CONTINENT_COUNTRIES) as Continent[];
+    let countryPool: string[] = [];
     for (const continent of continents) {
-      if (continent === userContinent) continue; // skip user's continent
-      pool.push(...DESTINATION_PHRASES[continent]);
+      if (continent === userContinent) continue;
+      countryPool.push(...CONTINENT_COUNTRIES[continent]);
     }
-
-    // If user continent unknown, use all destination phrases
     if (!userContinent) {
-      pool = continents.flatMap(c => DESTINATION_PHRASES[c]);
+      countryPool = continents.flatMap(c => CONTINENT_COUNTRIES[c]);
     }
-
-    // Filter out phrases that mention user's city
+    // Remove user's own country/city from the pool
+    if (country) {
+      countryPool = countryPool.filter(c => c.toLowerCase() !== country);
+    }
     if (city) {
-      pool = pool.filter(p => !phraseMatchesCity(p, city));
+      countryPool = countryPool.filter(c => c.toLowerCase() !== city.toLowerCase());
     }
 
-    // Pick 6 continent-based phrases (shuffled)
-    const destinationPicks = shuffle(pool).slice(0, 6);
+    // Shuffle countries and templates independently
+    const shuffledCountries = shuffle(countryPool);
+    const shuffledTemplates = shuffle([...SNAPSHOT_TEMPLATES]);
 
-    // Interleave: generic opener → destination → capability → destination → ...
-    const shuffledCapabilities = shuffle([...CAPABILITY_PHRASES]);
-    const interleaved: string[] = [];
-    let dIdx = 0;
-    let cIdx = 0;
-    while (dIdx < destinationPicks.length || cIdx < shuffledCapabilities.length) {
-      if (dIdx < destinationPicks.length) interleaved.push(destinationPicks[dIdx++]);
-      if (cIdx < shuffledCapabilities.length && dIdx % 2 === 0) interleaved.push(shuffledCapabilities[cIdx++]);
+    // Generate dynamic phrases by pairing templates with random countries
+    const generated: string[] = [];
+    const usedCountries = new Set<string>();
+    for (let i = 0; i < Math.min(shuffledTemplates.length, 12); i++) {
+      // Pick a country not yet used in this cycle for variety
+      let pickedCountry = shuffledCountries[i % shuffledCountries.length];
+      if (usedCountries.has(pickedCountry) && shuffledCountries.length > 12) {
+        const unused = shuffledCountries.find(c => !usedCountries.has(c));
+        if (unused) pickedCountry = unused;
+      }
+      usedCountries.add(pickedCountry);
+      generated.push(shuffledTemplates[i].replace('{c}', pickedCountry));
     }
-    // Append any remaining capability phrases
-    while (cIdx < shuffledCapabilities.length) interleaved.push(shuffledCapabilities[cIdx++]);
+
+    // Filter out anything too long for the search bar (~42 chars max)
+    const filtered = generated.filter(p => p.length <= 42);
 
     // Always start with a generic opener
-    return [GENERIC_PHRASES[0], ...interleaved];
+    return [GENERIC_PHRASES[0], ...filtered.slice(0, 10)];
   }, [userCity, userCountry]);
 
   const [displayText, setDisplayText] = useState('');

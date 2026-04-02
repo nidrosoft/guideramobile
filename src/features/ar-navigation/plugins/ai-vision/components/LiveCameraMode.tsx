@@ -1,22 +1,43 @@
 /**
  * LIVE CAMERA MODE
  *
- * Real-time camera AI translation.
- * Captures frames at 1fps, sends to Gemini for analysis,
- * shows floating translation overlay + optional TTS audio.
+ * Real-time AI travel companion powered by the Gemini Live API.
+ * Uses a persistent WebSocket connection for bidirectional voice + vision.
+ *
+ * Dark ambient screen by default — camera only activates when user taps the camera icon.
+ * Audio streams continuously via WebSocket (raw PCM) — no separate STT/TTS services needed.
+ * Gemini has built-in Voice Activity Detection (VAD) for natural turn-taking.
+ * When camera is active, JPEG frames are streamed at ~1fps over the same WebSocket.
  */
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Dimensions,
+  ActivityIndicator,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView } from 'expo-camera';
-import { VolumeHigh, VolumeCross, Microphone2 } from 'iconsax-react-native';
+import {
+  Microphone2,
+  MicrophoneSlash,
+  Video,
+  CloseCircle,
+  Send2,
+  Eye,
+  EyeSlash,
+} from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { CloseCircle } from 'iconsax-react-native';
-import TranslationOverlay from './TranslationOverlay';
+import { LinearGradient } from 'expo-linear-gradient';
 import LanguagePicker from './LanguagePicker';
-import { useFrameAnalysis } from '../hooks/useFrameAnalysis';
-import { speak, stopSpeaking } from '../services/tts.service';
+import { useGeminiLive } from '../hooks/useGeminiLive';
 
 interface LiveCameraModeProps {
   userLanguage: string;
@@ -25,176 +46,336 @@ interface LiveCameraModeProps {
   onVoiceSettings?: () => void;
 }
 
-export default function LiveCameraMode({ userLanguage, onLanguageChange, onClose, onVoiceSettings }: LiveCameraModeProps) {
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+
+// Camera frame streaming interval (ms) — max 1fps per Google's spec
+const FRAME_STREAM_INTERVAL_MS = 1000;
+
+export default function LiveCameraMode({
+  userLanguage,
+  onLanguageChange,
+  onClose,
+}: LiveCameraModeProps) {
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<any>(null);
-  const { isActive, isProcessing, currentResult, error, start, stop } = useFrameAnalysis();
+  const scrollRef = useRef<ScrollView>(null);
+  const frameTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isCameraOnRef = useRef(false);
+
+  const [isCameraOn, setIsCameraOn] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [isListening, setIsListening] = useState(false); // AI only analyzes when user asks
-  const [hasGreeted, setHasGreeted] = useState(false);
-  const lastSpokenRef = useRef<string>('');
-  const isMutedRef = useRef(false); // ref for mute state inside async callbacks
+  const [textInput, setTextInput] = useState('');
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
 
-  // Keep mute ref in sync with state
-  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
+  const {
+    isConnected,
+    isConnecting,
+    isRecording,
+    isSpeaking,
+    streamingText,
+    conversations,
+    error,
+    connect,
+    disconnect,
+    toggleMic,
+    interruptAI,
+    sendVideoFrame,
+    sendText,
+    clearConversations,
+  } = useGeminiLive();
 
-  // Welcome greeting on first open (with user's name if available)
+  useEffect(() => { isCameraOnRef.current = isCameraOn; }, [isCameraOn]);
+
+  // Auto-scroll when conversations or streaming text updates
   useEffect(() => {
-    if (hasGreeted) return;
-    setHasGreeted(true);
-    const timer = setTimeout(async () => {
-      if (isMutedRef.current) return;
-      try {
-        // Try to get user's first name for personalized greeting
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        const profileStr = await AsyncStorage.getItem('@guidera_profile_cache');
-        let name = '';
-        if (profileStr) {
-          try { name = JSON.parse(profileStr)?.first_name || ''; } catch {}
-        }
-        const greeting = name
-          ? `Hey ${name}! I'm your AI travel companion. Point your camera at anything — a sign, a landmark, a menu — and tap the "What's this?" button when you want me to take a look.`
-          : `Hey there! I'm your AI travel companion. Point your camera at anything interesting and tap "What's this?" when you want me to tell you about it.`;
-        await speak(greeting, { language: 'en', rate: 1.05 });
-      } catch {}
-    }, 800);
-    return () => clearTimeout(timer);
-  }, []);
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+  }, [conversations, streamingText]);
 
-  // Camera ready — but DON'T auto-start analysis (passive mode)
-  const handleCameraReady = useCallback(() => {
-    // Camera is ready but we wait for user to tap "What's this?"
-  }, []);
+  // ─── Session Lifecycle ─────────────────────────────────────
 
-  // User taps "What's this?" — take ONE snapshot and analyze it
-  const handleAskAI = useCallback(async () => {
-    if (!cameraRef.current || isProcessing) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsListening(true);
-
-    // Take a single snapshot and analyze it
-    if (!isActive) {
-      start(cameraRef.current, userLanguage);
-    }
-
-    // Auto-stop after one analysis cycle (3 seconds max)
-    setTimeout(() => {
-      stop();
-      setIsListening(false);
-    }, 4000);
-  }, [isActive, isProcessing, start, stop, userLanguage]);
-
-  // Speak result when new analysis arrives (only if not muted)
   useEffect(() => {
-    if (
-      !isMutedRef.current &&
-      isListening &&
-      currentResult?.hasText &&
-      currentResult.translation &&
-      currentResult.translation !== lastSpokenRef.current
-    ) {
-      lastSpokenRef.current = currentResult.translation;
-      speak(currentResult.translation, {
-        language: userLanguage,
-        rate: 1.05,
-      }).catch(() => {});
-    }
-  }, [currentResult, isListening, userLanguage]);
+    // Connect to Gemini Live on mount
+    connect(userLanguage);
 
-  // Cleanup on unmount
-  useEffect(() => {
     return () => {
-      stop();
-      stopSpeaking();
+      // Clean up on unmount
+      stopFrameStreaming();
+      disconnect();
     };
-  }, [stop]);
+  }, []);
 
-  const toggleMute = () => {
+  // Hook now handles initial greeting + mic start internally
+
+  // ─── Camera Frame Streaming ────────────────────────────────
+
+  const startFrameStreaming = useCallback(() => {
+    if (frameTimerRef.current) return;
+
+    frameTimerRef.current = setInterval(async () => {
+      if (!isCameraOnRef.current || !cameraRef.current) return;
+
+      try {
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.15,
+          base64: true,
+          skipProcessing: true,
+          shutterSound: false,
+          imageType: 'jpg',
+        });
+
+        if (photo?.base64) {
+          sendVideoFrame(photo.base64);
+        }
+
+        // Clean up temp file immediately
+        if (photo?.uri) {
+          const ExpoFileSystem = require('expo-file-system');
+          ExpoFileSystem.deleteAsync(photo.uri, { idempotent: true }).catch(() => {});
+        }
+      } catch (err) {
+        if (__DEV__) console.warn('[LiveMode] Frame capture error:', err);
+      }
+    }, FRAME_STREAM_INTERVAL_MS);
+  }, [sendVideoFrame]);
+
+  const stopFrameStreaming = useCallback(() => {
+    if (frameTimerRef.current) {
+      clearInterval(frameTimerRef.current);
+      frameTimerRef.current = null;
+    }
+  }, []);
+
+  // ─── Camera Controls ────────────────────────────────────────
+
+  const handleCameraReady = useCallback(() => {
+    if (isCameraOnRef.current && isConnected) {
+      startFrameStreaming();
+    }
+  }, [isConnected, startFrameStreaming]);
+
+  const toggleCamera = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const nextState = !isCameraOn;
+    setIsCameraOn(nextState);
+
+    if (!nextState) {
+      stopFrameStreaming();
+    }
+    // Frame streaming starts in handleCameraReady when camera mounts
+  }, [isCameraOn, stopFrameStreaming]);
+
+  // ─── Mute Toggle ────────────────────────────────────────────
+
+  const toggleMute = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
     const newMuted = !isMuted;
     setIsMuted(newMuted);
-    isMutedRef.current = newMuted;
-    if (newMuted) {
-      stopSpeaking();
-    }
-  };
+
+    // Pass explicit mute state so hook doesn't desync when mic is auto-paused during AI speech
+    await toggleMic(newMuted);
+  }, [isMuted, toggleMic]);
+
+  // ─── Render ─────────────────────────────────────────────────
 
   return (
     <View style={styles.container}>
-      {/* Camera */}
-      <CameraView
-        ref={cameraRef}
-        style={styles.camera}
-        facing="back"
-        onCameraReady={handleCameraReady}
-      />
-
-      {/* Top controls — live indicator, language picker, close */}
-      <View style={[styles.topBar, { top: insets.top + 8 }]}>
-        <View style={styles.liveIndicator}>
-          <View style={[styles.liveDot, isListening && styles.liveDotActive]} />
-          <Text style={styles.liveText}>
-            {isListening ? 'LOOKING...' : isProcessing ? 'THINKING...' : 'READY'}
-          </Text>
+      {isCameraOn ? (
+        <CameraView
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          facing="back"
+          onCameraReady={handleCameraReady}
+        />
+      ) : (
+        <View style={[StyleSheet.absoluteFill, styles.darkBg]}>
+          <LinearGradient
+            colors={['transparent', 'rgba(25,80,180,0.12)', 'rgba(35,110,210,0.22)', 'rgba(40,120,230,0.18)', 'transparent']}
+            locations={[0, 0.35, 0.55, 0.7, 1]}
+            style={styles.ambientGlow}
+          />
         </View>
+      )}
 
-        <View style={{ flex: 1 }} />
+      {/* Connecting overlay */}
+      {isConnecting && (
+        <View style={styles.connectingOverlay}>
+          <ActivityIndicator size="large" color="#3FC39E" />
+          <Text style={styles.connectingText}>Connecting to Guidera Live...</Text>
+        </View>
+      )}
 
-        <LanguagePicker selectedLanguage={userLanguage} onSelect={onLanguageChange} />
+      {/* Fixed Header Bar */}
+      <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
+        <LinearGradient
+          colors={['rgba(10,10,15,1)', 'rgba(10,10,15,0.95)', 'rgba(10,10,15,0)']}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.topBar}>
+          <View style={styles.liveIndicator}>
+            <View style={[
+              styles.liveDot,
+              isRecording && styles.liveDotListening,
+              isSpeaking && styles.liveDotSpeaking,
+              (isCameraOn || isConnected) && styles.liveDotActive,
+            ]} />
+            <Text style={styles.liveText}>
+              {isRecording ? 'Listening...' : isSpeaking ? 'Speaking...' : isConnected ? 'Live' : 'Offline'}
+            </Text>
+          </View>
 
-        {onClose && (
-          <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={styles.closeButton}>
-            <CloseCircle size={32} color="rgba(255,255,255,0.85)" variant="Bold" />
+          <View style={{ flex: 1 }} />
+
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowTranscript(!showTranscript);
+            }}
+            style={styles.transcriptToggle}
+            activeOpacity={0.7}
+          >
+            {showTranscript ? (
+              <Eye size={20} color="rgba(255,255,255,0.85)" variant="Bold" />
+            ) : (
+              <EyeSlash size={20} color="rgba(255,255,255,0.4)" variant="Bold" />
+            )}
           </TouchableOpacity>
-        )}
+
+          <LanguagePicker selectedLanguage={userLanguage} onSelect={onLanguageChange} />
+        </View>
       </View>
 
-      {/* Translation overlay — shows result when available */}
-      <TranslationOverlay result={currentResult} isProcessing={isProcessing} />
+      {/* Conversation transcript — hidden by default, toggle with eye icon */}
+      {showTranscript && <ScrollView
+        ref={scrollRef}
+        style={styles.conversationArea}
+        contentContainerStyle={[
+          styles.conversationContent,
+          { paddingTop: insets.top + 70, paddingBottom: 180 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {conversations.map((entry, i) => (
+          <View
+            key={i}
+            style={[
+              styles.chatBubble,
+              entry.role === 'user' ? styles.userBubble : styles.aiBubble,
+            ]}
+          >
+            {entry.role === 'user' && (
+              <Text style={styles.chatLabel}>You:</Text>
+            )}
+            <Text style={[
+              styles.chatText,
+              entry.role === 'user' && styles.userChatText,
+            ]}>
+              {entry.text}
+            </Text>
+          </View>
+        ))}
 
-      {/* "What's this?" — main CTA button in center */}
-      <View style={styles.askContainer}>
-        <TouchableOpacity
-          style={[styles.askButton, isListening && styles.askButtonActive]}
-          onPress={handleAskAI}
-          activeOpacity={0.8}
-          disabled={isProcessing}
-        >
-          {isProcessing ? (
-            <Text style={styles.askButtonText}>Analyzing...</Text>
-          ) : (
-            <Text style={styles.askButtonText}>What's this?</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+        {/* Live streaming transcription */}
+        {streamingText ? (
+          <View style={[styles.chatBubble, styles.aiBubble, styles.streamingBubble]}>
+            <Text style={styles.streamingText}>{streamingText}</Text>
+            <View style={styles.cursorBlink}>
+              <Text style={styles.cursorChar}>▍</Text>
+            </View>
+          </View>
+        ) : isSpeaking ? (
+          <View style={[styles.chatBubble, styles.aiBubble]}>
+            <View style={styles.speakingIndicator}>
+              <View style={styles.speakingDot} />
+              <View style={[styles.speakingDot, { opacity: 0.8 }]} />
+              <View style={[styles.speakingDot, { opacity: 1.0 }]} />
+            </View>
+          </View>
+        ) : null}
+      </ScrollView>}
 
-      {/* Bottom controls (above mode selector) */}
-      <View style={styles.bottomControls}>
-        <TouchableOpacity style={styles.controlButton} onPress={toggleMute} activeOpacity={0.7}>
-          {isMuted ? (
-            <VolumeCross size={24} color="#FFFFFF" variant="Bold" />
-          ) : (
-            <VolumeHigh size={24} color="#3FC39E" variant="Bold" />
-          )}
-          <Text style={styles.controlLabel}>{isMuted ? 'Unmute' : 'Mute'}</Text>
-        </TouchableOpacity>
-
-        {onVoiceSettings && (
-          <TouchableOpacity style={styles.controlButton} onPress={onVoiceSettings} activeOpacity={0.7}>
-            <Microphone2 size={24} color="rgba(255,255,255,0.7)" variant="Bold" />
-            <Text style={styles.controlLabel}>Voice</Text>
+      {/* Text input fallback */}
+      {showTextInput && (
+        <View style={[styles.textInputBar, { bottom: insets.bottom + 130 }]}>
+          <TextInput
+            style={styles.textInputField}
+            placeholder="Type a message..."
+            placeholderTextColor="rgba(255,255,255,0.3)"
+            value={textInput}
+            onChangeText={setTextInput}
+            onSubmitEditing={() => {
+              if (textInput.trim()) {
+                sendText(textInput.trim());
+                setTextInput('');
+              }
+            }}
+            returnKeyType="send"
+          />
+          <TouchableOpacity
+            style={styles.sendBtn}
+            onPress={() => {
+              if (textInput.trim()) {
+                sendText(textInput.trim());
+                setTextInput('');
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <Send2 size={20} color="#3FC39E" variant="Bold" />
           </TouchableOpacity>
-        )}
+        </View>
+      )}
 
-        <View style={styles.hintContainer}>
-          <Text style={styles.hintText}>
-            Point at anything, then tap above
-          </Text>
+      {/* Bottom controls bar */}
+      <View style={[styles.bottomBar, { bottom: insets.bottom + 70 }]}>
+        <View style={styles.controlsRow}>
+          <TouchableOpacity
+            style={[styles.controlBtn, isCameraOn && styles.controlBtnActive]}
+            onPress={toggleCamera}
+            activeOpacity={0.7}
+          >
+            <Video
+              size={22}
+              color={isCameraOn ? '#FFFFFF' : 'rgba(255,255,255,0.7)'}
+              variant="Bold"
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.controlBtn, isMuted && styles.controlBtnMuted]}
+            onPress={toggleMute}
+            activeOpacity={0.7}
+          >
+            {isMuted ? (
+              <MicrophoneSlash size={22} color="#EF4444" variant="Bold" />
+            ) : (
+              <Microphone2
+                size={22}
+                color={isRecording ? '#3FC39E' : 'rgba(255,255,255,0.7)'}
+                variant="Bold"
+              />
+            )}
+          </TouchableOpacity>
+
+          {/* Text input toggle — fallback for voice */}
+          <TouchableOpacity
+            style={[styles.controlBtn, showTextInput && styles.controlBtnActive]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowTextInput(!showTextInput);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 18, color: showTextInput ? '#FFFFFF' : 'rgba(255,255,255,0.7)' }}>Aa</Text>
+          </TouchableOpacity>
+
+
         </View>
       </View>
 
       {error && (
-        <View style={styles.errorBanner}>
+        <View style={[styles.errorBanner, { bottom: insets.bottom + 140 }]}>
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
@@ -205,90 +386,201 @@ export default function LiveCameraMode({ userLanguage, onLanguageChange, onClose
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0A0A0F',
   },
-  camera: {
-    flex: 1,
+  darkBg: {
+    backgroundColor: '#0A0A0F',
+  },
+  ambientGlow: {
+    position: 'absolute',
+    bottom: 0,
+    left: -SCREEN_W * 0.3,
+    right: -SCREEN_W * 0.3,
+    height: SCREEN_H * 0.65,
+    borderTopLeftRadius: SCREEN_W,
+    borderTopRightRadius: SCREEN_W,
+  },
+
+  headerContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    paddingBottom: 16,
   },
   topBar: {
-    position: 'absolute',
-    top: 56,
-    left: 16,
-    right: 16,
+    paddingHorizontal: 16,
+    paddingRight: 52,
+    paddingTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    zIndex: 100,
-  },
-  closeButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   liveIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
   },
   liveDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.4)',
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  liveDotListening: {
+    backgroundColor: '#3FC39E',
   },
   liveDotActive: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#3FC39E',
+  },
+  liveDotSpeaking: {
+    backgroundColor: '#818CF8',
   },
   liveText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#FFFFFF',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
-  bottomControls: {
+  transcriptToggle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+
+  conversationArea: {
+    flex: 1,
+    zIndex: 10,
+  },
+  conversationContent: {
+    paddingHorizontal: 20,
+  },
+  chatBubble: {
+    marginBottom: 12,
+    maxWidth: '90%',
+  },
+  userBubble: {
+    alignSelf: 'flex-end',
+  },
+  aiBubble: {
+    alignSelf: 'flex-start',
+  },
+  chatLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.5)',
+    marginBottom: 4,
+    textAlign: 'right',
+  },
+  chatText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  userChatText: {
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'right',
+  },
+  interimText: {
+    color: 'rgba(255,255,255,0.4)',
+    fontStyle: 'italic',
+    textAlign: 'right',
+  },
+
+  connectingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(10,10,15,0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 200,
+    gap: 16,
+  },
+  connectingText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+  },
+
+  speakingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  speakingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#3FC39E',
+    opacity: 0.6,
+  },
+
+  streamingBubble: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+  },
+  streamingText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  cursorBlink: {
+    marginLeft: 2,
+    marginBottom: -1,
+  },
+  cursorChar: {
+    fontSize: 18,
+    color: '#818CF8',
+    fontWeight: '300',
+  },
+
+  bottomBar: {
     position: 'absolute',
-    bottom: 100,
-    left: 16,
-    right: 16,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    zIndex: 100,
-  },
-  controlButton: {
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(30,30,40,0.9)',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 16,
+    paddingVertical: 12,
+    borderRadius: 32,
   },
-  controlLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.7)',
-    fontWeight: '500',
-  },
-  hintContainer: {
-    flex: 1,
+  controlBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  hintText: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.6)',
-    textAlign: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 12,
-    overflow: 'hidden',
+  controlBtnActive: {
+    backgroundColor: 'rgba(63,195,158,0.35)',
   },
+  controlBtnMuted: {
+    backgroundColor: 'rgba(239,68,68,0.15)',
+  },
+  closeBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   errorBanner: {
     position: 'absolute',
-    bottom: 170,
     left: 20,
     right: 20,
     backgroundColor: 'rgba(239,68,68,0.9)',
@@ -301,34 +593,33 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
   },
-  // "What's this?" CTA button
-  askContainer: {
+
+  textInputBar: {
     position: 'absolute',
-    bottom: 200,
-    left: 0,
-    right: 0,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
     zIndex: 100,
   },
-  askButton: {
-    backgroundColor: 'rgba(63,195,158,0.9)',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 28,
-    shadowColor: '#3FC39E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  askButtonActive: {
-    backgroundColor: 'rgba(239,68,68,0.9)',
-    shadowColor: '#EF4444',
-  },
-  askButtonText: {
-    fontSize: 18,
-    fontWeight: '700',
+  textInputField: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
     color: '#FFFFFF',
-    letterSpacing: 0.5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  sendBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(63,195,158,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

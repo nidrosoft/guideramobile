@@ -136,16 +136,14 @@ export class MapboxService {
 
   /**
    * Search nearby POIs using Google Places Nearby Search API.
-   * Mapbox geocoding doesn't support proper POI/category search on free tier.
-   * Falls back to Mapbox text search if Google key not available.
+   * Enriches results with photos, ratings, price level, open status.
    */
   async getNearbyPOIs(
     latitude: number,
     longitude: number,
     category?: string,
-    limit: number = 15
+    limit: number = 25
   ): Promise<MapboxPlace[]> {
-    // Google Places via server-side proxy — key never exposed to client
     const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
     const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
@@ -161,17 +159,36 @@ export class MapboxService {
         if (__DEV__) console.log('📍 Places proxy response:', data.status, data.results?.length || 0, 'results');
 
         if (data.status === 'OK' && data.results?.length > 0) {
-          return data.results.slice(0, limit).map((p: any, i: number) => ({
-            id: p.place_id || `gp-${i}`,
-            name: p.name,
-            address: p.vicinity || p.formatted_address || '',
-            category: category || 'place',
-            coordinates: {
-              latitude: p.geometry.location.lat,
-              longitude: p.geometry.location.lng,
-            },
-            distance: undefined,
-          }));
+          return data.results.slice(0, limit).map((p: any, i: number) => {
+            // Build photo URL from photo_reference via proxy
+            let imageUrl: string | undefined;
+            if (p.photos?.[0]?.photo_reference) {
+              imageUrl = `${supabaseUrl}/functions/v1/google-api-proxy`;
+              // We'll resolve this client-side via fetchPhotoUrl
+            }
+
+            return {
+              id: p.place_id || `gp-${i}`,
+              name: p.name,
+              address: p.vicinity || p.formatted_address || '',
+              category: category || 'place',
+              coordinates: {
+                latitude: p.geometry.location.lat,
+                longitude: p.geometry.location.lng,
+              },
+              distance: undefined,
+              // Enriched fields
+              rating: p.rating,
+              user_ratings_total: p.user_ratings_total,
+              price_level: p.price_level,
+              opening_hours: p.opening_hours,
+              types: p.types || [],
+              photoReference: p.photos?.[0]?.photo_reference,
+              imageUrl: p.photos?.[0]?.photo_reference
+                ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${p.photos[0].photo_reference}&key=PROXIED`
+                : undefined,
+            };
+          });
         } else {
           if (__DEV__) console.warn('📍 Google Places no results. Status:', data.status, data.error_message || '');
         }
@@ -179,10 +196,32 @@ export class MapboxService {
         if (__DEV__) console.warn('📍 Google Places fetch error:', e);
       }
     } else {
-      if (__DEV__) console.warn('📍 No Google API key available for POI search');
+      if (__DEV__) console.warn('📍 No Supabase URL available for POI search');
     }
 
     return [];
+  }
+
+  /**
+   * Fetch a real photo URL for a Google Places photo_reference through the proxy.
+   * Returns the resolved CDN URL that can be used directly in Image components.
+   */
+  async getPlacePhotoUrl(photoReference: string, maxWidth: number = 400): Promise<string | null> {
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+    const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+    if (!supabaseUrl || !photoReference) return null;
+
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/google-api-proxy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey },
+        body: JSON.stringify({ action: 'place_photo', photoReference, maxWidth }),
+      });
+      const data = await res.json();
+      return data.url || null;
+    } catch {
+      return null;
+    }
   }
 
   private mapCategoryToGoogleType(category: string): string {

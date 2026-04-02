@@ -8,12 +8,12 @@
 import React, { memo } from 'react';
 import {
   View,
-  Image,
   StyleSheet,
   TouchableOpacity,
   Text,
   Dimensions,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useTheme } from '@/context/ThemeContext';
 import { borderRadius } from '@/styles';
 
@@ -44,7 +44,9 @@ function PostMediaGrid({ photos, onPhotoPress }: PostMediaGridProps) {
         <Image
           source={{ uri: photos[0] }}
           style={[styles.singleImage, { backgroundColor: tc.borderSubtle }]}
-          resizeMode="cover"
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
         />
       </TouchableOpacity>
     );
@@ -63,7 +65,9 @@ function PostMediaGrid({ photos, onPhotoPress }: PostMediaGridProps) {
             <Image
               source={{ uri: photo }}
               style={[styles.twoImage, { backgroundColor: tc.borderSubtle }]}
-              resizeMode="cover"
+              contentFit="cover"
+              transition={200}
+              cachePolicy="memory-disk"
             />
           </TouchableOpacity>
         ))}
@@ -85,7 +89,9 @@ function PostMediaGrid({ photos, onPhotoPress }: PostMediaGridProps) {
         <Image
           source={{ uri: visiblePhotos[0] }}
           style={[styles.multiMainImage, { backgroundColor: tc.borderSubtle }]}
-          resizeMode="cover"
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
         />
       </TouchableOpacity>
       <View style={styles.multiGridSide}>
@@ -99,7 +105,9 @@ function PostMediaGrid({ photos, onPhotoPress }: PostMediaGridProps) {
             <Image
               source={{ uri: photo }}
               style={[styles.multiSideImage, { backgroundColor: tc.borderSubtle }]}
-              resizeMode="cover"
+              contentFit="cover"
+              transition={200}
+              cachePolicy="memory-disk"
             />
             {i === 1 && overflow > 0 && (
               <View style={styles.overflowOverlay}>
