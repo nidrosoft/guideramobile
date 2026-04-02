@@ -120,13 +120,13 @@ class TripSnapshotService {
    * Generate a full trip intelligence snapshot for a destination + dates.
    * Includes retry logic with exponential backoff for network resilience.
    */
-  async generateSnapshot(params: TripSnapshotRequest, maxRetries = 2): Promise<TripSnapshot> {
-    let lastError: Error | null = null;
+  async generateSnapshot(params: TripSnapshotRequest, maxRetries = 3): Promise<TripSnapshot> {
+    let lastError: Error = new Error('Request failed');
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         if (attempt > 0) {
-          // Exponential backoff: 2s, 4s
+          // Exponential backoff: 2s, 4s, 8s
           const delay = Math.pow(2, attempt) * 1000;
           if (__DEV__) console.log(`[TripSnapshot] Retry ${attempt}/${maxRetries} after ${delay}ms`);
           await new Promise(resolve => setTimeout(resolve, delay));
@@ -137,12 +137,10 @@ class TripSnapshotService {
         });
 
         if (error) {
-          // Network errors are retryable
-          if (error.message?.includes('network') || error.message?.includes('fetch') || error.message?.includes('timeout')) {
-            lastError = new Error(`Snapshot failed: ${error.message}`);
-            continue;
-          }
-          throw new Error(`Snapshot failed: ${error.message}`);
+          lastError = new Error(error.message || 'Request failed');
+          // All invocation errors are retryable (network, edge function boot, etc.)
+          if (attempt < maxRetries) continue;
+          throw this.friendlyError(lastError);
         }
 
         if (data?.error) {
@@ -150,33 +148,38 @@ class TripSnapshotService {
           if (data.error.includes?.('wait') && data.error.includes?.('seconds')) {
             throw new Error(data.error);
           }
-          // Server busy (503) — retryable
-          if (data.error.includes?.('busy') || data.error.includes?.('try again')) {
-            lastError = new Error(data.error);
-            continue;
-          }
-          // Server 5xx errors are retryable
-          if (data.error.includes?.('500') || data.error.includes?.('timeout')) {
-            lastError = new Error(data.error);
-            continue;
-          }
-          throw new Error(data.error);
+          lastError = new Error(data.error);
+          // All server errors are retryable (model overload, 5xx, timeouts)
+          if (attempt < maxRetries) continue;
+          throw this.friendlyError(lastError);
         }
 
         return data as TripSnapshot;
       } catch (err: any) {
         lastError = err;
-        // Only retry on network/timeout errors
-        const isRetryable = err.message?.includes('network') || err.message?.includes('Network') ||
-          err.message?.includes('fetch') || err.message?.includes('timeout') ||
-          err.message?.includes('non-2xx');
-        if (!isRetryable || attempt === maxRetries) {
-          throw lastError;
+        // Rate limit errors should not be retried
+        if (err.message?.includes?.('wait') && err.message?.includes?.('seconds')) {
+          throw err;
+        }
+        // On last attempt, throw a friendly error
+        if (attempt === maxRetries) {
+          throw this.friendlyError(lastError);
         }
       }
     }
 
-    throw lastError || new Error('Snapshot failed after retries');
+    throw this.friendlyError(lastError);
+  }
+
+  private friendlyError(err: Error): Error {
+    if (__DEV__) console.error('[TripSnapshot] Original error:', err.message);
+    // Rate limit messages are already user-friendly
+    if (err.message?.includes?.('wait') && err.message?.includes?.('seconds')) {
+      return err;
+    }
+    return new Error(
+      "We couldn't generate your trip snapshot right now. Please check your internet connection and try again in a moment."
+    );
   }
 }
 

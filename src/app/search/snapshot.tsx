@@ -326,45 +326,41 @@ export default function TripSnapshotScreen() {
     return (parseInt(params.adults || '1') + parseInt(params.children || '0') + parseInt(params.infants || '0'));
   }, [params.adults, params.children, params.infants]);
 
+  const fetchSnapshot = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setSnapshot(null);
+      const selectedTopics = params.topics ? params.topics.split(',').filter(Boolean) : undefined;
+      const data = await tripSnapshotService.generateSnapshot({
+        destination,
+        country: params.country,
+        startDate: params.startDate!,
+        endDate: params.endDate!,
+        travelers: {
+          adults: parseInt(params.adults || '1'),
+          children: parseInt(params.children || '0'),
+          infants: parseInt(params.infants || '0'),
+        },
+        originCity: params.originCity || undefined,
+        nationality: params.nationality || 'US citizen',
+        currency: 'USD',
+        selectedTopics,
+      });
+      setSnapshot(data);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e: any) {
+      setError(e.message || "We couldn't generate your trip snapshot. Please try again.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setLoading(false);
+    }
+  }, [destination, params]);
+
   useEffect(() => {
     if (!destination || !params.startDate || !params.endDate) return;
     let cancelled = false;
-
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const selectedTopics = params.topics ? params.topics.split(',').filter(Boolean) : undefined;
-        const data = await tripSnapshotService.generateSnapshot({
-          destination,
-          country: params.country,
-          startDate: params.startDate!,
-          endDate: params.endDate!,
-          travelers: {
-            adults: parseInt(params.adults || '1'),
-            children: parseInt(params.children || '0'),
-            infants: parseInt(params.infants || '0'),
-          },
-          originCity: params.originCity || undefined,
-          nationality: params.nationality || 'US citizen',
-          currency: 'USD',
-          selectedTopics,
-        });
-        if (!cancelled) {
-          setSnapshot(data);
-          // Haptic feedback when results are ready
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
-      } catch (e: any) {
-        if (!cancelled) {
-          setError(e.message || 'Failed to load snapshot');
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
+    fetchSnapshot().then(() => { /* done */ });
     return () => { cancelled = true; };
   }, [destination, params.startDate, params.endDate, params.adults, params.children, params.infants, params.country]);
 
@@ -405,10 +401,16 @@ export default function TripSnapshotScreen() {
     return (
       <View style={[styles.center, { backgroundColor: tc.background, paddingTop: insets.top }]}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
-        <Text style={[styles.loadingTitle, { color: tc.textPrimary }]}>Something went wrong</Text>
-        <Text style={[{ fontSize: typography.fontSize.sm, marginTop: spacing.sm, textAlign: 'center', lineHeight: 20 }, { color: tc.textSecondary }]}>{error}</Text>
-        <TouchableOpacity onPress={handleClose} style={[styles.retryBtn, { backgroundColor: tc.primary }]}>
-          <Text style={styles.retryText}>Go Back</Text>
+        <Warning2 size={48} color={tc.textSecondary} variant="Bold" style={{ marginBottom: spacing.md }} />
+        <Text style={[styles.loadingTitle, { color: tc.textPrimary }]}>Couldn't Load Snapshot</Text>
+        <Text style={[{ fontSize: typography.fontSize.sm, marginTop: spacing.sm, textAlign: 'center', lineHeight: 20, paddingHorizontal: spacing.xl }, { color: tc.textSecondary }]}>
+          {error || "Something unexpected happened. Please try again."}
+        </Text>
+        <TouchableOpacity onPress={fetchSnapshot} style={[styles.retryBtn, { backgroundColor: tc.primary, marginTop: spacing.lg }]}>
+          <Text style={styles.retryText}>Try Again</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleClose} style={{ marginTop: spacing.md, paddingVertical: spacing.sm }}>
+          <Text style={{ color: tc.textSecondary, fontSize: typography.fontSize.sm }}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );

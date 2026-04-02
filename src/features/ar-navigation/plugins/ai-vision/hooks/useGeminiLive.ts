@@ -261,18 +261,37 @@ export function useGeminiLive(): UseGeminiLiveReturn {
   const MIN_CHUNKS_PER_PLAY = 20; // ~0.8-1s of audio per WAV — balanced between latency and smoothness
 
   // ─── Audio Session Setup ─────────────────────────────────
+  // We need allowsRecordingIOS:true ONLY for the initial mic permission grant.
+  // After that, we keep it false so iOS routes ALL audio through the main speaker.
+  // LiveAudioStream bypasses AVAudioSession for recording, so this is safe.
+  const audioSessionInitialized = useRef(false);
 
-  const configureAudioSession = useCallback(async (forPlayback = false) => {
+  const configureAudioSession = useCallback(async () => {
     try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: !forPlayback,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-        interruptionModeIOS: InterruptionModeIOS.DuckOthers,
-        shouldDuckAndroid: true,
-        interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-        playThroughEarpieceAndroid: false,
-      });
+      // First time: enable recording briefly so iOS grants mic access
+      if (!audioSessionInitialized.current) {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          interruptionModeIOS: InterruptionModeIOS.DuckOthers,
+          shouldDuckAndroid: true,
+          interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+          playThroughEarpieceAndroid: false,
+        });
+        audioSessionInitialized.current = true;
+        // Immediately switch to speaker mode — mic works via LiveAudioStream regardless
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          interruptionModeIOS: InterruptionModeIOS.DuckOthers,
+          shouldDuckAndroid: true,
+          interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+          playThroughEarpieceAndroid: false,
+        });
+        if (__DEV__) console.log('[useGeminiLive] Audio session: initialized → speaker mode');
+      }
     } catch (err) {
       if (__DEV__) console.warn('[useGeminiLive] Audio session error:', err);
     }
@@ -411,9 +430,7 @@ export function useGeminiLive(): UseGeminiLiveReturn {
           if (!aiSpeakingRef.current) {
             aiSpeakingRef.current = true;
             doStopListening();
-            // Switch to playback mode so audio routes through main speaker (not earpiece)
-            configureAudioSession(true);
-            if (__DEV__) console.log('[useGeminiLive] AI started speaking, pausing mic, switching to speaker');
+            if (__DEV__) console.log('[useGeminiLive] AI started speaking, pausing mic');
           }
           // Accumulate audio chunks
           audioPcmAccumulator.current.push(base64Audio);
