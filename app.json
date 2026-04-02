@@ -17,7 +17,7 @@
       "jsEngine": "jsc",
       "supportsTablet": false,
       "bundleIdentifier": "com.guidera.one",
-      "buildNumber": "9",
+      "buildNumber": "10",
       "infoPlist": {
         "NSCameraUsageDescription": "Guidera uses the camera to scan receipts, translate signs, and capture travel moments",
         "NSLocationWhenInUseUsageDescription": "Guidera uses your location to show nearby destinations, provide safety alerts, and navigate to places",
@@ -44,7 +44,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.guidera.one",
-      "versionCode": 9,
+      "versionCode": 10,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
