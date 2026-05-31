@@ -13,15 +13,56 @@
  *   - translate-snapshot: Snapshot — OCR + translate in a single Gemini call (replaces Cloud Vision + Translation APIs)
  */
 
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getUserIdFromRequest } from '../_shared/auth.ts';
+import {
+  assertPhase6PayloadSize,
+  consumePhase6RateLimit,
+  deferPhase6Work,
+  recordPhase6Metric,
+} from '../_shared/phase6Edge.ts';
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-clerk-token',
   'Content-Type': 'application/json',
 };
 
 const MODEL = 'gemini-2.5-flash';
 const FAST_MODEL = 'gemini-2.0-flash';  // faster for structured extraction tasks
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const SUPABASE_ANON_KEY =
+  Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_ANON_PUBLIC_KEY') || '';
+let supabaseClient: ReturnType<typeof createClient> | null = null;
+
+function getServiceClient(): ReturnType<typeof createClient> | null {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
+  if (!supabaseClient) {
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  }
+  return supabaseClient;
+}
+
+function aiVisionMetric(
+  supabase: ReturnType<typeof createClient> | null,
+  input: {
+    statusCode: number;
+    durationMs: number;
+    cacheStatus?: 'hit' | 'miss' | 'rate_limited' | 'error' | 'skipped';
+    errorMessage?: string | null;
+  }
+): void {
+  if (!supabase) return;
+  deferPhase6Work(
+    recordPhase6Metric(supabase, {
+      action: 'ai_vision',
+      provider: 'gemini_vision',
+      ...input,
+    })
+  );
+}
 
 // ─── Prompt Templates ─────────────────────────────────────────
 
@@ -374,6 +415,8 @@ async function handleTranslateSnapshot(apiKey: string, body: any) {
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+  const startTime = Date.now();
+  let metricClient: ReturnType<typeof createClient> | null = null;
 
   try {
     const apiKey = Deno.env.get('GOOGLE_AI_API_KEY');
@@ -386,6 +429,55 @@ Deno.serve(async (req: Request) => {
 
     const body = await req.json();
     const { action } = body;
+    const supabase = getServiceClient();
+    metricClient = supabase;
+
+    assertPhase6PayloadSize('ai_vision', body);
+
+    if (!supabase) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit service unavailable' }),
+        { status: 503, headers: CORS },
+      );
+    }
+
+    const userId = await getUserIdFromRequest(
+      req,
+      body,
+      SUPABASE_URL,
+      SUPABASE_SERVICE_ROLE_KEY,
+      SUPABASE_ANON_KEY,
+    );
+
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: 'Valid authentication required' }),
+        { status: 401, headers: CORS },
+      );
+    }
+
+    const rateLimit = await consumePhase6RateLimit(supabase, {
+      action: 'ai_vision',
+      actorKey: userId,
+    });
+    if (!rateLimit.allowed) {
+      aiVisionMetric(supabase, {
+        statusCode: 429,
+        durationMs: Date.now() - startTime,
+        cacheStatus: 'rate_limited',
+      });
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded', resetAt: rateLimit.resetAt }),
+        {
+          status: 429,
+          headers: {
+            ...CORS,
+            'X-RateLimit-Remaining': String(rateLimit.remaining),
+            'X-RateLimit-Reset': rateLimit.resetAt,
+          },
+        },
+      );
+    }
 
     let result: any;
     switch (action) {
@@ -417,12 +509,29 @@ Deno.serve(async (req: Request) => {
         );
     }
 
+    aiVisionMetric(supabase, {
+      statusCode: 200,
+      durationMs: Date.now() - startTime,
+      cacheStatus: 'miss',
+    });
     return new Response(JSON.stringify(result), { headers: CORS });
   } catch (e: any) {
     console.error('[ai-vision] Error:', e);
+    const message = e?.message || 'Internal error';
+    const status = message.includes('exceeds')
+      ? 413
+      : message.includes('required') || message.startsWith('Unknown action')
+        ? 400
+        : 500;
+    aiVisionMetric(metricClient, {
+      statusCode: status,
+      durationMs: Date.now() - startTime,
+      cacheStatus: 'error',
+      errorMessage: message,
+    });
     return new Response(
-      JSON.stringify({ error: e.message || 'Internal error' }),
-      { status: 500, headers: CORS },
+      JSON.stringify({ error: message }),
+      { status, headers: CORS },
     );
   }
 });

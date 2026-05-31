@@ -19,6 +19,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useGilDeals } from '@/hooks/useDeals';
 import type { PersonalizedDeal, DealType } from '@/services/deal';
 import { SkeletonDealListCards } from '@/components/common/SkeletonLoader';
+import { markDealMatchClicked } from '@/services/affiliateTracking';
 
 const PRIMARY = '#3FC39E';
 
@@ -99,6 +100,7 @@ export default function ViewAllDeals() {
 
   const handleDealPress = useCallback((deal: PersonalizedDeal) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (deal.id) markDealMatchClicked(deal.id);
     router.push({
       pathname: '/deals/[id]' as any,
       params: { id: deal.deal_cache_id || deal.id, title: deal.deal_title, type: deal.deal_type },

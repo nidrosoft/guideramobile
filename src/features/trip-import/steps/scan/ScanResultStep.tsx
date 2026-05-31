@@ -14,6 +14,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { StepComponentProps } from '../../types/import-flow.types';
 import { tripImportEngine } from '@/services/trip/trip-import-engine.service';
+import { getScanErrorPresentation } from './scanErrorPresentation';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -44,16 +45,22 @@ export default function ScanResultStep({ onNext, onBack, data }: StepComponentPr
   const booking = data.scannedBooking;
 
   if (!booking || data.scanError) {
+    const errorPresentation = getScanErrorPresentation(data.scanError);
     return (
       <View style={s.container}>
         <View style={s.errorContainer}>
           <Warning2 size={48} color={tc.warning} variant="Bold" />
-          <Text style={[s.title, { color: tc.textPrimary }]}>Couldn't Read This Ticket</Text>
+          <Text style={[s.title, { color: tc.textPrimary }]}>{errorPresentation.title}</Text>
           <Text style={[s.desc, { color: tc.textSecondary }]}>
-            We had trouble extracting booking details from your image. This can happen if the image is blurry, too dark, or not a booking confirmation.{"\n\n"}Try taking a clearer photo or uploading a screenshot instead.
+            {errorPresentation.description}
           </Text>
-          <TouchableOpacity style={[s.ctaBtn, { backgroundColor: tc.primary }]} onPress={() => onBack()}>
-            <Text style={[s.ctaText, { color: '#FFF' }]}>Try Again</Text>
+          {errorPresentation.helperText && (
+            <Text style={[s.desc, { color: tc.textSecondary }]}>{errorPresentation.helperText}</Text>
+          )}
+          <TouchableOpacity style={[s.ctaBtn, s.retryBtn, { backgroundColor: tc.primary }]} onPress={() => onBack()}>
+            <Text style={[s.ctaText, { color: '#FFF' }]} numberOfLines={1}>
+              {errorPresentation.buttonLabel}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -245,5 +252,6 @@ const s = StyleSheet.create({
   // Footer
   footer: { paddingTop: spacing.sm, paddingBottom: spacing.md },
   ctaBtn: { height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  retryBtn: { width: '100%', alignSelf: 'stretch', paddingHorizontal: spacing.lg },
   ctaText: { fontSize: typography.fontSize.base, fontWeight: '700' },
 });

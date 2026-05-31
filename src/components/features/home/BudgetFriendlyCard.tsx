@@ -32,7 +32,7 @@ export default function BudgetFriendlyCard({
     <View style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
       {/* Image Section */}
       <View style={[styles.imageContainer, { width: dynamicWidth * 0.35 }]}>
-        <CachedImage uri={imageUrl} style={styles.image} />
+        <CachedImage uri={imageUrl} fallbackCityName={location || name} style={styles.image} />
         
         {/* Savings Badge */}
         {savingsPercent ? (

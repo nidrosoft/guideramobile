@@ -9,7 +9,22 @@
  */
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { getEdgeResponseCache, setEdgeResponseCache } from '../_shared/edgeScale/cache.ts';
+import {
+  assertPhase6PayloadSize,
+  buildPhase6CacheKey,
+  consumePhase6RateLimit,
+  deferPhase6Work,
+  getPhase6ActionPolicy,
+  recordPhase6Metric,
+  type Phase6Action,
+} from '../_shared/phase6Edge.ts';
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+let supabaseClient: ReturnType<typeof createClient> | null = null;
 
 // Types
 interface PlacesRequest {
@@ -62,6 +77,40 @@ interface AutocompleteResult {
   mainText: string;
   secondaryText: string;
   types: string[];
+}
+
+function getServiceClient(): ReturnType<typeof createClient> | null {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
+  if (!supabaseClient) {
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  }
+  return supabaseClient;
+}
+
+function requesterKey(req: Request): string {
+  return (
+    req.headers.get('x-guidera-client-id') ||
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    req.headers.get('cf-connecting-ip') ||
+    'anonymous'
+  );
+}
+
+function phase6ActionForPlacesAction(action: PlacesRequest['action'] | undefined): Phase6Action | null {
+  switch (action) {
+    case 'search':
+      return 'places_search';
+    case 'autocomplete':
+      return 'places_autocomplete';
+    case 'details':
+      return 'places_details';
+    case 'nearby':
+      return 'places_nearby';
+    case 'photos':
+      return 'places_photo';
+    default:
+      return null;
+  }
 }
 
 // Search places by text query
@@ -299,6 +348,8 @@ serve(async (req: Request) => {
   }
 
   const startTime = Date.now();
+  let metricAction: Phase6Action | null = null;
+  let metricClient: ReturnType<typeof createClient> | null = null;
 
   try {
     const apiKey = Deno.env.get('GOOGLE_PLACES_API_KEY');
@@ -307,7 +358,96 @@ serve(async (req: Request) => {
     }
 
     const request: PlacesRequest = await req.json();
+    const phase6Action = phase6ActionForPlacesAction(request.action);
+    const serviceClient = getServiceClient();
+    metricAction = phase6Action;
+    metricClient = serviceClient;
     let response: unknown;
+
+    if (phase6Action) {
+      assertPhase6PayloadSize(phase6Action, request as unknown as Record<string, unknown>);
+      if (!serviceClient) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: {
+              code: 'RATE_LIMIT_UNAVAILABLE',
+              message: 'Rate limit service unavailable',
+            },
+          }),
+          {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      const rateLimit = await consumePhase6RateLimit(serviceClient, {
+        action: phase6Action,
+        actorKey: requesterKey(req),
+      });
+      if (!rateLimit.allowed) {
+        deferPhase6Work(
+          recordPhase6Metric(serviceClient, {
+            action: phase6Action,
+            provider: 'google_places',
+            statusCode: 429,
+            durationMs: Date.now() - startTime,
+            cacheStatus: 'rate_limited',
+          })
+        );
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: {
+              code: 'RATE_LIMITED',
+              message: 'Rate limit exceeded',
+              resetAt: rateLimit.resetAt,
+            },
+          }),
+          {
+            status: 429,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json',
+              'X-RateLimit-Remaining': String(rateLimit.remaining),
+              'X-RateLimit-Reset': rateLimit.resetAt,
+            },
+          }
+        );
+      }
+
+      const policy = getPhase6ActionPolicy(phase6Action);
+      if (policy.cacheTtlSeconds) {
+        const cacheKey = buildPhase6CacheKey(phase6Action, request as unknown as Record<string, unknown>);
+        const cached = await getEdgeResponseCache<unknown>(serviceClient, phase6Action, cacheKey);
+        if (cached) {
+          deferPhase6Work(
+            recordPhase6Metric(serviceClient, {
+              action: phase6Action,
+              provider: 'google_places',
+              statusCode: 200,
+              durationMs: Date.now() - startTime,
+              cacheStatus: 'hit',
+            })
+          );
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: cached.response,
+              meta: {
+                provider: 'google_places',
+                requestDuration: Date.now() - startTime,
+                cacheStatus: 'hit',
+              },
+            }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            }
+          );
+        }
+      }
+    }
 
     switch (request.action) {
       case 'search': {
@@ -384,6 +524,29 @@ serve(async (req: Request) => {
         throw new Error(`Unknown action: ${request.action}`);
     }
 
+    if (phase6Action && serviceClient) {
+      const policy = getPhase6ActionPolicy(phase6Action);
+      if (policy.cacheTtlSeconds) {
+        await setEdgeResponseCache(
+          serviceClient,
+          phase6Action,
+          buildPhase6CacheKey(phase6Action, request as unknown as Record<string, unknown>),
+          response,
+          policy.cacheTtlSeconds,
+          { provider: 'google_places', action: phase6Action }
+        );
+      }
+      deferPhase6Work(
+        recordPhase6Metric(serviceClient, {
+          action: phase6Action,
+          provider: 'google_places',
+          statusCode: 200,
+          durationMs: Date.now() - startTime,
+          cacheStatus: 'miss',
+        })
+      );
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -391,6 +554,7 @@ serve(async (req: Request) => {
         meta: {
           provider: 'google_places',
           requestDuration: Date.now() - startTime,
+          cacheStatus: 'miss',
         },
       }),
       {
@@ -399,20 +563,38 @@ serve(async (req: Request) => {
     );
   } catch (error) {
     console.error('Places function error:', error);
+    const message = (error as Error).message || 'Places request failed';
+    const status = message.includes('exceeds')
+      ? 413
+      : message.includes('required') || message.startsWith('Unknown action')
+        ? 400
+        : 500;
+    if (metricAction && metricClient) {
+      deferPhase6Work(
+        recordPhase6Metric(metricClient, {
+          action: metricAction,
+          provider: 'google_places',
+          statusCode: status,
+          durationMs: Date.now() - startTime,
+          cacheStatus: 'error',
+          errorMessage: message,
+        })
+      );
+    }
 
     return new Response(
       JSON.stringify({
         success: false,
         error: {
           code: 'PLACES_ERROR',
-          message: (error as Error).message || 'Places request failed',
+          message,
         },
         meta: {
           requestDuration: Date.now() - startTime,
         },
       }),
       {
-        status: 500,
+        status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );

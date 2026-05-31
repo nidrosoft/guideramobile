@@ -7,7 +7,7 @@
 
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, SafeAreaView, RefreshControl } from 'react-native';
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +27,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useHomepageData } from '@/features/homepage';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import { TripState } from '@/features/trips/types/trip.types';
+import { useSearchOverlayStore } from '@/stores/useSearchOverlayStore';
 
 export default function Home() {
   const router = useRouter();
@@ -45,6 +46,14 @@ export default function Home() {
   // Search states
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchResetNonce = useSearchOverlayStore((s) => s.resetNonce);
+
+  useEffect(() => {
+    if (searchResetNonce > 0) {
+      setSearchQuery('');
+      setIsSearchFocused(false);
+    }
+  }, [searchResetNonce]);
 
   // Handle openSearch param (from PlanBottomSheet "Explore a Destination")
   const { openSearch } = useLocalSearchParams<{ openSearch?: string }>();
@@ -59,6 +68,16 @@ export default function Home() {
   
   // Get nearest upcoming trip for reminder (use raw trips + useMemo to avoid infinite loop)
   const trips = useTripStore(state => state.trips);
+  const fetchTrips = useTripStore(state => state.fetchTrips);
+
+  // Load trips whenever the home screen gains focus so the trip reminder card
+  // appears immediately on first launch (not only after visiting the Trips tab).
+  useFocusEffect(
+    useCallback(() => {
+      if (profile?.id) fetchTrips(profile.id);
+    }, [profile?.id])
+  );
+
   const nearestTrip = useMemo(() => {
     const upcoming = trips.filter(t => t.state === TripState.UPCOMING);
     if (upcoming.length === 0) return null;
@@ -130,11 +149,15 @@ export default function Home() {
     setIsSearchFocused(true);
   };
 
-  const handleSelectSearch = (term: string, dates?: { start?: Date; end?: Date }, guests?: { adults: number; children: number; infants: number }, selectedTopics?: string[]) => {
-    setSearchQuery(term);
+  const handleSelectSearch = (
+    term: string,
+    dates?: { start?: Date; end?: Date },
+    guests?: { adults: number; children: number; infants: number },
+    selectedTopics?: string[],
+    country?: string,
+  ) => {
     setIsSearchFocused(false);
 
-    // Default dates: tomorrow + 7 days if not provided
     const now = new Date();
     const defaultStart = new Date(now.getTime() + 86400000);
     const defaultEnd = new Date(now.getTime() + 8 * 86400000);
@@ -147,7 +170,10 @@ export default function Home() {
 
     const originCity = profile?.city || '';
     const nationality = profile?.country || 'US';
-    router.push(`/search/snapshot?destination=${encodeURIComponent(term)}&startDate=${startDate}&endDate=${endDate}&adults=${adults}&children=${children}&infants=${infants}&originCity=${encodeURIComponent(originCity)}&nationality=${encodeURIComponent(nationality)}&topics=${encodeURIComponent(topics)}` as any);
+    const countryParam = country ? `&country=${encodeURIComponent(country)}` : '';
+    router.push(
+      `/search/snapshot?destination=${encodeURIComponent(term)}${countryParam}&startDate=${startDate}&endDate=${endDate}&adults=${adults}&children=${children}&infants=${infants}&originCity=${encodeURIComponent(originCity)}&nationality=${encodeURIComponent(nationality)}&topics=${encodeURIComponent(topics)}` as any,
+    );
   };
 
   const handleCloseSearchOverlay = () => {
@@ -278,6 +304,8 @@ export default function Home() {
               departureAirport={departureAirport}
               isInternational={true}
               tripId={nearestTrip.id}
+              seatNumber={dbFields?.seatNumber}
+              cabinClass={dbFields?.cabinClass}
             />
           );
         })()}
@@ -327,6 +355,7 @@ export default function Home() {
 
       {/* Search Overlay */}
       <SearchOverlay
+        key={searchResetNonce}
         visible={isSearchFocused}
         query={searchQuery}
         onSelectSearch={handleSelectSearch}

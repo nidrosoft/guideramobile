@@ -10,17 +10,24 @@
  *   POST { "mode": "batch", "force": true }    — re-classify all destinations
  */
 
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireCronOrServiceAuth } from '../_shared/cronAuth.ts';
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-const geminiApiKey = Deno.env.get('GOOGLE_AI_API_KEY') || ''
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const geminiApiKey = Deno.env.get('GOOGLE_AI_API_KEY') || '';
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-const GEMINI_MODEL = 'gemini-2.0-flash'
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`
-const CLASSIFICATION_VERSION = 1
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, x-cron-secret, apikey, content-type',
+};
+
+const GEMINI_MODEL = 'gemini-2.0-flash';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`;
+const CLASSIFICATION_VERSION = 1;
 
 // All homepage section slugs the classifier can assign
 const VALID_SECTIONS = [
@@ -35,7 +42,7 @@ const VALID_SECTIONS = [
   'adventure',
   'beach-islands',
   'places',
-]
+];
 
 const SYSTEM_PROMPT = `You are a travel destination classifier for a travel app called Guidera.
 
@@ -74,30 +81,37 @@ RESPOND WITH ONLY valid JSON, no markdown fences, no explanation:
   "adventure_suitability": 0.8,
   "beach_suitability": 0.3,
   "cultural_suitability": 0.9
-}`
+}`;
 
 interface ClassificationResult {
-  destinationId: string
-  title: string
-  success: boolean
-  sectionTags?: string[]
-  error?: string
+  destinationId: string;
+  title: string;
+  success: boolean;
+  sectionTags?: string[];
+  error?: string;
 }
 
 serve(async (req: Request) => {
-  const startTime = Date.now()
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  const unauthorized = requireCronOrServiceAuth(req, corsHeaders);
+  if (unauthorized) return unauthorized;
+
+  const startTime = Date.now();
 
   try {
     if (!geminiApiKey) {
-      throw new Error('GOOGLE_AI_API_KEY not configured')
+      throw new Error('GOOGLE_AI_API_KEY not configured');
     }
 
-    const body = await req.json().catch(() => ({}))
-    const mode = body.mode || 'single'
-    const force = body.force === true
-    const destinationId = body.destination_id
+    const body = await req.json().catch(() => ({}));
+    const mode = body.mode || 'single';
+    const force = body.force === true;
+    const destinationId = body.destination_id;
 
-    let destinations: any[] = []
+    let destinations: any[] = [];
 
     if (mode === 'batch') {
       // Batch mode: get all destinations, optionally only unclassified
@@ -105,21 +119,21 @@ serve(async (req: Request) => {
         .from('curated_destinations')
         .select('*')
         .eq('status', 'published')
-        .order('title')
+        .order('title');
 
-      const { data, error } = await query
-      if (error) throw new Error(`Failed to fetch destinations: ${error.message}`)
-      destinations = data || []
+      const { data, error } = await query;
+      if (error) throw new Error(`Failed to fetch destinations: ${error.message}`);
+      destinations = data || [];
 
       if (!force) {
         // Filter to only unclassified destinations
         const { data: classified } = await supabase
           .from('destination_ai_enrichment')
           .select('destination_id')
-          .not('classified_at', 'is', null)
+          .not('classified_at', 'is', null);
 
-        const classifiedIds = new Set(classified?.map(c => c.destination_id) || [])
-        destinations = destinations.filter(d => !classifiedIds.has(d.id))
+        const classifiedIds = new Set(classified?.map((c) => c.destination_id) || []);
+        destinations = destinations.filter((d) => !classifiedIds.has(d.id));
       }
     } else if (destinationId) {
       // Single destination mode
@@ -127,70 +141,78 @@ serve(async (req: Request) => {
         .from('curated_destinations')
         .select('*')
         .eq('id', destinationId)
-        .single()
+        .single();
 
-      if (error || !data) throw new Error(`Destination not found: ${destinationId}`)
-      destinations = [data]
+      if (error || !data) throw new Error(`Destination not found: ${destinationId}`);
+      destinations = [data];
     } else {
-      throw new Error('Provide destination_id for single mode or mode=batch for batch classification')
+      throw new Error(
+        'Provide destination_id for single mode or mode=batch for batch classification'
+      );
     }
 
-    const results: ClassificationResult[] = []
-    let successCount = 0
-    let failCount = 0
+    const results: ClassificationResult[] = [];
+    let successCount = 0;
+    let failCount = 0;
 
     // Process destinations with rate limiting (1 per 500ms to stay within Gemini limits)
     for (const dest of destinations) {
       try {
-        const classification = await classifyDestination(dest)
-        await saveClassification(dest.id, classification)
+        const classification = await classifyDestination(dest);
+        await saveClassification(dest.id, classification);
         results.push({
           destinationId: dest.id,
           title: dest.title,
           success: true,
           sectionTags: classification.section_tags,
-        })
-        successCount++
+        });
+        successCount++;
       } catch (err: any) {
         results.push({
           destinationId: dest.id,
           title: dest.title,
           success: false,
           error: err.message,
-        })
-        failCount++
+        });
+        failCount++;
       }
 
       // Rate limit: 500ms between API calls
       if (destinations.length > 1) {
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      mode,
-      force,
-      totalProcessed: destinations.length,
-      successCount,
-      failCount,
-      results,
-      responseTimeMs: Date.now() - startTime,
-    }), {
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return new Response(
+      JSON.stringify({
+        success: true,
+        mode,
+        force,
+        totalProcessed: destinations.length,
+        successCount,
+        failCount,
+        results,
+        responseTimeMs: Date.now() - startTime,
+      }),
+      {
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   } catch (error: any) {
-    console.error('classify-destination error:', error)
-    return new Response(JSON.stringify({
-      success: false,
-      error: error.message,
-      responseTimeMs: Date.now() - startTime,
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    console.error('classify-destination error:', error);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message,
+        responseTimeMs: Date.now() - startTime,
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
-})
+});
 
 // ============================================
 // CLASSIFICATION LOGIC
@@ -215,68 +237,81 @@ async function classifyDestination(dest: any): Promise<any> {
     is_featured: dest.is_featured,
     short_description: dest.short_description,
     estimated_daily_budget_usd: dest.estimated_daily_budget_usd,
-  }
+  };
 
   const response = await fetch(GEMINI_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      contents: [{
-        parts: [{
-          text: `${SYSTEM_PROMPT}\n\nClassify this destination:\n${JSON.stringify(destInput, null, 2)}`,
-        }],
-      }],
+      contents: [
+        {
+          parts: [
+            {
+              text: `${SYSTEM_PROMPT}\n\nClassify this destination:\n${JSON.stringify(destInput, null, 2)}`,
+            },
+          ],
+        },
+      ],
       generationConfig: {
         temperature: 0.3,
         maxOutputTokens: 1024,
         responseMimeType: 'application/json',
       },
     }),
-  })
+  });
 
   if (!response.ok) {
-    const errText = await response.text()
-    throw new Error(`Gemini API error (${response.status}): ${errText.slice(0, 200)}`)
+    const errText = await response.text();
+    throw new Error(`Gemini API error (${response.status}): ${errText.slice(0, 200)}`);
   }
 
-  const geminiResult = await response.json()
-  const text = geminiResult?.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) throw new Error('Empty Gemini response')
+  const geminiResult = await response.json();
+  const text = geminiResult?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Empty Gemini response');
 
   // Parse JSON response
-  let parsed: any
+  let parsed: any;
   try {
     // Strip markdown fences if present
-    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    parsed = JSON.parse(cleaned)
+    const cleaned = text
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+    parsed = JSON.parse(cleaned);
   } catch {
-    throw new Error(`Failed to parse Gemini JSON: ${text.slice(0, 200)}`)
+    throw new Error(`Failed to parse Gemini JSON: ${text.slice(0, 200)}`);
   }
 
   // Validate and filter section_tags
   if (!parsed.section_tags || !Array.isArray(parsed.section_tags)) {
-    throw new Error('Missing section_tags in response')
+    throw new Error('Missing section_tags in response');
   }
 
   // Only keep valid sections with confidence > 0.6
   const validTags = parsed.section_tags.filter((tag: string) => {
-    if (!VALID_SECTIONS.includes(tag)) return false
-    const confidence = parsed.confidence_scores?.[tag] || 0
-    return confidence >= 0.6
-  })
+    if (!VALID_SECTIONS.includes(tag)) return false;
+    const confidence = parsed.confidence_scores?.[tag] || 0;
+    return confidence >= 0.6;
+  });
 
-  parsed.section_tags = validTags
+  parsed.section_tags = validTags;
 
   // Clamp suitability scores to 0-1
-  for (const key of ['family_suitability', 'luxury_suitability', 'adventure_suitability', 'beach_suitability', 'cultural_suitability']) {
+  for (const key of [
+    'family_suitability',
+    'luxury_suitability',
+    'adventure_suitability',
+    'beach_suitability',
+    'cultural_suitability',
+  ]) {
     if (typeof parsed[key] === 'number') {
-      parsed[key] = Math.max(0, Math.min(1, parsed[key]))
+      parsed[key] = Math.max(0, Math.min(1, parsed[key]));
     } else {
-      parsed[key] = 0
+      parsed[key] = 0;
     }
   }
 
-  return parsed
+  return parsed;
 }
 
 // ============================================
@@ -289,7 +324,7 @@ async function saveClassification(destinationId: string, classification: any): P
     .from('destination_ai_enrichment')
     .select('id')
     .eq('destination_id', destinationId)
-    .maybeSingle()
+    .maybeSingle();
 
   const classificationData = {
     section_tags: classification.section_tags,
@@ -306,21 +341,19 @@ async function saveClassification(destinationId: string, classification: any): P
     classified_at: new Date().toISOString(),
     classification_version: CLASSIFICATION_VERSION,
     updated_at: new Date().toISOString(),
-  }
+  };
 
   if (existing) {
     const { error } = await supabase
       .from('destination_ai_enrichment')
       .update(classificationData)
-      .eq('destination_id', destinationId)
-    if (error) throw new Error(`Failed to update classification: ${error.message}`)
+      .eq('destination_id', destinationId);
+    if (error) throw new Error(`Failed to update classification: ${error.message}`);
   } else {
-    const { error } = await supabase
-      .from('destination_ai_enrichment')
-      .insert({
-        destination_id: destinationId,
-        ...classificationData,
-      })
-    if (error) throw new Error(`Failed to insert classification: ${error.message}`)
+    const { error } = await supabase.from('destination_ai_enrichment').insert({
+      destination_id: destinationId,
+      ...classificationData,
+    });
+    if (error) throw new Error(`Failed to insert classification: ${error.message}`);
   }
 }

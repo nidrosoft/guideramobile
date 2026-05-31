@@ -13,6 +13,17 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  tripModuleUnauthorizedResponse,
+  verifyTripModuleAccess,
+} from '../_shared/tripModule/auth.ts';
+import {
+  acquireTripModuleLock,
+  buildTripModuleResourceKey,
+  consumeTripModuleRateLimits,
+  recordTripModuleMetric,
+  releaseTripModuleLock,
+} from '../_shared/tripModule/runtime.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,6 +32,17 @@ const corsHeaders = {
 
 const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY') || '';
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
+const MODULE_KEY = 'compensation';
+
+function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
 
 // ─── Regulation Knowledge ───────────────────────────────
 
@@ -500,8 +522,17 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  let tripId: string | null = null;
+  let lockKey: string | null = null;
+  let lockOwnerId: string | null = null;
+  let lockStatus: 'completed' | 'failed' = 'failed';
+  const requestStartedAt = Date.now();
+
   try {
-    const { claimId } = await req.json();
+    const body = await req.json();
+    const { claimId } = body;
+    const forceRefresh = body.forceRefresh === true;
     if (!claimId) {
       return new Response(JSON.stringify({ error: 'claimId is required' }), {
         status: 400,
@@ -509,10 +540,108 @@ serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') || '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
+    const { data: claim, error: claimError } = await supabase
+      .from('compensation_claims')
+      .select('*')
+      .eq('id', claimId)
+      .single();
+    if (claimError || !claim) {
+      return jsonResponse(
+        { success: false, error: `Claim not found: ${claimError?.message || 'unknown'}` },
+        404
+      );
+    }
+    tripId = claim.trip_id;
+
+    const access = await verifyTripModuleAccess(
+      req,
+      { ...body, tripId },
+      supabase,
+      {
+        supabaseUrl: SUPABASE_URL,
+        serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY,
+        anonKey: SUPABASE_ANON_KEY,
+      }
     );
+    if (!access.allowed || !access.trip) {
+      return tripModuleUnauthorizedResponse(corsHeaders);
+    }
+
+    if (!forceRefresh && claim.ai_analysis && claim.analyzed_at) {
+      await recordTripModuleMetric(supabase, {
+        moduleKey: MODULE_KEY,
+        cacheStatus: 'hit',
+        statusCode: 200,
+        durationMs: Date.now() - requestStartedAt,
+        model: claim.generated_by || 'cache',
+        providerSummary: { claimId },
+      });
+      return jsonResponse({
+        success: true,
+        cached: true,
+        cacheStatus: 'ready',
+        claimId,
+        verdict: claim.ai_analysis?.eligibility?.verdict || 'unknown',
+        confidence: claim.ai_confidence || 0,
+        estimatedAmount: claim.estimated_amount || 0,
+        currency: claim.currency || 'EUR',
+        regulation: claim.applicable_regulation || 'NONE',
+        status: claim.status,
+        modelUsed: claim.generated_by || null,
+      });
+    }
+
+    const moduleKey = buildTripModuleResourceKey(MODULE_KEY, claimId);
+    lockKey = moduleKey;
+
+    if (!access.isServiceRoleCall) {
+      const rateLimit = await consumeTripModuleRateLimits(supabase, {
+        userId: access.userId || claim.user_id,
+        tripId: tripId || claim.trip_id,
+        moduleKey: 'compensation',
+      });
+      if (!rateLimit.allowed) {
+        await recordTripModuleMetric(supabase, {
+          moduleKey: MODULE_KEY,
+          cacheStatus: 'rate_limited',
+          statusCode: 429,
+          durationMs: Date.now() - requestStartedAt,
+          providerSummary: { blockedKey: rateLimit.blockedKey, resetAt: rateLimit.resetAt, claimId },
+        });
+        return jsonResponse(
+          {
+            success: false,
+            error: 'rate_limited',
+            resetAt: rateLimit.resetAt,
+            blockedKey: rateLimit.blockedKey,
+          },
+          429
+        );
+      }
+    }
+
+    const lock = await acquireTripModuleLock(supabase, tripId || claim.trip_id, moduleKey);
+    if (!lock.acquired) {
+      await recordTripModuleMetric(supabase, {
+        moduleKey: MODULE_KEY,
+        cacheStatus: 'coalesced',
+        statusCode: 202,
+        durationMs: Date.now() - requestStartedAt,
+        providerSummary: { claimId },
+      });
+      return jsonResponse(
+        {
+          success: true,
+          skipped: true,
+          alreadyRunning: true,
+          claimId,
+          status: 'analyzing',
+          cacheStatus: 'coalesced',
+        },
+        202
+      );
+    }
+    lockOwnerId = lock.ownerId;
 
     // Mark claim as analyzing
     await supabase
@@ -530,6 +659,19 @@ serve(async (req) => {
     // Store results
     const updatedClaim = await storeAnalysis(supabase, claimId, parsed, model);
 
+    lockStatus = 'completed';
+    await recordTripModuleMetric(supabase, {
+      moduleKey: MODULE_KEY,
+      cacheStatus: 'miss',
+      statusCode: 200,
+      durationMs: Date.now() - requestStartedAt,
+      model,
+      providerSummary: {
+        claimId,
+        verdict: parsed.eligibility?.verdict || 'unknown',
+        estimatedAmount: parsed.compensation?.total_amount || 0,
+      },
+    });
     return new Response(
       JSON.stringify({
         success: true,
@@ -546,9 +688,20 @@ serve(async (req) => {
     );
   } catch (err: any) {
     console.error('generate-compensation error:', err);
+    await recordTripModuleMetric(supabase, {
+      moduleKey: MODULE_KEY,
+      cacheStatus: 'error',
+      statusCode: 500,
+      durationMs: Date.now() - requestStartedAt,
+      errorMessage: err.message || 'Internal error',
+    });
     return new Response(
       JSON.stringify({ error: err.message || 'Internal error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
+  } finally {
+    if (tripId && lockKey && lockOwnerId) {
+      await releaseTripModuleLock(supabase, tripId, lockKey, lockOwnerId, lockStatus);
+    }
   }
 });

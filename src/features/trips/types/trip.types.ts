@@ -180,6 +180,7 @@ export interface Trip {
     flightNumber?: string;
     seatNumber?: string;
     modulesGenerated?: boolean;
+    generationStatus?: Record<string, unknown>;
   };
 }
 

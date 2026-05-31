@@ -1,5 +1,17 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { consumeEdgeRateLimit, edgeRateLimitResponse } from '../_shared/edgeScale/rateLimit.ts';
+import { releaseEdgeLock, tryAcquireEdgeLock } from '../_shared/edgeScale/locks.ts';
+import { deferEdgeWork, recordEdgeMetric } from '../_shared/edgeScale/metrics.ts';
+import {
+  buildDestinationDetailsKey,
+  buildDestinationDetailsRateLimitConfigs,
+  DESTINATION_DETAILS_COALESCE_POLL_MS,
+  DESTINATION_DETAILS_COALESCE_WAIT_MS,
+  DESTINATION_DETAILS_LOCK_TTL_SECONDS,
+  DESTINATION_DETAILS_NAMESPACE,
+  resolveDestinationDetailsRequesterKey,
+} from '../_shared/destinations/destinationDetailsScale.ts';
 
 /**
  * DESTINATION DETAILS — Edge Function
@@ -17,20 +29,33 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  *   • Cache TTL = 7 days (travel info doesn't change hourly)
  */
 
-const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY") || Deno.env.get("EXPO_PUBLIC_GOOGLE_MAPS_API_KEY") || "";
-const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY") || "";
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const GOOGLE_API_KEY =
+  Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY') || '';
+const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY') || '';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const CACHE_TTL_DAYS = 7;
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, x-guidera-client-id, apikey, content-type',
 };
 
 // ─── Supabase client ───
 function getSupabase() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+}
+
+function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+  return Response.json(body, {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ═══════════════════════════════════════════════
@@ -54,16 +79,16 @@ async function fetchNearbyPOIs(lat: number, lng: number, city: string): Promise<
 
   // Run 3 searches in parallel: attractions, restaurants, and general points of interest
   const searches = [
-    fetchPlacesByType(lat, lng, "tourist_attraction", 5000),
-    fetchPlacesByType(lat, lng, "restaurant", 3000),
-    fetchPlacesByType(lat, lng, "museum", 5000),
+    fetchPlacesByType(lat, lng, 'tourist_attraction', 5000),
+    fetchPlacesByType(lat, lng, 'restaurant', 3000),
+    fetchPlacesByType(lat, lng, 'museum', 5000),
   ];
 
   const [attractions, restaurants, museums] = await Promise.allSettled(searches);
   const all: any[] = [];
-  if (attractions.status === "fulfilled") all.push(...attractions.value);
-  if (restaurants.status === "fulfilled") all.push(...restaurants.value);
-  if (museums.status === "fulfilled") all.push(...museums.value);
+  if (attractions.status === 'fulfilled') all.push(...attractions.value);
+  if (restaurants.status === 'fulfilled') all.push(...restaurants.value);
+  if (museums.status === 'fulfilled') all.push(...museums.value);
 
   // Deduplicate by place_id
   const seen = new Set<string>();
@@ -73,7 +98,7 @@ async function fetchNearbyPOIs(lat: number, lng: number, city: string): Promise<
     seen.add(p.place_id);
 
     // Resolve photo
-    let photoUrl = "";
+    let photoUrl = '';
     if (p.photos?.[0]?.photo_reference) {
       photoUrl = await resolvePhotoUrl(p.photos[0].photo_reference, 600);
     }
@@ -81,7 +106,7 @@ async function fetchNearbyPOIs(lat: number, lng: number, city: string): Promise<
     unique.push({
       id: p.place_id,
       name: p.name,
-      vicinity: p.vicinity || p.formatted_address || "",
+      vicinity: p.vicinity || p.formatted_address || '',
       rating: p.rating || 0,
       reviewCount: p.user_ratings_total || 0,
       photo: photoUrl,
@@ -99,7 +124,12 @@ async function fetchNearbyPOIs(lat: number, lng: number, city: string): Promise<
   return unique;
 }
 
-async function fetchPlacesByType(lat: number, lng: number, type: string, radius: number): Promise<any[]> {
+async function fetchPlacesByType(
+  lat: number,
+  lng: number,
+  type: string,
+  radius: number
+): Promise<any[]> {
   const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}&key=${GOOGLE_API_KEY}&rankby=prominence`;
   const res = await fetch(url);
   const data = await res.json();
@@ -107,11 +137,20 @@ async function fetchPlacesByType(lat: number, lng: number, type: string, radius:
 }
 
 function categorizePlace(types: string[]): string {
-  if (types.some(t => ["restaurant", "food", "cafe", "bar", "bakery", "meal_takeaway"].includes(t))) return "Restaurants";
-  if (types.some(t => ["museum", "art_gallery", "library"].includes(t))) return "Interaction";
-  if (types.some(t => ["park", "natural_feature", "campground", "beach"].includes(t))) return "Hidden Gems";
-  if (types.some(t => ["amusement_park", "spa", "gym", "movie_theater", "stadium", "bowling_alley"].includes(t))) return "Interaction";
-  return "Attractions";
+  if (
+    types.some((t) => ['restaurant', 'food', 'cafe', 'bar', 'bakery', 'meal_takeaway'].includes(t))
+  )
+    return 'Restaurants';
+  if (types.some((t) => ['museum', 'art_gallery', 'library'].includes(t))) return 'Interaction';
+  if (types.some((t) => ['park', 'natural_feature', 'campground', 'beach'].includes(t)))
+    return 'Hidden Gems';
+  if (
+    types.some((t) =>
+      ['amusement_park', 'spa', 'gym', 'movie_theater', 'stadium', 'bowling_alley'].includes(t)
+    )
+  )
+    return 'Interaction';
+  return 'Attractions';
 }
 
 // ═══════════════════════════════════════════════
@@ -127,7 +166,11 @@ interface PlaceReview {
   placeName?: string;
 }
 
-async function fetchCityReviews(city: string, country: string, pois: PlacePOI[]): Promise<PlaceReview[]> {
+async function fetchCityReviews(
+  city: string,
+  country: string,
+  pois: PlacePOI[]
+): Promise<PlaceReview[]> {
   if (!GOOGLE_API_KEY) return [];
 
   try {
@@ -135,14 +178,13 @@ async function fetchCityReviews(city: string, country: string, pois: PlacePOI[])
     // Google Places text search for a city returns a locality with NO reviews,
     // so we pull reviews from the most popular attractions instead.
     const topPois = pois
-      .filter(p => p.reviewCount > 50)
+      .filter((p) => p.reviewCount > 50)
       .sort((a, b) => b.reviewCount - a.reviewCount)
       .slice(0, 4);
 
     // If no POIs yet, do a quick text search for top attractions
-    const placeIds = topPois.length > 0
-      ? topPois.map(p => p.id)
-      : await findTopAttractionIds(city, country);
+    const placeIds =
+      topPois.length > 0 ? topPois.map((p) => p.id) : await findTopAttractionIds(city, country);
 
     if (placeIds.length === 0) return [];
 
@@ -153,13 +195,13 @@ async function fetchCityReviews(city: string, country: string, pois: PlacePOI[])
         const detailRes = await fetch(detailUrl);
         const detailData = await detailRes.json();
         const reviews = detailData.result?.reviews || [];
-        const placeName = detailData.result?.name || "";
+        const placeName = detailData.result?.name || '';
         return reviews.slice(0, 2).map((r: any) => ({
-          author: r.author_name || "Traveler",
-          avatar: r.profile_photo_url || "",
+          author: r.author_name || 'Traveler',
+          avatar: r.profile_photo_url || '',
           rating: r.rating || 5,
-          text: r.text || "",
-          time: r.relative_time_description || "",
+          text: r.text || '',
+          time: r.relative_time_description || '',
           placeName,
         }));
       } catch {
@@ -170,7 +212,7 @@ async function fetchCityReviews(city: string, country: string, pois: PlacePOI[])
     const results = await Promise.allSettled(detailPromises);
     const allReviews: PlaceReview[] = [];
     for (const r of results) {
-      if (r.status === "fulfilled") allReviews.push(...r.value);
+      if (r.status === 'fulfilled') allReviews.push(...r.value);
     }
 
     // Deduplicate by author name and return top 8
@@ -186,7 +228,7 @@ async function fetchCityReviews(city: string, country: string, pois: PlacePOI[])
 
     return unique;
   } catch (err) {
-    console.error("Failed to fetch reviews:", err);
+    console.error('Failed to fetch reviews:', err);
     return [];
   }
 }
@@ -209,7 +251,11 @@ async function findTopAttractionIds(city: string, country: string): Promise<stri
 // GOOGLE PLACES — Gallery Photos
 // ═══════════════════════════════════════════════
 
-async function fetchGalleryPhotos(city: string, country: string, existingHero: string): Promise<string[]> {
+async function fetchGalleryPhotos(
+  city: string,
+  country: string,
+  existingHero: string
+): Promise<string[]> {
   if (!GOOGLE_API_KEY) return [];
 
   try {
@@ -231,18 +277,16 @@ async function fetchGalleryPhotos(city: string, country: string, existingHero: s
     }
 
     // Resolve photo URLs in parallel
-    const urls = await Promise.allSettled(
-      photoRefs.map(ref => resolvePhotoUrl(ref, 1200))
-    );
+    const urls = await Promise.allSettled(photoRefs.map((ref) => resolvePhotoUrl(ref, 1200)));
 
     const gallery = urls
-      .filter((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled" && !!r.value)
-      .map(r => r.value)
-      .filter(url => url !== existingHero); // Don't duplicate the hero
+      .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && !!r.value)
+      .map((r) => r.value)
+      .filter((url) => url !== existingHero); // Don't duplicate the hero
 
     return gallery.slice(0, 7);
   } catch (err) {
-    console.error("Failed to fetch gallery photos:", err);
+    console.error('Failed to fetch gallery photos:', err);
     return [];
   }
 }
@@ -250,14 +294,14 @@ async function fetchGalleryPhotos(city: string, country: string, existingHero: s
 async function resolvePhotoUrl(photoReference: string, maxWidth: number): Promise<string> {
   try {
     const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photo_reference=${photoReference}&key=${GOOGLE_API_KEY}`;
-    const resp = await fetch(photoUrl, { redirect: "manual" });
+    const resp = await fetch(photoUrl, { redirect: 'manual' });
     if (resp.status === 302 || resp.status === 301) {
-      return resp.headers.get("location") || "";
+      return resp.headers.get('location') || '';
     }
-    const followResp = await fetch(photoUrl, { redirect: "follow" });
-    return followResp.ok ? followResp.url : "";
+    const followResp = await fetch(photoUrl, { redirect: 'follow' });
+    return followResp.ok ? followResp.url : '';
   } catch {
-    return "";
+    return '';
   }
 }
 
@@ -270,8 +314,8 @@ interface AIEnrichment {
     category: string;
     title: string;
     detail: string;
-    severity: "low" | "medium" | "high";
-    iconType: "warning" | "clock" | "location" | "info";
+    severity: 'low' | 'medium' | 'high';
+    iconType: 'warning' | 'clock' | 'location' | 'info';
   }>;
   practical_tips: Array<{
     icon: string;
@@ -317,20 +361,20 @@ Be specific to ${city}, ${country}. Use real data. No generic advice.`;
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_AI_API_KEY}`;
     const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.3,
           maxOutputTokens: 2048,
-          responseMimeType: "application/json",
+          responseMimeType: 'application/json',
         },
       }),
     });
 
     if (!res.ok) {
-      console.error("Gemini API error:", res.status, await res.text());
+      console.error('Gemini API error:', res.status, await res.text());
       return null;
     }
 
@@ -339,10 +383,13 @@ Be specific to ${city}, ${country}. Use real data. No generic advice.`;
     if (!text) return null;
 
     // Parse JSON — handle potential markdown fences
-    const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const cleaned = text
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
     return JSON.parse(cleaned) as AIEnrichment;
   } catch (err) {
-    console.error("Gemini enrichment failed:", err);
+    console.error('Gemini enrichment failed:', err);
     return null;
   }
 }
@@ -363,9 +410,9 @@ async function getCachedDetail(destinationId: string): Promise<CachedDetail | nu
   try {
     const supabase = getSupabase();
     const { data } = await supabase
-      .from("destination_detail_cache")
-      .select("detail_data, cached_at")
-      .eq("destination_id", destinationId)
+      .from('destination_detail_cache')
+      .select('detail_data, cached_at')
+      .eq('destination_id', destinationId)
       .single();
 
     if (!data) return null;
@@ -385,16 +432,31 @@ async function getCachedDetail(destinationId: string): Promise<CachedDetail | nu
 async function setCachedDetail(destinationId: string, detail: CachedDetail): Promise<void> {
   try {
     const supabase = getSupabase();
-    await supabase
-      .from("destination_detail_cache")
-      .upsert({
+    await supabase.from('destination_detail_cache').upsert(
+      {
         destination_id: destinationId,
         detail_data: detail,
         cached_at: new Date().toISOString(),
-      }, { onConflict: "destination_id" });
+      },
+      { onConflict: 'destination_id' }
+    );
   } catch (err) {
-    console.error("Cache write failed (non-fatal):", err);
+    console.error('Cache write failed (non-fatal):', err);
   }
+}
+
+async function waitForCachedDetail(
+  destinationId: string,
+  waitMs = DESTINATION_DETAILS_COALESCE_WAIT_MS,
+  pollMs = DESTINATION_DETAILS_COALESCE_POLL_MS
+): Promise<CachedDetail | null> {
+  const deadline = Date.now() + waitMs;
+  while (Date.now() < deadline) {
+    const cached = await getCachedDetail(destinationId);
+    if (cached) return cached;
+    await sleep(pollMs);
+  }
+  return null;
 }
 
 // Also backfill gallery_urls on the main table if empty
@@ -403,20 +465,20 @@ async function backfillGallery(destinationId: string, galleryUrls: string[]): Pr
   try {
     const supabase = getSupabase();
     const { data } = await supabase
-      .from("curated_destinations")
-      .select("gallery_urls")
-      .eq("id", destinationId)
+      .from('curated_destinations')
+      .select('gallery_urls')
+      .eq('id', destinationId)
       .single();
 
     if (!data?.gallery_urls || data.gallery_urls.length === 0) {
       await supabase
-        .from("curated_destinations")
+        .from('curated_destinations')
         .update({ gallery_urls: galleryUrls })
-        .eq("id", destinationId);
+        .eq('id', destinationId);
       console.log(`Backfilled ${galleryUrls.length} gallery photos for ${destinationId}`);
     }
   } catch (err) {
-    console.error("Gallery backfill failed (non-fatal):", err);
+    console.error('Gallery backfill failed (non-fatal):', err);
   }
 }
 
@@ -425,66 +487,178 @@ async function backfillGallery(destinationId: string, galleryUrls: string[]): Pr
 // ═══════════════════════════════════════════════
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
   }
 
   const startTime = Date.now();
+  let activeLock: { key: string; ownerId: string } | null = null;
+  const supabase = getSupabase();
+
+  const recordMetric = (
+    cacheStatus: 'hit' | 'miss' | 'coalesced' | 'rate_limited' | 'error' | 'skipped',
+    statusCode: number,
+    phase: string,
+    providerSummary: Record<string, unknown> = {},
+    errorMessage?: string
+  ) => {
+    deferEdgeWork(
+      recordEdgeMetric(supabase, {
+        namespace: DESTINATION_DETAILS_NAMESPACE,
+        phase,
+        cacheStatus,
+        statusCode,
+        durationMs: Date.now() - startTime,
+        providerSummary,
+        errorMessage,
+      })
+    );
+  };
+
+  const releaseActiveLock = async (status: 'completed' | 'failed') => {
+    if (!activeLock) return;
+    await releaseEdgeLock(
+      supabase,
+      DESTINATION_DETAILS_NAMESPACE,
+      activeLock.key,
+      activeLock.ownerId,
+      status
+    );
+    activeLock = null;
+  };
 
   try {
     const body = await req.json();
     const { id } = body;
 
     if (!id) {
-      return Response.json({ success: false, error: "Missing destination id" }, { status: 400, headers: corsHeaders });
+      recordMetric('error', 400, 'destination-details-validation', {}, 'Missing destination id');
+      return jsonResponse({ success: false, error: 'Missing destination id' }, 400);
     }
 
     // ── Step 1: Check cache ──
     const cached = await getCachedDetail(id);
     if (cached) {
       console.log(`Cache HIT for ${id} — ${Date.now() - startTime}ms`);
-      return Response.json({
+      recordMetric('hit', 200, 'destination-details-cache', { destinationId: id });
+      return jsonResponse({
         success: true,
         data: cached,
-        source: "cache",
+        source: 'cache',
         duration_ms: Date.now() - startTime,
-      }, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      });
     }
 
     console.log(`Cache MISS for ${id} — fetching live data`);
 
     // ── Step 2: Fetch destination from DB ──
-    const supabase = getSupabase();
     const { data: dest, error: destError } = await supabase
-      .from("curated_destinations")
-      .select("id, city, country, latitude, longitude, hero_image_url, safety_rating, budget_level, seasons")
-      .eq("id", id)
+      .from('curated_destinations')
+      .select(
+        'id, city, country, latitude, longitude, hero_image_url, safety_rating, budget_level, seasons'
+      )
+      .eq('id', id)
       .single();
 
     if (destError || !dest) {
-      return Response.json({ success: false, error: "Destination not found" }, { status: 404, headers: corsHeaders });
+      recordMetric(
+        'error',
+        404,
+        'destination-details-destination',
+        { destinationId: id },
+        'Destination not found'
+      );
+      return jsonResponse({ success: false, error: 'Destination not found' }, 404);
     }
 
     const { city, country, latitude, longitude, hero_image_url } = dest;
+    const detailKey = buildDestinationDetailsKey({
+      destinationId: id,
+      city,
+      country,
+    });
+    const lock = await tryAcquireEdgeLock(
+      supabase,
+      DESTINATION_DETAILS_NAMESPACE,
+      detailKey,
+      DESTINATION_DETAILS_LOCK_TTL_SECONDS
+    );
+
+    if (!lock.acquired) {
+      const coalesced = await waitForCachedDetail(id);
+      if (coalesced) {
+        recordMetric('coalesced', 200, 'destination-details-coalesce', {
+          destinationId: id,
+          city,
+          country,
+        });
+        return jsonResponse({
+          success: true,
+          data: coalesced,
+          source: 'cache',
+          cached: true,
+          coalesced: true,
+          duration_ms: Date.now() - startTime,
+        });
+      }
+
+      recordMetric('coalesced', 202, 'destination-details-coalesce', {
+        destinationId: id,
+        city,
+        country,
+      });
+      return jsonResponse(
+        {
+          success: false,
+          data: null,
+          source: 'pending',
+          cached: false,
+          coalesced: true,
+          retryAfterSeconds: 2,
+          duration_ms: Date.now() - startTime,
+        },
+        202
+      );
+    }
+
+    activeLock = { key: detailKey, ownerId: lock.ownerId };
+
+    const requesterKey = resolveDestinationDetailsRequesterKey(req.headers);
+    for (const limitConfig of buildDestinationDetailsRateLimitConfigs({
+      destinationId: id,
+      city,
+      country,
+      requesterKey,
+    })) {
+      const limit = await consumeEdgeRateLimit(supabase, limitConfig);
+      if (!limit.allowed) {
+        await releaseActiveLock('failed');
+        recordMetric('rate_limited', 429, 'destination-details-rate-limit', {
+          destinationId: id,
+          blockedKey: limit.blockedKey,
+        });
+        return edgeRateLimitResponse(limit, corsHeaders);
+      }
+    }
 
     // ── Step 3: Fire external calls in parallel ──
     // POIs, gallery, and AI enrichment are independent; reviews depend on POIs
     const [poisResult, galleryResult, aiResult] = await Promise.allSettled([
       fetchNearbyPOIs(latitude, longitude, city),
-      fetchGalleryPhotos(city, country, hero_image_url || ""),
+      fetchGalleryPhotos(city, country, hero_image_url || ''),
       fetchAIEnrichment(city, country),
     ]);
 
-    const nearbyPlaces = poisResult.status === "fulfilled" ? poisResult.value : [];
-    const galleryPhotos = galleryResult.status === "fulfilled" ? galleryResult.value : [];
-    const enrichment = aiResult.status === "fulfilled" ? aiResult.value : null;
+    const nearbyPlaces = poisResult.status === 'fulfilled' ? poisResult.value : [];
+    const galleryPhotos = galleryResult.status === 'fulfilled' ? galleryResult.value : [];
+    const enrichment = aiResult.status === 'fulfilled' ? aiResult.value : null;
 
     // Reviews use top POIs for real traveler reviews (runs after POIs resolve)
     let reviews: PlaceReview[] = [];
     try {
       reviews = await fetchCityReviews(city, country, nearbyPlaces);
     } catch (err) {
-      console.error("Reviews fetch failed (non-fatal):", err);
+      console.error('Reviews fetch failed (non-fatal):', err);
     }
 
     const detail: CachedDetail = {
@@ -495,32 +669,42 @@ Deno.serve(async (req: Request) => {
       cached_at: new Date().toISOString(),
     };
 
-    // ── Step 4: Write cache + backfill gallery (fire-and-forget) ──
-    // Don't await — let the response go out immediately
-    const cachePromise = setCachedDetail(id, detail);
-    const galleryPromise = backfillGallery(id, galleryPhotos);
-
-    // Wait briefly for cache writes (up to 500ms) but don't block response
-    await Promise.race([
-      Promise.allSettled([cachePromise, galleryPromise]),
-      new Promise(resolve => setTimeout(resolve, 500)),
-    ]);
+    // ── Step 4: Write cache before unlocking so coalesced requests can serve instantly ──
+    await setCachedDetail(id, detail);
+    deferEdgeWork(backfillGallery(id, galleryPhotos));
+    await releaseActiveLock('completed');
 
     const duration = Date.now() - startTime;
-    console.log(`Live fetch for ${city}, ${country}: ${nearbyPlaces.length} POIs, ${reviews.length} reviews, ${galleryPhotos.length} photos, AI=${!!enrichment} — ${duration}ms`);
+    console.log(
+      `Live fetch for ${city}, ${country}: ${nearbyPlaces.length} POIs, ${reviews.length} reviews, ${galleryPhotos.length} photos, AI=${!!enrichment} — ${duration}ms`
+    );
+    recordMetric('miss', 200, 'destination-details-live', {
+      destinationId: id,
+      city,
+      country,
+      nearbyPlaces: nearbyPlaces.length,
+      reviews: reviews.length,
+      galleryPhotos: galleryPhotos.length,
+      ai: !!enrichment,
+    });
 
-    return Response.json({
+    return jsonResponse({
       success: true,
       data: detail,
-      source: "live",
+      source: 'live',
       duration_ms: duration,
-    }, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    });
   } catch (err) {
-    console.error("destination-details error:", err);
-    return Response.json({
-      success: false,
-      error: (err as Error).message || "Internal error",
-      duration_ms: Date.now() - startTime,
-    }, { status: 500, headers: corsHeaders });
+    console.error('destination-details error:', err);
+    await releaseActiveLock('failed');
+    recordMetric('error', 500, 'destination-details-error', {}, (err as Error).message);
+    return jsonResponse(
+      {
+        success: false,
+        error: (err as Error).message || 'Internal error',
+        duration_ms: Date.now() - startTime,
+      },
+      500
+    );
   }
 });

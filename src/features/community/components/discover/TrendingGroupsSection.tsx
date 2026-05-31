@@ -74,5 +74,6 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     width: 260,
+    height: 305,
   },
 });

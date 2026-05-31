@@ -1,6 +1,6 @@
 /**
  * WHERE SECTION
- * 
+ *
  * Destination search with Google Places Autocomplete.
  * Shows popular destinations when empty, real-time API suggestions when typing.
  */
@@ -16,14 +16,27 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SearchNormal1, Location, CloseCircle } from 'iconsax-react-native';
-import { spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { supabase } from '@/lib/supabase/client';
 
 interface Destination {
   id: string;
   name: string;
   subtitle: string;
   icon: string;
+}
+
+interface PlacesPrediction {
+  placeId?: string;
+  place_id?: string;
+  description?: string;
+  mainText?: string;
+  secondaryText?: string;
+  structured_formatting?: {
+    main_text?: string;
+    secondary_text?: string;
+  };
 }
 
 // Popular destinations shown when input is empty
@@ -38,28 +51,22 @@ const POPULAR_DESTINATIONS: Destination[] = [
   { id: 'singapore', name: 'Singapore', subtitle: 'Garden city of Asia', icon: '🌳' },
 ];
 
-const GOOGLE_PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-
 interface WhereSectionProps {
   value: string;
   onSelect: (destination: string) => void;
   autoFocus?: boolean;
 }
 
-export default function WhereSection({
-  value,
-  onSelect,
-  autoFocus = true,
-}: WhereSectionProps) {
+export default function WhereSection({ value, onSelect, autoFocus = true }: WhereSectionProps) {
   const { colors: themeColors } = useTheme();
   const [query, setQuery] = useState(value);
   const [results, setResults] = useState<Destination[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Fetch autocomplete suggestions from Google Places API
+  // Fetch autocomplete suggestions through the cached/rate-limited Google proxy.
   const fetchSuggestions = useCallback(async (input: string) => {
-    if (!input.trim() || input.trim().length < 2 || !GOOGLE_PLACES_API_KEY) {
+    if (!input.trim() || input.trim().length < 2) {
       setResults([]);
       setIsSearching(false);
       return;
@@ -67,20 +74,29 @@ export default function WhereSection({
 
     setIsSearching(true);
     try {
-      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=(cities)&key=${GOOGLE_PLACES_API_KEY}`;
-      const response = await fetch(url);
-      const data = await response.json();
+      const { data, error } = await supabase.functions.invoke('google-api-proxy', {
+        body: { action: 'places_autocomplete', input },
+      });
 
-      if (data.status === 'OK' && data.predictions) {
-        const suggestions: Destination[] = data.predictions.map((p: any) => {
-          // Extract city and country from structured_formatting
-          const mainText = p.structured_formatting?.main_text || p.description.split(',')[0];
-          const secondaryText = p.structured_formatting?.secondary_text || 
-            p.description.split(',').slice(1).join(',').trim();
-          
+      if (error) throw error;
+
+      const predictions: PlacesPrediction[] = data?.success
+        ? data.data?.predictions || []
+        : data?.predictions || [];
+
+      if (predictions.length > 0) {
+        const suggestions: Destination[] = predictions.map((p) => {
+          const description = p.description || '';
+          const mainText =
+            p.mainText || p.structured_formatting?.main_text || description.split(',')[0];
+          const secondaryText =
+            p.secondaryText ||
+            p.structured_formatting?.secondary_text ||
+            description.split(',').slice(1).join(',').trim();
+
           return {
-            id: p.place_id,
-            name: mainText,
+            id: p.placeId || p.place_id || description,
+            name: description || `${mainText}, ${secondaryText}`,
             subtitle: secondaryText,
             icon: '📍',
           };
@@ -97,17 +113,22 @@ export default function WhereSection({
     }
   }, []);
 
+  const handleQueryChange = useCallback((nextQuery: string) => {
+    setQuery(nextQuery);
+    if (!nextQuery.trim() || nextQuery.trim().length < 2) {
+      setResults([]);
+      setIsSearching(false);
+    }
+  }, []);
+
   // Debounced search — triggers 300ms after user stops typing
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     if (!query.trim() || query.trim().length < 2) {
-      setResults([]);
-      setIsSearching(false);
       return;
     }
 
-    setIsSearching(true);
     debounceRef.current = setTimeout(() => {
       fetchSuggestions(query);
     }, 300);
@@ -118,10 +139,12 @@ export default function WhereSection({
   }, [query, fetchSuggestions]);
 
   const handleSelect = (destination: Destination) => {
-    const fullName = destination.subtitle 
-      ? `${destination.name}, ${destination.subtitle}` 
-      : destination.name;
-    setQuery(destination.name);
+    const fullName = destination.name.includes(',')
+      ? destination.name
+      : destination.subtitle
+        ? `${destination.name}, ${destination.subtitle}`
+        : destination.name;
+    setQuery(fullName);
     onSelect(fullName);
   };
 
@@ -138,22 +161,30 @@ export default function WhereSection({
   return (
     <View style={styles.container}>
       {/* Search Input */}
-      <View style={[styles.searchInput, { 
-        backgroundColor: themeColors.bgCard,
-        borderColor: themeColors.borderSubtle,
-      }]}>
+      <View
+        style={[
+          styles.searchInput,
+          {
+            backgroundColor: themeColors.bgCard,
+            borderColor: themeColors.borderSubtle,
+          },
+        ]}
+      >
         <SearchNormal1 size={20} color={themeColors.textSecondary} />
         <TextInput
           style={[styles.input, { color: themeColors.textPrimary }]}
           placeholder="Search any city or country..."
           placeholderTextColor={themeColors.textSecondary}
           value={query}
-          onChangeText={setQuery}
+          onChangeText={handleQueryChange}
           autoFocus={autoFocus}
           autoCorrect={false}
         />
         {query.length > 0 && (
-          <TouchableOpacity onPress={handleClear} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity
+            onPress={handleClear}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <CloseCircle size={18} color={themeColors.textTertiary} variant="Bold" />
           </TouchableOpacity>
         )}
@@ -168,12 +199,14 @@ export default function WhereSection({
       {isSearching && (
         <View style={styles.loadingRow}>
           <ActivityIndicator size="small" color={themeColors.primary} />
-          <Text style={[styles.loadingText, { color: themeColors.textTertiary }]}>Searching...</Text>
+          <Text style={[styles.loadingText, { color: themeColors.textTertiary }]}>
+            Searching...
+          </Text>
         </View>
       )}
 
       {/* Results List */}
-      <ScrollView 
+      <ScrollView
         style={styles.destinationsList}
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled
@@ -203,7 +236,10 @@ export default function WhereSection({
               <Text style={[styles.destinationName, { color: themeColors.textPrimary }]}>
                 {destination.name}
               </Text>
-              <Text style={[styles.destinationSubtitle, { color: themeColors.textSecondary }]} numberOfLines={1}>
+              <Text
+                style={[styles.destinationSubtitle, { color: themeColors.textSecondary }]}
+                numberOfLines={1}
+              >
                 {destination.subtitle}
               </Text>
             </View>

@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { offlineSync, queueSyncAction, type SyncAction } from '@/services/offline/offlineSync';
 
 // Types
 export type CompanionType = 'solo' | 'couple' | 'family' | 'friends' | 'group';
@@ -272,6 +273,17 @@ function transformPayloadToRow(payload: UpdateTravelPreferencesPayload): Record<
   if (payload.preferencesCompleted !== undefined) row.preferences_completed = payload.preferencesCompleted;
   
   return row;
+}
+
+function isRetryablePreferenceError(error: unknown): boolean {
+  const message = String((error as { message?: string } | null)?.message || error || '').toLowerCase();
+  return (
+    message.includes('network request failed') ||
+    message.includes('failed to fetch') ||
+    message.includes('timeout') ||
+    message.includes('abort') ||
+    message.includes('offline')
+  );
 }
 
 // Default preferences for new users
@@ -570,7 +582,7 @@ class PreferencesService {
     try {
       const { data, error } = await supabase
         .from('travel_preferences')
-        .insert({ user_id: userId })
+        .upsert({ user_id: userId }, { onConflict: 'user_id' })
         .select()
         .single();
       
@@ -597,17 +609,29 @@ class PreferencesService {
       
       const { data, error } = await supabase
         .from('travel_preferences')
-        .update(rowUpdates)
-        .eq('user_id', userId)
+        .upsert(
+          {
+            user_id: userId,
+            ...rowUpdates,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' }
+        )
         .select()
         .single();
       
       if (error) {
+        if (isRetryablePreferenceError(error)) {
+          await queueSyncAction('SYNC_PREFERENCES', { userId, updates }, 'medium');
+        }
         return { data: null, error };
       }
       
       return { data: transformRow(data as TravelPreferencesRow), error: null };
     } catch (error) {
+      if (isRetryablePreferenceError(error)) {
+        await queueSyncAction('SYNC_PREFERENCES', { userId, updates }, 'medium');
+      }
       console.error('Error updating preferences:', error);
       return { data: null, error };
     }
@@ -917,3 +941,28 @@ class PreferencesService {
 }
 
 export const preferencesService = new PreferencesService();
+
+offlineSync.registerHandler('SYNC_PREFERENCES', async (action: SyncAction) => {
+  const payload = action.payload as {
+    userId: string;
+    updates: UpdateTravelPreferencesPayload;
+  };
+  const rowUpdates = transformPayloadToRow(payload.updates);
+
+  const { error } = await supabase
+    .from('travel_preferences')
+    .upsert(
+      {
+        user_id: payload.userId,
+        ...rowUpdates,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id' }
+    );
+
+  return {
+    success: !error,
+    actionId: action.id,
+    error: error?.message,
+  };
+});

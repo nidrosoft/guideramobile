@@ -2,7 +2,7 @@
  * SCAN SCANNING STEP
  * 
  * Step 3 in scan import flow - Calls scan-ticket edge function with
- * Claude Sonnet vision to extract booking data from the image.
+ * fast AI vision fallback to extract booking data from the image.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -44,8 +44,6 @@ export default function ScanScanningStep({ onNext, data }: StepComponentProps) {
   useEffect(() => {
     let cancelled = false;
 
-    const MAX_RETRIES = 3;
-
     const processScan = async () => {
       const imageBase64 = data.scannedData?.imageBase64;
       const mediaType = data.scannedData?.mediaType || 'image/jpeg';
@@ -55,43 +53,28 @@ export default function ScanScanningStep({ onNext, data }: StepComponentProps) {
         return;
       }
 
-      let lastError = '';
+      try {
+        const result = await tripImportEngine.scanTicket(
+          imageBase64,
+          mediaType,
+          profile?.id,
+        );
 
-      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         if (cancelled) return;
 
-        try {
-          if (attempt > 1) {
-            setMessage(`Retrying... (attempt ${attempt}/${MAX_RETRIES})`);
-            await new Promise(r => setTimeout(r, 2000));
-          }
-
-          const result = await tripImportEngine.scanTicket(
-            imageBase64,
-            mediaType,
-            profile?.id,
-          );
-
-          if (cancelled) return;
-
-          if (result.success && result.booking) {
-            onNext({ scannedBooking: result.booking });
-            return;
-          }
-
-          lastError = result.error || 'Could not extract booking information from this image.';
-        } catch (error: any) {
-          if (cancelled) return;
-          lastError = error.message || 'Failed to process the image.';
-          if (__DEV__) console.warn(`[Scan] Attempt ${attempt}/${MAX_RETRIES} failed:`, lastError);
+        if (result.success && result.booking) {
+          onNext({ scannedBooking: result.booking });
+          return;
         }
-      }
 
-      // All retries exhausted
-      onNext({
-        scanError: 'We couldn\'t read this ticket after multiple attempts. Try taking a clearer photo or uploading a screenshot instead.',
-        scannedBooking: null,
-      });
+        const message = result.error || 'Could not extract booking information from this image.';
+        onNext({ scanError: message, scannedBooking: null });
+      } catch (error: any) {
+        if (cancelled) return;
+        const message = error.message || 'Failed to process the image.';
+        if (__DEV__) console.warn('[Scan] Ticket scan failed:', message);
+        onNext({ scanError: message, scannedBooking: null });
+      }
     };
 
     processScan();

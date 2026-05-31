@@ -287,7 +287,8 @@ class ChatService {
     conversationId: string,
     userId: string,
     content: string,
-    type: string = 'text'
+    type: string = 'text',
+    clientMessageId?: string
   ): Promise<Message> {
     if (!checkMessageRateLimit()) {
       throw new Error('Rate limit exceeded. Please wait before sending more messages.');
@@ -296,69 +297,29 @@ class ChatService {
     // Determine if this is a group chat or direct conversation
     const { data: room } = await supabase
       .from('chat_rooms')
-      .select('id')
+      .select('id, name, reference_id, type')
       .eq('id', conversationId)
       .single();
 
-    const insertPayload: Record<string, unknown> = {
-      user_id: userId,
-      content,
-      message_type: type,
-    };
-
-    if (room) {
-      insertPayload.group_id = conversationId;
-    } else {
-      insertPayload.conversation_id = conversationId;
-    }
-
-    const { data: message, error } = await supabase
-      .from('chat_messages')
-      .insert(insertPayload)
-      .select('*')
-      .single();
-
+    const { data: message, error } = await supabase.rpc('send_chat_message', {
+      p_chat_id: conversationId,
+      p_user_id: userId,
+      p_content: content,
+      p_message_type: type,
+      p_client_message_id: clientMessageId,
+    });
     if (error) throw new Error(error.message);
 
-    const lastMsgFields = {
-      last_message_at: message.created_at,
-      last_message_preview: content.substring(0, 100),
-    };
-
     if (room) {
-      // M6: Use atomic counter RPC instead of read-modify-write
-      await supabase.rpc('increment_chat_message_count', { p_room_id: conversationId, p_delta: 1 });
-
-      // Update last_message fields
-      await supabase
-        .from('chat_rooms')
-        .update(lastMsgFields)
-        .eq('id', conversationId);
-
-      // Get room metadata for notifications
-      const { data: roomData } = await supabase
-        .from('chat_rooms')
-        .select('name, reference_id, type')
-        .eq('id', conversationId)
-        .single();
-
       // H2: Only notify for activity chats if no recent activity_comment alert (dedup)
-      if (roomData?.type === 'activity' && roomData?.reference_id) {
-        this.notifyGroupChatMessage(roomData.reference_id, userId, roomData.name || 'Activity', content, 'activity').catch(() => {});
+      if (room.type === 'activity' && room.reference_id) {
+        this.notifyGroupChatMessage(room.reference_id, userId, room.name || 'Activity', content, 'activity').catch(() => {});
       }
       // M9: Also notify for regular group chats
-      if (roomData?.type === 'group' && roomData?.reference_id) {
-        this.notifyGroupChatMessage(roomData.reference_id, userId, roomData.name || 'Group', content, 'group').catch(() => {});
+      if (room.type === 'group' && room.reference_id) {
+        this.notifyGroupChatMessage(room.reference_id, userId, room.name || 'Group', content, 'group').catch(() => {});
       }
     } else {
-      // DM: atomic increment
-      await supabase.rpc('increment_conversation_message_count', { p_conv_id: conversationId, p_delta: 1 });
-
-      await supabase
-        .from('direct_conversations')
-        .update(lastMsgFields)
-        .eq('id', conversationId);
-
       // Get conversation to find recipient
       const { data: convData } = await supabase
         .from('direct_conversations')
@@ -403,9 +364,16 @@ class ChatService {
         alert_type_code: 'dm_message',
         title: `${senderName} sent you a message`,
         body: content.length > 80 ? content.substring(0, 80) + '...' : content,
-        context: { senderId, senderName },
+        context: {
+          senderId,
+          senderName,
+          chatType: 'direct',
+          dedupeKey: `dm:${senderId}`,
+        },
         action_url: `/community/chat/${senderId}`,
-        status: 'delivered',
+        channels_requested: ['push', 'in_app'],
+        priority: 5,
+        status: 'pending',
       });
     } catch (err) {
       if (__DEV__) console.warn('notifyDmMessage error:', err);
@@ -464,9 +432,17 @@ class ChatService {
         alert_type_code: alertType,
         title: `${senderName} in "${chatName}"`,
         body: content.length > 80 ? content.substring(0, 80) + '...' : content,
-        context: { referenceId, senderId, senderName, chatType },
+        context: {
+          referenceId,
+          senderId,
+          senderName,
+          chatType,
+          dedupeKey: `${chatType}:${referenceId}:${senderId}`,
+        },
         action_url: actionUrl,
-        status: 'delivered',
+        channels_requested: ['push', 'in_app'],
+        priority: chatType === 'activity' ? 4 : 5,
+        status: 'pending',
       }));
 
       await supabase.from('alerts').insert(alerts);

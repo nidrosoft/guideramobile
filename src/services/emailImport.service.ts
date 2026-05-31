@@ -75,32 +75,45 @@ class EmailImportService {
   }
 
   /**
-   * Poll for new imports until one is found or timeout.
+   * Poll for a forwarded import until one is found or timeout.
+   *
+   * Uses a recency window rather than a snapshot of pre-existing IDs: the user
+   * often forwards the email BEFORE opening this screen, so by the time we poll
+   * the booking may already be parsed. We accept any not-yet-imported import
+   * created within `freshnessMs`, which handles that case while still ignoring
+   * stale bookings left over from previous sessions.
    */
   async waitForImport(
     userId: string,
     onProgress?: (imports: EmailImport[]) => void,
-    maxWaitMs = 60000,
-    pollIntervalMs = 3000,
+    maxWaitMs = 120000,
+    pollIntervalMs = 4000,
+    freshnessMs = 30 * 60 * 1000,
   ): Promise<EmailImport | null> {
     const startTime = Date.now();
+    const cutoff = startTime - freshnessMs;
 
     while (Date.now() - startTime < maxWaitMs) {
-      const imports = await this.checkImports(userId);
+      const all = await this.checkImports(userId);
 
-      if (onProgress) onProgress(imports);
+      // Only react to recent, not-yet-imported emails.
+      const fresh = all.filter(i => {
+        if (i.status === 'imported') return false;
+        const t = i.createdAt ? new Date(i.createdAt).getTime() : NaN;
+        return Number.isNaN(t) ? true : t >= cutoff;
+      });
 
-      // Find the most recent parsed import
-      const parsed = imports.find(i => i.status === 'parsed');
+      if (onProgress) onProgress(fresh);
+
+      // A booking was parsed — done.
+      const parsed = fresh.find(i => i.status === 'parsed' && i.parsedBooking);
       if (parsed) return parsed;
 
-      // Find processing one (still working)
-      const processing = imports.find(i => i.status === 'processing' || i.status === 'pending');
-      if (!processing && imports.length > 0) {
-        // All done but none parsed — no booking found
-        return imports[0];
-      }
+      // An email arrived but had no booking — surface that result.
+      const noBooking = fresh.find(i => i.status === 'no_booking');
+      if (noBooking) return noBooking;
 
+      // Otherwise keep waiting (pending/processing, or nothing yet).
       await new Promise(r => setTimeout(r, pollIntervalMs));
     }
 

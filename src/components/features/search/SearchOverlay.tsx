@@ -1,6 +1,6 @@
 /**
  * SEARCH OVERLAY
- * 
+ *
  * Full-screen Airbnb-style search overlay with accordion sections.
  * Each section (Where, When, Who) expands/collapses with smooth animations.
  */
@@ -22,7 +22,16 @@ import { Add, SearchNormal1 } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { searchService } from '@/services/search.service';
-import { SearchSectionCard, WhereSection, WhenSection, WhoSection, WhatSection, DEFAULT_TOPICS } from './overlay';
+import { parseDestinationInput } from '@/lib/tripSnapshot/destinationParse';
+import { tripSnapshotService } from '@/services/tripSnapshot.service';
+import {
+  SearchSectionCard,
+  WhereSection,
+  WhenSection,
+  WhoSection,
+  WhatSection,
+  DEFAULT_TOPICS,
+} from './overlay';
 
 type ActiveSection = 'where' | 'when' | 'who' | 'what' | null;
 
@@ -36,7 +45,13 @@ interface GuestCounts {
 interface SearchOverlayProps {
   visible: boolean;
   query: string;
-  onSelectSearch: (term: string, dates?: { start?: Date; end?: Date }, guests?: { adults: number; children: number; infants: number }, selectedTopics?: string[]) => void;
+  onSelectSearch: (
+    term: string,
+    dates?: { start?: Date; end?: Date },
+    guests?: { adults: number; children: number; infants: number },
+    selectedTopics?: string[],
+    country?: string
+  ) => void;
   onClose: () => void;
 }
 
@@ -48,14 +63,14 @@ export default function SearchOverlay({
 }: SearchOverlayProps) {
   const insets = useSafeAreaInsets();
   const { colors: themeColors } = useTheme();
-  
+
   // State
   const [activeSection, setActiveSection] = useState<ActiveSection>('where');
   const [destination, setDestination] = useState(initialQuery || '');
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [guests, setGuests] = useState<GuestCounts>({
-    adults: 0,
+    adults: 1,
     children: 0,
     infants: 0,
     pets: 0,
@@ -63,24 +78,32 @@ export default function SearchOverlay({
   const [selectedTopics, setSelectedTopics] = useState<string[]>([...DEFAULT_TOPICS]);
 
   // Dynamic styles
-  const dynamicStyles = useMemo(() => ({
-    container: { backgroundColor: themeColors.background },
-    header: { backgroundColor: 'transparent' },
-    closeButton: { backgroundColor: themeColors.bgElevated, borderWidth: 1, borderColor: themeColors.borderSubtle },
-    footer: { backgroundColor: themeColors.bgModal, borderTopColor: themeColors.borderSubtle },
-    clearText: { color: themeColors.textSecondary },
-    searchButton: { backgroundColor: themeColors.primary },
-    searchButtonText: { color: '#FFFFFF' },
-  }), [themeColors]);
+  const dynamicStyles = useMemo(
+    () => ({
+      container: { backgroundColor: themeColors.background },
+      header: { backgroundColor: 'transparent' },
+      closeButton: {
+        backgroundColor: themeColors.bgElevated,
+        borderWidth: 1,
+        borderColor: themeColors.borderSubtle,
+      },
+      footer: { backgroundColor: themeColors.bgModal, borderTopColor: themeColors.borderSubtle },
+      clearText: { color: themeColors.textSecondary },
+      searchButton: { backgroundColor: themeColors.primary },
+      searchButtonText: { color: '#FFFFFF' },
+    }),
+    [themeColors]
+  );
 
-  // Reset state when overlay opens
+  // Sync destination when overlay opens; full reset happens via parent key remount after snapshot dismiss
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (visible) {
       setDestination(initialQuery || '');
       setActiveSection('where');
-      setSelectedTopics([...DEFAULT_TOPICS]);
     }
   }, [visible, initialQuery]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Computed values for collapsed states
   const dateDisplayText = useMemo(() => {
@@ -121,7 +144,10 @@ export default function SearchOverlay({
 
   const handleDestinationSelect = (dest: string) => {
     setDestination(dest);
-    // Auto-advance to When section
+    const { city, country } = parseDestinationInput(dest);
+    if (city) {
+      tripSnapshotService.prefetchLiveData({ destination: city, country });
+    }
     setTimeout(() => setActiveSection('when'), 300);
   };
 
@@ -142,7 +168,14 @@ export default function SearchOverlay({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (destination) {
       searchService.addRecentSearch(destination);
-      onSelectSearch(destination, { start: startDate || undefined, end: endDate || undefined }, { adults: guests.adults, children: guests.children, infants: guests.infants }, selectedTopics);
+      const { city, country } = parseDestinationInput(destination);
+      onSelectSearch(
+        city || destination,
+        { start: startDate || undefined, end: endDate || undefined },
+        { adults: guests.adults, children: guests.children, infants: guests.infants },
+        selectedTopics,
+        country || undefined
+      );
     }
   };
 
@@ -151,7 +184,7 @@ export default function SearchOverlay({
     setDestination('');
     setStartDate(null);
     setEndDate(null);
-    setGuests({ adults: 0, children: 0, infants: 0, pets: 0 });
+    setGuests({ adults: 1, children: 0, infants: 0, pets: 0 });
     setSelectedTopics([...DEFAULT_TOPICS]);
     setActiveSection('where');
   };
@@ -165,23 +198,28 @@ export default function SearchOverlay({
       presentationStyle="fullScreen"
       onRequestClose={handleClose}
     >
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={[styles.container, dynamicStyles.container]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {/* Header with close button on RIGHT */}
         <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
           <View style={styles.headerSpacer} />
-          <TouchableOpacity 
-            style={[styles.closeButton, dynamicStyles.closeButton]} 
+          <TouchableOpacity
+            style={[styles.closeButton, dynamicStyles.closeButton]}
             onPress={handleClose}
             activeOpacity={0.7}
           >
-            <Add size={20} color={themeColors.textPrimary} variant="Linear" style={{ transform: [{ rotate: '45deg' }] }} />
+            <Add
+              size={20}
+              color={themeColors.textPrimary}
+              variant="Linear"
+              style={{ transform: [{ rotate: '45deg' }] }}
+            />
           </TouchableOpacity>
         </View>
 
-        <ScrollView 
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -222,10 +260,7 @@ export default function SearchOverlay({
             isExpanded={activeSection === 'who'}
             onPress={() => handleSectionPress('who')}
           >
-            <WhoSection
-              guests={guests}
-              onUpdateGuests={handleGuestsUpdate}
-            />
+            <WhoSection guests={guests} onUpdateGuests={handleGuestsUpdate} />
           </SearchSectionCard>
 
           {/* WHAT Section */}
@@ -244,12 +279,18 @@ export default function SearchOverlay({
         </ScrollView>
 
         {/* Footer */}
-        <View style={[styles.footer, dynamicStyles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+        <View
+          style={[
+            styles.footer,
+            dynamicStyles.footer,
+            { paddingBottom: insets.bottom + spacing.md },
+          ]}
+        >
           <TouchableOpacity onPress={handleClearAll} activeOpacity={0.7}>
             <Text style={[styles.clearText, dynamicStyles.clearText]}>Clear all</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[styles.searchButton, dynamicStyles.searchButton]}
             onPress={handleSearch}
             activeOpacity={0.8}

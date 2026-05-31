@@ -9,7 +9,77 @@
  */
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import {
+  getEdgeResponseCache,
+  getStaleEdgeCache,
+  setEdgeResponseCache,
+} from '../_shared/edgeScale/cache.ts';
+import {
+  buildPhase6CacheKey,
+  consumePhase6RateLimit,
+  deferPhase6Work,
+  getPhase6ActionPolicy,
+  recordPhase6Metric,
+} from '../_shared/phase6Edge.ts';
+import { chooseSafetyResult, resolveSafetyCountryCode } from '../_shared/safety/safetyData.ts';
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const EXTERNAL_FETCH_TIMEOUT_MS = 6000;
+let supabaseClient: ReturnType<typeof createClient> | null = null;
+
+function getServiceClient(): ReturnType<typeof createClient> | null {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
+  if (!supabaseClient) {
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  }
+  return supabaseClient;
+}
+
+function requesterKey(req: Request): string {
+  return (
+    req.headers.get('x-guidera-client-id') ||
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    req.headers.get('cf-connecting-ip') ||
+    'anonymous'
+  );
+}
+
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = EXTERNAL_FETCH_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function safetyMetric(
+  supabase: ReturnType<typeof createClient> | null,
+  input: {
+    statusCode: number;
+    durationMs: number;
+    cacheStatus?: 'hit' | 'miss' | 'rate_limited' | 'error' | 'skipped';
+    errorMessage?: string | null;
+    providerSummary?: Record<string, unknown>;
+  }
+): void {
+  if (!supabase) return;
+  deferPhase6Work(
+    recordPhase6Metric(supabase, {
+      action: 'safety_destination',
+      provider: 'safety_alerts',
+      ...input,
+    })
+  );
+}
 
 // Types
 interface SafetyRequest {
@@ -113,7 +183,7 @@ async function getRisklineData(
     params.append('city', city);
   }
 
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `https://api.riskline.com/v2/travel-search?${params}`,
     {
       headers: {
@@ -138,7 +208,7 @@ async function getGovernmentAdvisories(countryCode: string): Promise<Advisory[]>
 
   // US State Department Travel Advisories
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://travel.state.gov/_res/rss/TAsTWs.xml`,
       { headers: { 'Accept': 'application/xml' } }
     );
@@ -316,6 +386,7 @@ serve(async (req: Request) => {
   }
 
   const startTime = Date.now();
+  const supabase = getServiceClient();
 
   try {
     const apiKey = Deno.env.get('RAPIDAPI_KEY');
@@ -326,49 +397,151 @@ serve(async (req: Request) => {
       throw new Error('Destination country is required');
     }
 
-    const countryCode = request.destination.countryCode || 
+    const countryCode =
+      resolveSafetyCountryCode(request.destination) ||
       request.destination.country.substring(0, 2).toUpperCase();
     const country = request.destination.country;
     const city = request.destination.city;
 
-    let safetyData: SafetyResponse;
+    const cacheKey = buildPhase6CacheKey('safety_destination', {
+      country,
+      countryCode,
+      city,
+      nationality: request.nationality,
+    });
+    const policy = getPhase6ActionPolicy('safety_destination');
 
-    if (apiKey) {
-      try {
-        // Use Riskline API
-        const risklineData = await getRisklineData(apiKey, countryCode, city);
-        // Transform Riskline response to our format
-        // This would need to be implemented based on actual Riskline response structure
-        safetyData = transformRisklineResponse(risklineData, country, countryCode, city);
-      } catch (error) {
-        console.warn('Riskline API failed, using fallback:', error);
+    // 1) Cache-first: prefer DB cache over user-triggered external fetches.
+    if (supabase) {
+      const cached = await getEdgeResponseCache<SafetyResponse>(
+        supabase,
+        'safety_destination',
+        cacheKey
+      );
+      if (cached) {
+        safetyMetric(supabase, {
+          statusCode: 200,
+          durationMs: Date.now() - startTime,
+          cacheStatus: 'hit',
+        });
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: cached.response,
+            meta: {
+              provider: 'cache',
+              requestDuration: Date.now() - startTime,
+              cacheStatus: 'hit',
+            },
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // 2) Durable rate limit on cold (uncached) requests that hit providers.
+    if (supabase) {
+      const rateLimit = await consumePhase6RateLimit(supabase, {
+        action: 'safety_destination',
+        actorKey: requesterKey(req),
+      });
+      if (!rateLimit.allowed) {
+        safetyMetric(supabase, {
+          statusCode: 429,
+          durationMs: Date.now() - startTime,
+          cacheStatus: 'rate_limited',
+        });
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded', resetAt: rateLimit.resetAt },
+          }),
+          {
+            status: 429,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json',
+              'X-RateLimit-Remaining': String(rateLimit.remaining),
+              'X-RateLimit-Reset': rateLimit.resetAt,
+            },
+          }
+        );
+      }
+    }
+
+    // 3) Attempt a fresh assembly. If the external providers hang/fail, this
+    //    throws and we fall back to stale cache, then to generated data.
+    let fresh: SafetyResponse | null = null;
+    let providerError: string | null = null;
+    try {
+      let safetyData: SafetyResponse;
+      if (apiKey) {
+        try {
+          const risklineData = await getRisklineData(apiKey, countryCode, city);
+          safetyData = transformRisklineResponse(risklineData, country, countryCode, city);
+        } catch (error) {
+          console.warn('Riskline API failed, using fallback:', error);
+          safetyData = generateFallbackSafetyData(countryCode, country, city);
+        }
+      } else {
         safetyData = generateFallbackSafetyData(countryCode, country, city);
       }
-    } else {
-      // Use fallback data
-      console.log('No Riskline API key, using fallback safety data');
-      safetyData = generateFallbackSafetyData(countryCode, country, city);
+
+      const govAdvisories = await getGovernmentAdvisories(countryCode);
+      safetyData.advisories = [...safetyData.advisories, ...govAdvisories];
+
+      if (request.nationality) {
+        safetyData.entryRequirements = await getEntryRequirements(request.nationality, countryCode);
+      }
+
+      fresh = safetyData;
+    } catch (error) {
+      providerError = (error as Error).message || 'Safety provider failure';
+      console.warn('Safety assembly failed, attempting stale cache:', providerError);
     }
 
-    // Add government advisories
-    const govAdvisories = await getGovernmentAdvisories(countryCode);
-    safetyData.advisories = [...safetyData.advisories, ...govAdvisories];
+    // 4) Stale cache fallback when the fresh assembly failed.
+    let stale: SafetyResponse | null = null;
+    if (!fresh && supabase) {
+      const staleHit = await getStaleEdgeCache<SafetyResponse>(
+        supabase,
+        'safety_destination',
+        cacheKey
+      );
+      stale = staleHit?.response ?? null;
+    }
 
-    // Add entry requirements if origin nationality provided
-    if (request.nationality) {
-      safetyData.entryRequirements = await getEntryRequirements(
-        request.nationality,
-        countryCode
+    const fallback = generateFallbackSafetyData(countryCode, country, city);
+    const choice = chooseSafetyResult<SafetyResponse>({ fresh, stale, fallback });
+
+    // 5) Cache fresh assemblies for future cache-first hits.
+    if (fresh && supabase && policy.cacheTtlSeconds) {
+      await setEdgeResponseCache(
+        supabase,
+        'safety_destination',
+        cacheKey,
+        fresh,
+        policy.cacheTtlSeconds,
+        { provider: apiKey ? 'riskline' : 'fallback', countryCode }
       );
     }
+
+    safetyMetric(supabase, {
+      statusCode: 200,
+      durationMs: Date.now() - startTime,
+      cacheStatus: choice.source === 'fresh' ? 'miss' : choice.servedStale ? 'hit' : 'skipped',
+      errorMessage: providerError,
+      providerSummary: { source: choice.source, apiKey: Boolean(apiKey) },
+    });
 
     return new Response(
       JSON.stringify({
         success: true,
-        data: safetyData,
+        data: choice.payload,
         meta: {
-          provider: apiKey ? 'riskline' : 'fallback',
+          provider: choice.source === 'fresh' ? (apiKey ? 'riskline' : 'fallback') : choice.source,
           requestDuration: Date.now() - startTime,
+          servedStale: choice.servedStale,
         },
       }),
       {
@@ -377,6 +550,12 @@ serve(async (req: Request) => {
     );
   } catch (error) {
     console.error('Safety alerts error:', error);
+    safetyMetric(supabase, {
+      statusCode: 500,
+      durationMs: Date.now() - startTime,
+      cacheStatus: 'error',
+      errorMessage: (error as Error).message || 'Safety data request failed',
+    });
 
     return new Response(
       JSON.stringify({

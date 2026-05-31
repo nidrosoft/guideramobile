@@ -39,6 +39,7 @@ import { spacing, typography, fontFamily } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
+import { trackAffiliateClick } from '@/services/affiliateTracking';
 import type { DealType } from '@/services/deal';
 import { SkeletonDetailPage } from '@/components/common/SkeletonLoader';
 
@@ -110,8 +111,21 @@ export default function DealDetailScreen() {
     const s = deal?.deal_data || {};
     const url = s.bookingUrl || s.productUrl || s.link;
     if (url) {
-      // Track click
       if (profile?.id) {
+        // New affiliate click tracking
+        trackAffiliateClick({
+          userId: profile.id,
+          dealCacheId: deal.id,
+          dealType: deal.deal_type,
+          provider: deal.provider,
+          routeKey: deal.route_key || undefined,
+          priceAmount: Number(deal.price_amount) || undefined,
+          priceCurrency: deal.price_currency || 'USD',
+          dealTitle: s.title || deal.route_key || undefined,
+          affiliateUrl: url,
+          source: 'in_app_deal',
+        });
+        // Legacy deal_clicks insert (backward compatibility)
         supabase.from('deal_clicks').insert({
           user_id: profile.id, deal_type: deal.deal_type, provider: deal.provider,
           affiliate_url: url, deal_snapshot: s, price_amount: deal.price_amount,

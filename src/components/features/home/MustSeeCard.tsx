@@ -34,7 +34,7 @@ export default function MustSeeCard({
     <View style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
       {/* Image Section */}
       <View style={styles.imageContainer}>
-        <CachedImage uri={imageUrl} style={styles.image} />
+        <CachedImage uri={imageUrl} fallbackCityName={location || name} style={styles.image} />
         
         {/* Badge */}
         <View style={styles.badge}>

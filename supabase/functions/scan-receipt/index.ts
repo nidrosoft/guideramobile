@@ -9,15 +9,25 @@
  */
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getUserIdFromRequest } from '../_shared/auth.ts';
+import {
+  beginAiInputGuard,
+  setAiInputDedupeCache,
+} from '../_shared/aiInputGuard.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-clerk-token',
 };
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
 const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY') || '';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_ANON_PUBLIC_KEY') || '';
+const MAX_SCAN_IMAGE_BYTES = 7 * 1024 * 1024;
 
 const RECEIPT_PROMPT = `You are an expert receipt analyzer. Extract ALL expense items from this receipt image.
 
@@ -261,28 +271,47 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { imageBase64, mediaType = 'image/jpeg', currency = 'USD' } = await req.json();
+    const body = await req.json();
+    const { imageBase64, mediaType = 'image/jpeg', currency = 'USD' } = body;
 
     if (!imageBase64) {
       throw new Error('imageBase64 is required');
     }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const guard = await beginAiInputGuard({
+      req,
+      body,
+      supabase,
+      kind: 'scan_receipt',
+      fieldName: 'imageBase64',
+      maxBytes: MAX_SCAN_IMAGE_BYTES,
+      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+      mimeType: mediaType,
+      corsHeaders,
+      resolveUserId: () =>
+        getUserIdFromRequest(req, body, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY),
+    });
+    if (guard.response) return guard.response;
+
+    const normalizedImageBase64 = body.imageBase64;
 
     let rawText: string;
     let modelUsed: string;
 
     // Try Claude Haiku first (fastest), then GPT-4o-mini, then Gemini
     try {
-      rawText = await extractWithClaude(imageBase64, mediaType);
+      rawText = await extractWithClaude(normalizedImageBase64, mediaType);
       modelUsed = 'claude-haiku-4-5';
     } catch (claudeErr: any) {
       console.warn('Claude failed, trying GPT:', claudeErr.message);
       try {
-        rawText = await extractWithGPT(imageBase64, mediaType);
+        rawText = await extractWithGPT(normalizedImageBase64, mediaType);
         modelUsed = 'gpt-4o-mini';
       } catch (gptErr: any) {
         console.warn('GPT failed, trying Gemini:', gptErr.message);
         try {
-          rawText = await extractWithGemini(imageBase64, mediaType);
+          rawText = await extractWithGemini(normalizedImageBase64, mediaType);
           modelUsed = 'gemini-2.5-flash';
         } catch (geminiErr: any) {
           throw new Error(`All models failed. Claude: ${claudeErr.message}. GPT: ${gptErr.message}. Gemini: ${geminiErr.message}`);
@@ -309,22 +338,27 @@ serve(async (req: Request) => {
     // Normalize into expense items
     const expenses = normalizeExpenseItems(parsed, currency);
 
+    const responseBody = {
+      success: true,
+      merchant: parsed.merchant,
+      date: parsed.date,
+      currency: parsed.currency || currency,
+      items: expenses,
+      subtotal: parsed.subtotal,
+      tax: parsed.tax,
+      tip: parsed.tip,
+      total: parsed.total,
+      paymentMethod: parsed.paymentMethod,
+      confidence: parsed.confidence,
+      modelUsed,
+      itemCount: expenses.length,
+    };
+    if (guard.userId && guard.payloadHash) {
+      await setAiInputDedupeCache(supabase, 'scan_receipt', guard.userId, guard.payloadHash, responseBody);
+    }
+
     return new Response(
-      JSON.stringify({
-        success: true,
-        merchant: parsed.merchant,
-        date: parsed.date,
-        currency: parsed.currency || currency,
-        items: expenses,
-        subtotal: parsed.subtotal,
-        tax: parsed.tax,
-        tip: parsed.tip,
-        total: parsed.total,
-        paymentMethod: parsed.paymentMethod,
-        confidence: parsed.confidence,
-        modelUsed,
-        itemCount: expenses.length,
-      }),
+      JSON.stringify(responseBody),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {

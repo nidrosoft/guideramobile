@@ -119,7 +119,7 @@ export async function notifyNewMessage(
     .from('alerts')
     .select('id')
     .eq('user_id', userId)
-    .eq('alert_type_code', 'new_message')
+    .eq('alert_type_code', 'group_message')
     .eq('category_code', 'social')
     .is('read_at', null)
     .contains('context', { groupId })
@@ -130,11 +130,11 @@ export async function notifyNewMessage(
 
   await supabase.from('alerts').insert({
     user_id: userId,
-    alert_type_code: 'new_message',
+    alert_type_code: 'group_message',
     category_code: 'social',
     title: `💬 New message in ${groupName}`,
     body: `${senderName}: ${messagePreview.substring(0, 100)}`,
-    context: { groupId, groupName, senderName },
+    context: { groupId, groupName, senderName, chatType: 'group', dedupeKey: `group:${groupId}` },
     action_url: `/community/chat/${groupId}`,
     priority: 4,
     channels_requested: ['push', 'in_app'],
@@ -267,7 +267,7 @@ export async function notifyDirectMessage(
     .from('alerts')
     .select('id')
     .eq('user_id', userId)
-    .eq('alert_type_code', 'direct_message')
+    .eq('alert_type_code', 'dm_message')
     .is('read_at', null)
     .contains('context', { senderId })
     .limit(1);
@@ -276,11 +276,11 @@ export async function notifyDirectMessage(
 
   await supabase.from('alerts').insert({
     user_id: userId,
-    alert_type_code: 'direct_message',
+    alert_type_code: 'dm_message',
     category_code: 'social',
     title: `✉️ ${senderName} sent you a message`,
     body: messagePreview.substring(0, 100),
-    context: { senderId, senderName, conversationId },
+    context: { senderId, senderName, conversationId, chatType: 'direct', dedupeKey: `dm:${senderId}` },
     action_url: `/community/chat/${conversationId}`,
     priority: 5,
     channels_requested: ['push', 'in_app'],
@@ -309,7 +309,7 @@ export async function notifyVerificationUpdate(
   await supabase.from('alerts').insert({
     user_id: userId,
     alert_type_code: 'verification_update',
-    category_code: 'account',
+    category_code: 'system',
     title: titles[status],
     body: bodies[status],
     context: { status },
@@ -366,7 +366,7 @@ export async function notifyDealPriceDrop(
   await supabase.from('alerts').insert({
     user_id: userId,
     alert_type_code: 'price_drop',
-    category_code: 'deal',
+    category_code: 'financial',
     title: `💰 Price dropped! Save ${currency}${savings}`,
     body: `${dealTitle} is now ${currency}${newPrice} (was ${currency}${oldPrice})`,
     context: { dealId, oldPrice, newPrice, currency, savings },

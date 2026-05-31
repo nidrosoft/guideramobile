@@ -6,13 +6,23 @@
  */
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getUserIdFromRequest } from '../_shared/auth.ts';
+import {
+  beginAiInputGuard,
+  setAiInputDedupeCache,
+} from '../_shared/aiInputGuard.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-clerk-token',
 };
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_ANON_PUBLIC_KEY') || '';
+const MAX_AUDIO_BYTES = 12 * 1024 * 1024;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -20,7 +30,8 @@ serve(async (req) => {
   }
 
   try {
-    const { audioBase64, mimeType } = await req.json();
+    const bodyJson = await req.json();
+    const { audioBase64, mimeType = 'audio/m4a' } = bodyJson;
 
     if (!audioBase64) {
       return new Response(
@@ -28,6 +39,31 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const guard = await beginAiInputGuard<{ success: boolean; transcription: string }>({
+      req,
+      body: bodyJson,
+      supabase,
+      kind: 'transcribe_audio',
+      fieldName: 'audioBase64',
+      maxBytes: MAX_AUDIO_BYTES,
+      allowedMimeTypes: [
+        'audio/m4a',
+        'audio/mp4',
+        'audio/x-m4a',
+        'audio/wav',
+        'audio/webm',
+        'audio/ogg',
+        'audio/mpeg',
+        'audio/mp3',
+      ],
+      mimeType,
+      corsHeaders,
+      resolveUserId: () =>
+        getUserIdFromRequest(req, bodyJson, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY),
+    });
+    if (guard.response) return guard.response;
 
     if (!OPENAI_API_KEY) {
       return new Response(
@@ -37,7 +73,7 @@ serve(async (req) => {
     }
 
     // Decode base64 to binary
-    const binaryString = atob(audioBase64);
+    const binaryString = atob(bodyJson.audioBase64);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
@@ -100,9 +136,19 @@ serve(async (req) => {
     }
 
     const transcription = await res.text();
+    const responseBody = { success: true, transcription: transcription.trim() };
+    if (guard.userId && guard.payloadHash) {
+      await setAiInputDedupeCache(
+        supabase,
+        'transcribe_audio',
+        guard.userId,
+        guard.payloadHash,
+        responseBody
+      );
+    }
 
     return new Response(
-      JSON.stringify({ success: true, transcription: transcription.trim() }),
+      JSON.stringify(responseBody),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err: any) {

@@ -93,6 +93,11 @@ interface AdvisoryResult {
     delay?: number;
     gate?: string;
     terminal?: string;
+    aircraft?: string;
+    durationMinutes?: number;
+    arrivalTerminal?: string;
+    baggageBelt?: string;
+    scheduledDeparture?: string;
   };
   confidence: 'high' | 'medium' | 'low';
 }
@@ -115,45 +120,54 @@ async function getDirections(
   mode: 'driving' | 'transit' = 'driving',
   departureTime?: Date
 ): Promise<DirectionsResult | null> {
+  if (!apiKey) return null;
   try {
-    const depTime = departureTime
-      ? Math.floor(departureTime.getTime() / 1000)
-      : 'now';
+    const travelMode = mode === 'transit' ? 'TRANSIT' : 'DRIVE';
 
-    const params = new URLSearchParams({
-      origin: `${origin.lat},${origin.lng}`,
-      destination: `${destination.lat},${destination.lng}`,
-      mode,
-      departure_time: String(depTime),
-      key: apiKey,
-    });
+    const body: Record<string, unknown> = {
+      origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
+      destination: { location: { latLng: { latitude: destination.lat, longitude: destination.lng } } },
+      travelMode,
+    };
 
-    if (mode === 'driving') {
-      params.set('traffic_model', 'best_guess');
+    // Live-traffic routing for driving. departureTime must be in the future;
+    // omit it to let the Routes API use "now".
+    if (travelMode === 'DRIVE') {
+      body.routingPreference = 'TRAFFIC_AWARE';
+      if (departureTime && departureTime.getTime() > Date.now() + 60_000) {
+        body.departureTime = departureTime.toISOString();
+      }
     }
 
-    const url = `https://maps.googleapis.com/maps/api/directions/json?${params}`;
-    const response = await fetch(url);
+    const response = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'routes.duration,routes.staticDuration,routes.distanceMeters',
+      },
+      body: JSON.stringify(body),
+    });
 
     if (!response.ok) {
-      console.error(`Google Directions API error: ${response.status}`);
+      const txt = await response.text();
+      console.error(`Routes API error: ${response.status} ${txt}`);
       return null;
     }
 
     const data = await response.json();
-
-    if (data.status !== 'OK' || !data.routes?.length) {
-      console.error(`Google Directions: ${data.status}`);
+    const route = data.routes?.[0];
+    if (!route) {
       return null;
     }
 
-    const leg = data.routes[0].legs[0];
-    const baseDuration = leg.duration.value; // seconds
-    const trafficDuration = leg.duration_in_traffic?.value || baseDuration;
-    const distance = leg.distance.value; // meters
+    const parseDur = (s?: string) => (s ? parseInt(String(s).replace('s', ''), 10) || 0 : 0);
+    const trafficDuration = parseDur(route.duration);
+    const baseDuration = parseDur(route.staticDuration) || trafficDuration;
+    const distance = route.distanceMeters || 0;
 
-    // Determine traffic level
-    const trafficRatio = trafficDuration / baseDuration;
+    // Determine traffic level from the traffic-vs-static ratio
+    const trafficRatio = baseDuration > 0 ? trafficDuration / baseDuration : 1;
     let trafficLevel: 'light' | 'moderate' | 'heavy' = 'light';
     if (trafficRatio > 1.5) trafficLevel = 'heavy';
     else if (trafficRatio > 1.2) trafficLevel = 'moderate';
@@ -165,7 +179,7 @@ async function getDirections(
       trafficLevel,
     };
   } catch (error) {
-    console.error('Google Directions error:', error);
+    console.error('Routes API error:', error);
     return null;
   }
 }
@@ -234,11 +248,11 @@ async function getAirportCoords(
   if (aeroApiKey) {
     try {
       const response = await fetch(
-        `https://aerodatabox.p.rapidapi.com/airports/iata/${airportCode}`,
+        `https://prod.api.market/api/v1/aedbx/aerodatabox/airports/iata/${airportCode}`,
         {
           headers: {
-            'X-RapidAPI-Key': aeroApiKey,
-            'X-RapidAPI-Host': 'aerodatabox.p.rapidapi.com',
+            'x-api-market-key': aeroApiKey,
+            'accept': 'application/json',
           },
         }
       );
@@ -264,17 +278,19 @@ async function getFlightStatus(
   aeroApiKey: string,
   flightNumber: string,
   date: string
-): Promise<{ status: string; delay?: number; gate?: string; terminal?: string } | null> {
+): Promise<{ status: string; delay?: number; gate?: string; terminal?: string; aircraft?: string; durationMinutes?: number; arrivalTerminal?: string; baggageBelt?: string; scheduledDeparture?: string } | null> {
   try {
-    const match = flightNumber.match(/^([A-Z]{2})(\d+)$/i);
-    if (!match) return null;
+    // Normalize (strip spaces, uppercase) and accept alphanumeric carrier
+    // codes like B6 (JetBlue) or U2 (easyJet), plus optional suffix letter.
+    const fn = flightNumber.replace(/\s+/g, '').toUpperCase();
+    if (!/^[A-Z0-9]{2,3}\d{1,4}[A-Z]?$/.test(fn)) return null;
 
     const response = await fetch(
-      `https://aerodatabox.p.rapidapi.com/flights/number/${flightNumber}/${date}`,
+      `https://prod.api.market/api/v1/aedbx/aerodatabox/flights/number/${fn}/${date}`,
       {
         headers: {
-          'X-RapidAPI-Key': aeroApiKey,
-          'X-RapidAPI-Host': 'aerodatabox.p.rapidapi.com',
+          'x-api-market-key': aeroApiKey,
+          'accept': 'application/json',
         },
       }
     );
@@ -287,13 +303,42 @@ async function getFlightStatus(
 
     const f = flights[0];
     const dep = f.departure || {};
-    const delay = dep.delay?.departure;
+    const arr = f.arrival || {};
+
+    // AeroDataBox times look like "2026-06-01 16:05Z" — normalize to ISO.
+    const toIso = (s?: string) => (s ? String(s).replace(' ', 'T') : undefined);
+    const depSched = toIso(dep.scheduledTime?.utc || dep.scheduledTimeUtc);
+    const depRevised = toIso(dep.revisedTime?.utc || dep.revisedTimeUtc);
+    const arrSched = toIso(arr.scheduledTime?.utc || arr.scheduledTimeUtc);
+
+    // Delay: prefer explicit value, else derive from revised vs scheduled.
+    let delayMin = typeof dep.delay?.departure === 'number' ? dep.delay.departure : undefined;
+    if (delayMin === undefined && depRevised && depSched) {
+      const d = Math.round((new Date(depRevised).getTime() - new Date(depSched).getTime()) / 60000);
+      if (Number.isFinite(d) && d !== 0) delayMin = d;
+    }
+
+    // Flight duration from scheduled departure → arrival.
+    let durationMinutes: number | undefined;
+    if (depSched && arrSched) {
+      const d = Math.round((new Date(arrSched).getTime() - new Date(depSched).getTime()) / 60000);
+      if (Number.isFinite(d) && d > 0) durationMinutes = d;
+    }
+
+    // Terminal can be a string ("4") or an object ({ name }).
+    const termName = (t: unknown): string | undefined =>
+      (typeof t === 'string' ? t : (t as { name?: string })?.name) || undefined;
 
     return {
       status: f.status?.toLowerCase() || 'scheduled',
-      delay: typeof delay === 'number' ? delay : undefined,
+      delay: typeof delayMin === 'number' ? delayMin : undefined,
       gate: dep.gate || undefined,
-      terminal: dep.terminal?.name || undefined,
+      terminal: termName(dep.terminal),
+      aircraft: f.aircraft?.model || undefined,
+      durationMinutes,
+      arrivalTerminal: termName(arr.terminal),
+      baggageBelt: arr.baggageBelt || undefined,
+      scheduledDeparture: dep.scheduledTime?.local || depSched || undefined,
     };
   } catch (e) {
     console.error('Flight status error:', e);
@@ -662,7 +707,7 @@ async function calculateDepartureAdvisory(
       category: 'Flight',
       level: flightRisk,
       detail: flightStatus.status === 'cancelled'
-        ? '⚠️ Flight is CANCELLED. Check with your airline.'
+        ? 'Flight is CANCELLED. Check with your airline.'
         : flightStatus.delay
         ? `Flight delayed ${flightStatus.delay} min. We adjusted your leave time.`
         : 'Flight is on time.',
@@ -717,7 +762,11 @@ serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     );
 
-    const googleApiKey = Deno.env.get('GOOGLE_MAPS_API_KEY') || '';
+    const googleApiKey =
+      Deno.env.get('GOOGLE_MAPS_API_KEY') ||
+      Deno.env.get('GOOGLE_API_KEY') ||
+      Deno.env.get('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY') ||
+      '';
     const aeroApiKey = Deno.env.get('AERODATABOX_API_KEY') || '';
 
     if (action === 'calculate') {

@@ -5,6 +5,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { cacheService, CACHE_TTL } from '@/services/cache/cacheService';
 
 
 export interface ProfileData {
@@ -109,7 +110,54 @@ export interface UpdateProfileInput {
   emergency_contact?: ProfileData['emergency_contact'];
 }
 
+export interface AccountSummary {
+  profile: ProfileData | null;
+  savedItems: {
+    total: number;
+  };
+  partner: {
+    status: string;
+    didit_verification_status: string | null;
+    submitted_at?: string | null;
+    updated_at?: string | null;
+  } | null;
+}
+
+const accountSummaryCacheKey = (userId: string) => `account_summary:${userId}`;
+
 export const profileService = {
+  /**
+   * Get profile-adjacent account metadata in one RPC.
+   * Cached briefly to avoid repeating badge/status queries on account opens.
+   */
+  async getAccountSummary(
+    userId: string,
+    options: { forceRefresh?: boolean } = {}
+  ): Promise<AccountSummary | null> {
+    const cacheKey = accountSummaryCacheKey(userId);
+
+    if (!options.forceRefresh) {
+      const cached = await cacheService.get<AccountSummary>(cacheKey);
+      if (cached) return cached;
+    }
+
+    const { data, error } = await supabase.rpc('get_account_summary', { p_user_id: userId });
+    if (error) {
+      console.error('Error fetching account summary:', error);
+      return null;
+    }
+
+    const summary = data as AccountSummary | null;
+    if (summary) {
+      await cacheService.set(cacheKey, summary, CACHE_TTL.SHORT);
+    }
+    return summary;
+  },
+
+  async invalidateAccountSummary(userId: string): Promise<void> {
+    await cacheService.remove(accountSummaryCacheKey(userId));
+  },
+
   /**
    * Get user profile by ID
    */

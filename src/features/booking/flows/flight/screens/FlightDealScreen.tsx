@@ -134,8 +134,10 @@ export default function FlightDealScreen({
       origin,
       destination: dest,
       date,
+      routeKey: routeKey,
+      dealTitle: dealSnapshot.title,
     });
-  }, [redirect, provider, bookingUrl, dealSnapshot, flight]);
+  }, [redirect, provider, bookingUrl, dealSnapshot, flight, routeKey]);
 
   const handleSave = useCallback(async () => {
     if (!profile?.id) return;

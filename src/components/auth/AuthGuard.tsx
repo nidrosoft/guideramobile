@@ -39,11 +39,13 @@ export function AuthGuard({ children }: AuthGuardProps) {
       }
     } else {
       if (!hasCompletedOnboarding) {
-        // Only redirect when profile is loaded — profile being null means it's
-        // still syncing, not that onboarding isn't complete.  Avoids a race
-        // condition where the user logs back in and gets a spurious redirect.
-        if (!inOnboardingGroup && profile) {
-          if (__DEV__) console.log('[AuthGuard] → Redirecting to onboarding (authenticated, not onboarded)');
+        // Route to onboarding whenever the user is signed in but hasn't
+        // completed it — INCLUDING when profile is null (sync failed / not
+        // yet created). The onboarding flow is responsible for re-attempting
+        // profile creation if needed; leaving the user stranded on landing
+        // is worse than a spurious redirect because there's no escape.
+        if (!inOnboardingGroup) {
+          if (__DEV__) console.log('[AuthGuard] → Redirecting to onboarding', { hasProfile: !!profile });
           router.replace('/(onboarding)/intro');
         }
       } else {

@@ -1,6 +1,6 @@
 /**
  * useSectionDestinations
- * 
+ *
  * Fetches curated_destinations from Supabase filtered by section config.
  * Each homepage section maps to a filter on curated_destinations fields.
  * Returns loading state, destinations, and continent-based filter counts.
@@ -8,6 +8,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import { VIEW_ALL_SECTION_CACHE_SLUGS } from '@/features/homepage/services/homepageService';
+import type { ContentItem } from '@/features/homepage/types/homepage.types';
 
 export interface CuratedDestination {
   id: string;
@@ -55,8 +57,6 @@ function getSectionQuery(sectionSlug: string) {
       return { field: 'primary_category', value: 'popular', sort: 'popularity_score' };
     case 'places':
       return { field: 'primary_category', value: 'popular', sort: 'editor_rating' };
-    case 'events':
-      return { field: null, value: null, sort: 'popularity_score' }; // all destinations
     case 'must-see':
       return { field: 'is_featured', value: true, sort: 'editor_rating' };
     case 'editor-choices':
@@ -64,7 +64,12 @@ function getSectionQuery(sectionSlug: string) {
     case 'trending-locations':
       return { field: 'is_trending', value: true, sort: 'popularity_score' };
     case 'best-discover':
-      return { field: 'primary_category', value: 'off_beaten_path', sort: 'editor_rating', fallback: true };
+      return {
+        field: 'primary_category',
+        value: 'off_beaten_path',
+        sort: 'editor_rating',
+        fallback: true,
+      };
     case 'budget-friendly':
       return { field: 'budget_level_max', value: 2, sort: 'estimated_daily_budget_usd_asc' };
     case 'luxury-escapes':
@@ -76,6 +81,41 @@ function getSectionQuery(sectionSlug: string) {
     default:
       return { field: null, value: null, sort: 'popularity_score' };
   }
+}
+
+function mapCacheItemToDestination(item: ContentItem): CuratedDestination {
+  return {
+    id: item.id,
+    title: item.title,
+    slug: item.slug || item.id,
+    city: item.location?.city || '',
+    country: item.location?.country || '',
+    continent: '',
+    hero_image_url: item.imageUrl || '',
+    thumbnail_url: item.thumbnailUrl || item.imageUrl || '',
+    short_description: item.subtitle || '',
+    description: item.subtitle || '',
+    editor_rating: item.rating || 4.5,
+    popularity_score: item.matchScore || 0,
+    estimated_daily_budget_usd: item.price?.amount || 0,
+    budget_level: item.budgetLevel || 3,
+    primary_category: '',
+    seasons: [],
+    tags: item.tags || [],
+    best_for: item.bestFor || [],
+    is_trending: item.badges?.some((badge) => badge.type === 'trending') || false,
+    is_featured: item.badges?.some((badge) => badge.type === 'editors_choice') || false,
+    safety_rating: item.safetyRating || 4,
+    latitude: 0,
+    longitude: 0,
+    gallery_urls: [],
+    estimated_flight_price_usd: 0,
+    estimated_hotel_price_usd: 0,
+    language_spoken: [],
+    currency_code: '',
+    travel_style: [],
+    secondary_categories: [],
+  };
 }
 
 export function useSectionDestinations(sectionSlug: string) {
@@ -91,12 +131,25 @@ export function useSectionDestinations(sectionSlug: string) {
       setError(null);
 
       try {
+        const cacheSlug = VIEW_ALL_SECTION_CACHE_SLUGS[sectionSlug] || sectionSlug;
+        const { data: cachedSection } = await supabase
+          .from('section_cache')
+          .select('data, item_count, expires_at')
+          .eq('section_slug', cacheSlug)
+          .gt('item_count', 0)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle();
+
+        if (cachedSection?.data && Array.isArray(cachedSection.data)) {
+          if (!cancelled) {
+            setDestinations(cachedSection.data.map(mapCacheItemToDestination));
+          }
+          return;
+        }
+
         const config = getSectionQuery(sectionSlug);
 
-        let query = supabase
-          .from('curated_destinations')
-          .select('*')
-          .eq('status', 'published');
+        let query = supabase.from('curated_destinations').select('*').eq('status', 'published');
 
         // Apply section-specific filters
         if (config.field === 'primary_category' && config.value) {
@@ -152,20 +205,20 @@ export function useSectionDestinations(sectionSlug: string) {
     }
 
     fetchData();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [sectionSlug]);
 
   // Build continent-based filters from the fetched data
   const filters: SectionFilter[] = useMemo(() => {
     const continentCounts: Record<string, number> = {};
-    destinations.forEach(d => {
+    destinations.forEach((d) => {
       const c = d.continent || 'Other';
       continentCounts[c] = (continentCounts[c] || 0) + 1;
     });
 
-    const pills: SectionFilter[] = [
-      { id: 'all', label: 'All', count: destinations.length },
-    ];
+    const pills: SectionFilter[] = [{ id: 'all', label: 'All', count: destinations.length }];
 
     Object.entries(continentCounts)
       .sort((a, b) => b[1] - a[1])

@@ -8,7 +8,7 @@
  * HYBRID APPROACH: Shows preview cards with "View All" to open full selection sheet.
  */
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -58,13 +58,7 @@ import FlightSelectionSheet from '../sheets/FlightSelectionSheet';
 import { styles } from './PackageBuildScreen.styles';
 
 // Import provider manager for real API calls
-import { providerManagerService } from '@/services/provider-manager.service';
-import {
-  FlightSearchParams as ProviderFlightParams,
-  HotelSearchParams as ProviderHotelParams,
-  CarSearchParams as ProviderCarParams,
-  ExperienceSearchParams as ProviderExperienceParams,
-} from '@/types/unified';
+import { providerManagerService, type PackageBundleCategory } from '@/services/provider-manager.service';
 
 interface PackageBuildScreenProps {
   onContinue: () => void;
@@ -127,6 +121,7 @@ export default function PackageBuildScreen({
   
   const [experienceActiveFilter, setExperienceActiveFilter] = useState<string | null>(null);
   const [experienceSelectedFilters, setExperienceSelectedFilters] = useState<Record<string, string>>({});
+  const packageResultsLoadedRef = useRef(false);
 
   // Filter handlers
   const handleFlightFilterPress = (filterId: string) => {
@@ -184,13 +179,15 @@ export default function PackageBuildScreen({
     }
   }, [selections]);
 
-  const loadCategoryResults = async (category: PackageCategory) => {
+  async function loadCategoryResults(category: PackageCategory) {
+    if (packageResultsLoadedRef.current) return;
     if (category === 'flight' && flightResults.length > 0) return;
     if (category === 'hotel' && hotelResults.length > 0) return;
     if (category === 'car' && carResults.length > 0) return;
     if (category === 'experience' && experienceResults.length > 0) return;
 
-    setSearching(category, true);
+    const packageCategories: PackageCategory[] = ['flight', 'hotel', 'car', 'experience'];
+    packageCategories.forEach((packageCategory) => setSearching(packageCategory, true));
 
     try {
       const depDate = tripSetup.departureDate instanceof Date
@@ -205,23 +202,29 @@ export default function PackageBuildScreen({
           ? new Date(tripSetup.returnDate).toISOString().split('T')[0]
           : new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
 
-      switch (category) {
-        case 'flight': {
-          const params: ProviderFlightParams = {
-            tripType: 'round_trip',
-            segments: [
-              { origin: tripSetup.origin?.code || 'JFK', destination: tripSetup.destination?.code || 'LAX', departureDate: depDate },
-              { origin: tripSetup.destination?.code || 'LAX', destination: tripSetup.origin?.code || 'JFK', departureDate: retDate },
-            ],
-            travelers: {
-              adults: tripSetup.travelers.adults,
-              children: tripSetup.travelers.children,
-              infants: tripSetup.travelers.infants,
-            },
-            cabinClass: 'economy' as any,
-          };
-          const result = await providerManagerService.searchFlights(params);
-          const mapped = result.results.map((f: any) => ({
+      const includedCategories: PackageBundleCategory[] = [
+        'flights',
+        'hotels',
+        'cars',
+        'experiences',
+      ];
+      const bundleResult = await providerManagerService.searchPackageBundle({
+        packageType: 'flight_hotel_car',
+        origin: tripSetup.origin?.code || 'JFK',
+        destination: tripSetup.destination?.name || tripSetup.destination?.code || 'New York',
+        destinationCode: tripSetup.destination?.code || tripSetup.destination?.name || 'LAX',
+        dates: { startDate: depDate, endDate: retDate },
+        travelers: {
+          adults: tripSetup.travelers.adults,
+          children: tripSetup.travelers.children,
+          infants: tripSetup.travelers.infants,
+        } as any,
+        rooms: 1,
+        includedCategories,
+      });
+
+      const flights = bundleResult.bundle.flights?.items || [];
+      const mappedFlights = flights.map((f: any) => ({
             id: f.id,
             segments: f.outbound?.segments?.map((s: any) => ({
               airline: s.carrier || { name: 'Airline', code: 'XX' },
@@ -237,18 +240,10 @@ export default function PackageBuildScreen({
             price: f.price || { amount: 0, currency: 'USD', formatted: '$0' },
             seatsAvailable: 10,
           }));
-          setFlightResults(mapped as any[]);
-          break;
-        }
-        case 'hotel': {
-          const params: ProviderHotelParams = {
-            destination: { type: 'city', value: tripSetup.destination?.name || tripSetup.destination?.code || 'New York' },
-            checkInDate: depDate,
-            checkOutDate: retDate,
-            rooms: [{ adults: tripSetup.travelers.adults, children: tripSetup.travelers.children }],
-          };
-          const result = await providerManagerService.searchHotels(params);
-          const mapped = result.results.map((h: any) => ({
+      setFlightResults(mappedFlights as any[]);
+
+      const hotels = bundleResult.bundle.hotels?.items || [];
+      const mappedHotels = hotels.map((h: any) => ({
             id: h.id,
             name: h.name,
             starRating: h.starRating || 4,
@@ -263,19 +258,11 @@ export default function PackageBuildScreen({
             rooms: h.rooms || [],
             policies: h.policies || {},
           }));
-          setHotelResults(mapped as any[]);
-          break;
-        }
-        case 'car': {
-          const params: ProviderCarParams = {
-            pickupLocation: { type: 'city', value: tripSetup.destination?.name || tripSetup.destination?.code || 'New York' },
-            pickupDateTime: new Date(depDate).toISOString(),
-            dropoffDateTime: new Date(retDate).toISOString(),
-            driverAge: 30,
-          };
-          const result = await providerManagerService.searchCars(params);
-          const nights = Math.max(1, Math.ceil((new Date(retDate).getTime() - new Date(depDate).getTime()) / 86400000));
-          const mapped = result.results.map((c: any) => ({
+      setHotelResults(mappedHotels as any[]);
+
+      const cars = bundleResult.bundle.cars?.items || [];
+      const nights = Math.max(1, Math.ceil((new Date(retDate).getTime() - new Date(depDate).getTime()) / 86400000));
+      const mappedCars = cars.map((c: any) => ({
             id: c.id,
             name: `${c.vehicle?.make || ''} ${c.vehicle?.model || ''}`.trim() || 'Car',
             category: c.vehicle?.category || 'compact',
@@ -314,17 +301,10 @@ export default function PackageBuildScreen({
             available: true,
             popularChoice: false,
           }));
-          setCarResults(mapped as any[]);
-          break;
-        }
-        case 'experience': {
-          const params: ProviderExperienceParams = {
-            destination: { type: 'city', value: tripSetup.destination?.name || tripSetup.destination?.code || 'New York' },
-            dates: { startDate: depDate, flexibleDates: false },
-            participants: { adults: tripSetup.travelers.adults, children: tripSetup.travelers.children },
-          };
-          const result = await providerManagerService.searchExperiences(params);
-          const mapped = result.results.map((e: any) => ({
+      setCarResults(mappedCars as any[]);
+
+      const experiences = bundleResult.bundle.experiences?.items || [];
+      const mappedExperiences = experiences.map((e: any) => ({
             id: e.id,
             title: e.title,
             description: e.description || '',
@@ -340,16 +320,14 @@ export default function PackageBuildScreen({
             instantConfirmation: true,
             mobileTicket: true,
           }));
-          setExperienceResults(mapped as any[]);
-          break;
-        }
-      }
+      setExperienceResults(mappedExperiences as any[]);
+      packageResultsLoadedRef.current = true;
     } catch (error) {
       console.error(`Package ${category} search error:`, error);
+    } finally {
+      packageCategories.forEach((packageCategory) => setSearching(packageCategory, false));
     }
-
-    setSearching(category, false);
-  };
+  }
 
   const handleCategoryChange = (category: PackageCategory) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

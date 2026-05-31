@@ -87,6 +87,10 @@ export interface ImportFlowData {
   connectedAccountId?: string;
   connectedEmail?: string;
   scanError?: string;
+
+  // Email-forward flow data
+  emailImport?: any;            // EmailImport row (with parsedBooking) from the connecting step
+  importedTrip?: { tripId: string; title: string };  // result of importing the parsed booking
 }
 
 export interface ImportFlowProps {

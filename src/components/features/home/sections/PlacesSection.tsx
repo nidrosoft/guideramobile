@@ -76,6 +76,7 @@ export default function PlacesSection() {
           <PopularPlaceCard
             name={place.name}
             country={place.country}
+            city={place.city}
             visitors={place.visitors}
             rating={place.rating}
             imageUrl={getCachedImageUrl(place.imageUrl, place.city)}

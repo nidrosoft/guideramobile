@@ -1,18 +1,23 @@
 /**
  * EMAIL BOOKINGS STEP
- * 
- * Step 7 in email import flow - Display found bookings for selection.
- * Shows real detected trips from the scan job.
- * User can select which trips/bookings to import.
+ *
+ * Step 3 in the email import flow. Shows the single booking parsed from the
+ * forwarded email (data.emailImport.parsedBooking) and imports it into a trip
+ * via emailImportService.importBooking.
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Airplane, Building, Car, TickCircle, Bus, Ship, DocumentText, Warning2 } from 'iconsax-react-native';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { TickCircle, Airplane, Building, Car, Bus, Ship, DocumentText, Warning2, Calendar, Clock, Location, TicketStar, Lovely, Crown, Timer1, ArrowSwapHorizontal, ArrowDown2, ArrowUp2 } from 'iconsax-react-native';
+import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import { StepComponentProps } from '../../types/import-flow.types';
-import { tripImportEngine, type NormalizedTrip, type NormalizedBooking } from '@/services/trip/trip-import-engine.service';
+import { emailImportService } from '@/services/emailImport.service';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const CATEGORY_ICONS: Record<string, any> = {
   flight: Airplane,
@@ -20,207 +25,241 @@ const CATEGORY_ICONS: Record<string, any> = {
   car: Car,
   train: Bus,
   cruise: Ship,
+  experience: TicketStar,
   other: DocumentText,
 };
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$', EUR: '\u20AC', GBP: '\u00A3', JPY: '\u00A5', AUD: 'A$', CAD: 'C$',
+};
+
+function formatDate(value?: string | null): string {
+  if (!value) return '';
+  const d = new Date(value.length <= 10 ? `${value}T00:00:00Z` : value);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+}
+
+function formatTime(value?: string | null): string | null {
+  if (!value || !value.includes('T')) return null;
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+function DetailRow({ icon: IconCmp, iconColor, label, value, tc }: { icon: any; iconColor: string; label: string; value: string; tc: any }) {
+  return (
+    <View style={styles.row}>
+      <IconCmp size={18} color={iconColor} variant="Bold" />
+      <View style={styles.rowContent}>
+        <Text style={[styles.rowLabel, { color: tc.textTertiary }]}>{label}</Text>
+        <Text style={[styles.rowValue, { color: tc.textPrimary }]}>{value}</Text>
+      </View>
+    </View>
+  );
+}
+
 export default function EmailBookingsStep({ onNext, onBack, data }: StepComponentProps) {
-  const { colors: tc, isDark } = useTheme();
-  const [selectedTripIds, setSelectedTripIds] = useState<string[]>([]);
+  const { colors: tc } = useTheme();
+  const { profile } = useAuth();
   const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
 
-  const detectedTrips: NormalizedTrip[] = data.detectedTrips || [];
-  const totalBookings = detectedTrips.reduce((sum, t) => sum + (t.segments?.length || 0), 0);
+  const emailImport = data.emailImport;
+  const booking = emailImport?.parsedBooking;
 
-  // Handle scan errors
+  // Handle scan/processing errors
   if (data.scanStatus === 'failed' || data.scanError) {
     return (
       <View style={styles.container}>
         <View style={styles.errorContainer}>
           <Warning2 size={48} color={tc.warning} variant="Bold" />
           <Text style={[styles.title, { color: tc.textPrimary }]}>Couldn't Process Email</Text>
-          <Text style={[styles.description, { color: tc.textSecondary }]}>
+          <Text style={[styles.description, styles.centered, { color: tc.textSecondary }]}>
             {data.scanError || 'We had trouble reading your email. This can happen with some email formats. Please try forwarding the email again or use the scan option instead.'}
           </Text>
-          <TouchableOpacity
-            style={[styles.continueButton, { backgroundColor: tc.primary }]}
-            onPress={() => onBack()}
-          >
-            <Text style={[styles.continueButtonText, { color: tc.white }]}>Try Again</Text>
+          <TouchableOpacity style={[styles.ctaBtn, styles.retryBtn, { backgroundColor: tc.primary }]} onPress={() => onBack()}>
+            <Text style={[styles.ctaText, { color: '#FFF' }]} numberOfLines={1}>Try Again</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  // Handle no bookings found
-  if (detectedTrips.length === 0) {
+  // Handle no booking parsed
+  if (!booking) {
     return (
       <View style={styles.container}>
         <View style={styles.errorContainer}>
           <DocumentText size={48} color={tc.textTertiary} variant="Bold" />
           <Text style={[styles.title, { color: tc.textPrimary }]}>No Bookings Detected</Text>
-          <Text style={[styles.description, { color: tc.textSecondary }]}>
+          <Text style={[styles.description, styles.centered, { color: tc.textSecondary }]}>
             We couldn't detect a travel booking in that email. Make sure you're forwarding a booking confirmation (not a marketing email or newsletter).{"\n\n"}You can also try scanning a ticket photo or entering details manually.
           </Text>
-          <TouchableOpacity
-            style={[styles.continueButton, { backgroundColor: tc.primary }]}
-            onPress={() => onBack()}
-          >
-            <Text style={[styles.continueButtonText, { color: tc.white }]}>Try Again</Text>
+          <TouchableOpacity style={[styles.ctaBtn, styles.retryBtn, { backgroundColor: tc.primary }]} onPress={() => onBack()}>
+            <Text style={[styles.ctaText, { color: '#FFF' }]} numberOfLines={1}>Try Again</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  const toggleTrip = (externalId: string) => {
-    setSelectedTripIds(prev =>
-      prev.includes(externalId)
-        ? prev.filter(id => id !== externalId)
-        : [...prev, externalId]
-    );
-  };
+  const Icon = CATEGORY_ICONS[booking.category] || DocumentText;
+  const categoryLabel = booking.category === 'hotel' ? 'Hotel'
+    : booking.category === 'car' ? 'Car Rental'
+    : booking.category === 'experience' ? 'Experience'
+    : booking.category === 'flight' ? 'Flight' : 'Booking';
+  const provider = booking.provider || booking.details?.airline || booking.details?.hotelName || booking.details?.carCompany || '';
+  const startName = booking.startLocation?.city || booking.startLocation?.name || booking.startLocation?.code;
+  const endName = booking.endLocation?.city || booking.endLocation?.name || booking.endLocation?.code;
+  const route = startName && endName ? `${startName} \u2192 ${endName}` : (booking.details?.route || '');
+  const departureDate = formatDate(booking.startDate);
+  const departureTime = formatTime(booking.startDate);
+  const returnRaw = booking.returnDate || booking.endDate;
+  const returnDate = formatDate(returnRaw);
+  const hasReturn = !!returnDate && returnRaw !== booking.startDate && returnDate !== departureDate;
+  const duration = (() => {
+    if (booking.tripDurationDays) return `${booking.tripDurationDays} days`;
+    const s = booking.startDate, e = returnRaw;
+    if (!s || !e) return null;
+    const d = Math.ceil((new Date(e).getTime() - new Date(s).getTime()) / 86400000);
+    return d > 0 ? `${d} days` : null;
+  })();
+  const price = booking.pricing?.total
+    ? `${CURRENCY_SYMBOLS[booking.pricing.currency] || ''}${booking.pricing.total}${CURRENCY_SYMBOLS[booking.pricing.currency] ? '' : ` ${booking.pricing.currency || ''}`}`.trim()
+    : null;
 
-  const selectAll = () => {
-    if (selectedTripIds.length === detectedTrips.length) {
-      setSelectedTripIds([]);
-    } else {
-      setSelectedTripIds(detectedTrips.map(t => t.externalId));
-    }
+  const moreItems = [
+    booking.details?.flightNumber,
+    departureTime,
+    booking.details?.seatNumber,
+    booking.details?.gate,
+    booking.details?.cabin,
+    booking.confirmationNumber,
+    price,
+  ].filter(Boolean).length;
+
+  const toggleMore = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setMoreOpen(!moreOpen);
   };
 
   const handleImport = async () => {
-    if (selectedTripIds.length === 0 || !data.scanJobId) return;
-
+    if (!profile?.id || !emailImport?.id) return;
     setIsImporting(true);
+    setImportError(null);
     try {
-      const selectedTrips = selectedTripIds.map(id => ({ externalId: id }));
-      const result = await tripImportEngine.importBookings(data.scanJobId, selectedTrips);
-
-      onNext({
-        importResult: result,
-        selectedBookings: result.trips,
-      });
+      const result = await emailImportService.importBooking(profile.id, emailImport.id);
+      // Set importResult so the flow's onComplete navigates straight to the new
+      // trip card, exactly like the scan flow does.
+      onNext({ importedTrip: result, importResult: { tripId: result.tripId, title: result.title } });
     } catch (error: any) {
-      console.error('Import error:', error);
-      onNext({
-        importResult: { imported: false, error: error.message },
-        selectedBookings: [],
-      });
+      if (__DEV__) console.warn('[EmailImport] Import error:', error);
+      setImportError(error?.message || 'Something went wrong importing this booking. Please try again.');
     } finally {
       setIsImporting(false);
     }
   };
 
-  const selectedBookingCount = detectedTrips
-    .filter(t => selectedTripIds.includes(t.externalId))
-    .reduce((sum, t) => sum + (t.segments?.length || 0), 0);
-
   return (
     <View style={styles.container}>
-      <Text style={[styles.title, { color: tc.textPrimary }]}>
-        Found {detectedTrips.length} Trip{detectedTrips.length !== 1 ? 's' : ''}
-      </Text>
-      <Text style={[styles.description, { color: tc.textSecondary }]}>
-        {totalBookings} booking{totalBookings !== 1 ? 's' : ''} detected. Select which trips to import.
-      </Text>
-
-      {/* Select All */}
-      <TouchableOpacity style={styles.selectAllRow} onPress={selectAll}>
-        <Text style={[styles.selectAllText, { color: tc.primary }]}>
-          {selectedTripIds.length === detectedTrips.length ? 'Deselect All' : 'Select All'}
-        </Text>
-      </TouchableOpacity>
-
-      <ScrollView 
-        style={styles.bookingsList}
-        showsVerticalScrollIndicator={false}
-      >
-        {detectedTrips.map((trip) => {
-          const isSelected = selectedTripIds.includes(trip.externalId);
-          const display = tripImportEngine.formatTripForDisplay(trip);
-
-          return (
-            <TouchableOpacity
-              key={trip.externalId}
-              style={[
-                styles.bookingCard,
-                { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
-                isSelected && { backgroundColor: tc.primary + '08', borderColor: tc.primary },
-              ]}
-              onPress={() => toggleTrip(trip.externalId)}
-              activeOpacity={0.7}
-            >
-              {/* Trip header */}
-              <View style={styles.tripHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.bookingTitle, { color: tc.textPrimary }, isSelected && { color: tc.primary }]}>
-                    {display.title}
-                  </Text>
-                  <Text style={[styles.bookingDetails, { color: tc.textSecondary }]}>
-                    {display.destination} • {display.dateRange}
-                  </Text>
-                </View>
-                <View style={[styles.checkbox, { borderColor: tc.borderSubtle }, isSelected && { borderColor: tc.primary }]}>
-                  {isSelected && <TickCircle size={24} color={tc.primary} variant="Bold" />}
-                </View>
-              </View>
-
-              {/* Segments preview */}
-              {trip.segments && trip.segments.length > 0 && (
-                <View style={[styles.segmentsContainer, { borderTopColor: tc.borderSubtle }]}>
-                  {trip.segments.slice(0, 4).map((segment, idx) => {
-                    const Icon = CATEGORY_ICONS[segment.category] || DocumentText;
-                    const segDisplay = tripImportEngine.formatBookingForDisplay(segment);
-                    return (
-                      <View key={segment.externalId || idx} style={styles.segmentRow}>
-                        <Icon size={16} color={tc.textTertiary} variant="Bold" />
-                        <Text style={[styles.segmentText, { color: tc.textSecondary }]} numberOfLines={1}>
-                          {segDisplay.title}
-                        </Text>
-                        {segDisplay.price ? (
-                          <Text style={[styles.segmentPrice, { color: tc.textTertiary }]}>{segDisplay.price}</Text>
-                        ) : null}
-                      </View>
-                    );
-                  })}
-                  {trip.segments.length > 4 && (
-                    <Text style={[styles.moreSegments, { color: tc.textTertiary }]}>
-                      +{trip.segments.length - 4} more
-                    </Text>
-                  )}
-                </View>
-              )}
-
-              <Text style={[styles.bookingCount, { color: tc.textTertiary }]}>
-                {display.bookingCount}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {/* Footer */}
-      <View style={[styles.footer, { borderTopColor: tc.borderSubtle }]}>
-        <Text style={[styles.selectedCount, { color: tc.textSecondary }]}>
-          {selectedTripIds.length} trip{selectedTripIds.length !== 1 ? 's' : ''} selected ({selectedBookingCount} bookings)
-        </Text>
-        <TouchableOpacity
-          style={[
-            styles.continueButton,
-            { backgroundColor: tc.primary },
-            (selectedTripIds.length === 0 || isImporting) && { backgroundColor: tc.borderSubtle },
-          ]}
-          onPress={handleImport}
-          disabled={selectedTripIds.length === 0 || isImporting}
-        >
-          {isImporting ? (
-            <ActivityIndicator color={tc.white} />
-          ) : (
-            <Text style={[styles.continueButtonText, { color: tc.white }]}>
-              Import {selectedTripIds.length > 0 ? `(${selectedTripIds.length})` : 'Trips'}
+      {/* Success header */}
+      <View style={styles.header}>
+        <TickCircle size={36} color="#22C55E" variant="Bold" />
+        <View style={styles.headerText}>
+          <Text style={[styles.title, { color: tc.textPrimary }]}>Booking Detected</Text>
+          {!!booking.confidence && (
+            <Text style={{ fontSize: 12, fontWeight: '600', color: booking.confidence > 0.7 ? '#22C55E' : '#F59E0B' }}>
+              {Math.round(booking.confidence * 100)}% confidence
             </Text>
           )}
+        </View>
+      </View>
+
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Section 1: Trip Overview */}
+        <View style={[styles.section, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Trip Overview</Text>
+          </View>
+
+          <DetailRow icon={Icon} iconColor={tc.primary} label={categoryLabel} value={booking.title || route || 'Booking'} tc={tc} />
+          {!!provider && (
+            <DetailRow icon={Building} iconColor={tc.primary} label="Provider" value={provider} tc={tc} />
+          )}
+          {!!route && (
+            <DetailRow icon={Location} iconColor={tc.primary} label="Route" value={route} tc={tc} />
+          )}
+          <DetailRow icon={Calendar} iconColor={tc.primary} label="Departure" value={departureDate || 'Not detected'} tc={tc} />
+          {hasReturn && (
+            <DetailRow icon={ArrowSwapHorizontal} iconColor={tc.primary} label="Return" value={returnDate!} tc={tc} />
+          )}
+          {!!duration && (
+            <DetailRow icon={Timer1} iconColor={tc.primary} label="Duration" value={duration} tc={tc} />
+          )}
+        </View>
+
+        {/* Section 2: More Details (accordion) */}
+        {moreItems > 0 && (
+          <View style={[styles.section, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+            <TouchableOpacity style={styles.sectionHeader} onPress={toggleMore} activeOpacity={0.7}>
+              <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>More Details</Text>
+              <View style={styles.expandRow}>
+                <Text style={[styles.expandHint, { color: tc.textTertiary }]}>{moreItems} items</Text>
+                {moreOpen ? <ArrowUp2 size={16} color={tc.textTertiary} /> : <ArrowDown2 size={16} color={tc.textTertiary} />}
+              </View>
+            </TouchableOpacity>
+
+            {moreOpen && (
+              <View>
+                {!!booking.details?.flightNumber && (
+                  <DetailRow icon={Airplane} iconColor={tc.primary} label="Flight Number" value={booking.details.flightNumber} tc={tc} />
+                )}
+                {!!departureTime && (
+                  <DetailRow icon={Clock} iconColor={tc.primary} label="Departure Time" value={departureTime} tc={tc} />
+                )}
+                {!!booking.details?.seatNumber && (
+                  <DetailRow icon={Lovely} iconColor={tc.primary} label="Seat" value={booking.details.seatNumber} tc={tc} />
+                )}
+                {!!booking.details?.gate && (
+                  <DetailRow icon={Location} iconColor={tc.primary} label="Gate" value={booking.details.gate} tc={tc} />
+                )}
+                {!!booking.details?.cabin && (
+                  <View style={styles.row}>
+                    <Crown size={18} color={tc.primary} variant="Bold" />
+                    <View style={styles.rowContent}>
+                      <Text style={[styles.rowLabel, { color: tc.textTertiary }]}>Class</Text>
+                      <View style={[styles.classBadge, { backgroundColor: `${tc.primary}12` }]}>
+                        <Text style={[styles.classBadgeText, { color: tc.primary }]}>{booking.details.cabin}</Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
+                {!!booking.confirmationNumber && (
+                  <DetailRow icon={TicketStar} iconColor={tc.textTertiary} label="Booking Ref" value={booking.confirmationNumber} tc={tc} />
+                )}
+                {!!price && (
+                  <DetailRow icon={TicketStar} iconColor={tc.textTertiary} label="Price" value={price} tc={tc} />
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
+        {!!importError && (
+          <Text style={[styles.inlineError, { color: tc.error }]}>{importError}</Text>
+        )}
+      </ScrollView>
+
+      {/* CTA */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={[styles.ctaBtn, { backgroundColor: tc.primary }, isImporting && { opacity: 0.6 }]}
+          onPress={handleImport}
+          disabled={isImporting}
+        >
+          {isImporting ? <ActivityIndicator color="#FFF" /> : <Text style={[styles.ctaText, { color: '#FFF' }]}>Add to My Trips</Text>}
         </TouchableOpacity>
       </View>
     </View>
@@ -228,118 +267,28 @@ export default function EmailBookingsStep({ onNext, onBack, data }: StepComponen
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: spacing.xl,
-  },
-  title: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  description: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: spacing.lg,
-  },
-  bookingsList: {
-    flex: 1,
-    marginBottom: spacing.lg,
-  },
-  errorContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl * 2,
-    gap: spacing.md,
-  },
-  selectAllRow: {
-    alignItems: 'flex-end',
-    marginBottom: spacing.sm,
-  },
-  selectAllText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  bookingCard: {
-    borderRadius: borderRadius['2xl'],
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    borderWidth: 1.5,
-  },
-  tripHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  bookingTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    marginBottom: 2,
-  },
-  bookingDetails: {
-    fontSize: typography.fontSize.sm,
-    marginTop: 2,
-  },
-  segmentsContainer: {
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    gap: 6,
-  },
-  segmentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  segmentText: {
-    flex: 1,
-    fontSize: typography.fontSize.xs,
-  },
-  segmentPrice: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  moreSegments: {
-    fontSize: typography.fontSize.xs,
-    fontStyle: 'italic',
-    marginTop: 2,
-  },
-  bookingCount: {
-    fontSize: typography.fontSize.xs,
-    marginTop: spacing.sm,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  footer: {
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray100,
-  },
-  selectedCount: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-  continueButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.full,
-    alignItems: 'center',
-  },
-  continueButtonDisabled: {
-    backgroundColor: colors.gray300,
-  },
-  continueButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.white,
-  },
+  container: { flex: 1, paddingTop: spacing.md },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
+  headerText: { flex: 1, gap: 2 },
+  title: { fontSize: typography.fontSize.lg, fontWeight: '700' },
+  description: { fontSize: typography.fontSize.sm, lineHeight: 20 },
+  centered: { textAlign: 'center' },
+  errorContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl, gap: spacing.md },
+  scroll: { flex: 1 },
+  section: { borderRadius: 16, borderWidth: 1, padding: spacing.md, marginBottom: spacing.sm },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
+  sectionTitle: { fontSize: typography.fontSize.sm, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  expandRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  expandHint: { fontSize: 11 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6 },
+  rowContent: { flex: 1 },
+  rowLabel: { fontSize: 11, marginBottom: 1 },
+  rowValue: { fontSize: typography.fontSize.sm, fontWeight: '600' },
+  classBadge: { alignSelf: 'flex-start', paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: 20, marginTop: 1 },
+  classBadgeText: { fontSize: typography.fontSize.xs, fontWeight: '600' },
+  inlineError: { fontSize: typography.fontSize.sm, textAlign: 'center', marginTop: spacing.sm },
+  footer: { paddingTop: spacing.sm, paddingBottom: spacing.md },
+  ctaBtn: { height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  retryBtn: { width: '100%', alignSelf: 'stretch', paddingHorizontal: spacing.lg },
+  ctaText: { fontSize: typography.fontSize.base, fontWeight: '700' },
 });

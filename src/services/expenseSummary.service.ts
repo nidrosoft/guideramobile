@@ -78,8 +78,17 @@ class ExpenseSummaryService {
   /**
    * Generate or retrieve a cached expense summary for a trip.
    */
-  async getSummary(tripId: string, forceRefresh = false): Promise<ExpenseSummaryResult> {
-    const { data, error } = await invokeEdgeFn(supabase, 'generate-expense-summary', { tripId, forceRefresh }, 'fast');
+  async getSummary(
+    tripId: string,
+    forceRefresh = false,
+    userId?: string
+  ): Promise<ExpenseSummaryResult> {
+    const { data, error } = await invokeEdgeFn(
+      supabase,
+      'generate-expense-summary',
+      { tripId, forceRefresh, userId },
+      'fast'
+    );
 
     if (error) throw new Error(`Summary generation failed: ${error.message}`);
     if (!data?.success) throw new Error(data?.error || 'Failed to generate summary');

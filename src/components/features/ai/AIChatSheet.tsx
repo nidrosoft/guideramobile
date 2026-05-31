@@ -24,7 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 // Custom lightweight markdown renderer (see MarkdownBubble below)
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/lib/supabase/client';
+import { supabase, getAuthenticatedEdgeFunctionHeaders } from '@/lib/supabase/client';
 import { invokeEdgeFn } from '@/utils/retry';
 import { spacing, borderRadius, typography, fontFamily } from '@/styles';
 
@@ -509,6 +509,8 @@ export default function AIChatSheet({
     scrollToBottom();
 
     try {
+      // Forward the Clerk token so the chat-assistant auth guard can resolve the user.
+      const headers = await getAuthenticatedEdgeFunctionHeaders();
       const { data, error } = await invokeEdgeFn(supabase, 'chat-assistant', {
           sessionId,
           message: trimmed,
@@ -523,7 +525,7 @@ export default function AIChatSheet({
             description: contextData.description,
           } : null,
           userId: profile.id,
-      }, 'fast');
+      }, 'fast', { headers });
 
       if (error) throw error;
 

@@ -1,12 +1,13 @@
 /**
  * HOMEPAGE EDGE FUNCTION
- * 
+ *
  * Serves personalized homepage content with sub-200ms response times.
  * Implements cold/warm/hot start strategies based on user interaction count.
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getUserIdFromRequest, unauthorizedResponse } from '../_shared/auth.ts';
 
 // Configuration
 const CONFIG = {
@@ -25,68 +26,69 @@ const CONFIG = {
   location: {
     nearbyRadiusKm: 500,
   },
-}
+};
 
 // CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders });
   }
 
-  const startTime = Date.now()
+  const startTime = Date.now();
 
   try {
     // Parse request — read from body (POST) with URL param fallback (GET)
-    const url = new URL(req.url)
-    let userId: string | null = null
-    let lat: string | null = null
-    let lng: string | null = null
-    let refresh = false
+    const url = new URL(req.url);
+    let body: Record<string, any> = {};
+    let lat: string | null = null;
+    let lng: string | null = null;
+    let refresh = false;
 
     if (req.method === 'POST') {
       try {
-        const body = await req.json()
-        userId = body.user_id || null
-        lat = body.lat || null
-        lng = body.lng || null
-        refresh = body.refresh === true || body.refresh === 'true'
+        body = await req.json();
+        lat = body.lat || null;
+        lng = body.lng || null;
+        refresh = body.refresh === true || body.refresh === 'true';
       } catch {
         // Fall through to URL params
       }
     }
 
     // Fallback to URL search params
-    if (!userId) userId = url.searchParams.get('user_id')
-    if (!lat) lat = url.searchParams.get('lat')
-    if (!lng) lng = url.searchParams.get('lng')
-    if (!refresh) refresh = url.searchParams.get('refresh') === 'true'
-
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'user_id is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    if (!lat) lat = url.searchParams.get('lat');
+    if (!lng) lng = url.searchParams.get('lng');
+    if (!refresh) refresh = url.searchParams.get('refresh') === 'true';
 
     // Initialize Supabase client
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
+    );
+
+    const userId = await getUserIdFromRequest(
+      req,
+      body,
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_ANON_PUBLIC_KEY') || ''
+    );
+
+    if (!userId) return unauthorizedResponse(corsHeaders);
 
     // Build user context
-    const context = await buildUserContext(supabase, userId, lat, lng)
+    const context = await buildUserContext(supabase, userId, lat, lng);
 
     // Generate sections based on strategy
-    const sections = await generateSections(supabase, context)
+    const sections = await generateSections(supabase, context);
 
-    const responseTimeMs = Date.now() - startTime
+    const responseTimeMs = Date.now() - startTime;
 
     return new Response(
       JSON.stringify({
@@ -102,36 +104,35 @@ serve(async (req: Request): Promise<Response> => {
             generatedAt: new Date().toISOString(),
             cacheHit: false,
             responseTimeMs,
-          }
-        }
+          },
+        },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-
+    );
   } catch (error) {
-    console.error('Homepage API Error:', error)
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    console.error('Homepage API Error:', error);
+    return new Response(JSON.stringify({ success: false, error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
-})
+});
 
 // ============================================
 // CONTEXT BUILDER
 // ============================================
 
 interface UserContext {
-  userId: string
-  isAuthenticated: boolean
-  preferences: any | null
-  interactions: any[]
-  interactionCount: number
-  savedItems: any[]
-  location: { latitude: number; longitude: number } | null
-  currentSeason: string
-  confidenceScore: number
-  strategyType: 'cold' | 'warm' | 'hot'
+  userId: string;
+  isAuthenticated: boolean;
+  preferences: any | null;
+  interactions: any[];
+  interactionCount: number;
+  savedItems: any[];
+  location: { latitude: number; longitude: number } | null;
+  currentSeason: string;
+  confidenceScore: number;
+  strategyType: 'cold' | 'warm' | 'hot';
 }
 
 async function buildUserContext(
@@ -141,41 +142,50 @@ async function buildUserContext(
   lng: string | null
 ): Promise<UserContext> {
   // Fetch user data in parallel
-  const [preferencesResult, interactionsResult, savedItemsResult] = await Promise.all([
-    supabase.from('travel_preferences').select('*').eq('user_id', userId).single(),
-    supabase.from('user_interactions').select('*').eq('user_id', userId)
-      .order('created_at', { ascending: false }).limit(100),
-    supabase.from('user_saved_items').select('*').eq('user_id', userId),
-  ])
+  const [profileResult, preferencesResult, interactionsResult, savedItemsResult] =
+    await Promise.all([
+      supabase.from('profiles').select('latitude, longitude').eq('id', userId).maybeSingle(),
+      supabase.from('travel_preferences').select('*').eq('user_id', userId).single(),
+      supabase
+        .from('user_interactions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(100),
+      supabase.from('user_saved_items').select('*').eq('user_id', userId),
+    ]);
 
-  const preferences = preferencesResult.data
-  const interactions = interactionsResult.data || []
-  const savedItems = savedItemsResult.data || []
-  const interactionCount = interactions.length
+  const profile = profileResult.data;
+  const preferences = preferencesResult.data;
+  const interactions = interactionsResult.data || [];
+  const savedItems = savedItemsResult.data || [];
+  const interactionCount = interactions.length;
+  const effectiveLat = parseCoordinate(lat) ?? parseCoordinate(profile?.latitude);
+  const effectiveLng = parseCoordinate(lng) ?? parseCoordinate(profile?.longitude);
 
   // Determine strategy
-  let strategyType: 'cold' | 'warm' | 'hot'
+  let strategyType: 'cold' | 'warm' | 'hot';
   if (interactionCount < CONFIG.personalization.coldStartThreshold) {
-    strategyType = 'cold'
+    strategyType = 'cold';
   } else if (interactionCount < CONFIG.personalization.warmStartThreshold) {
-    strategyType = 'warm'
+    strategyType = 'warm';
   } else {
-    strategyType = 'hot'
+    strategyType = 'hot';
   }
 
   // Calculate confidence score
-  let confidenceScore = 0
+  let confidenceScore = 0;
   if (preferences) {
-    if (preferences.travel_style) confidenceScore += 15
-    if (preferences.interests?.length > 0) confidenceScore += 15
-    if (preferences.budget_level) confidenceScore += 10
+    if (preferences.travel_style) confidenceScore += 15;
+    if (preferences.interests?.length > 0) confidenceScore += 15;
+    if (preferences.budget_level) confidenceScore += 10;
   }
-  confidenceScore += Math.min(interactionCount * 2, 40)
-  confidenceScore += Math.min(savedItems.length * 3, 20)
+  confidenceScore += Math.min(interactionCount * 2, 40);
+  confidenceScore += Math.min(savedItems.length * 3, 20);
 
   // Get current season based on latitude
-  const latitude = lat ? parseFloat(lat) : 40
-  const currentSeason = getCurrentSeason(latitude)
+  const latitude = effectiveLat ?? 40;
+  const currentSeason = getCurrentSeason(latitude);
 
   return {
     userId,
@@ -184,27 +194,39 @@ async function buildUserContext(
     interactions,
     interactionCount,
     savedItems,
-    location: lat && lng ? { latitude: parseFloat(lat), longitude: parseFloat(lng) } : null,
+    location:
+      typeof effectiveLat === 'number' && typeof effectiveLng === 'number'
+        ? { latitude: effectiveLat, longitude: effectiveLng }
+        : null,
     currentSeason,
     confidenceScore: Math.min(confidenceScore, 100),
     strategyType,
+  };
+}
+
+function parseCoordinate(value: number | string | null | undefined): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
   }
+  return null;
 }
 
 function getCurrentSeason(latitude: number): string {
-  const month = new Date().getMonth() + 1
-  const isNorthern = latitude >= 0
+  const month = new Date().getMonth() + 1;
+  const isNorthern = latitude >= 0;
 
   if (isNorthern) {
-    if (month >= 3 && month <= 5) return 'spring'
-    if (month >= 6 && month <= 8) return 'summer'
-    if (month >= 9 && month <= 11) return 'fall'
-    return 'winter'
+    if (month >= 3 && month <= 5) return 'spring';
+    if (month >= 6 && month <= 8) return 'summer';
+    if (month >= 9 && month <= 11) return 'fall';
+    return 'winter';
   } else {
-    if (month >= 3 && month <= 5) return 'fall'
-    if (month >= 6 && month <= 8) return 'winter'
-    if (month >= 9 && month <= 11) return 'spring'
-    return 'summer'
+    if (month >= 3 && month <= 5) return 'fall';
+    if (month >= 6 && month <= 8) return 'winter';
+    if (month >= 9 && month <= 11) return 'spring';
+    return 'summer';
   }
 }
 
@@ -213,31 +235,31 @@ function getCurrentSeason(latitude: number): string {
 // ============================================
 
 async function generateSections(supabase: any, context: UserContext): Promise<any[]> {
-  const sections: any[] = []
-  const savedItemIds = new Set(context.savedItems.map((s: any) => s.destination_id))
+  const sections: any[] = [];
+  const savedItemIds = new Set(context.savedItems.map((s: any) => s.destination_id));
 
   // Fetch all destinations once
   const { data: allDestinations } = await supabase
     .from('curated_destinations')
     .select('*')
     .eq('status', 'published')
-    .order('priority', { ascending: false })
+    .order('priority', { ascending: false });
 
-  if (!allDestinations) return sections
+  if (!allDestinations) return sections;
 
   // Score and rank destinations
   const scoredDestinations = allDestinations.map((dest: any) => ({
     ...dest,
     matchScore: calculateMatchScore(dest, context),
     isSaved: savedItemIds.has(dest.id),
-  }))
+  }));
 
   // 1. For You / Personalized (if warm/hot start)
   if (context.strategyType !== 'cold') {
     const forYouItems = scoredDestinations
       .sort((a: any, b: any) => b.matchScore - a.matchScore)
       .slice(0, 10)
-      .map((d: any) => formatContentItem(d, context))
+      .map((d: any) => formatContentItem(d, context));
 
     if (forYouItems.length >= 3) {
       sections.push({
@@ -252,7 +274,7 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
         hasMore: true,
         isPersonalized: true,
         priority: 1,
-      })
+      });
     }
   }
 
@@ -260,7 +282,7 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
   const dealItems = scoredDestinations
     .filter((d: any) => d.primary_category === 'deals' || d.is_featured)
     .slice(0, 10)
-    .map((d: any) => formatContentItem(d, context))
+    .map((d: any) => formatContentItem(d, context));
 
   if (dealItems.length >= 3) {
     sections.push({
@@ -275,7 +297,7 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
       hasMore: true,
       isPersonalized: false,
       priority: 2,
-    })
+    });
   }
 
   // 3. Popular Destinations
@@ -283,7 +305,7 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
     .filter((d: any) => d.primary_category === 'popular' || d.popularity_score > 800)
     .sort((a: any, b: any) => b.popularity_score - a.popularity_score)
     .slice(0, 12)
-    .map((d: any) => formatContentItem(d, context))
+    .map((d: any) => formatContentItem(d, context));
 
   if (popularItems.length >= 3) {
     sections.push({
@@ -298,7 +320,7 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
       hasMore: true,
       isPersonalized: false,
       priority: 3,
-    })
+    });
   }
 
   // 4. Nearby (if location available)
@@ -308,14 +330,14 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
       user_lng: context.location.longitude,
       radius_km: CONFIG.location.nearbyRadiusKm,
       max_results: 10,
-    })
+    });
 
     if (nearbyData && nearbyData.length >= 3) {
       const nearbyItems = nearbyData.map((d: any) => ({
         ...formatContentItem(d, context),
         distanceKm: d.distance_km,
         distanceText: formatDistance(d.distance_km),
-      }))
+      }));
 
       sections.push({
         id: 'nearby',
@@ -329,7 +351,7 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
         hasMore: true,
         isPersonalized: true,
         priority: 4,
-      })
+      });
     }
   }
 
@@ -337,7 +359,7 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
   const placeItems = scoredDestinations
     .sort((a: any, b: any) => (b.editor_rating || 0) - (a.editor_rating || 0))
     .slice(0, 10)
-    .map((d: any) => formatContentItem(d, context))
+    .map((d: any) => formatContentItem(d, context));
 
   if (placeItems.length >= 3) {
     sections.push({
@@ -352,14 +374,14 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
       hasMore: true,
       isPersonalized: false,
       priority: 4.5,
-    })
+    });
   }
 
   // 5. Trending
   const trendingItems = scoredDestinations
     .filter((d: any) => d.is_trending)
     .slice(0, 10)
-    .map((d: any) => formatContentItem(d, context))
+    .map((d: any) => formatContentItem(d, context));
 
   if (trendingItems.length >= 3) {
     sections.push({
@@ -374,7 +396,7 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
       hasMore: true,
       isPersonalized: false,
       priority: 5,
-    })
+    });
   }
 
   // 6. Editor's Choice
@@ -382,7 +404,7 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
     .filter((d: any) => d.is_featured && d.editor_rating >= 4.5)
     .sort((a: any, b: any) => (b.editor_rating || 0) - (a.editor_rating || 0))
     .slice(0, 8)
-    .map((d: any) => formatContentItem(d, context))
+    .map((d: any) => formatContentItem(d, context));
 
   if (editorItems.length >= 3) {
     sections.push({
@@ -397,7 +419,7 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
       hasMore: true,
       isPersonalized: false,
       priority: 6,
-    })
+    });
   }
 
   // 6b. Must See (highest-rated featured destinations)
@@ -405,7 +427,7 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
     .filter((d: any) => d.is_featured && (d.editor_rating || 0) >= 4.5)
     .sort((a: any, b: any) => (b.editor_rating || 0) - (a.editor_rating || 0))
     .slice(0, 8)
-    .map((d: any) => formatContentItem(d, context))
+    .map((d: any) => formatContentItem(d, context));
 
   if (mustSeeItems.length >= 3) {
     sections.push({
@@ -420,15 +442,18 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
       hasMore: true,
       isPersonalized: false,
       priority: 6.5,
-    })
+    });
   }
 
   // 7. Budget Friendly
   const budgetItems = scoredDestinations
     .filter((d: any) => d.budget_level <= 2)
-    .sort((a: any, b: any) => (a.estimated_daily_budget_usd || 999) - (b.estimated_daily_budget_usd || 999))
+    .sort(
+      (a: any, b: any) =>
+        (a.estimated_daily_budget_usd || 999) - (b.estimated_daily_budget_usd || 999)
+    )
     .slice(0, 10)
-    .map((d: any) => formatContentItem(d, context))
+    .map((d: any) => formatContentItem(d, context));
 
   if (budgetItems.length >= 3) {
     sections.push({
@@ -443,14 +468,14 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
       hasMore: true,
       isPersonalized: false,
       priority: 7,
-    })
+    });
   }
 
   // 8. Luxury Escapes
   const luxuryItems = scoredDestinations
     .filter((d: any) => d.budget_level >= 4 || d.primary_category === 'luxury')
     .slice(0, 8)
-    .map((d: any) => formatContentItem(d, context))
+    .map((d: any) => formatContentItem(d, context));
 
   if (luxuryItems.length >= 3) {
     sections.push({
@@ -465,14 +490,16 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
       hasMore: true,
       isPersonalized: false,
       priority: 8,
-    })
+    });
   }
 
   // 9. Adventure
   const adventureItems = scoredDestinations
-    .filter((d: any) => d.primary_category === 'adventure' || d.travel_style?.includes('adventurer'))
+    .filter(
+      (d: any) => d.primary_category === 'adventure' || d.travel_style?.includes('adventurer')
+    )
     .slice(0, 10)
-    .map((d: any) => formatContentItem(d, context))
+    .map((d: any) => formatContentItem(d, context));
 
   if (adventureItems.length >= 3) {
     sections.push({
@@ -487,14 +514,14 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
       hasMore: true,
       isPersonalized: false,
       priority: 9,
-    })
+    });
   }
 
   // 10. Beach & Islands
   const beachItems = scoredDestinations
     .filter((d: any) => d.primary_category === 'beach' || d.tags?.includes('beach'))
     .slice(0, 10)
-    .map((d: any) => formatContentItem(d, context))
+    .map((d: any) => formatContentItem(d, context));
 
   if (beachItems.length >= 3) {
     sections.push({
@@ -509,14 +536,14 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
       hasMore: true,
       isPersonalized: false,
       priority: 10,
-    })
+    });
   }
 
   // 11. Family Friendly
   const familyItems = scoredDestinations
     .filter((d: any) => d.best_for?.includes('families') || d.primary_category === 'family')
     .slice(0, 10)
-    .map((d: any) => formatContentItem(d, context))
+    .map((d: any) => formatContentItem(d, context));
 
   if (familyItems.length >= 3) {
     sections.push({
@@ -531,7 +558,7 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
       hasMore: true,
       isPersonalized: false,
       priority: 11,
-    })
+    });
   }
 
   // 12. Hidden Gems
@@ -539,7 +566,7 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
     .filter((d: any) => d.primary_category === 'off_beaten_path' || d.popularity_score < 700)
     .sort((a: any, b: any) => (b.editor_rating || 0) - (a.editor_rating || 0))
     .slice(0, 8)
-    .map((d: any) => formatContentItem(d, context))
+    .map((d: any) => formatContentItem(d, context));
 
   if (hiddenGemItems.length >= 3) {
     sections.push({
@@ -554,11 +581,11 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
       hasMore: true,
       isPersonalized: false,
       priority: 12,
-    })
+    });
   }
 
   // Sort by priority
-  return sections.sort((a, b) => a.priority - b.priority)
+  return sections.sort((a, b) => a.priority - b.priority);
 }
 
 // ============================================
@@ -566,54 +593,87 @@ async function generateSections(supabase: any, context: UserContext): Promise<an
 // ============================================
 
 function calculateMatchScore(destination: any, context: UserContext): number {
-  let score = 0
-  const weights = CONFIG.scoring
+  let score = 0;
+  const weights = CONFIG.scoring;
 
   // Base popularity score (0-5 points)
-  score += Math.min((destination.popularity_score || 0) / 200, 5) * (weights.popularity / 5)
+  score += Math.min((destination.popularity_score || 0) / 200, 5) * (weights.popularity / 5);
 
   // Seasonal match (0-10 points)
   if (destination.seasons?.includes(context.currentSeason)) {
-    score += weights.seasonal
+    score += weights.seasonal;
   }
 
   // Budget match (0-20 points)
   if (context.preferences?.budget_level) {
-    const budgetDiff = Math.abs((destination.budget_level || 3) - context.preferences.budget_level)
-    score += Math.max(0, weights.budget - budgetDiff * 5)
+    const budgetDiff = Math.abs((destination.budget_level || 3) - context.preferences.budget_level);
+    score += Math.max(0, weights.budget - budgetDiff * 5);
   } else {
-    score += weights.budget * 0.5 // Neutral score if no preference
+    score += weights.budget * 0.5; // Neutral score if no preference
   }
 
   // Travel style match (0-30 points)
   if (context.preferences?.travel_style && destination.travel_style) {
-    const userStyles = Array.isArray(context.preferences.travel_style) 
-      ? context.preferences.travel_style 
-      : [context.preferences.travel_style]
-    const destStyles = destination.travel_style || []
-    const styleMatch = userStyles.some((s: string) => destStyles.includes(s))
-    if (styleMatch) score += weights.relevance
+    const userStyles = Array.isArray(context.preferences.travel_style)
+      ? context.preferences.travel_style
+      : [context.preferences.travel_style];
+    const destStyles = destination.travel_style || [];
+    const styleMatch = userStyles.some((s: string) => destStyles.includes(s));
+    if (styleMatch) score += weights.relevance;
   } else {
-    score += weights.relevance * 0.3 // Partial score for cold start
+    score += weights.relevance * 0.3; // Partial score for cold start
   }
 
   // Interest match (0-20 points)
   if (context.preferences?.interests && destination.tags) {
-    const userInterests = context.preferences.interests || []
-    const destTags = destination.tags || []
-    const matchCount = userInterests.filter((i: string) => destTags.includes(i)).length
-    score += Math.min(matchCount * 5, weights.interests)
+    const userInterests = context.preferences.interests || [];
+    const destTags = destination.tags || [];
+    const matchCount = userInterests.filter((i: string) => destTags.includes(i)).length;
+    score += Math.min(matchCount * 5, weights.interests);
+  }
+
+  // Location proximity (0-15 points)
+  if (context.location && destination.latitude && destination.longitude) {
+    score += scoreLocationProximity(destination, context.location) * (weights.proximity / 15);
   }
 
   // Featured/trending boost
-  if (destination.is_featured) score += 3
-  if (destination.is_trending) score += 2
+  if (destination.is_featured) score += 3;
+  if (destination.is_trending) score += 2;
 
-  return Math.min(Math.round(score), 100)
+  return Math.min(Math.round(score), 100);
+}
+
+function scoreLocationProximity(
+  destination: any,
+  location: { latitude: number; longitude: number }
+): number {
+  const distanceKm = haversineKm(
+    location.latitude,
+    location.longitude,
+    destination.latitude,
+    destination.longitude
+  );
+
+  if (distanceKm < 500) return 15;
+  if (distanceKm < 1500) return 10;
+  if (distanceKm < 3000) return 6;
+  if (distanceKm < 6000) return 3;
+  return 0;
+}
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const radiusKm = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+  return radiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function formatContentItem(destination: any, context: UserContext): any {
-  const savedItemIds = new Set(context.savedItems.map((s: any) => s.destination_id))
+  const savedItemIds = new Set(context.savedItems.map((s: any) => s.destination_id));
 
   return {
     id: destination.id,
@@ -622,12 +682,14 @@ function formatContentItem(destination: any, context: UserContext): any {
     subtitle: destination.short_description || destination.city,
     imageUrl: destination.hero_image_url,
     thumbnailUrl: destination.thumbnail_url,
-    price: destination.estimated_daily_budget_usd ? {
-      amount: destination.estimated_daily_budget_usd,
-      currency: 'USD',
-      period: 'per_day',
-      formatted: `$${destination.estimated_daily_budget_usd}/day`,
-    } : null,
+    price: destination.estimated_daily_budget_usd
+      ? {
+          amount: destination.estimated_daily_budget_usd,
+          currency: 'USD',
+          period: 'per_day',
+          formatted: `$${destination.estimated_daily_budget_usd}/day`,
+        }
+      : null,
     rating: destination.editor_rating,
     location: {
       city: destination.city,
@@ -644,40 +706,40 @@ function formatContentItem(destination: any, context: UserContext): any {
     slug: destination.slug,
     budgetLevel: destination.budget_level,
     tags: destination.tags,
-  }
+  };
 }
 
 function generateMatchReasons(destination: any, context: UserContext): string[] {
-  const reasons: string[] = []
+  const reasons: string[] = [];
 
-  if (destination.is_trending) reasons.push('Trending now')
-  if (destination.is_featured) reasons.push("Editor's pick")
-  if (destination.seasons?.includes(context.currentSeason)) reasons.push('Perfect for this season')
-  if (destination.budget_level <= 2) reasons.push('Budget friendly')
-  if (destination.budget_level >= 4) reasons.push('Luxury experience')
-  if (destination.editor_rating >= 4.5) reasons.push('Highly rated')
+  if (destination.is_trending) reasons.push('Trending now');
+  if (destination.is_featured) reasons.push("Editor's pick");
+  if (destination.seasons?.includes(context.currentSeason)) reasons.push('Perfect for this season');
+  if (destination.budget_level <= 2) reasons.push('Budget friendly');
+  if (destination.budget_level >= 4) reasons.push('Luxury experience');
+  if (destination.editor_rating >= 4.5) reasons.push('Highly rated');
 
-  return reasons.slice(0, 3)
+  return reasons.slice(0, 3);
 }
 
 function generateBadges(destination: any): any[] {
-  const badges: any[] = []
+  const badges: any[] = [];
 
   if (destination.is_trending) {
-    badges.push({ type: 'trending', text: 'Trending', color: '#FF6B35' })
+    badges.push({ type: 'trending', text: 'Trending', color: '#FF6B35' });
   }
   if (destination.is_featured) {
-    badges.push({ type: 'editors_choice', text: "Editor's Choice", color: '#8B5CF6' })
+    badges.push({ type: 'editors_choice', text: "Editor's Choice", color: '#8B5CF6' });
   }
   if (destination.budget_level <= 2) {
-    badges.push({ type: 'deal', text: 'Great Value', color: '#10B981' })
+    badges.push({ type: 'deal', text: 'Great Value', color: '#10B981' });
   }
 
-  return badges.slice(0, 2)
+  return badges.slice(0, 2);
 }
 
 function formatDistance(km: number): string {
-  if (km < 1) return `${Math.round(km * 1000)}m away`
-  if (km < 100) return `${Math.round(km)}km away`
-  return `${Math.round(km)}km`
+  if (km < 1) return `${Math.round(km * 1000)}m away`;
+  if (km < 100) return `${Math.round(km)}km away`;
+  return `${Math.round(km)}km`;
 }

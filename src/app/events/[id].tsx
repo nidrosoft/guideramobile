@@ -247,13 +247,23 @@ export default function EventDetailScreen() {
   }
 
   // --- Parse data ---
-  const imageUrl = event.image_url || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80';
+  const imageUrl = event.image_url || '';
   const highlights: string[] = event.highlights || [];
   const tags: string[] = event.tags || [];
   const dateRange = eventsService.formatDateRange(event.date_start, event.date_end);
 
+  // Format date as compact numeric for quick info bar
+  const formatShortDate = (dateStr?: string | null) => {
+    if (!dateStr) return 'TBD';
+    const d = new Date(dateStr + 'T00:00:00');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${mm}/${dd}/${yyyy}`;
+  };
+
   const quickInfo: { icon: any; label: string; value: string }[] = [
-    { icon: CalendarIcon, label: 'Date', value: eventsService.formatEventDate(event.date_start) },
+    { icon: CalendarIcon, label: 'Date', value: formatShortDate(event.date_start) },
     { icon: Clock, label: 'Time', value: event.time_info || 'See details' },
     { icon: Ticket, label: 'Price', value: event.is_free ? 'Free' : (event.ticket_price || 'See details') },
   ];
@@ -334,7 +344,7 @@ export default function EventDetailScreen() {
 
           {/* Price */}
           <View style={styles.priceRow}>
-            <Text style={[styles.price, { color: colors.textPrimary }]}>
+            <Text style={[styles.price, { color: colors.textPrimary }]} numberOfLines={2}>
               {event.is_free ? 'Free' : (event.ticket_price || 'See details')}
             </Text>
             {!event.is_free && event.ticket_price && (
@@ -600,7 +610,7 @@ const styles = StyleSheet.create({
   ratingBar: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, marginBottom: 4 },
   ratingText: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.heading3 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 8, marginBottom: 4 },
-  price: { fontFamily: fontFamily.display, fontSize: 28 },
+  price: { fontFamily: fontFamily.bold, fontSize: typography.fontSize.base, lineHeight: 22, flex: 1 },
   priceLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.body },
 
   // Quick info bar
@@ -616,7 +626,7 @@ const styles = StyleSheet.create({
   infoItem: { flex: 1, alignItems: 'center', gap: 4 },
   infoItemBorder: { borderRightWidth: 1, borderRightColor: 'rgba(0,0,0,0.06)' },
   infoLabel: { fontFamily: fontFamily.regular, fontSize: typography.fontSize.captionSm, textAlign: 'center' },
-  infoValue: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.bodySm, textAlign: 'center' },
+  infoValue: { fontFamily: fontFamily.semibold, fontSize: typography.fontSize.captionSm, textAlign: 'center' },
 
   // Collapsible sections
   section: { borderBottomWidth: 1, paddingVertical: 14 },

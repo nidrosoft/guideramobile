@@ -26,7 +26,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  Airplane,
   Clock,
   Car,
   Bus,
@@ -38,12 +37,16 @@ import {
   Timer1,
   SecuritySafe,
   Routing2,
+  Routing,
+  Building,
+  TicketStar,
   DollarCircle,
   TickCircle,
   Danger,
   CloseCircle,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import {
@@ -65,6 +68,35 @@ interface DepartureAdvisorSheetProps {
   isInternational: boolean;
   tripId?: string;
   bookingId?: string;
+  seatNumber?: string;
+  cabinClass?: string;
+}
+
+/**
+ * Compacts an aircraft string into a short model code that fits a stat column.
+ * Strips the manufacturer name and keeps the model token so the value stays on
+ * one line regardless of source format:
+ *   "Airbus A320"     → "A320"
+ *   "Boeing 737-800"  → "737-800"
+ *   "Embraer E190"    → "E190"
+ *   "A320" / "B738"   → unchanged
+ */
+const MANUFACTURERS = ['airbus', 'boeing', 'embraer', 'bombardier', 'mcdonnell douglas', 'de havilland', 'cessna', 'gulfstream', 'sukhoi', 'comac', 'atr'];
+function formatAircraft(raw?: string | null): string | null {
+  if (!raw) return null;
+  let s = raw.trim();
+  const lower = s.toLowerCase();
+  for (const m of MANUFACTURERS) {
+    if (lower.startsWith(m + ' ')) {
+      s = s.slice(m.length).trim();
+      break;
+    }
+  }
+  const tokens = s.split(/\s+/);
+  if (tokens.length > 1) {
+    s = tokens.find((t) => /\d/.test(t)) || tokens[tokens.length - 1];
+  }
+  return s || raw.trim();
 }
 
 export default function DepartureAdvisorSheet({
@@ -77,6 +109,7 @@ export default function DepartureAdvisorSheet({
   isInternational,
   tripId,
   bookingId,
+  seatNumber,
 }: DepartureAdvisorSheetProps) {
   const { colors: tc } = useTheme();
   const insets = useSafeAreaInsets();
@@ -132,6 +165,14 @@ export default function DepartureAdvisorSheet({
       calculateAdvisory();
     }
   }, [visible, userLocation]);
+
+  // Persist last-known location so the server-side departure monitor can
+  // compute traffic-aware leave-by times even when the app isn't open.
+  useEffect(() => {
+    if (visible && userLocation?.latitude && userLocation?.longitude) {
+      departureAdvisorService.persistLastKnownLocation(userLocation.latitude, userLocation.longitude);
+    }
+  }, [visible, userLocation?.latitude, userLocation?.longitude]);
 
   // Live countdown
   useEffect(() => {
@@ -205,10 +246,25 @@ export default function DepartureAdvisorSheet({
     }
   };
 
-  const depTime = new Date(departureTime);
   const boardingTimeStr = advisory
     ? departureAdvisorService.formatTime(advisory.boardingTime)
-    : depTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    : departureAdvisorService.formatTime(departureTime);
+
+  // Urgency stage drives the whole card's color theme (recomputed on each
+  // countdown tick): comfortable → green, soon → orange, overdue → red.
+  const leaveStage: 'comfortable' | 'soon' | 'overdue' = (() => {
+    if (!advisory?.leaveByTime) return 'comfortable';
+    const diffMin = Math.floor((new Date(advisory.leaveByTime).getTime() - Date.now()) / 60000);
+    if (diffMin <= 0) return 'overdue';
+    if (diffMin <= 45) return 'soon';
+    return 'comfortable';
+  })();
+  const stagePalette: Record<typeof leaveStage, { gradient: [string, string]; border: string }> = {
+    comfortable: { gradient: [tc.primary, tc.primaryGradient], border: `${tc.primary}33` },
+    soon: { gradient: ['#F59E0B', '#D97706'], border: 'rgba(245,158,11,0.4)' },
+    overdue: { gradient: ['#EF4444', '#DC2626'], border: 'rgba(239,68,68,0.4)' },
+  };
+  const cardTheme = stagePalette[leaveStage];
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -234,27 +290,69 @@ export default function DepartureAdvisorSheet({
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} bounces={false}>
 
-            {/* Flight Header */}
-            <View style={[styles.flightHeader, { backgroundColor: `${tc.primary}08`, borderColor: tc.borderSubtle }]}>
-              <View style={[styles.flightIconCircle, { backgroundColor: `${tc.primary}15` }]}>
-                <Airplane size={24} color={tc.primary} variant="Bold" />
-              </View>
-              <View style={styles.flightInfo}>
-                <Text style={[styles.flightNumber, { color: tc.textPrimary }]}>{flightNumber}</Text>
-                <Text style={[styles.flightRoute, { color: tc.textSecondary }]}>
-                  {departureAirport} → {destination}
-                </Text>
-                <Text style={[styles.flightTime, { color: tc.textTertiary }]}>
-                  Boards {boardingTimeStr}
-                  {advisory?.flightStatus?.gate ? ` · Gate ${advisory.flightStatus.gate}` : ''}
-                  {advisory?.flightStatus?.terminal ? ` · Terminal ${advisory.flightStatus.terminal}` : ''}
-                </Text>
-              </View>
-              {isInternational && (
-                <View style={[styles.intlBadge, { backgroundColor: `${tc.info}15` }]}>
-                  <Text style={[styles.intlBadgeText, { color: tc.info }]}>INTL</Text>
+            {/* Premium Flight Card */}
+            <View style={[styles.flightCard, { borderColor: cardTheme.border }]}>
+              <LinearGradient
+                colors={cardTheme.gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.flightCardHeader}
+              >
+                <View style={styles.flightCardTopRow}>
+                  <Text style={styles.flightCardRoute} numberOfLines={1}>
+                    {flightNumber} · {departureAirport} → {destination || 'Destination'}
+                  </Text>
+                  {isInternational && (
+                    <View style={styles.flightCardIntlBadge}>
+                      <Text style={styles.flightCardIntlText}>INTL</Text>
+                    </View>
+                  )}
                 </View>
-              )}
+
+                {advisory && !loading ? (
+                  <View style={styles.heroLeaveBy}>
+                    <Text style={styles.heroLeaveByLabel}>LEAVE BY</Text>
+                    <View style={styles.heroLeaveByRow}>
+                      <Text style={styles.heroLeaveByTime} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                        {departureAdvisorService.formatTime(advisory.leaveByTime)}
+                      </Text>
+                      <View style={styles.heroConfidencePill}>
+                        <View style={[styles.heroConfidenceDot, { backgroundColor: '#FFFFFF' }]} />
+                        <Text style={styles.heroConfidenceText}>
+                          {advisory.confidence === 'high' ? 'High' : advisory.confidence === 'medium' ? 'Medium' : 'Low'}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.heroLeaveBySub} numberOfLines={1}>
+                      {countdown.text}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.flightCardBoards}>
+                    {advisory?.flightStatus?.status === 'cancelled'
+                      ? 'Flight cancelled'
+                      : `Boards ${boardingTimeStr}${advisory?.flightStatus?.delay ? ` · Delayed ${advisory.flightStatus.delay}m` : ''}`}
+                  </Text>
+                )}
+              </LinearGradient>
+
+              {/* Core details — seat / terminal / aircraft / flight time */}
+              <View style={[styles.flightCardFooter, { backgroundColor: tc.bgSecondary }]}>
+                {[
+                  { label: 'SEAT', value: seatNumber || '—' },
+                  { label: 'TERMINAL', value: advisory?.flightStatus?.terminal || '—' },
+                  { label: 'AIRCRAFT', value: formatAircraft(advisory?.flightStatus?.aircraft) || '—' },
+                  { label: 'FLIGHT', value: advisory?.flightStatus?.durationMinutes ? departureAdvisorService.formatDuration(advisory.flightStatus.durationMinutes) : '—' },
+                ].map((stat, idx) => (
+                  <React.Fragment key={stat.label}>
+                    {idx > 0 && <View style={[styles.flightCardDivider, { backgroundColor: tc.borderSubtle }]} />}
+                    <View style={styles.flightCardStat}>
+                      <Text style={[styles.flightCardStatLabel, { color: tc.textTertiary }]}>{stat.label}</Text>
+                      <Text style={[styles.flightCardStatValue, { color: tc.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>{stat.value}</Text>
+                    </View>
+                  </React.Fragment>
+                ))}
+              </View>
             </View>
 
             {/* Loading State */}
@@ -284,33 +382,6 @@ export default function DepartureAdvisorSheet({
             {/* Advisory Content */}
             {advisory && !loading && (
               <>
-                {/* Leave By — Hero Section */}
-                <View style={[styles.leaveByCard, { backgroundColor: countdown.urgent ? `${tc.error}10` : `${tc.primary}08`, borderColor: countdown.urgent ? tc.error : tc.primary }]}>
-                  <View style={styles.leaveByHeader}>
-                    <Timer1 size={20} color={countdown.urgent ? tc.error : tc.primary} variant="Bold" />
-                    <Text style={[styles.leaveByLabel, { color: countdown.urgent ? tc.error : tc.primary }]}>
-                      LEAVE BY
-                    </Text>
-                  </View>
-                  <Text style={[styles.leaveByTime, { color: countdown.urgent ? tc.error : tc.textPrimary }]}>
-                    {departureAdvisorService.formatTime(advisory.leaveByTime)}
-                  </Text>
-                  <Text style={[styles.leaveByCountdown, { color: countdown.urgent ? tc.error : tc.textSecondary }]}>
-                    {countdown.text}
-                  </Text>
-
-                  {/* Confidence badge */}
-                  <View style={[styles.confidenceBadge, {
-                    backgroundColor: advisory.confidence === 'high' ? `${tc.success}15` : advisory.confidence === 'medium' ? `${tc.warning}15` : `${tc.error}15`,
-                  }]}>
-                    <Text style={[styles.confidenceText, {
-                      color: advisory.confidence === 'high' ? tc.success : advisory.confidence === 'medium' ? tc.warning : tc.error,
-                    }]}>
-                      {advisory.confidence === 'high' ? '● High confidence' : advisory.confidence === 'medium' ? '● Medium confidence' : '● Low confidence'}
-                    </Text>
-                  </View>
-                </View>
-
                 {/* Breakdown */}
                 <View style={styles.sectionContainer}>
                   <View style={styles.sectionHeader}>
@@ -320,16 +391,16 @@ export default function DepartureAdvisorSheet({
 
                   <View style={[styles.breakdownCard, { borderColor: tc.borderSubtle }]}>
                     {[
-                      { label: 'Drive to airport', value: advisory.breakdown.driveTime, icon: '🚗' },
-                      ...(advisory.breakdown.trafficBuffer > 0 ? [{ label: 'Traffic buffer', value: advisory.breakdown.trafficBuffer, icon: '🚦' }] : []),
-                      { label: 'Parking & transfer', value: advisory.breakdown.parkingAndTransfer, icon: '🅿️' },
-                      { label: 'Check-in cutoff', value: advisory.breakdown.checkinCutoff, icon: '🛂' },
-                      { label: 'Security (TSA)', value: advisory.breakdown.securityEstimate, icon: '🔒' },
-                      { label: 'Walk to gate', value: advisory.breakdown.gateWalkTime, icon: '🚶' },
-                      { label: 'Comfort buffer', value: advisory.breakdown.comfortBuffer, icon: '⏱️' },
+                      { label: 'Drive to airport', value: advisory.breakdown.driveTime, icon: <Car size={18} color={tc.primary} variant="Bold" /> },
+                      ...(advisory.breakdown.trafficBuffer > 0 ? [{ label: 'Traffic buffer', value: advisory.breakdown.trafficBuffer, icon: <Routing2 size={18} color={tc.warning} variant="Bold" /> }] : []),
+                      { label: 'Parking & transfer', value: advisory.breakdown.parkingAndTransfer, icon: <Building size={18} color={tc.textSecondary} variant="Bold" /> },
+                      { label: 'Check-in cutoff', value: advisory.breakdown.checkinCutoff, icon: <TicketStar size={18} color={tc.info} variant="Bold" /> },
+                      { label: 'Security (TSA)', value: advisory.breakdown.securityEstimate, icon: <ShieldTick size={18} color={tc.success} variant="Bold" /> },
+                      { label: 'Walk to gate', value: advisory.breakdown.gateWalkTime, icon: <Routing size={18} color={tc.purple} variant="Bold" /> },
+                      { label: 'Comfort buffer', value: advisory.breakdown.comfortBuffer, icon: <Timer1 size={18} color={tc.textSecondary} variant="Bold" /> },
                     ].map((item, idx) => (
                       <View key={idx} style={[styles.breakdownRow, idx > 0 && { borderTopWidth: 1, borderTopColor: tc.borderSubtle }]}>
-                        <Text style={styles.breakdownEmoji}>{item.icon}</Text>
+                        <View style={styles.breakdownIcon}>{item.icon}</View>
                         <Text style={[styles.breakdownLabel, { color: tc.textSecondary }]}>{item.label}</Text>
                         <Text style={[styles.breakdownValue, { color: tc.textPrimary }]}>
                           {departureAdvisorService.formatDuration(item.value)}
@@ -352,7 +423,7 @@ export default function DepartureAdvisorSheet({
                     <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Transport Options</Text>
                   </View>
 
-                  {advisory.transport.map((option, idx) => (
+                  {(advisory.transport || []).map((option, idx) => (
                     <View key={idx} style={[styles.transportCard, { borderColor: tc.borderSubtle }]}>
                       <View style={styles.transportLeft}>
                         {getTransportIcon(option.mode)}
@@ -377,6 +448,13 @@ export default function DepartureAdvisorSheet({
                       </View>
                     </View>
                   ))}
+                  {(!advisory.transport || advisory.transport.length === 0) && (
+                    <View style={[styles.transportCard, { borderColor: tc.borderSubtle }]}>
+                      <Text style={[styles.transportDuration, { color: tc.textTertiary }]}>
+                        Transport estimates are unavailable right now.
+                      </Text>
+                    </View>
+                  )}
                 </View>
 
                 {/* Risk Indicators */}
@@ -387,7 +465,7 @@ export default function DepartureAdvisorSheet({
                   </View>
 
                   <View style={[styles.riskGrid]}>
-                    {advisory.risks.map((risk, idx) => (
+                    {(advisory.risks || []).map((risk, idx) => (
                       <View key={idx} style={[styles.riskCard, { backgroundColor: `${getRiskColor(risk.level)}08`, borderColor: `${getRiskColor(risk.level)}20` }]}>
                         {getRiskIcon(risk.level)}
                         <Text style={[styles.riskCategory, { color: tc.textPrimary }]}>{risk.category}</Text>
@@ -517,22 +595,38 @@ const styles = StyleSheet.create({
   },
   scrollContent: { paddingHorizontal: 20, paddingTop: spacing.md, paddingBottom: spacing.md },
 
-  // Flight Header
-  flightHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    borderRadius: 16,
+  // Premium Flight Card
+  flightCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
     borderWidth: 1,
     marginBottom: spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 6,
   },
-  flightIconCircle: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
-  flightInfo: { flex: 1 },
-  flightNumber: { fontSize: typography.fontSize.heading2, fontWeight: typography.fontWeight.bold, marginBottom: 2 },
-  flightRoute: { fontSize: typography.fontSize.bodyLg, fontWeight: typography.fontWeight.medium, marginBottom: 2 },
-  flightTime: { fontSize: typography.fontSize.bodySm },
-  intlBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  intlBadgeText: { fontSize: typography.fontSize.captionSm, fontWeight: '800', letterSpacing: 0.5 },
+  flightCardHeader: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.md + 2 },
+  flightCardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  flightCardRoute: { flex: 1, fontSize: typography.fontSize.bodyLg, fontWeight: typography.fontWeight.bold, color: '#FFFFFF' },
+  flightCardIntlBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.22)', marginLeft: 8 },
+  flightCardIntlText: { fontSize: typography.fontSize.captionSm, fontWeight: '800', letterSpacing: 0.5, color: '#FFFFFF' },
+  flightCardBoards: { fontSize: typography.fontSize.bodySm, color: 'rgba(255,255,255,0.9)', marginTop: 10 },
+  // Merged leave-by hero (inside green card)
+  heroLeaveBy: { marginTop: spacing.md },
+  heroLeaveByLabel: { fontSize: typography.fontSize.bodySm, fontWeight: '800', letterSpacing: 1.5, color: 'rgba(255,255,255,0.9)' },
+  heroLeaveByRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 2 },
+  heroLeaveByTime: { fontSize: 46, fontWeight: '800', lineHeight: 54, color: '#FFFFFF', flexShrink: 1 },
+  heroConfidencePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.22)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
+  heroConfidenceDot: { width: 7, height: 7, borderRadius: 4 },
+  heroConfidenceText: { fontSize: typography.fontSize.bodySm, fontWeight: typography.fontWeight.bold, color: '#FFFFFF' },
+  heroLeaveBySub: { fontSize: typography.fontSize.bodySm, color: 'rgba(255,255,255,0.9)', marginTop: 10, fontWeight: typography.fontWeight.medium },
+  flightCardFooter: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, paddingHorizontal: spacing.xs },
+  flightCardStat: { flex: 1, alignItems: 'center', paddingHorizontal: 4 },
+  flightCardStatLabel: { fontSize: typography.fontSize.captionSm, fontWeight: typography.fontWeight.semibold, letterSpacing: 0.4, marginBottom: 4 },
+  flightCardStatValue: { fontSize: typography.fontSize.bodyLg, fontWeight: '800', textAlign: 'center' },
+  flightCardDivider: { width: 1, height: 28, alignSelf: 'center' },
 
   // Loading
   loadingContainer: { alignItems: 'center', paddingVertical: spacing.xl * 2 },
@@ -544,15 +638,6 @@ const styles = StyleSheet.create({
   retryButton: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: 12 },
   retryButtonText: { fontSize: typography.fontSize.bodyLg, fontWeight: typography.fontWeight.bold, color: '#FFFFFF' },
 
-  // Leave By
-  leaveByCard: { alignItems: 'center', padding: spacing.lg, borderRadius: 20, borderWidth: 1.5, marginBottom: spacing.lg },
-  leaveByHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.sm },
-  leaveByLabel: { fontSize: typography.fontSize.bodySm, fontWeight: '800', letterSpacing: 1.5 },
-  leaveByTime: { fontSize: 42, fontWeight: '800', lineHeight: 50, marginBottom: 4 },
-  leaveByCountdown: { fontSize: typography.fontSize.heading3, fontWeight: typography.fontWeight.medium, marginBottom: spacing.sm },
-  confidenceBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
-  confidenceText: { fontSize: typography.fontSize.caption, fontWeight: typography.fontWeight.semibold },
-
   // Section
   sectionContainer: { marginBottom: spacing.lg },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm },
@@ -561,7 +646,7 @@ const styles = StyleSheet.create({
   // Breakdown
   breakdownCard: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
   breakdownRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: spacing.md },
-  breakdownEmoji: { fontSize: typography.fontSize.base, width: 28 },
+  breakdownIcon: { width: 28 },
   breakdownLabel: { flex: 1, fontSize: typography.fontSize.bodyLg },
   breakdownValue: { fontSize: typography.fontSize.bodyLg, fontWeight: typography.fontWeight.semibold },
   breakdownTotal: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: spacing.md, borderTopWidth: 2 },

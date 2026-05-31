@@ -10,6 +10,16 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  beginTripModuleWorker,
+  finishTripModuleWorker,
+  type TripModuleWorkerLease,
+} from '../_shared/tripModule/worker.ts';
+import {
+  getTripModuleCachedContent,
+  recordTripModuleMetric,
+  setTripModuleCachedContent,
+} from '../_shared/tripModule/runtime.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,6 +28,7 @@ const corsHeaders = {
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY') || '';
+const MODULE_KEY = 'dos_donts';
 
 // ─── Context Builder ─────────────────────────────────────
 
@@ -59,6 +70,25 @@ function computeAge(dob: string | null): number | null {
   if (!dob) return null;
   const diff = Date.now() - new Date(dob).getTime();
   return Math.floor(diff / 31557600000); // 365.25 days
+}
+
+function str(value: unknown, fallback = ''): string {
+  return value ? String(value) : fallback;
+}
+
+function buildCacheInput(ctx: any) {
+  const dest = ctx.trip.destination || {};
+  const travelerCount = (ctx.travelers?.length || 0) + 1;
+  const composition = ctx.trip.traveler_composition || (travelerCount === 1 ? 'solo' : 'group');
+  return {
+    moduleKey: MODULE_KEY,
+    city: str(dest.city || ctx.trip.primary_destination_name || ctx.trip.title),
+    country: str(dest.country || ctx.trip.primary_destination_country),
+    nationality: str(ctx.profile.nationality || ctx.profile.passport_country),
+    startDate: str(ctx.trip.start_date || ctx.trip.startDate),
+    composition,
+    tripType: str(ctx.trip.trip_type || ctx.trip.trip_purpose),
+  };
 }
 
 // ─── Prompt Builder ──────────────────────────────────────
@@ -500,10 +530,30 @@ serve(async (req: Request) => {
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
+  let body: Record<string, any> = {};
+  let workerLease: TripModuleWorkerLease | null = null;
+  const requestStartedAt = Date.now();
 
   try {
-    const { tripId } = await req.json();
+    body = await req.json();
+    const { tripId } = body;
     if (!tripId) throw new Error('tripId is required');
+
+    const worker = await beginTripModuleWorker({
+      req,
+      body,
+      supabase,
+      moduleKey: MODULE_KEY,
+      statusKey: 'dos_donts',
+      corsHeaders,
+      env: {
+        supabaseUrl: Deno.env.get('SUPABASE_URL')!,
+        serviceRoleKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        anonKey: Deno.env.get('SUPABASE_ANON_KEY')!,
+      },
+    });
+    if (worker.response) return worker.response;
+    workerLease = worker.lease ?? null;
 
     console.log(`[generate-dos-donts] Starting for trip ${tripId}`);
 
@@ -518,6 +568,54 @@ serve(async (req: Request) => {
 
     // Step 1: Build context
     const ctx = await buildContext(supabase, tripId);
+    const cacheInput = buildCacheInput(ctx);
+    const destination = ctx.trip.destination || {};
+    const userId = currentTrip?.user_id || ctx.profile.id;
+    if (body.forceRefresh !== true) {
+      const cached = await getTripModuleCachedContent<any>(supabase, cacheInput);
+      if (cached?.content) {
+        const totalInserted = await storeTips(
+          supabase, tripId, userId,
+          destination.country || '', destination.city || '',
+          cached.content, 'cache',
+        );
+        const geoAlerts = cached.content.geo_triggered_alerts || [];
+        const cachedStatus = {
+          ...existingStatus,
+          dos_donts: 'ready',
+          dos_donts_generated_at: new Date().toISOString(),
+          dos_donts_model: 'cache',
+          dos_donts_count: totalInserted,
+          dos_donts_critical_count: cached.content.critical_summary?.length || 0,
+          dos_donts_geo_alerts: geoAlerts,
+          dos_donts_personalization: cached.content.metadata?.personalization_applied || [],
+        };
+        await supabase.from('trips').update({ generation_status: cachedStatus }).eq('id', tripId);
+        await recordTripModuleMetric(supabase, {
+          moduleKey: MODULE_KEY,
+          cacheStatus: 'hit',
+          statusCode: 200,
+          durationMs: Date.now() - requestStartedAt,
+          model: 'cache',
+          providerSummary: { cacheKey: cached.cacheKey, cachedAt: cached.createdAt, totalInserted },
+        });
+        await finishTripModuleWorker(supabase, workerLease, 'completed');
+        workerLease = null;
+        return new Response(
+          JSON.stringify({
+            success: true,
+            cached: true,
+            cacheStatus: 'hit',
+            tipsGenerated: totalInserted,
+            categoriesGenerated: cached.content.categories?.length || 0,
+            criticalCount: cached.content.critical_summary?.length || 0,
+            geoAlertsCount: geoAlerts.length,
+            modelUsed: 'cache',
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+    }
 
     // Step 2: Build prompt
     const prompt = buildPrompt(ctx);
@@ -549,13 +647,12 @@ serve(async (req: Request) => {
     }
 
     // Step 5: Store
-    const destination = ctx.trip.destination || {};
-    const userId = currentTrip?.user_id || ctx.profile.id;
     const totalInserted = await storeTips(
       supabase, tripId, userId,
       destination.country || '', destination.city || '',
       parsed, modelUsed,
     );
+    await setTripModuleCachedContent(supabase, cacheInput, parsed);
 
     // Step 6: Update status (include geo-triggered alerts and personalization metadata)
     const geoAlerts = parsed.geo_triggered_alerts || [];
@@ -572,6 +669,16 @@ serve(async (req: Request) => {
     await supabase.from('trips').update({ generation_status: updatedStatus }).eq('id', tripId);
 
     console.log(`[generate-dos-donts] Done! ${totalInserted} tips, ${geoAlerts.length} geo alerts stored`);
+    await recordTripModuleMetric(supabase, {
+      moduleKey: MODULE_KEY,
+      cacheStatus: 'miss',
+      statusCode: 200,
+      durationMs: Date.now() - requestStartedAt,
+      model: modelUsed,
+      providerSummary: { totalInserted, geoAlertsCount: geoAlerts.length },
+    });
+    await finishTripModuleWorker(supabase, workerLease, 'completed');
+    workerLease = null;
 
     return new Response(
       JSON.stringify({
@@ -586,9 +693,15 @@ serve(async (req: Request) => {
     );
   } catch (error: any) {
     console.error('[generate-dos-donts] Error:', error);
+    await recordTripModuleMetric(supabase, {
+      moduleKey: MODULE_KEY,
+      cacheStatus: 'error',
+      statusCode: 500,
+      durationMs: Date.now() - requestStartedAt,
+      errorMessage: error.message,
+    });
 
     try {
-      const body = await req.clone().json().catch(() => ({}));
       if (body.tripId) {
         const { data: t } = await supabase.from('trips').select('generation_status').eq('id', body.tripId).single();
         await supabase.from('trips').update({
@@ -596,6 +709,7 @@ serve(async (req: Request) => {
         }).eq('id', body.tripId);
       }
     } catch (_) {}
+    await finishTripModuleWorker(supabase, workerLease, 'failed');
 
     return new Response(
       JSON.stringify({ success: false, error: error.message }),

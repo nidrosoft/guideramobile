@@ -58,7 +58,11 @@ export default function CommunityCard({
   
   return (
     <TouchableOpacity
-      style={[styles.container, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
+      style={[
+        styles.container,
+        isHorizontal ? styles.horizontal : styles.list,
+        { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle },
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -89,7 +93,11 @@ export default function CommunityCard({
         )}
 
         {community.description && (
-          <Text style={[styles.description, { color: tc.textSecondary }]} numberOfLines={2}>
+          <Text
+            style={[styles.description, isHorizontal && styles.descriptionHorizontal, { color: tc.textSecondary }]}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
             {community.description}
           </Text>
         )}
@@ -98,7 +106,7 @@ export default function CommunityCard({
           <View style={styles.memberCount}>
             <People size={14} color={tc.textSecondary} />
             <Text style={[styles.memberText, { color: tc.textSecondary }]}>
-              {community.memberCount.toLocaleString()} members
+              {community.isOfficial ? 'Members protected' : `${community.memberCount.toLocaleString()} members`}
             </Text>
           </View>
           
@@ -152,6 +160,7 @@ const styles = StyleSheet.create({
   },
   horizontal: {
     width: 260,
+    height: 305,
   },
   list: {
     flexDirection: 'row',
@@ -197,6 +206,9 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 4,
     lineHeight: 17,
+  },
+  descriptionHorizontal: {
+    minHeight: 34,
   },
   footer: {
     flexDirection: 'row',

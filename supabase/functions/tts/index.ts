@@ -1,10 +1,26 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getEdgeResponseCache, setEdgeResponseCache } from "../_shared/edgeScale/cache.ts";
+import { getUserIdFromRequest } from "../_shared/auth.ts";
+import {
+  assertPhase6PayloadSize,
+  buildPhase6CacheKey,
+  consumePhase6RateLimit,
+  deferPhase6Work,
+  getPhase6ActionPolicy,
+  recordPhase6Metric,
+} from "../_shared/phase6Edge.ts";
 
 const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY") || "";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const SUPABASE_ANON_KEY =
+  Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_ANON_PUBLIC_KEY") || "";
+const TTS_CACHE_MAX_BASE64_CHARS = 700_000;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-clerk-token",
 };
 
 /**
@@ -34,6 +50,35 @@ const TTS_MODELS = [
 ];
 
 const DEFAULT_VOICE = "Kore";
+let supabaseClient: ReturnType<typeof createClient> | null = null;
+
+function getServiceClient(): ReturnType<typeof createClient> | null {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
+  if (!supabaseClient) {
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  }
+  return supabaseClient;
+}
+
+function ttsMetric(
+  supabase: ReturnType<typeof createClient> | null,
+  input: {
+    statusCode: number;
+    durationMs: number;
+    cacheStatus?: "hit" | "miss" | "rate_limited" | "error" | "skipped";
+    errorMessage?: string | null;
+    providerSummary?: Record<string, unknown>;
+  },
+): void {
+  if (!supabase) return;
+  deferPhase6Work(
+    recordPhase6Metric(supabase, {
+      action: "tts_generate",
+      provider: "gemini_tts",
+      ...input,
+    }),
+  );
+}
 
 /**
  * Call Gemini TTS with a specific model. Returns base64-encoded raw PCM audio.
@@ -139,14 +184,42 @@ Deno.serve(async (req: Request) => {
   }
 
   const startTime = Date.now();
+  let metricClient: ReturnType<typeof createClient> | null = null;
 
   try {
-    const { text, voiceName } = await req.json();
+    const body = await req.json();
+    const { text, voiceName } = body;
+    const supabase = getServiceClient();
+    metricClient = supabase;
 
     if (!text || !text.trim()) {
       return Response.json(
         { error: "Missing text" },
         { status: 400, headers: corsHeaders },
+      );
+    }
+
+    assertPhase6PayloadSize("tts_generate", { text });
+
+    if (!supabase) {
+      return Response.json(
+        { error: "Rate limit service unavailable" },
+        { status: 503, headers: corsHeaders },
+      );
+    }
+
+    const userId = await getUserIdFromRequest(
+      req,
+      body,
+      SUPABASE_URL,
+      SUPABASE_SERVICE_ROLE_KEY,
+      SUPABASE_ANON_KEY,
+    );
+
+    if (!userId) {
+      return Response.json(
+        { error: "Valid authentication required" },
+        { status: 401, headers: corsHeaders },
       );
     }
 
@@ -158,6 +231,50 @@ Deno.serve(async (req: Request) => {
     }
 
     const voice = voiceName || DEFAULT_VOICE;
+    const policy = getPhase6ActionPolicy("tts_generate");
+    const rateLimit = await consumePhase6RateLimit(supabase, {
+      action: "tts_generate",
+      actorKey: userId,
+    });
+    if (!rateLimit.allowed) {
+      ttsMetric(supabase, {
+        statusCode: 429,
+        durationMs: Date.now() - startTime,
+        cacheStatus: "rate_limited",
+      });
+      return Response.json(
+        { error: "Rate limit exceeded", resetAt: rateLimit.resetAt },
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "X-RateLimit-Remaining": String(rateLimit.remaining),
+            "X-RateLimit-Reset": rateLimit.resetAt,
+          },
+        },
+      );
+    }
+
+    const cacheKey = buildPhase6CacheKey("tts_generate", { text, voice });
+    const cached = policy.cacheTtlSeconds
+      ? await getEdgeResponseCache<Record<string, unknown>>(supabase, "tts_generate", cacheKey)
+      : null;
+
+    if (cached) {
+      ttsMetric(supabase, {
+        statusCode: 200,
+        durationMs: Date.now() - startTime,
+        cacheStatus: "hit",
+      });
+      return Response.json(
+        {
+          ...cached.response,
+          cached: true,
+          duration: Date.now() - startTime,
+        },
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     // Try each model in the fallback chain
     let pcmBase64: string | null = null;
@@ -179,6 +296,12 @@ Deno.serve(async (req: Request) => {
 
     if (!pcmBase64) {
       console.error("[tts] All models failed");
+      ttsMetric(supabase, {
+        statusCode: 503,
+        durationMs: Date.now() - startTime,
+        cacheStatus: "error",
+        errorMessage: "All Gemini TTS models failed",
+      });
       return Response.json(
         {
           error:
@@ -189,23 +312,51 @@ Deno.serve(async (req: Request) => {
     }
 
     const wavBase64 = pcmToWav(pcmBase64);
+    const responseBody = {
+      audioContent: wavBase64,
+      audioFormat: "wav",
+      provider: "gemini",
+      voiceName: voice,
+      model: usedModel,
+      duration: Date.now() - startTime,
+      cached: false,
+    };
+
+    if (policy.cacheTtlSeconds && wavBase64.length <= TTS_CACHE_MAX_BASE64_CHARS) {
+      await setEdgeResponseCache(
+        supabase,
+        "tts_generate",
+        cacheKey,
+        responseBody,
+        policy.cacheTtlSeconds,
+        { provider: "gemini_tts", model: usedModel },
+      );
+    }
+
+    ttsMetric(supabase, {
+      statusCode: 200,
+      durationMs: Date.now() - startTime,
+      cacheStatus: "miss",
+      providerSummary: { model: usedModel, cached: false },
+    });
 
     return Response.json(
-      {
-        audioContent: wavBase64,
-        audioFormat: "wav",
-        provider: "gemini",
-        voiceName: voice,
-        model: usedModel,
-        duration: Date.now() - startTime,
-      },
+      responseBody,
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("[tts] Unexpected error:", err);
+    const message = (err as Error).message || "TTS failed";
+    const status = message.includes("exceeds") ? 413 : 500;
+    ttsMetric(metricClient, {
+      statusCode: status,
+      durationMs: Date.now() - startTime,
+      cacheStatus: "error",
+      errorMessage: message,
+    });
     return Response.json(
-      { error: (err as Error).message || "TTS failed" },
-      { status: 500, headers: corsHeaders },
+      { error: message },
+      { status, headers: corsHeaders },
     );
   }
 });

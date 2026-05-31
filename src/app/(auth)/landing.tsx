@@ -12,8 +12,8 @@ import PrimaryButton from '@/components/common/buttons/PrimaryButton';
 import TypingAnimation from '@/components/common/TypingAnimation';
 import DSButton from '@/components/ds/DSButton';
 import { Sms, Call } from 'iconsax-react-native';
-import { useSSO, useUser } from '@clerk/clerk-expo';
-import { syncClerkUserToSupabase } from '@/lib/clerk/profileSync';
+import { useSSO, useUser, useAuth as useClerkAuth, useClerk } from '@clerk/clerk-expo';
+import { parseClerkError } from '@/lib/clerk/errors';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 
@@ -37,8 +37,32 @@ export default function Landing() {
   const router = useRouter();
   const { startSSOFlow } = useSSO();
   const { user: clerkUser } = useUser();
+  const { isSignedIn } = useClerkAuth();
+  const { signOut } = useClerk();
   const [error, setError] = useState('');
   const [ssoLoading, setSsoLoading] = useState('');
+  const [retryCountdown, setRetryCountdown] = useState(0);
+
+  // Countdown timer for rate-limit UX
+  useEffect(() => {
+    if (retryCountdown <= 0) return;
+    const interval = setInterval(() => {
+      setRetryCountdown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [retryCountdown]);
+
+  // Escape hatch: if user lands here while still signed in, they're stuck.
+  // Sign out clears Clerk session + lets them retry cleanly.
+  const handleStartOver = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setError('');
+    try {
+      await signOut();
+    } catch (err) {
+      if (__DEV__) console.warn('[Landing] Start over signOut failed:', err);
+    }
+  }, [signOut]);
 
   const phrases = [
     "Guidera",
@@ -58,6 +82,13 @@ export default function Landing() {
     setError('');
     setSsoLoading(strategy);
 
+    // If already signed in, a new SSO attempt will error with session_exists
+    // and eat into the rate limit. Clear the stale session first.
+    if (isSignedIn) {
+      if (__DEV__) console.log('[Landing SSO] Clearing stale session before retry');
+      try { await signOut(); } catch { /* ignore */ }
+    }
+
     try {
       const { createdSessionId, setActive, signIn, signUp } = await startSSOFlow({
         strategy,
@@ -66,43 +97,56 @@ export default function Landing() {
 
       if (__DEV__) console.log('[Landing SSO] Response:', {
         createdSessionId: createdSessionId ? 'YES' : 'NULL',
-        hasSetActive: !!setActive,
         signUpStatus: signUp?.status,
         signInStatus: signIn?.status,
-        signUpId: signUp?.id,
-        signInId: signIn?.id,
+        signUpMissingFields: (signUp as any)?.missingFields,
       });
 
-      if (createdSessionId) {
-        if (__DEV__) console.log('[Landing SSO] Session created, activating...');
-        await setActive?.({ session: createdSessionId });
-        if (__DEV__) console.log('[Landing SSO] Session activated, navigating...');
+      // Happy path — Clerk created a session directly. Let AuthGuard route
+      // based on Supabase profile.onboarding_completed (not Clerk state).
+      if (createdSessionId && setActive) {
+        await setActive({ session: createdSessionId });
         router.replace('/');
         return;
       }
 
-      // No session created — log full details for debugging
-      if (__DEV__) console.log('[Landing SSO] No session. signUp:', JSON.stringify({
-        status: signUp?.status,
-        missingFields: (signUp as any)?.missingFields,
-        unverifiedFields: (signUp as any)?.unverifiedFields,
-        phoneNumber: (signUp as any)?.phoneNumber,
-      }));
-      if (__DEV__) console.log('[Landing SSO] signIn verification:', JSON.stringify({
-        status: (signIn as any)?.firstFactorVerification?.status,
-        errorCode: (signIn as any)?.firstFactorVerification?.error?.code,
-      }));
-      
-      // The most common cause: Clerk requires phone_number but SSO doesn't provide one.
-      // Fix: In Clerk Dashboard → Configure → Email, Phone, Username → make Phone "Optional"
-      if ((signIn?.status as string) === 'needs_client_trust') {
-        setError('Additional verification needed. Please sign in with email or phone.');
-      } else {
-        setError('Could not complete sign up. Please check Clerk Dashboard settings or try email sign up.');
+      // No session yet — per Clerk docs, this is the "transfer flow". Clerk
+      // has verified the OAuth identity but is sitting on a pending signUp
+      // or signIn object. The right move is to transfer and either complete
+      // (if no fields are missing) or guide the user to complete them.
+      // See: https://clerk.com/docs/guides/development/custom-flows/authentication/oauth-connections#handle-missing-requirements
+
+      // Case 1: signIn is pending but no first factor verified — transfer to
+      // signUp (account may not exist yet or Apple Private Relay gave a new email).
+      if (signUp) {
+        const missing: string[] = (signUp as any)?.missingFields ?? [];
+        if (__DEV__) console.log('[Landing SSO] Transfer path → signUp exists. missing:', missing);
+
+        if (signUp.status === 'complete' && signUp.createdSessionId && setActive) {
+          await setActive({ session: signUp.createdSessionId });
+          router.replace('/');
+          return;
+        }
+
+        if (signUp.status === 'missing_requirements') {
+          // Route to completion screen; it will read signUp from Clerk context
+          // and collect whatever's needed. Cast needed until expo-router's
+          // typed-route generation picks up the new file.
+          router.push('/(auth)/complete-signup' as any);
+          return;
+        }
       }
-    } catch (err: any) {
-      const clerkError = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err.message || 'Sign up failed';
-      setError(clerkError);
+
+      // Fallback — unexpected Clerk state. Log it so we can diagnose.
+      if (__DEV__) console.warn('[Landing SSO] Unhandled state', { signIn, signUp });
+      setError('Sign up didn\u2019t complete. Please try email sign up or contact support.');
+    } catch (err: unknown) {
+      const parsed = parseClerkError(err);
+      if (__DEV__) console.warn('[Landing SSO] Error:', parsed);
+      if (parsed.isRateLimit && parsed.retryAfterSeconds) {
+        setRetryCountdown(parsed.retryAfterSeconds);
+      }
+      setError(parsed.message);
     } finally {
       setSsoLoading('');
     }
@@ -154,16 +198,31 @@ export default function Landing() {
 
         {/* Bottom Actions */}
         <View style={styles.bottomContainer}>
+          {/* Stuck-state escape hatch: signed in but still on landing */}
+          {isSignedIn ? (
+            <View style={styles.stuckBanner}>
+              <Text style={styles.stuckText}>You have an active session. If you’re stuck, tap below to start over.</Text>
+              <TouchableOpacity
+                style={styles.stuckButton}
+                onPress={handleStartOver}
+                accessibilityRole="button"
+                accessibilityLabel="Sign out and start over"
+              >
+                <Text style={styles.stuckButtonText}>Sign Out & Start Over</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
           {/* Social SSO Buttons Row */}
           <View style={styles.ssoRow}>
             <TouchableOpacity
               style={styles.ssoButton}
               onPress={() => handleSSOSignUp('oauth_apple')}
               activeOpacity={0.8}
-              disabled={!!ssoLoading}
+              disabled={!!ssoLoading || retryCountdown > 0}
               accessibilityRole="button"
               accessibilityLabel="Sign up with Apple"
-              accessibilityState={{ disabled: !!ssoLoading }}
+              accessibilityState={{ disabled: !!ssoLoading || retryCountdown > 0 }}
             >
               {ssoLoading === 'oauth_apple' ? (
                 <ActivityIndicator color={colors.textPrimary} size="small" />
@@ -176,10 +235,10 @@ export default function Landing() {
               style={styles.ssoButton}
               onPress={() => handleSSOSignUp('oauth_google')}
               activeOpacity={0.8}
-              disabled={!!ssoLoading}
+              disabled={!!ssoLoading || retryCountdown > 0}
               accessibilityRole="button"
               accessibilityLabel="Sign up with Google"
-              accessibilityState={{ disabled: !!ssoLoading }}
+              accessibilityState={{ disabled: !!ssoLoading || retryCountdown > 0 }}
             >
               {ssoLoading === 'oauth_google' ? (
                 <ActivityIndicator color={colors.textPrimary} size="small" />
@@ -192,10 +251,10 @@ export default function Landing() {
               style={styles.ssoButton}
               onPress={() => handleSSOSignUp('oauth_facebook')}
               activeOpacity={0.8}
-              disabled={!!ssoLoading}
+              disabled={!!ssoLoading || retryCountdown > 0}
               accessibilityRole="button"
               accessibilityLabel="Sign up with Facebook"
-              accessibilityState={{ disabled: !!ssoLoading }}
+              accessibilityState={{ disabled: !!ssoLoading || retryCountdown > 0 }}
             >
               {ssoLoading === 'oauth_facebook' ? (
                 <ActivityIndicator color={colors.textPrimary} size="small" />
@@ -247,7 +306,11 @@ export default function Landing() {
             </TouchableOpacity>
           </View>
 
-          {error ? <Text style={styles.errorBadge}>{error}</Text> : null}
+          {retryCountdown > 0 ? (
+            <Text style={styles.errorBadge}>Please wait {retryCountdown}s before trying again.</Text>
+          ) : error ? (
+            <Text style={styles.errorBadge}>{error}</Text>
+          ) : null}
 
           {/* Sign In Link */}
           <View style={styles.signInContainer}>
@@ -399,6 +462,31 @@ const styles = StyleSheet.create({
     color: colors.error,
     textAlign: 'center',
     marginTop: spacing.xs,
+  },
+  stuckBanner: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  stuckText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.white,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  stuckButton: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+  },
+  stuckButtonText: {
+    color: colors.black,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
   signInContainer: {
     flexDirection: 'row',

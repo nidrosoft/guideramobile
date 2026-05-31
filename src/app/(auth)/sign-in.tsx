@@ -9,10 +9,11 @@ import { useTranslation } from 'react-i18next';
 import CloseIcon from '@/components/common/icons/CloseIcon';
 import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { useSignIn, useSSO } from '@clerk/clerk-expo';
+import { useSignIn, useSSO, useAuth as useClerkAuth, useClerk } from '@clerk/clerk-expo';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import DSButton from '@/components/ds/DSButton';
+import { parseClerkError } from '@/lib/clerk/errors';
 
 const useWarmUpBrowser = () => {
   useEffect(() => {
@@ -34,11 +35,20 @@ export default function SignIn() {
   const { t } = useTranslation();
   const { isLoaded, signIn, setActive } = useSignIn();
   const { startSSOFlow } = useSSO();
+  const { isSignedIn } = useClerkAuth();
+  const { signOut } = useClerk();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [retryCountdown, setRetryCountdown] = useState(0);
+
+  useEffect(() => {
+    if (retryCountdown <= 0) return;
+    const interval = setInterval(() => setRetryCountdown((p) => Math.max(0, p - 1)), 1000);
+    return () => clearInterval(interval);
+  }, [retryCountdown]);
 
   // Smart detection: is the input an email or phone?
   const inputMode = useMemo(() => {
@@ -57,26 +67,44 @@ export default function SignIn() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setError('');
     setIsLoading(true);
+
+    // Clear stale session to prevent session_exists errors on retry
+    if (isSignedIn) {
+      try { await signOut(); } catch { /* ignore */ }
+    }
+
     try {
       const { createdSessionId, setActive: ssoSetActive, signUp } = await startSSOFlow({
         strategy,
         redirectUrl: AuthSession.makeRedirectUri(),
       });
+
       if (createdSessionId && ssoSetActive) {
         await ssoSetActive({ session: createdSessionId });
-        // Explicit navigation — don't rely on AuthGuard reactivity
-        const isNewUser = signUp?.status === 'complete';
-        if (isNewUser) {
-          router.replace('/(onboarding)/intro');
-        } else {
-          // Brief delay for Clerk session propagation before navigation
-          await new Promise(resolve => setTimeout(resolve, 300));
-          router.replace('/(tabs)');
-        }
+        // Route through root — AuthGuard decides onboarding vs tabs based on
+        // Supabase profile.onboarding_completed, which is the source of truth.
+        router.replace('/');
         return;
       }
-    } catch (err: any) {
-      setError(err?.errors?.[0]?.longMessage || err?.message || 'Sign in failed');
+
+      // Transfer flow — Clerk is waiting on missing requirements
+      if (signUp?.status === 'missing_requirements') {
+        router.push('/(auth)/complete-signup' as any);
+        return;
+      }
+      if (signUp?.status === 'complete' && signUp.createdSessionId && ssoSetActive) {
+        await ssoSetActive({ session: signUp.createdSessionId });
+        router.replace('/');
+        return;
+      }
+
+      setError('Sign in didn\u2019t complete. Please try email or phone.');
+    } catch (err: unknown) {
+      const parsed = parseClerkError(err);
+      if (parsed.isRateLimit && parsed.retryAfterSeconds) {
+        setRetryCountdown(parsed.retryAfterSeconds);
+      }
+      setError(parsed.message);
     } finally {
       setIsLoading(false);
     }

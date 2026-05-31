@@ -37,6 +37,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import LanguagePicker from './LanguagePicker';
+import LivePlaceCards from './LivePlaceCards';
 import { useGeminiLive } from '../hooks/useGeminiLive';
 
 interface LiveCameraModeProps {
@@ -91,6 +92,14 @@ export default function LiveCameraMode({
   useEffect(() => {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }, [conversations, streamingText]);
+
+  // Auto-reveal the transcript when Meena returns a generative-UI card
+  // (e.g. nearby places) so voice-first users actually see the results.
+  useEffect(() => {
+    if (conversations.some((c) => c.card)) {
+      setShowTranscript((prev) => (prev ? prev : true));
+    }
+  }, [conversations]);
 
   // ─── Session Lifecycle ─────────────────────────────────────
 
@@ -252,29 +261,36 @@ export default function LiveCameraMode({
         style={styles.conversationArea}
         contentContainerStyle={[
           styles.conversationContent,
-          { paddingTop: insets.top + 70, paddingBottom: 180 },
+          // Keep content clear of the bottom controls, text input, and mode tabs.
+          { paddingTop: insets.top + 70, paddingBottom: insets.bottom + 230 },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {conversations.map((entry, i) => (
-          <View
-            key={i}
-            style={[
-              styles.chatBubble,
-              entry.role === 'user' ? styles.userBubble : styles.aiBubble,
-            ]}
-          >
-            {entry.role === 'user' && (
-              <Text style={styles.chatLabel}>You:</Text>
-            )}
-            <Text style={[
-              styles.chatText,
-              entry.role === 'user' && styles.userChatText,
-            ]}>
-              {entry.text}
-            </Text>
-          </View>
-        ))}
+        {conversations.map((entry, i) => {
+          // Generative-UI card message (e.g. nearby places) — render full width.
+          if (entry.card) {
+            return <LivePlaceCards key={i} card={entry.card} />;
+          }
+          return (
+            <View
+              key={i}
+              style={[
+                styles.chatBubble,
+                entry.role === 'user' ? styles.userBubble : styles.aiBubble,
+              ]}
+            >
+              {entry.role === 'user' && (
+                <Text style={styles.chatLabel}>You:</Text>
+              )}
+              <Text style={[
+                styles.chatText,
+                entry.role === 'user' && styles.userChatText,
+              ]}>
+                {entry.text}
+              </Text>
+            </View>
+          );
+        })}
 
         {/* Live streaming transcription */}
         {streamingText ? (
@@ -295,9 +311,20 @@ export default function LiveCameraMode({
         ) : null}
       </ScrollView>}
 
+      {/* Bottom fade — lets long transcript text fade out smoothly above the
+          controls instead of abruptly colliding with them. */}
+      {showTranscript && (
+        <LinearGradient
+          colors={['transparent', 'rgba(10,10,15,0.92)', 'rgba(10,10,15,1)']}
+          locations={[0, 0.6, 1]}
+          style={[styles.bottomFade, { bottom: insets.bottom + 60 }]}
+          pointerEvents="none"
+        />
+      )}
+
       {/* Text input fallback */}
       {showTextInput && (
-        <View style={[styles.textInputBar, { bottom: insets.bottom + 130 }]}>
+        <View style={[styles.textInputBar, { bottom: insets.bottom + 152 }]}>
           <TextInput
             style={styles.textInputField}
             placeholder="Type a message..."
@@ -375,7 +402,10 @@ export default function LiveCameraMode({
       </View>
 
       {error && (
-        <View style={[styles.errorBanner, { bottom: insets.bottom + 140 }]}>
+        <View
+          style={[styles.errorBanner, { bottom: insets.bottom + 210 }]}
+          pointerEvents="none"
+        >
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
@@ -455,6 +485,13 @@ const styles = StyleSheet.create({
   conversationArea: {
     flex: 1,
     zIndex: 10,
+  },
+  bottomFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 110,
+    zIndex: 50,
   },
   conversationContent: {
     paddingHorizontal: 20,

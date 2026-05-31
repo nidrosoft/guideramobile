@@ -158,7 +158,7 @@ export default function ScanReceiptScreen() {
   const processBase64 = async (base64: string, mediaType: string) => {
     setScreenState('processing');
     try {
-      const result = await receiptScannerService.scanReceipt(base64, mediaType);
+      const result = await receiptScannerService.scanReceipt(base64, mediaType, 'USD', profile?.id);
 
       if (result.items && result.items.length > 0) {
         setScannedItems(result.items);

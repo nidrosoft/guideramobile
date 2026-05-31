@@ -10,13 +10,11 @@ import { StepComponentProps } from '../../types/import-flow.types';
 import SuccessStep from '../../components/shared/SuccessStep';
 
 export default function EmailSuccessStep({ data, onNext }: StepComponentProps) {
-  const importResult = data.importResult;
-  const totalBookings = importResult?.totalBookingsImported || data.selectedBookings?.length || 0;
-  const tripCount = importResult?.trips?.length || 1;
+  const importedTrip = data.importedTrip;
 
-  const message = importResult?.imported
-    ? `We've imported ${totalBookings} booking${totalBookings !== 1 ? 's' : ''} across ${tripCount} trip${tripCount !== 1 ? 's' : ''} from your email. Your trip${tripCount !== 1 ? 's are' : ' is'} ready to view!`
-    : `Import completed. Check your trips tab to see the results.`;
+  const message = importedTrip?.title
+    ? `"${importedTrip.title}" has been added to your trips. Tap below to view it.`
+    : `Your booking has been added to your trips. Tap below to view it.`;
 
   return (
     <SuccessStep

@@ -139,7 +139,7 @@ export default function CompensationScreen() {
     setAnalyzingClaimId(claimId);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const result = await compensationService.analyzeCompensation(claimId);
+      const result = await compensationService.analyzeCompensation(claimId, profile?.id);
       const updated = await compensationService.getClaim(claimId);
       if (updated) setClaims(prev => prev.map(c => c.id === claimId ? updated : c));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

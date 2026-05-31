@@ -9,7 +9,25 @@
  */
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { getEdgeResponseCache, setEdgeResponseCache } from '../_shared/edgeScale/cache.ts';
+import { getUserIdFromRequest } from '../_shared/auth.ts';
+import {
+  assertPhase6PayloadSize,
+  buildPhase6CacheKey,
+  consumePhase6RateLimit,
+  deferPhase6Work,
+  getPhase6ActionPolicy,
+  recordPhase6Metric,
+  type Phase6Action,
+} from '../_shared/phase6Edge.ts';
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const SUPABASE_ANON_KEY =
+  Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_ANON_PUBLIC_KEY') || '';
+let supabaseClient: ReturnType<typeof createClient> | null = null;
 
 // Types
 interface TranslationRequest {
@@ -31,6 +49,46 @@ interface LanguageInfo {
   code: string;
   name: string;
   nativeName: string;
+}
+
+function getServiceClient(): ReturnType<typeof createClient> | null {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
+  if (!supabaseClient) {
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  }
+  return supabaseClient;
+}
+
+function phase6ActionForTranslation(action: TranslationRequest['action'] | undefined): Phase6Action | null {
+  switch (action) {
+    case 'translate':
+      return 'translation_translate';
+    case 'detect':
+      return 'translation_detect';
+    default:
+      return null;
+  }
+}
+
+function translationMetric(
+  supabase: ReturnType<typeof createClient> | null,
+  action: Phase6Action | null,
+  input: {
+    statusCode: number;
+    durationMs: number;
+    cacheStatus?: 'hit' | 'miss' | 'rate_limited' | 'error' | 'skipped';
+    errorMessage?: string | null;
+    providerSummary?: Record<string, unknown>;
+  }
+): void {
+  if (!supabase || !action) return;
+  deferPhase6Work(
+    recordPhase6Metric(supabase, {
+      action,
+      provider: 'google_translation',
+      ...input,
+    })
+  );
 }
 
 // Supported languages (subset - Google supports 130+)
@@ -186,12 +244,91 @@ serve(async (req: Request) => {
   }
 
   const startTime = Date.now();
+  let metricAction: Phase6Action | null = null;
+  let metricClient: ReturnType<typeof createClient> | null = null;
 
   try {
     const apiKey = Deno.env.get('GOOGLE_CLOUD_API_KEY');
     const request: TranslationRequest = await req.json();
+    const phase6Action = phase6ActionForTranslation(request.action);
+    const serviceClient = getServiceClient();
+    metricAction = phase6Action;
+    metricClient = serviceClient;
 
     let response: unknown;
+
+    if (phase6Action) {
+      assertPhase6PayloadSize(phase6Action, request as unknown as Record<string, unknown>);
+      if (!serviceClient) {
+        return new Response(
+          JSON.stringify({ success: false, error: { code: 'RATE_LIMIT_UNAVAILABLE', message: 'Rate limit service unavailable' } }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const userId = await getUserIdFromRequest(
+        req,
+        request as unknown as Record<string, unknown>,
+        SUPABASE_URL,
+        SUPABASE_SERVICE_ROLE_KEY,
+        SUPABASE_ANON_KEY
+      );
+      if (!userId) {
+        return new Response(
+          JSON.stringify({ success: false, error: { code: 'UNAUTHORIZED', message: 'Valid authentication required' } }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const rateLimit = await consumePhase6RateLimit(serviceClient, {
+        action: phase6Action,
+        actorKey: userId,
+      });
+      if (!rateLimit.allowed) {
+        translationMetric(serviceClient, phase6Action, {
+          statusCode: 429,
+          durationMs: Date.now() - startTime,
+          cacheStatus: 'rate_limited',
+        });
+        return new Response(
+          JSON.stringify({ success: false, error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded', resetAt: rateLimit.resetAt } }),
+          {
+            status: 429,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json',
+              'X-RateLimit-Remaining': String(rateLimit.remaining),
+              'X-RateLimit-Reset': rateLimit.resetAt,
+            },
+          }
+        );
+      }
+
+      const policy = getPhase6ActionPolicy(phase6Action);
+      if (policy.cacheTtlSeconds) {
+        const cacheKey = buildPhase6CacheKey(phase6Action, request as unknown as Record<string, unknown>);
+        const cached = await getEdgeResponseCache<unknown>(serviceClient, phase6Action, cacheKey);
+        if (cached) {
+          translationMetric(serviceClient, phase6Action, {
+            statusCode: 200,
+            durationMs: Date.now() - startTime,
+            cacheStatus: 'hit',
+          });
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: cached.response,
+              meta: {
+                provider: apiKey ? 'google' : 'fallback',
+                requestDuration: Date.now() - startTime,
+                cacheStatus: 'hit',
+              },
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
 
     switch (request.action) {
       case 'languages': {
@@ -268,6 +405,26 @@ serve(async (req: Request) => {
       }
     }
 
+    if (phase6Action && serviceClient) {
+      const policy = getPhase6ActionPolicy(phase6Action);
+      if (policy.cacheTtlSeconds) {
+        await setEdgeResponseCache(
+          serviceClient,
+          phase6Action,
+          buildPhase6CacheKey(phase6Action, request as unknown as Record<string, unknown>),
+          response,
+          policy.cacheTtlSeconds,
+          { provider: apiKey ? 'google_translation' : 'fallback', action: phase6Action }
+        );
+      }
+      translationMetric(serviceClient, phase6Action, {
+        statusCode: 200,
+        durationMs: Date.now() - startTime,
+        cacheStatus: 'miss',
+        providerSummary: { provider: apiKey ? 'google' : 'fallback' },
+      });
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -275,6 +432,7 @@ serve(async (req: Request) => {
         meta: {
           provider: apiKey ? 'google' : 'fallback',
           requestDuration: Date.now() - startTime,
+          cacheStatus: phase6Action ? 'miss' : 'skipped',
         },
       }),
       {
@@ -283,20 +441,32 @@ serve(async (req: Request) => {
     );
   } catch (error) {
     console.error('Translation function error:', error);
+    const message = (error as Error).message || 'Translation request failed';
+    const status = message.includes('exceeds')
+      ? 413
+      : message.includes('required')
+        ? 400
+        : 500;
+    translationMetric(metricClient, metricAction, {
+      statusCode: status,
+      durationMs: Date.now() - startTime,
+      cacheStatus: 'error',
+      errorMessage: message,
+    });
 
     return new Response(
       JSON.stringify({
         success: false,
         error: {
           code: 'TRANSLATION_ERROR',
-          message: (error as Error).message || 'Translation request failed',
+          message,
         },
         meta: {
           requestDuration: Date.now() - startTime,
         },
       }),
       {
-        status: 500,
+        status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );

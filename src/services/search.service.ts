@@ -1,6 +1,6 @@
 /**
  * SEARCH SERVICE
- * 
+ *
  * Handles search functionality including:
  * - Recent searches storage (AsyncStorage)
  * - Search suggestions (from curated_destinations)
@@ -9,6 +9,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase/client';
+import { invokeEdgeFn } from '@/utils/retry';
 
 const RECENT_SEARCHES_KEY = '@guidera_recent_searches';
 const MAX_RECENT_SEARCHES = 10;
@@ -68,11 +69,13 @@ class SearchService {
       const trimmed = term.trim();
       if (!trimmed) return;
       const recent = await this.getRecentSearches();
-      const filtered = recent.filter(s => s.toLowerCase() !== trimmed.toLowerCase());
+      const filtered = recent.filter((s) => s.toLowerCase() !== trimmed.toLowerCase());
       filtered.unshift(trimmed);
       const limited = filtered.slice(0, MAX_RECENT_SEARCHES);
       await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(limited));
-    } catch { /* non-critical */ }
+    } catch {
+      /* non-critical */
+    }
   }
 
   /**
@@ -81,9 +84,11 @@ class SearchService {
   async removeRecentSearch(term: string): Promise<void> {
     try {
       const recent = await this.getRecentSearches();
-      const filtered = recent.filter(s => s.toLowerCase() !== term.toLowerCase());
+      const filtered = recent.filter((s) => s.toLowerCase() !== term.toLowerCase());
       await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(filtered));
-    } catch { /* non-critical */ }
+    } catch {
+      /* non-critical */
+    }
   }
 
   /**
@@ -92,7 +97,9 @@ class SearchService {
   async clearRecentSearches(): Promise<void> {
     try {
       await AsyncStorage.removeItem(RECENT_SEARCHES_KEY);
-    } catch { /* non-critical */ }
+    } catch {
+      /* non-critical */
+    }
   }
 
   /**
@@ -105,15 +112,15 @@ class SearchService {
     try {
       const { data } = await supabase
         .from('curated_destinations')
-        .select('id, name, country')
-        .or(`name.ilike.%${trimmed}%,country.ilike.%${trimmed}%`)
-        .eq('status', 'active')
+        .select('id, title, city, country')
+        .or(`title.ilike.%${trimmed}%,city.ilike.%${trimmed}%,country.ilike.%${trimmed}%`)
+        .eq('status', 'published')
         .order('popularity_score', { ascending: false })
         .limit(8);
 
-      return (data || []).map(d => ({
+      return (data || []).map((d) => ({
         id: d.id,
-        text: `${d.name}, ${d.country}`,
+        text: `${d.title || d.city}, ${d.country}`,
         type: 'destination' as const,
       }));
     } catch {
@@ -124,7 +131,10 @@ class SearchService {
   /**
    * Search all content from Supabase
    */
-  async search(query: string, filters: SearchFilters = DEFAULT_FILTERS): Promise<{
+  async search(
+    query: string,
+    filters: SearchFilters = DEFAULT_FILTERS
+  ): Promise<{
     destinations: SearchResult[];
     hotels: SearchResult[];
     experiences: SearchResult[];
@@ -138,28 +148,49 @@ class SearchService {
     let places: SearchResult[] = [];
 
     try {
+      const { data: edgeData, error: edgeError } = await invokeEdgeFn(
+        supabase,
+        'search',
+        { action: 'content_search', query: trimmed, filters },
+        'fast'
+      );
+
+      if (!edgeError && edgeData?.success && edgeData.data) {
+        return edgeData.data;
+      }
+
       // Search curated destinations
       if (filters.category === 'all' || filters.category === 'destinations') {
         const { data } = await supabase
           .from('curated_destinations')
-          .select('id, name, country, gallery_images, editor_rating, budget_level')
-          .or(`name.ilike.%${trimmed}%,country.ilike.%${trimmed}%,tags.cs.{${trimmed}}`)
-          .eq('status', 'active')
+          .select(
+            'id, title, city, country, hero_image_url, thumbnail_url, gallery_urls, editor_rating, budget_level, estimated_daily_budget_usd, currency_code, tags, popularity_score'
+          )
+          .or(`title.ilike.%${trimmed}%,city.ilike.%${trimmed}%,country.ilike.%${trimmed}%`)
+          .eq('status', 'published')
           .order('popularity_score', { ascending: false })
           .limit(10);
 
-        destinations = (data || []).map(d => ({
+        destinations = (data || []).map((d) => ({
           id: d.id,
           type: 'destination' as const,
-          title: d.name,
-          subtitle: d.country,
-          image: d.gallery_images?.[0] || '',
+          title: d.title || d.city,
+          subtitle: [d.city, d.country].filter(Boolean).join(', '),
+          image: d.hero_image_url || d.thumbnail_url || d.gallery_urls?.[0] || '',
           rating: Number(d.editor_rating) || 0,
+          price: d.estimated_daily_budget_usd || undefined,
+          currency: d.currency_code || 'USD',
+          location: [d.city, d.country].filter(Boolean).join(', '),
+          metadata: {
+            tags: d.tags || [],
+            budgetLevel: d.budget_level,
+            popularityScore: d.popularity_score,
+          },
         }));
 
         // Apply rating filter
         if (filters.rating) {
-          destinations = destinations.filter(d => (d.rating || 0) >= filters.rating!);
+          destinations = destinations.filter((d) => (d.rating || 0) >= filters.rating!);
         }
       }
 
@@ -167,26 +198,47 @@ class SearchService {
       if (filters.category === 'all' || filters.category === 'deals') {
         const { data } = await supabase
           .from('deal_cache')
-          .select('id, title, destination_city, destination_country, price, currency, image_url, deal_type')
-          .or(`title.ilike.%${trimmed}%,destination_city.ilike.%${trimmed}%,destination_country.ilike.%${trimmed}%`)
-          .order('price', { ascending: true })
+          .select(
+            'id, deal_type, route_key, provider, deal_data, price_amount, price_currency, expires_at'
+          )
+          .or(`route_key.ilike.%${trimmed}%`)
+          .gt('expires_at', new Date().toISOString())
+          .order('price_amount', { ascending: true })
           .limit(10);
 
         // Map deals into the appropriate category based on deal_type
-        (data || []).forEach(d => {
+        (data || []).forEach((d) => {
+          const dealData = d.deal_data || {};
+          const destination =
+            dealData.destination ||
+            dealData.destinationCity ||
+            dealData.destination_city ||
+            d.route_key?.split('-')?.[1] ||
+            '';
           const result: SearchResult = {
             id: d.id,
-            type: d.deal_type === 'hotel' ? 'hotel' : d.deal_type === 'experience' ? 'experience' : 'deal',
-            title: d.title || '',
-            subtitle: `${d.destination_city}, ${d.destination_country}`,
-            image: d.image_url || '',
-            price: d.price,
-            currency: d.currency || 'USD',
-            location: `${d.destination_city}, ${d.destination_country}`,
+            type:
+              d.deal_type === 'hotel'
+                ? 'hotel'
+                : d.deal_type === 'experience'
+                  ? 'experience'
+                  : 'deal',
+            title: dealData.title || d.route_key || '',
+            subtitle: destination,
+            image: dealData.image_url || dealData.imageUrl || dealData.hero_image_url || '',
+            price: d.price_amount || dealData.price?.amount,
+            currency: d.price_currency || dealData.price?.currency || 'USD',
+            location: destination,
           };
-          if (d.deal_type === 'hotel' && (filters.category === 'all' || filters.category === 'hotels')) {
+          if (
+            d.deal_type === 'hotel' &&
+            (filters.category === 'all' || filters.category === 'hotels')
+          ) {
             hotels.push(result);
-          } else if (d.deal_type === 'experience' && (filters.category === 'all' || filters.category === 'experiences')) {
+          } else if (
+            d.deal_type === 'experience' &&
+            (filters.category === 'all' || filters.category === 'experiences')
+          ) {
             experiences.push(result);
           } else if (filters.category === 'all' || filters.category === 'deals') {
             places.push(result);
@@ -199,10 +251,14 @@ class SearchService {
         const priceFilter = (item: SearchResult) => {
           if (!item.price) return true;
           switch (filters.priceRange) {
-            case 'budget': return item.price < 100;
-            case 'mid': return item.price >= 100 && item.price < 300;
-            case 'luxury': return item.price >= 300;
-            default: return true;
+            case 'budget':
+              return item.price < 100;
+            case 'mid':
+              return item.price >= 100 && item.price < 300;
+            case 'luxury':
+              return item.price >= 300;
+            default:
+              return true;
           }
         };
         hotels = hotels.filter(priceFilter);
@@ -212,10 +268,14 @@ class SearchService {
       // Apply sorting
       const sortFn = (a: SearchResult, b: SearchResult) => {
         switch (filters.sortBy) {
-          case 'price_low': return (a.price || 0) - (b.price || 0);
-          case 'price_high': return (b.price || 0) - (a.price || 0);
-          case 'rating': return (b.rating || 0) - (a.rating || 0);
-          default: return 0;
+          case 'price_low':
+            return (a.price || 0) - (b.price || 0);
+          case 'price_high':
+            return (b.price || 0) - (a.price || 0);
+          case 'rating':
+            return (b.rating || 0) - (a.rating || 0);
+          default:
+            return 0;
         }
       };
       hotels.sort(sortFn);

@@ -5,7 +5,15 @@
  */
 
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  View,
+  Modal,
+  Pressable,
+} from 'react-native';
 import { TickCircle, Clock, Add, LogoutCurve } from 'iconsax-react-native';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -27,11 +35,15 @@ export default function JoinButton({
   variant = 'primary',
   isPremium = true,
 }: JoinButtonProps) {
+  const { colors: tc, isDark } = useTheme();
+  const [confirmAction, setConfirmAction] = React.useState<'leave' | 'cancel' | null>(null);
   const {
     status,
     isLoading,
     isMember,
     isPending,
+    leave,
+    cancelRequest,
     getButtonText,
     getButtonAction,
   } = useCommunityMembership({
@@ -42,6 +54,40 @@ export default function JoinButton({
   });
   
   const isSmall = variant === 'small';
+
+  const confirmationCopy = confirmAction === 'leave'
+    ? {
+        title: 'Leave Group',
+        message: 'Are you sure you want to leave this group?',
+        confirm: 'Leave',
+      }
+    : {
+        title: 'Cancel Request',
+        message: 'Are you sure you want to cancel your join request?',
+        confirm: 'Cancel Request',
+      };
+
+  const handlePress = () => {
+    if (isMember) {
+      setConfirmAction('leave');
+      return;
+    }
+    if (isPending) {
+      setConfirmAction('cancel');
+      return;
+    }
+    getButtonAction()();
+  };
+
+  const handleConfirm = () => {
+    const action = confirmAction;
+    setConfirmAction(null);
+    if (action === 'leave') {
+      leave();
+    } else if (action === 'cancel') {
+      cancelRequest();
+    }
+  };
   
   const getButtonStyle = () => {
     if (isMember) {
@@ -84,24 +130,73 @@ export default function JoinButton({
   };
   
   return (
-    <TouchableOpacity
-      style={getButtonStyle()}
-      onPress={getButtonAction()}
-      disabled={isLoading || status === 'banned'}
-      activeOpacity={0.7}
-    >
-      {isLoading ? (
-        <ActivityIndicator 
-          size="small" 
-          color={isMember || isPending ? colors.textSecondary : colors.white} 
-        />
-      ) : (
-        <View style={styles.content}>
-          {getIcon()}
-          <Text style={getTextStyle()}>{getButtonText()}</Text>
-        </View>
-      )}
-    </TouchableOpacity>
+    <>
+      <TouchableOpacity
+        style={getButtonStyle()}
+        onPress={handlePress}
+        disabled={isLoading || status === 'banned'}
+        activeOpacity={0.7}
+      >
+        {isLoading ? (
+          <ActivityIndicator
+            size="small"
+            color={isMember || isPending ? colors.textSecondary : colors.white}
+          />
+        ) : (
+          <View style={styles.content}>
+            {getIcon()}
+            <Text style={getTextStyle()}>{getButtonText()}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      <Modal
+        visible={confirmAction !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmAction(null)}
+      >
+        <Pressable
+          style={[styles.modalOverlay, { backgroundColor: tc.bgOverlay }]}
+          onPress={() => setConfirmAction(null)}
+        >
+          <Pressable
+            style={[
+              styles.confirmCard,
+              {
+                backgroundColor: isDark ? tc.bgModal : tc.bgElevated,
+                borderColor: tc.borderSubtle,
+              },
+            ]}
+          >
+            <Text style={[styles.confirmTitle, { color: tc.textPrimary }]}>
+              {confirmationCopy.title}
+            </Text>
+            <Text style={[styles.confirmMessage, { color: tc.textSecondary }]}>
+              {confirmationCopy.message}
+            </Text>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={[styles.confirmButton, { backgroundColor: tc.bgInput }]}
+                onPress={() => setConfirmAction(null)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.cancelText, { color: tc.textPrimary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmButton, { backgroundColor: tc.errorBg }]}
+                onPress={handleConfirm}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.leaveText, { color: tc.error }]}>
+                  {confirmationCopy.confirm}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
 
@@ -161,5 +256,53 @@ const styles = StyleSheet.create({
   },
   textPending: {
     color: colors.warning,
+  },
+  modalOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  confirmCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: borderRadius['2xl'],
+    borderWidth: 1,
+    padding: spacing.xl,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  confirmTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    marginBottom: spacing.xs,
+  },
+  confirmMessage: {
+    fontSize: typography.fontSize.base,
+    lineHeight: 22,
+    marginBottom: spacing.xl,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  confirmButton: {
+    flex: 1,
+    minHeight: 52,
+    borderRadius: borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  cancelText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  leaveText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
   },
 });

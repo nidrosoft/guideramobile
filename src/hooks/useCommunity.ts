@@ -26,13 +26,17 @@ import type {
 // GROUP HOOKS
 // ============================================
 
-export function useGroups(userId: string | undefined) {
+export function useGroups(userId: string | undefined, options: { enabled?: boolean } = {}) {
+  const enabled = options.enabled ?? true;
   const [groups, setGroups] = useState<{ group: Group; role: GroupRole; unreadCount: number }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   const fetchGroups = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || !enabled) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const data = await groupService.getUserGroups(userId);
@@ -43,7 +47,7 @@ export function useGroups(userId: string | undefined) {
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, enabled]);
 
   useEffect(() => {
     fetchGroups();
@@ -256,12 +260,16 @@ export function useBuddySuggestions(userId: string | undefined) {
   return { suggestions, loading, refetch: fetchSuggestions };
 }
 
-export function usePendingBuddyRequests(userId: string | undefined) {
+export function usePendingBuddyRequests(userId: string | undefined, options: { enabled?: boolean } = {}) {
+  const enabled = options.enabled ?? true;
   const [requests, setRequests] = useState<{ connection: BuddyConnection; user: UserProfile }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
 
   const fetchRequests = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || !enabled) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const data = await buddyService.getPendingRequests(userId);
@@ -269,7 +277,7 @@ export function usePendingBuddyRequests(userId: string | undefined) {
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, enabled]);
 
   useEffect(() => {
     fetchRequests();
@@ -359,12 +367,17 @@ export function useNearbyActivities(
   userId: string | undefined,
   location: { lat: number; lng: number } | null,
   city?: string | null,
+  options: { enabled?: boolean } = {},
 ) {
+  const enabled = options.enabled ?? true;
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
 
   const fetchActivities = useCallback(async () => {
-    if (!userId || !location) return;
+    if (!userId || !location || !enabled) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const data = await activityService.getNearbyActivities(
@@ -375,7 +388,7 @@ export function useNearbyActivities(
     } finally {
       setLoading(false);
     }
-  }, [userId, location?.lat, location?.lng, city]);
+  }, [userId, location?.lat, location?.lng, city, enabled]);
 
   useEffect(() => {
     fetchActivities();
@@ -383,6 +396,7 @@ export function useNearbyActivities(
 
   // Realtime: auto-refresh on any activity change
   useEffect(() => {
+    if (!userId || !location || !enabled) return;
     const channel = activityService.subscribeToActivities(
       city || null,
       () => fetchActivities(),
@@ -390,7 +404,7 @@ export function useNearbyActivities(
       () => fetchActivities(),
     );
     return () => { activityService.unsubscribe(channel); };
-  }, [city, fetchActivities]);
+  }, [userId, location?.lat, location?.lng, city, fetchActivities, enabled]);
 
   return { activities, loading, refetch: fetchActivities };
 }
@@ -545,11 +559,16 @@ export function useActivityComments(activityId: string | undefined, userId: stri
 // EVENT HOOKS
 // ============================================
 
-export function useUpcomingEvents(groupId?: string) {
+export function useUpcomingEvents(groupId?: string, options: { enabled?: boolean } = {}) {
+  const enabled = options.enabled ?? true;
   const [events, setEvents] = useState<CommunityEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
 
   const fetchEvents = useCallback(async () => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const data = await eventService.getUpcomingEvents({ groupId });
@@ -557,7 +576,7 @@ export function useUpcomingEvents(groupId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [groupId]);
+  }, [groupId, enabled]);
 
   useEffect(() => {
     fetchEvents();

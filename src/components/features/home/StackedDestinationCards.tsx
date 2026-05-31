@@ -200,7 +200,11 @@ export default function StackedDestinationCards() {
             ]}
           >
             {/* Background Image */}
-            <CachedImage uri={getCachedImageUrl(destination.image, destination.city)} style={styles.cardImage} />
+            <CachedImage
+              uri={getCachedImageUrl(destination.image, destination.city)}
+              fallbackCityName={destination.city}
+              style={styles.cardImage}
+            />
 
             {/* Top Badges */}
             <View style={styles.topContainer}>
@@ -237,7 +241,7 @@ export default function StackedDestinationCards() {
                   style={styles.arrowButton}
                   onPress={() => handleCardPress(destination, index)}
                 >
-                  <ArrowRight size={20} color={colors.bgSecondary} variant="Outline" />
+                  <ArrowRight size={20} color="#1a1a2e" variant="Outline" />
                 </TouchableOpacity>
               </View>
             </BlurView>
@@ -288,13 +292,19 @@ const styles = StyleSheet.create({
   badgeContainer: {
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: 6,
     borderRadius: 20,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   badgeText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
     color: staticColors.white,
+    lineHeight: 16,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   bottomContainer: {
     position: 'absolute',

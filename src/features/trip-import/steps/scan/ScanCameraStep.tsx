@@ -12,6 +12,7 @@ import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as Haptics from 'expo-haptics';
 import { StepComponentProps } from '../../types/import-flow.types';
 
@@ -20,21 +21,40 @@ export default function ScanCameraStep({ onNext }: StepComponentProps) {
   const { showError } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const processResult = (result: ImagePicker.ImagePickerResult) => {
+  const processResult = async (result: ImagePicker.ImagePickerResult) => {
     if (result.canceled || !result.assets?.[0]) return;
 
     const asset = result.assets[0];
-    if (!asset.base64) {
+    if (!asset.uri) {
       showError('Failed to read the image. Please try again.');
       return;
     }
 
     setIsProcessing(true);
-    const ext = (asset.uri || '').split('.').pop()?.toLowerCase() || 'jpeg';
-    const mediaType = ext === 'png' ? 'image/png' : 'image/jpeg';
+    try {
+      const normalized = await ImageManipulator.manipulateAsync(
+        asset.uri,
+        [],
+        {
+          compress: 0.86,
+          format: ImageManipulator.SaveFormat.JPEG,
+          base64: true,
+        }
+      );
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onNext({ scannedData: { imageBase64: asset.base64, mediaType } });
+      if (!normalized.base64) {
+        showError('Failed to prepare the image. Please try again.');
+        setIsProcessing(false);
+        return;
+      }
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onNext({ scannedData: { imageBase64: normalized.base64, mediaType: 'image/jpeg' } });
+    } catch (error) {
+      if (__DEV__) console.warn('[ScanCamera] Failed to normalize image:', error);
+      showError('That image could not be prepared. Please try another photo or screenshot.');
+      setIsProcessing(false);
+    }
   };
 
   const handleCamera = async () => {
@@ -49,7 +69,7 @@ export default function ScanCameraStep({ onNext }: StepComponentProps) {
       quality: 0.8,
       base64: true,
     });
-    processResult(result);
+    await processResult(result);
   };
 
   const handleGallery = async () => {
@@ -63,8 +83,10 @@ export default function ScanCameraStep({ onNext }: StepComponentProps) {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
       base64: true,
+      preferredAssetRepresentationMode:
+        ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
     });
-    processResult(result);
+    await processResult(result);
   };
 
   return (

@@ -37,7 +37,7 @@ export default function LuxuryEscapeCard({
       {/* Card with shadow */}
       <View style={[styles.card, { height: Math.min(420, screenHeight * 0.55), borderColor: colors.borderSubtle }]}>
         {/* Background Image */}
-        <CachedImage uri={imageUrl} style={styles.backgroundImage} />
+        <CachedImage uri={imageUrl} fallbackCityName={location || name} style={styles.backgroundImage} />
         
         {/* Dark Gradient Overlay */}
         <LinearGradient
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   premiumBadge: {
     position: 'absolute',
     top: spacing.lg,
-    right: spacing.lg,
+    left: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
@@ -138,8 +138,8 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
+    top: spacing.lg,
+    right: spacing.lg,
     zIndex: 10,
   },
   content: {

@@ -9,9 +9,10 @@ import { useTranslation } from 'react-i18next';
 import CloseIcon from '@/components/common/icons/CloseIcon';
 import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { useSignUp, useSSO } from '@clerk/clerk-expo';
+import { useSignUp, useSSO, useAuth as useClerkAuth, useClerk } from '@clerk/clerk-expo';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
+import { parseClerkError } from '@/lib/clerk/errors';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -31,6 +32,8 @@ export default function EmailSignUp() {
   const { t } = useTranslation();
   const { isLoaded, signUp, setActive } = useSignUp();
   const { startSSOFlow } = useSSO();
+  const { isSignedIn } = useClerkAuth();
+  const { signOut } = useClerk();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -99,7 +102,9 @@ export default function EmailSignUp() {
 
       if (signUpAttempt.status === 'complete') {
         await setActive({ session: signUpAttempt.createdSessionId });
-        router.replace('/(onboarding)/intro');
+        // Route through root so AuthGuard picks the correct destination based
+        // on Supabase profile state (new user → onboarding, existing → tabs).
+        router.replace('/');
       } else {
         if (__DEV__) console.error('[EmailSignup] Status:', JSON.stringify(signUpAttempt, null, 2));
         setError('Verification incomplete. Please try again.');
@@ -115,25 +120,37 @@ export default function EmailSignUp() {
   const handleGoogleSignUp = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setError('');
+
+    if (isSignedIn) {
+      try { await signOut(); } catch { /* ignore */ }
+    }
+
     try {
       const { createdSessionId, setActive: ssoSetActive, signUp: ssoSignUp } = await startSSOFlow({
         strategy: 'oauth_google',
         redirectUrl: AuthSession.makeRedirectUri(),
       });
+
       if (createdSessionId && ssoSetActive) {
         await ssoSetActive({ session: createdSessionId });
-        // Navigate after successful SSO
-        const isNewUser = ssoSignUp?.status === 'complete';
-        if (isNewUser) {
-          router.replace('/(onboarding)/intro');
-        } else {
-          await new Promise(resolve => setTimeout(resolve, 300));
-          router.replace('/(tabs)');
-        }
+        router.replace('/');
+        return;
       }
-    } catch (err: any) {
-      const msg = err?.errors?.[0]?.longMessage || err?.message || 'Google sign up failed';
-      setError(msg);
+
+      if (ssoSignUp?.status === 'missing_requirements') {
+        router.push('/(auth)/complete-signup' as any);
+        return;
+      }
+      if (ssoSignUp?.status === 'complete' && ssoSignUp.createdSessionId && ssoSetActive) {
+        await ssoSetActive({ session: ssoSignUp.createdSessionId });
+        router.replace('/');
+        return;
+      }
+
+      setError('Google sign up didn\u2019t complete. Please try email.');
+    } catch (err: unknown) {
+      const parsed = parseClerkError(err);
+      setError(parsed.message);
     }
   };
 

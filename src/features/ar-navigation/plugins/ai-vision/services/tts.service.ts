@@ -13,7 +13,7 @@
 
 import * as Speech from 'expo-speech';
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
-import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase/client';
+import { supabaseUrl, supabaseAnonKey, getAuthenticatedEdgeFunctionHeaders } from '@/lib/supabase/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEFAULT_GEMINI_VOICE } from '../constants/translatorConfig';
 
@@ -69,12 +69,15 @@ export async function speak(text: string, options: TTSOptions): Promise<void> {
   const voiceName = options.voiceName || await getVoiceName();
 
   try {
+    // Forward the Clerk token so the tts auth guard can resolve the user.
+    const clerkHeaders = await getAuthenticatedEdgeFunctionHeaders();
     const response = await fetch(`${supabaseUrl}/functions/v1/tts`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${supabaseAnonKey}`,
         'apikey': supabaseAnonKey,
+        ...clerkHeaders,
       },
       body: JSON.stringify({
         text,

@@ -36,8 +36,6 @@ import { useAuth } from '@/context/AuthContext';
 import {
   useGroups,
   useUpcomingEvents,
-  usePendingBuddyRequests,
-  useNearbyActivities,
 } from '@/hooks/useCommunity';
 import { useNotifications } from '@/hooks/useNotifications';
 import { chatService } from '@/services/community/chat.service';
@@ -69,14 +67,17 @@ export default function CommunityHubScreen() {
 
   const [activeTab, setActiveTab] = useState<TabType>('discover');
 
-  // Data hooks
-  const { groups: myGroups, loading: loadingMyGroups, refetch: refetchMyGroups } = useGroups(userId);
-  const { events, loading: loadingEvents, refetch: refetchEvents } = useUpcomingEvents();
-  const { requests: pendingRequests } = usePendingBuddyRequests(userId);
-  const { activities: pulseActivities } = useNearbyActivities(userId, null);
+  // Lazy tab data hooks. Discover loads its own cached bundle; groups/events
+  // should not fan out until the user actually opens those tabs.
+  const { groups: myGroups, loading: loadingMyGroups, refetch: refetchMyGroups } = useGroups(userId, {
+    enabled: activeTab === 'groups',
+  });
+  const { events, loading: loadingEvents, refetch: refetchEvents } = useUpcomingEvents(undefined, {
+    enabled: activeTab === 'events',
+  });
 
   const { unreadCount: notificationCount } = useNotifications({ category: 'social', autoRefresh: true });
-  const pulseCount = pulseActivities.length;
+  const pulseCount = 0;
 
   const [messageCount, setMessageCount] = useState(0);
   const [showGroupSheet, setShowGroupSheet] = useState(false);

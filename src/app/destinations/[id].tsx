@@ -12,13 +12,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft2 } from 'iconsax-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { supabase } from '@/lib/supabase/client';
-import { invokeEdgeFn } from '@/utils/retry';
 import DetailPageTemplate from '@/components/templates/DetailPageTemplate/DetailPageTemplate';
 import type { CuratedDestination } from '@/hooks/useSectionDestinations';
 import { useEvents } from '@/hooks/useEvents';
 import { eventsService, DiscoveredEvent } from '@/services/events.service';
 import { SkeletonDetailPage } from '@/components/common/SkeletonLoader';
 import { prefetchMissingImages } from '@/hooks/useImageFallback';
+import { withOptionalTimeout } from '@/utils/optionalAsync';
 
 const PRIMARY = '#3FC39E';
 
@@ -251,7 +251,8 @@ export default function DestinationDetailPage() {
           setEventCountry(dest.country);
         }
 
-        // Fire similar items + edge function in parallel for speed
+        // Fire similar items + optional enrichment in parallel for speed.
+        // The page must render from DB data even if enrichment is slow/failing.
         const [similarResult, poiResult] = await Promise.allSettled([
           supabase
             .from('curated_destinations')
@@ -261,7 +262,11 @@ export default function DestinationDetailPage() {
             .neq('id', dest.id)
             .order('popularity_score', { ascending: false })
             .limit(6),
-          invokeEdgeFn(supabase, 'destination-details', { id: dest.id }, 'fast'),
+          withOptionalTimeout(
+            supabase.functions.invoke('destination-details', { body: { id: dest.id } }),
+            2500,
+            { data: null, error: new Error('Destination enrichment timed out') }
+          ),
         ]);
 
         if (!cancelled) {

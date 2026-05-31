@@ -215,6 +215,7 @@ export interface PriceHistoryPoint {
 // ============================================
 
 export interface AffiliateConfig {
+  id: string;
   provider: string;
   display_name: string;
   logo_url: string | null;
@@ -222,6 +223,7 @@ export interface AffiliateConfig {
   affiliate_id: string | null;
   link_template: string | null;
   commission_model: string | null;
+  commission_rate: number | null;
   is_active: boolean;
   priority: number;
 }

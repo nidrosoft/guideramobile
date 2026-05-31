@@ -6,7 +6,7 @@
  * Powered by the Guidera Intelligence Layer.
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -17,6 +17,7 @@ const DEAL_CARD_WIDTH = screenWidth * 0.62;
 import { useTheme } from '@/context/ThemeContext';
 import { useGilDeals } from '@/hooks/useDeals';
 import type { PersonalizedDeal } from '@/services/deal';
+import { markDealMatchViewed, markDealMatchClicked } from '@/services/affiliateTracking';
 import { useHomepageDataSafe, matchesCategory, useSectionVisibility } from '@/features/homepage';
 import CategoryPills from '@/components/features/home/CategoryPills';
 import { SkeletonDealCards } from '@/components/common/SkeletonLoader';
@@ -114,7 +115,18 @@ function GilDealCard({ deal, cardColor }: { deal: PersonalizedDeal; cardColor: s
   const typeLabel = DEAL_TYPE_LABELS[deal.deal_type] || 'DEAL';
   const badgeText = deal.deal_badges?.[0] ? BADGE_DISPLAY[deal.deal_badges[0]] : null;
 
+  // Track deal match as viewed when card renders
+  useEffect(() => {
+    if (deal.id) {
+      markDealMatchViewed(deal.id);
+    }
+  }, [deal.id]);
+
   const handlePress = () => {
+    // Track deal match as clicked
+    if (deal.id) {
+      markDealMatchClicked(deal.id);
+    }
     router.push({
       pathname: '/deals/[id]' as any,
       params: {

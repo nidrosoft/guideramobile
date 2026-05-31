@@ -11,12 +11,15 @@ import {
   MatchCalculation,
   UserProfile,
 } from './types/community.types';
+import { consumeConnectWriteRateLimit } from './connectRateLimit.service';
 
 class BuddyService {
   /**
    * Send buddy request
    */
   async sendRequest(requesterId: string, targetId: string): Promise<BuddyConnection> {
+    await consumeConnectWriteRateLimit(requesterId, 'connect_buddy_write');
+
     if (requesterId === targetId) {
       throw new Error('Cannot buddy yourself');
     }
@@ -69,6 +72,8 @@ class BuddyService {
    * Accept buddy request
    */
   async acceptRequest(userId: string, connectionId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(userId, 'connect_buddy_write');
+
     const { data: connection, error } = await supabase
       .from('buddy_connections')
       .select('*')
@@ -113,6 +118,8 @@ class BuddyService {
    * Reject buddy request
    */
   async rejectRequest(userId: string, connectionId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(userId, 'connect_buddy_write');
+
     const { data: connection } = await supabase
       .from('buddy_connections')
       .select('*')
@@ -139,6 +146,8 @@ class BuddyService {
    * Remove buddy connection
    */
   async removeBuddy(userId: string, buddyId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(userId, 'connect_buddy_write');
+
     const [userId1, userId2] = [userId, buddyId].sort();
 
     await supabase
@@ -441,20 +450,12 @@ class BuddyService {
         alert_type_code: `buddy_${event}`,
         title,
         body,
-        context: { triggerUserId, triggerName, event },
+        context: { triggerUserId, triggerName, event, dedupeKey: `buddy:${event}:${triggerUserId}` },
         action_url: actionUrl,
-        status: 'delivered',
         channels_requested: ['push', 'in_app'],
+        priority: event === 'request' ? 5 : 4,
+        status: 'pending',
       });
-
-      try {
-        await supabase.rpc('send_push_to_users', {
-          user_ids: [recipientId],
-          push_title: title,
-          push_body: body,
-          push_data: { actionUrl, event },
-        });
-      } catch { /* push is best-effort */ }
     } catch (err) {
       if (__DEV__) console.warn('notifyBuddyEvent error:', err);
     }
@@ -468,13 +469,14 @@ class BuddyService {
     const { data } = await supabase
       .from('profiles')
       .select(`
-        id, first_name, last_name, avatar_url, nationality,
+        id, first_name, last_name, avatar_url, nationality, profile_kind, is_synthetic,
         social:user_social_profiles(interests, travel_styles, languages)
       `)
       .eq('id', userId)
       .single();
 
     if (!data) return null;
+    if (data.is_synthetic || data.profile_kind !== 'human') return null;
 
     return {
       id: data.id,

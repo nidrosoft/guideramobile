@@ -7,7 +7,7 @@
  */
 
 import type { LiveFrameResult, MenuItem, SnapshotTranslationResult } from '../types/aiVision.types';
-import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase/client';
+import { supabaseUrl, supabaseAnonKey, getAuthenticatedEdgeFunctionHeaders } from '@/lib/supabase/client';
 import { retryWithBackoff } from '@/utils/retry';
 
 const EDGE_FUNCTION_URL = `${supabaseUrl}/functions/v1/ai-vision`;
@@ -16,6 +16,8 @@ const EDGE_FUNCTION_URL = `${supabaseUrl}/functions/v1/ai-vision`;
  * Call the ai-vision edge function with the given action and body.
  */
 async function callEdgeFunction(action: string, payload: Record<string, any>): Promise<any> {
+  // Forward the Clerk token so the ai-vision auth guard can resolve the user.
+  const clerkHeaders = await getAuthenticatedEdgeFunctionHeaders();
   return retryWithBackoff(async () => {
     const res = await fetch(EDGE_FUNCTION_URL, {
       method: 'POST',
@@ -23,6 +25,7 @@ async function callEdgeFunction(action: string, payload: Record<string, any>): P
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${supabaseAnonKey}`,
         'apikey': supabaseAnonKey,
+        ...clerkHeaders,
       },
       body: JSON.stringify({ action, ...payload }),
     });

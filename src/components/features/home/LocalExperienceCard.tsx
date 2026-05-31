@@ -43,7 +43,7 @@ export default function LocalExperienceCard({
     <View style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
       {/* Image Section */}
       <View style={styles.imageContainer}>
-        <CachedImage uri={imageUrl} style={styles.image} />
+        <CachedImage uri={imageUrl} fallbackCityName={city || title} style={styles.image} />
         
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.5)']}

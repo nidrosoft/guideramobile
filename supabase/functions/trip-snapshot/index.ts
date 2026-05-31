@@ -21,9 +21,32 @@
  *               BRAVE_SEARCH_API_KEY (optional), XAI_API_KEY (optional)
  */
 
+import { getLiveDataCache, setLiveDataCache, liveDataCacheKey } from '../_shared/tripSnapshot/cache.ts';
+import { parseDestinationInput } from '../_shared/tripSnapshot/destination.ts';
+import { DEFAULT_SNAPSHOT_TOPICS, GEMINI_SNAPSHOT_MODEL, SNAPSHOT_MAX_OUTPUT_TOKENS } from '../_shared/tripSnapshot/constants.ts';
+import { buildFlightPreview, type FlightPreview } from '../_shared/tripSnapshot/flights.ts';
+import { acquireSnapshotSlot, releaseSnapshotSlot, guardHeaders } from '../_shared/tripSnapshot/guard.ts';
+import { buildSnapshotResponseCacheKey } from '../_shared/tripSnapshot/snapshotScale.ts';
+import {
+  checkSnapshotRateLimit,
+  deferSnapshotWork,
+  getSnapshotResponseCache,
+  recordSnapshotMetric,
+  releaseSnapshotLock,
+  setSnapshotResponseCache,
+  snapshotRequesterKey,
+  tryAcquireSnapshotLock,
+  waitForSnapshotResponseCache,
+} from '../_shared/tripSnapshot/snapshotRuntime.ts';
+import {
+  getCostProfile,
+  sanitizeHotelNightlyRate,
+  isXafZone,
+} from '../_shared/tripSnapshot/costProfile.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-guidera-client-id, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 };
 
@@ -40,6 +63,8 @@ interface SnapshotRequest {
   currency?: string;
   nationality?: string;
   selectedTopics?: string[];
+  phase?: 'data' | 'full';
+  skipRateLimit?: boolean;
   userPreferences?: {
     budgetAmount?: number;
     budgetCurrency?: string;
@@ -61,13 +86,6 @@ interface SnapshotResponse {
   costEstimate: CostEstimate;
   aiBrief: DestinationIntelligence | null;
   generatedAt: string;
-}
-
-interface FlightPreview {
-  cheapest: { price: number; airline: string; stops: number; duration: string } | null;
-  fastest: { price: number; airline: string; stops: number; duration: string } | null;
-  avgPrice: number;
-  currency: string;
 }
 
 interface HotelTiers {
@@ -333,9 +351,23 @@ async function fetchFlightPreview(
   currency: string,
 ): Promise<FlightPreview | null> {
   try {
-    const { token, baseUrl } = await getAmadeusToken();
     const destCode = resolveIATA(destination);
     const originCode = resolveIATA(origin);
+    const cacheKey = liveDataCacheKey('flights', {
+      origin: originCode,
+      dest: destCode,
+      start: startDate,
+      end: endDate,
+      adults,
+      currency,
+    });
+    const cached = await getLiveDataCache<FlightPreview>(cacheKey);
+    if (cached) {
+      console.log(`Flights cache hit: ${cacheKey}`);
+      return cached;
+    }
+
+    const { token, baseUrl } = await getAmadeusToken();
     console.log(`Flights: ${originCode} → ${destCode} (${baseUrl})`);
 
     const params = new URLSearchParams({
@@ -367,25 +399,16 @@ async function fetchFlightPreview(
       const stops = Math.max(0, segments.length - 1);
       const dur = o.itineraries?.[0]?.duration || '';
       const duration = dur.replace('PT', '').replace('H', 'h ').replace('M', 'm').trim();
-      return { price, airline, stops, duration };
+      const cabin = o.travelerPricings?.[0]?.fareDetailsBySegment?.[0]?.cabin
+        || o.travelerPricings?.[0]?.fareDetailsBySegment?.[0]?.brandedFare
+        || undefined;
+      return { price, airline, stops, duration, cabin };
     });
 
-    const sorted = [...parsed].sort((a: any, b: any) => a.price - b.price);
-    const byDuration = [...parsed].sort((a: any, b: any) => {
-      const dA = (a.duration || '').length;
-      const dB = (b.duration || '').length;
-      return dA - dB;
-    });
-
-    const prices = sorted.map((o: any) => o.price);
-    const avg = prices.reduce((s: number, p: number) => s + p, 0) / prices.length;
-
-    return {
-      cheapest: sorted[0] || null,
-      fastest: byDuration[0]?.price !== sorted[0]?.price ? byDuration[0] : null,
-      avgPrice: Math.round(avg),
-      currency,
-    };
+    const result = buildFlightPreview(parsed, currency);
+    if (!result) return null;
+    await setLiveDataCache(cacheKey, 'snapshot_flights', { origin: originCode, dest: destCode, startDate, endDate, adults, currency }, result);
+    return result;
   } catch (e) {
     console.error('Flight search error:', e);
     return null;
@@ -446,27 +469,13 @@ async function fetchFlightPreviewSerpAPI(
       const hours = Math.floor(totalMin / 60);
       const mins = totalMin % 60;
       const duration = `${hours}h ${mins}m`;
-      return { price, airline, stops, duration };
+      const travelClass = group.travel_class || first?.travel_class || '';
+      return { price, airline, stops, duration, cabin: travelClass || undefined };
     }).filter((f: any) => f.price > 0);
 
     if (parsed.length === 0) return null;
 
-    const sorted = [...parsed].sort((a: any, b: any) => a.price - b.price);
-    const byDuration = [...parsed].sort((a: any, b: any) => {
-      const durA = parseInt(a.duration) || 9999;
-      const durB = parseInt(b.duration) || 9999;
-      return durA - durB;
-    });
-
-    const prices = sorted.map((o: any) => o.price);
-    const avg = prices.reduce((s: number, p: number) => s + p, 0) / prices.length;
-
-    return {
-      cheapest: sorted[0] || null,
-      fastest: byDuration[0]?.price !== sorted[0]?.price ? byDuration[0] : null,
-      avgPrice: Math.round(avg),
-      currency,
-    };
+    return buildFlightPreview(parsed, currency);
   } catch (e) {
     console.error('SerpAPI Flights fallback error:', e);
     return null;
@@ -551,10 +560,24 @@ async function fetchHotelTiers(
   checkOut: string,
   adults: number,
   currency: string,
+  country?: string,
 ): Promise<HotelTiers | null> {
   try {
-    const { token, baseUrl } = await getAmadeusToken();
     const cityCode = resolveIATA(destination);
+    const cacheKey = liveDataCacheKey('hotels', {
+      dest: cityCode,
+      checkIn,
+      checkOut,
+      adults,
+      currency,
+    });
+    const cached = await getLiveDataCache<HotelTiers>(cacheKey);
+    if (cached) {
+      console.log(`Hotels cache hit: ${cacheKey}`);
+      return cached;
+    }
+
+    const { token, baseUrl } = await getAmadeusToken();
     console.log(`Hotels: searching Amadeus for cityCode=${cityCode}`);
 
     // Step 1: Get hotel IDs by city
@@ -615,12 +638,17 @@ async function fetchHotelTiers(
     };
 
     function convertToUSD(amount: number, fromCurrency: string): number {
-      if (!fromCurrency || fromCurrency === 'USD') return amount;
+      if (!fromCurrency || fromCurrency === 'USD') {
+        // Heuristic: XAF-zone amounts sometimes arrive mislabeled as USD (e.g. 45000 XAF → 45000 "USD")
+        if (isXafZone(country) && amount >= 5000) {
+          return amount / (APPROX_TO_USD['XAF'] || 600);
+        }
+        return amount;
+      }
       const rate = APPROX_TO_USD[fromCurrency.toUpperCase()];
-      if (rate && rate > 1) return amount / rate; // Foreign currency → USD
-      if (rate && rate < 1) return amount * (1 / rate); // GBP/EUR → USD
-      // Unknown currency with suspiciously high prices → likely local currency
-      if (amount > 10000) return amount / 100; // rough safety net
+      if (rate && rate > 1) return amount / rate;
+      if (rate && rate < 1) return amount * (1 / rate);
+      if (amount > 10000) return amount / 100;
       return amount;
     }
 
@@ -630,7 +658,7 @@ async function fetchHotelTiers(
       const rawPrice = parseFloat(offer?.price?.total || '0');
       const priceCurrency = offer?.price?.currency || currency;
       const totalPriceUSD = convertToUSD(rawPrice, priceCurrency);
-      const perNight = totalPriceUSD / nights;
+      const perNight = sanitizeHotelNightlyRate(totalPriceUSD / nights, getCostProfile(country));
       const rating = h.hotel?.rating ? parseInt(h.hotel.rating) : 0;
       return { perNight, rating, name: h.hotel?.name || '' };
     }).filter((h: any) => h.perNight > 0 && h.perNight < 5000);
@@ -653,12 +681,14 @@ async function fetchHotelTiers(
     const midAvg = avgPrice(midSlice);
     const luxAvg = avgPrice(luxSlice);
 
-    return {
+    const result = {
       budget: budgetAvg ? { avgPrice: budgetAvg, stars: 3, count: budgetSlice.length } : null,
       midRange: midAvg ? { avgPrice: midAvg, stars: 4, count: midSlice.length } : null,
       luxury: luxAvg ? { avgPrice: luxAvg, stars: 5, count: luxSlice.length } : null,
       currency,
     };
+    await setLiveDataCache(cacheKey, 'snapshot_hotels', { destination: cityCode, checkIn, checkOut, adults, currency }, result);
+    return result;
   } catch (e) {
     console.error('Hotel search error:', e);
     return null;
@@ -702,6 +732,16 @@ async function fetchExperiencePreview(
     if (!apiKey) return [];
     const destId = resolveViatorDest(destination);
     if (!destId) return [];
+    const cacheKey = liveDataCacheKey('experiences', {
+      dest: destId,
+      start: startDate || 'any',
+      currency,
+    });
+    const cached = await getLiveDataCache<ExperiencePreview[]>(cacheKey);
+    if (cached) {
+      console.log(`Experiences cache hit: ${cacheKey}`);
+      return cached;
+    }
 
     const body: any = {
       filtering: { destination: destId },
@@ -724,7 +764,7 @@ async function fetchExperiencePreview(
     if (!r.ok) return [];
     const data = await r.json();
 
-    return (data.products || []).slice(0, 7).map((p: any) => {
+    const result = (data.products || []).slice(0, 7).map((p: any) => {
       const price = p.pricing?.summary?.fromPrice || 0;
       const durMin = p.duration?.fixedDurationInMinutes || p.duration?.variableDurationFromMinutes || 120;
       const durStr = durMin >= 60 ? `${Math.round(durMin/60)}h` : `${durMin}min`;
@@ -747,6 +787,8 @@ async function fetchExperiencePreview(
         bookingUrl: p.productUrl || `https://www.viator.com/tours/${p.productCode}`,
       };
     });
+    await setLiveDataCache(cacheKey, 'snapshot_experiences', { destination: destId, startDate, currency }, result);
+    return result;
   } catch (e) {
     console.error('Experience search error:', e);
     return [];
@@ -761,13 +803,17 @@ async function fetchEventPreview(
   startDate: string,
   endDate: string,
 ): Promise<EventPreview[]> {
+  if (!country?.trim()) {
+    console.warn('Event discovery skipped: country required');
+    return [];
+  }
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!supabaseUrl || !serviceKey) return [];
 
-    // Call existing event-discovery edge function internally
-    const res = await fetch(`${supabaseUrl}/functions/v1/event-discovery`, {
+    const res = await fetchWithTimeout(`${supabaseUrl}/functions/v1/event-discovery`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -776,9 +822,9 @@ async function fetchEventPreview(
       body: JSON.stringify({
         action: 'discover',
         city: destination,
-        country: country || '',
+        country: country.trim(),
       }),
-    });
+    }, 3000);
 
     if (!res.ok) return [];
     const data = await res.json();
@@ -998,7 +1044,7 @@ function buildBriefPrompt(
   // Build section templates for only the selected topics
   const topics = selectedTopics && selectedTopics.length > 0
     ? selectedTopics
-    : ['safety', 'visa_entry', 'food', 'arrival', 'price_feel', 'customs'];
+    : [...DEFAULT_SNAPSHOT_TOPICS];
 
   const sectionJsonBlocks = topics
     .map(t => SECTION_TEMPLATES[t]?.(destination, nationality || 'US citizen', month))
@@ -1018,11 +1064,11 @@ INSTRUCTIONS:
 - Use live web data above for accuracy. Supplement with your knowledge where missing.
 - Be HYPER-SPECIFIC: real names, real prices in USD, real places.
 - Replace ALL bracketed placeholders with REAL names specific to ${destination}.
-- CRITICAL: Each "detail" field MUST be a full paragraph of 4-6 sentences (except where 3-4 is specified). Do NOT write short 1-2 sentence responses. The user needs substantial, educational content they can actually learn from — not bullet points or fragments.
+- CRITICAL: Each "detail" field MUST be a full paragraph of 3-4 sentences (except where 2-3 is specified). Do NOT write short 1-2 sentence responses.
 
 Return ONLY valid JSON (no markdown, no code fences):
 {
-  "overview": "A warm, specific 3-4 sentence summary highlighting what makes ${destination} special in ${month}. Include a practical tip or fun fact.",
+  "overview": "A warm, specific 2 sentence summary highlighting what makes ${destination} special in ${month}. Include one practical tip.",
   "sections": [
     ${sectionJsonBlocks.join(',\n    ')}
   ]
@@ -1033,7 +1079,7 @@ RULES:
 2. Use REAL prices in USD.
 3. Every detail must be actionable — a tourist should use it immediately.
 4. For visa: specific to ${nationality || 'US'} citizens.
-5. Each detail MUST be a full paragraph (4-6 sentences minimum). Short 1-2 sentence answers are NOT acceptable. Write rich, informative content.
+5. Each detail MUST be a full paragraph (3-4 sentences minimum). Short 1-2 sentence answers are NOT acceptable.
 6. Remove the "Write X sentences:" instruction prefix from your output — just write the content directly.
 7. Return ONLY the JSON object.`;
 }
@@ -1043,13 +1089,17 @@ async function tryGeminiBrief(prompt: string): Promise<string | null> {
   if (!apiKey) { console.log('AI brief: GOOGLE_AI_API_KEY not set, skipping Gemini'); return null; }
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_SNAPSHOT_MODEL}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 16384 },
+        generationConfig: {
+          responseMimeType: 'application/json',
+          maxOutputTokens: SNAPSHOT_MAX_OUTPUT_TOKENS,
+          thinkingConfig: { thinkingLevel: 'LOW' },
+        },
       }),
     },
   );
@@ -1150,39 +1200,54 @@ function buildCostEstimate(
   experiences: ExperiencePreview[],
   currency: string,
   userBudget?: number,
+  country?: string,
 ): CostEstimate {
+  const profile = getCostProfile(country);
+
   // Flights (round trip per person) — fallback $300-$600 pp if no API data
+  const avgFlightPrice = flights?.avgPrice || flights?.cheapest?.price || flights?.premium?.price || 400;
   const flightLow = flights
-    ? Math.round((flights.cheapest?.price || flights.avgPrice) * totalTravelers)
+    ? Math.round((flights.cheapest?.price || avgFlightPrice) * totalTravelers)
     : Math.round(300 * totalTravelers);
   const flightHigh = flights
-    ? Math.round(flights.avgPrice * 1.3 * totalTravelers)
+    ? Math.round(avgFlightPrice * 1.3 * totalTravelers)
     : Math.round(600 * totalTravelers);
 
-  // Hotels (per night × nights) — fallback $40-$100/night if no API data
-  const capPerNight = (price: number) => Math.min(price, 2000);
-  const hotelLow = hotels?.budget
+  const capPerNight = (price: number) => sanitizeHotelNightlyRate(Math.min(price, 2000), profile);
+
+  let hotelLow = hotels?.budget
     ? capPerNight(hotels.budget.avgPrice) * nights
-    : Math.round(40 * nights);
-  const hotelHigh = hotels?.midRange
+    : Math.round(profile.hotelFallbackPerNight.low * nights);
+  let hotelHigh = hotels?.midRange
     ? capPerNight(hotels.midRange.avgPrice) * nights
-    : (hotelLow > 0 && hotels?.budget ? Math.round(hotelLow * 1.5) : Math.round(100 * nights));
+    : Math.round(profile.hotelFallbackPerNight.high * nights);
 
-  // Experiences (estimate 1 per day at avg price)
-  const avgExpPrice = experiences.length > 0
-    ? experiences.reduce((s, e) => s + e.price, 0) / experiences.length
+  // If API data missing or unrealistically high for region, use regional fallbacks
+  const fallbackHigh = profile.hotelFallbackPerNight.high * nights;
+  if (!hotels || hotelLow > fallbackHigh * 1.35) {
+    hotelLow = Math.round(profile.hotelFallbackPerNight.low * nights);
+    hotelHigh = Math.round(profile.hotelFallbackPerNight.high * nights);
+  }
+
+  // Experiences (estimate 1 per day). Use the median so premium safari/private tours
+  // don't dominate a normal daily activity budget.
+  const expPrices = experiences
+    .map((e) => e.price)
+    .filter((price) => Number.isFinite(price) && price > 0)
+    .sort((a, b) => a - b);
+  const medianExpPrice = expPrices.length > 0
+    ? expPrices[Math.floor(expPrices.length / 2)]
     : 40;
+  const avgExpPrice = Math.min(medianExpPrice, Math.max(45, profile.hotelSanityMaxPerNight * 0.8));
   const expDays = Math.min(nights, 5);
-  const expLow = Math.round(avgExpPrice * expDays * 0.6);
-  const expHigh = Math.round(avgExpPrice * expDays * totalTravelers);
+  const expLow = Math.round(avgExpPrice * expDays * 0.6 * profile.experienceMultiplier);
+  const expHigh = Math.round(avgExpPrice * expDays * totalTravelers * profile.experienceMultiplier);
 
-  // Food estimate ($30-80/person/day depending on destination)
-  const foodLow = Math.round(30 * totalTravelers * nights);
-  const foodHigh = Math.round(70 * totalTravelers * nights);
+  const foodLow = Math.round(profile.foodPerPersonDay.low * totalTravelers * nights);
+  const foodHigh = Math.round(profile.foodPerPersonDay.high * totalTravelers * nights);
 
-  // Miscellaneous (transport, SIM, tips, souvenirs — ~$15-40/person/day)
-  const miscLow = Math.round(15 * totalTravelers * nights);
-  const miscHigh = Math.round(40 * totalTravelers * nights);
+  const miscLow = Math.round(profile.miscPerPersonDay.low * totalTravelers * nights);
+  const miscHigh = Math.round(profile.miscPerPersonDay.high * totalTravelers * nights);
 
   const totalLow = flightLow + hotelLow + expLow + foodLow + miscLow;
   const totalHigh = flightHigh + hotelHigh + expHigh + foodHigh + miscHigh;
@@ -1224,20 +1289,6 @@ function formatShortDate(d: string): string {
   } catch { return d; }
 }
 
-// ─── Rate Limiting (in-memory, per-isolate) ─────────────
-
-const recentRequests = new Map<string, number>();
-const RATE_LIMIT_WINDOW_MS = 30_000; // 30 seconds between identical requests
-const MAX_CONCURRENT = 5;
-let activeConcurrent = 0;
-
-function cleanupRateLimit() {
-  const now = Date.now();
-  for (const [key, ts] of recentRequests) {
-    if (now - ts > RATE_LIMIT_WINDOW_MS) recentRequests.delete(key);
-  }
-}
-
 // ─── Main Handler ───────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -1245,9 +1296,22 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const requestStartedAt = Date.now();
+  let metricContext: {
+    cacheKey?: string;
+    phase: 'data' | 'full';
+    destination?: string;
+    country?: string;
+  } | null = null;
+
   try {
     const body: SnapshotRequest = await req.json();
-    const { destination, country, startDate, endDate, travelers, originCity, originAirport, currency = 'USD', nationality, selectedTopics, userPreferences } = body;
+    let { destination, country, startDate, endDate, travelers, originCity, originAirport, currency = 'USD', nationality, selectedTopics, userPreferences, phase = 'full', skipRateLimit } = body;
+
+    if (!country?.trim() && destination.includes(',')) {
+      country = parseDestinationInput(destination).country;
+      destination = parseDestinationInput(destination).city || destination;
+    }
 
     if (!destination || !startDate || !endDate) {
       return new Response(
@@ -1256,32 +1320,136 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Rate limit: prevent duplicate rapid requests for the same destination + dates
-    cleanupRateLimit();
+    const dataOnly = phase === 'data';
+    const snapshotCacheInput = {
+      destination,
+      country,
+      originCity,
+      originAirport,
+      startDate,
+      endDate,
+      travelers,
+      currency,
+      nationality,
+    };
+    const snapshotCacheKey = dataOnly ? buildSnapshotResponseCacheKey(snapshotCacheInput) : '';
+    metricContext = {
+      cacheKey: snapshotCacheKey || undefined,
+      phase: dataOnly ? 'data' : 'full',
+      destination,
+      country,
+    };
+
+    if (dataOnly) {
+      const cached = await getSnapshotResponseCache<SnapshotResponse>(snapshotCacheKey);
+      if (cached) {
+        deferSnapshotWork(recordSnapshotMetric({
+          ...(metricContext || {}),
+          phase: 'data',
+          cacheStatus: 'hit',
+          statusCode: 200,
+          durationMs: Date.now() - requestStartedAt,
+        }));
+        return new Response(JSON.stringify(cached.response), {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+            'X-Snapshot-Cache': 'hit',
+          },
+        });
+      }
+
+    }
+
+    // Legacy full mode still uses the isolate-local guard as a safety net.
     const rateKey = `${destination.toLowerCase().trim()}|${startDate}|${endDate}`;
-    const lastRequest = recentRequests.get(rateKey);
-    if (lastRequest && Date.now() - lastRequest < RATE_LIMIT_WINDOW_MS) {
-      const waitSec = Math.ceil((RATE_LIMIT_WINDOW_MS - (Date.now() - lastRequest)) / 1000);
-      console.log(`Rate limited: ${rateKey} (${waitSec}s remaining)`);
-      return new Response(
-        JSON.stringify({ error: `Please wait ${waitSec} seconds before searching this destination again.` }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+    let localSlotAcquired = false;
+    if (!dataOnly) {
+      const slot = acquireSnapshotSlot(rateKey, skipRateLimit);
+      if (!slot.allowed) {
+        console.log(`Guard rejected: ${rateKey} (${slot.status})`);
+        return new Response(
+          JSON.stringify({ error: slot.error }),
+          {
+            status: slot.status || 429,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json',
+              ...guardHeaders(slot.retryAfterSec),
+            },
+          },
+        );
+      }
+      localSlotAcquired = true;
     }
 
-    // Concurrency guard
-    if (activeConcurrent >= MAX_CONCURRENT) {
-      console.log(`Concurrency limit reached: ${activeConcurrent}/${MAX_CONCURRENT}`);
-      return new Response(
-        JSON.stringify({ error: 'Server is busy. Please try again in a few moments.' }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
-    activeConcurrent++;
-    recentRequests.set(rateKey, Date.now());
-
+    let generationLock: { acquired: boolean; ownerId: string } | null = null;
+    let requestSucceeded = false;
     try {
+    if (dataOnly) {
+      generationLock = await tryAcquireSnapshotLock(snapshotCacheKey);
+      if (!generationLock.acquired) {
+        const coalesced = await waitForSnapshotResponseCache<SnapshotResponse>(snapshotCacheKey);
+        if (coalesced) {
+          deferSnapshotWork(recordSnapshotMetric({
+            ...(metricContext || {}),
+            phase: 'data',
+            cacheStatus: 'coalesced',
+            statusCode: 200,
+            durationMs: Date.now() - requestStartedAt,
+          }));
+          return new Response(JSON.stringify(coalesced.response), {
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json',
+              'X-Snapshot-Cache': 'coalesced',
+            },
+          });
+        }
+
+        const takeoverLock = await tryAcquireSnapshotLock(snapshotCacheKey);
+        if (takeoverLock.acquired) {
+          generationLock = takeoverLock;
+        } else {
+          await recordSnapshotMetric({
+            ...(metricContext || {}),
+            phase: 'data',
+            cacheStatus: 'coalesced_timeout',
+            statusCode: 503,
+            durationMs: Date.now() - requestStartedAt,
+          });
+          return new Response(JSON.stringify({ error: 'Snapshot is warming. Please try again in a moment.' }), {
+            status: 503,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json',
+              ...guardHeaders(3),
+            },
+          });
+        }
+      }
+
+      const rateLimit = await checkSnapshotRateLimit(snapshotCacheInput, snapshotRequesterKey(req));
+      if (!rateLimit.allowed) {
+        await recordSnapshotMetric({
+          ...(metricContext || {}),
+          phase: 'data',
+          cacheStatus: 'rate_limited',
+          statusCode: 429,
+          durationMs: Date.now() - requestStartedAt,
+          providerSummary: { blockedKey: rateLimit.blockedKey },
+        });
+        return new Response(JSON.stringify({ error: 'High demand right now. Please try again in a few seconds.' }), {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+            ...guardHeaders(rateLimit.retryAfterSec || 5),
+          },
+        });
+      }
+    }
+
     const nights = daysBetween(startDate, endDate);
     const totalTravelers = (travelers?.adults || 1) + (travelers?.children || 0) + (travelers?.infants || 0);
     const month = new Date(startDate).toLocaleString('en-US', { month: 'long' });
@@ -1289,15 +1457,17 @@ Deno.serve(async (req) => {
     // Resolve origin airport from originCity if not provided directly
     const resolvedOrigin = originAirport || (originCity ? resolveIATA(originCity) : null);
 
-    // ─── Fire all APIs + web search in parallel ───
+    // ─── Fire all APIs in parallel (web search only for full/brief phase) ───
     const [flightResult, hotelResult, expResult, eventResult, liveCtxResult] = await Promise.allSettled([
       resolvedOrigin
         ? fetchFlightPreview(resolvedOrigin, destination, startDate, endDate, travelers?.adults || 1, currency)
         : Promise.resolve(null),
-      fetchHotelTiers(destination, startDate, endDate, travelers?.adults || 1, currency),
+      fetchHotelTiers(destination, startDate, endDate, travelers?.adults || 1, currency, country),
       fetchExperiencePreview(destination, startDate, currency),
       fetchEventPreview(destination, country || '', startDate, endDate),
-      fetchLiveContext(destination, country || '', nationality || 'US citizen', month, selectedTopics),
+      dataOnly
+        ? Promise.resolve({ visa: '', safety: '', transport: '', scams: '', connectivity: '', culture: '' })
+        : fetchLiveContext(destination, country || '', nationality || 'US citizen', month, selectedTopics),
     ]);
 
     let flights = flightResult.status === 'fulfilled' ? flightResult.value : null;
@@ -1333,17 +1503,20 @@ Deno.serve(async (req) => {
     const costEstimate = buildCostEstimate(
       nights, totalTravelers, flights, hotels, experiences, currency,
       userPreferences?.budgetAmount,
+      country,
     );
 
-    // ─── Generate AI brief (after cost estimate is ready, with live web context) ───
+    // ─── Generate AI brief (full phase only) ───
     let aiBrief: DestinationIntelligence | null = null;
-    try {
-      aiBrief = await generateAIBrief(
-        destination, startDate, endDate, travelers || { adults: 1, children: 0, infants: 0 },
-        nights, costEstimate, liveContext, nationality || 'US citizen', selectedTopics, userPreferences,
-      );
-    } catch (e) {
-      console.error('AI brief failed:', e);
+    if (!dataOnly) {
+      try {
+        aiBrief = await generateAIBrief(
+          destination, startDate, endDate, travelers || { adults: 1, children: 0, infants: 0 },
+          nights, costEstimate, liveContext, nationality || 'US citizen', selectedTopics, userPreferences,
+        );
+      } catch (e) {
+        console.error('AI brief failed:', e);
+      }
     }
 
     // ─── Assemble response ───
@@ -1362,18 +1535,61 @@ Deno.serve(async (req) => {
       experiences,
       events,
       costEstimate,
-      aiBrief,
+      aiBrief: dataOnly ? null : aiBrief,
       generatedAt: new Date().toISOString(),
     };
 
+    const providerSummary = {
+      flights: Boolean(flights),
+      hotels: Boolean(hotels),
+      experiences: experiences.length,
+      events: events.length,
+      serpFallbacks: serpFallbacks.length,
+    };
+
+    if (dataOnly) {
+      await setSnapshotResponseCache(
+        snapshotCacheKey,
+        snapshotCacheInput,
+        response,
+        providerSummary,
+        Date.now() - requestStartedAt,
+      );
+      await recordSnapshotMetric({
+        ...(metricContext || {}),
+        phase: 'data',
+        cacheStatus: 'generated',
+        statusCode: 200,
+        durationMs: Date.now() - requestStartedAt,
+        providerSummary,
+      });
+    }
+
+    requestSucceeded = true;
     return new Response(JSON.stringify(response), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+        ...(dataOnly ? { 'X-Snapshot-Cache': 'generated' } : {}),
+      },
     });
     } finally {
-      activeConcurrent--;
+      if (generationLock?.acquired) {
+        await releaseSnapshotLock(snapshotCacheKey, generationLock.ownerId, requestSucceeded ? 'completed' : 'failed');
+      }
+      if (localSlotAcquired) releaseSnapshotSlot();
     }
   } catch (e) {
     console.error('Trip snapshot error:', e);
+    if (metricContext) {
+      await recordSnapshotMetric({
+        ...metricContext,
+        cacheStatus: 'error',
+        statusCode: 500,
+        durationMs: Date.now() - requestStartedAt,
+        errorMessage: String(e),
+      });
+    }
     return new Response(
       JSON.stringify({ error: 'Failed to generate trip snapshot', details: String(e) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

@@ -43,17 +43,17 @@ export default function EmailConnectingStep({ onNext, data }: StepComponentProps
               setMessage('Waiting for your forwarded email...');
             }
           },
-          90000, // 90 second timeout
-          4000,  // poll every 4 seconds
+          120000, // wait up to 2 minutes
+          3000,   // poll every 3 seconds
         );
 
         if (cancelled) return;
 
         if (result && result.status === 'parsed' && result.parsedBooking) {
-          // Booking found — pass to bookings step
+          // Booking found — pass the parsed EmailImport to the bookings step
           onNext({
             scanStatus: 'completed',
-            importResult: result,
+            emailImport: result,
           });
         } else if (result && result.status === 'no_booking') {
           onNext({

@@ -36,6 +36,7 @@ interface GroupHeaderProps {
   privacy: 'public' | 'private' | 'invite_only';
   memberCount: number;
   activeCount: number;
+  isOfficial?: boolean;
   isMember: boolean;
   myRole?: 'owner' | 'admin' | 'moderator' | 'member';
   isPending?: boolean;
@@ -54,6 +55,7 @@ function GroupHeader({
   privacy,
   memberCount,
   activeCount,
+  isOfficial,
   isMember,
   myRole,
   isPending,
@@ -119,12 +121,16 @@ function GroupHeader({
                 </Text>
                 <View style={styles.metaDot} />
                 <Text style={styles.metaText}>
-                  {memberCount.toLocaleString()} members
+                  {isOfficial ? 'Members protected' : `${memberCount.toLocaleString()} members`}
                 </Text>
-                <View style={styles.metaDot} />
-                <Text style={styles.metaText}>
-                  {activeCount} active
-                </Text>
+                {!isOfficial ? (
+                  <>
+                    <View style={styles.metaDot} />
+                    <Text style={styles.metaText}>
+                      {activeCount} active
+                    </Text>
+                  </>
+                ) : null}
               </View>
             </View>
           </View>

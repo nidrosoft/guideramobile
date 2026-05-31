@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { consumeConnectWriteRateLimit } from './connectRateLimit.service';
 
 export interface Post {
   id: string;
@@ -102,6 +103,8 @@ class PostService {
       locationLng?: number;
     }
   ): Promise<Post> {
+    await consumeConnectWriteRateLimit(userId, 'connect_post_write');
+
     if (!data.communityId) {
       throw new Error('A group must be selected to create a post.');
     }
@@ -146,8 +149,11 @@ class PostService {
 
   async updatePost(
     postId: string,
+    userId: string,
     updates: Partial<{ content: string; photos: string[]; tags: string[] }>
   ): Promise<Post> {
+    await consumeConnectWriteRateLimit(userId, 'connect_post_write');
+
     const mapped: Record<string, unknown> = {};
     if (updates.content !== undefined) mapped.content = updates.content;
     if (updates.photos !== undefined) mapped.photos = updates.photos;
@@ -169,6 +175,8 @@ class PostService {
   }
 
   async deletePost(postId: string, userId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(userId, 'connect_post_write');
+
     const { error } = await supabase
       .from('community_posts')
       .update({ status: 'deleted', updated_at: new Date().toISOString() })
@@ -202,6 +210,8 @@ class PostService {
     userId: string,
     data: { content: string; parentCommentId?: string }
   ): Promise<Comment> {
+    await consumeConnectWriteRateLimit(userId, 'connect_post_write');
+
     const { data: comment, error } = await supabase
       .from('post_comments')
       .insert({
@@ -288,6 +298,8 @@ class PostService {
   }
 
   async deleteComment(commentId: string, postId: string, userId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(userId, 'connect_post_write');
+
     const { error } = await supabase
       .from('post_comments')
       .update({ status: 'deleted', updated_at: new Date().toISOString() })
@@ -375,6 +387,8 @@ class PostService {
     userId: string,
     reactionType: string
   ): Promise<boolean> {
+    await consumeConnectWriteRateLimit(userId, 'connect_post_write');
+
     const { data: existing } = await supabase
       .from('post_reactions')
       .select('id')
@@ -457,6 +471,8 @@ class PostService {
   // ============================================
 
   async toggleCommentLike(commentId: string, userId: string): Promise<boolean> {
+    await consumeConnectWriteRateLimit(userId, 'connect_post_write');
+
     const { data: existing } = await supabase
       .from('comment_likes')
       .select('id')

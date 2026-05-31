@@ -85,11 +85,11 @@ async function getFlightStatus(
   const [, airlineCode, number] = match;
 
   const response = await fetch(
-    `https://aerodatabox.p.rapidapi.com/flights/number/${airlineCode}${number}/${date}`,
+    `https://prod.api.market/api/v1/aedbx/aerodatabox/flights/number/${airlineCode}${number}/${date}`,
     {
       headers: {
-        'X-RapidAPI-Key': apiKey,
-        'X-RapidAPI-Host': 'aerodatabox.p.rapidapi.com',
+        'x-api-market-key': apiKey,
+        'accept': 'application/json',
       },
     }
   );
@@ -123,11 +123,11 @@ async function getAirportFlights(
   const endpoint = direction === 'departure' ? 'departures' : 'arrivals';
   
   const response = await fetch(
-    `https://aerodatabox.p.rapidapi.com/flights/airports/iata/${airportCode}/${fromTime}/${toTime}?direction=${endpoint}`,
+    `https://prod.api.market/api/v1/aedbx/aerodatabox/flights/airports/iata/${airportCode}/${fromTime}/${toTime}?direction=${endpoint}`,
     {
       headers: {
-        'X-RapidAPI-Key': apiKey,
-        'X-RapidAPI-Host': 'aerodatabox.p.rapidapi.com',
+        'x-api-market-key': apiKey,
+        'accept': 'application/json',
       },
     }
   );
@@ -148,11 +148,11 @@ async function getAirportInfo(
   airportCode: string
 ): Promise<AirportInfo | null> {
   const response = await fetch(
-    `https://aerodatabox.p.rapidapi.com/airports/iata/${airportCode}`,
+    `https://prod.api.market/api/v1/aedbx/aerodatabox/airports/iata/${airportCode}`,
     {
       headers: {
-        'X-RapidAPI-Key': apiKey,
-        'X-RapidAPI-Host': 'aerodatabox.p.rapidapi.com',
+        'x-api-market-key': apiKey,
+        'accept': 'application/json',
       },
     }
   );
@@ -203,7 +203,7 @@ function normalizeFlightStatus(flight: Record<string, unknown>): FlightStatus {
     : undefined;
 
   return {
-    flightNumber: `${airline?.iata || ''}${flight.number || ''}`,
+    flightNumber: ((flight.number as string) || '').replace(/\s+/g, '') || `${airline?.iata || ''}`,
     airline: {
       code: (airline?.iata as string) || '',
       name: (airline?.name as string) || '',
@@ -298,7 +298,7 @@ serve(async (req: Request) => {
   const startTime = Date.now();
 
   try {
-    const apiKey = Deno.env.get('RAPIDAPI_KEY');
+    const apiKey = Deno.env.get('AERODATABOX_API_KEY') || Deno.env.get('RAPIDAPI_KEY');
     const request: FlightTrackingRequest = await req.json();
 
     let response: unknown;

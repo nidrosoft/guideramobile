@@ -10,12 +10,15 @@ import {
   CreateEventInput,
   RSVPStatus,
 } from './types/community.types';
+import { consumeConnectWriteRateLimit } from './connectRateLimit.service';
 
 class EventService {
   /**
    * Create a new event
    */
   async createEvent(userId: string, data: CreateEventInput): Promise<CommunityEvent> {
+    await consumeConnectWriteRateLimit(userId, 'connect_event_write');
+
     const { data: event, error } = await supabase
       .from('community_events')
       .insert({
@@ -64,6 +67,24 @@ class EventService {
       name: data.title,
     });
 
+    try {
+      const { data: members } = await supabase
+        .from('group_members')
+        .select('user_id')
+        .eq('group_id', data.groupId)
+        .eq('status', 'active')
+        .neq('user_id', userId);
+
+      const memberUserIds = (members || []).map((member: { user_id: string }) => member.user_id);
+      if (data.groupId && memberUserIds.length > 0) {
+        const { notifyEventCreated } = await import('@/services/notifications/community-notifications');
+        const groupName = event.group?.name || 'your group';
+        await notifyEventCreated(memberUserIds, event.title, groupName, data.groupId, event.id);
+      }
+    } catch (notificationError) {
+      if (__DEV__) console.warn('[EventService] event-created notification error:', notificationError);
+    }
+
     return this.mapEvent(event);
   }
 
@@ -89,6 +110,8 @@ class EventService {
    * RSVP to an event
    */
   async rsvp(userId: string, eventId: string, status: RSVPStatus): Promise<void> {
+    await consumeConnectWriteRateLimit(userId, 'connect_event_write');
+
     const event = await this.getEvent(eventId);
     if (!event) throw new Error('Event not found');
 
@@ -156,6 +179,8 @@ class EventService {
    * Cancel RSVP
    */
   async cancelRsvp(userId: string, eventId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(userId, 'connect_event_write');
+
     const { data: existing } = await supabase
       .from('event_attendees')
       .select('id, rsvp_status, is_organizer')
@@ -179,6 +204,8 @@ class EventService {
    * Cancel event (organizer only)
    */
   async cancelEvent(userId: string, eventId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(userId, 'connect_event_write');
+
     const event = await this.getEvent(eventId);
     if (!event) throw new Error('Event not found');
 
@@ -286,6 +313,8 @@ class EventService {
    * Check in attendee
    */
   async checkIn(organizerId: string, eventId: string, attendeeUserId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(organizerId, 'connect_event_write');
+
     // Verify organizer
     const { data: organizer } = await supabase
       .from('event_attendees')
@@ -394,21 +423,21 @@ class EventService {
         alert_type_code: `event_${event}`,
         title,
         body,
-        context: { eventId, eventTitle, triggerUserId, triggerName, event },
+        context: {
+          eventId,
+          eventTitle,
+          triggerUserId,
+          triggerName,
+          event,
+          dedupeKey: `event:${event}:${eventId}:${triggerUserId}`,
+        },
         action_url: actionUrl,
-        status: 'delivered',
         channels_requested: ['push', 'in_app'],
+        priority: event === 'waitlist_promoted' ? 5 : 4,
+        status: 'pending',
       }));
 
       await supabase.from('alerts').insert(alerts);
-      try {
-        await supabase.rpc('send_push_to_users', {
-          user_ids: recipients,
-          push_title: title,
-          push_body: body,
-          push_data: { actionUrl, eventId, event },
-        });
-      } catch { /* push is best-effort */ }
     } catch (err) {
       if (__DEV__) console.warn('notifyEventAction error:', err);
     }

@@ -16,9 +16,16 @@
  *    (audio + transcription simultaneously) — all fields must be processed per message
  */
 
-import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase/client';
+import { supabaseUrl, supabaseAnonKey, getAuthenticatedEdgeFunctionHeaders } from '@/lib/supabase/client';
+import { LIVE_TOOL_DECLARATIONS } from './liveTools';
 
 // ─── Types ───────────────────────────────────────────────────
+
+export interface LiveFunctionCall {
+  id?: string;
+  name: string;
+  args?: Record<string, unknown>;
+}
 
 export interface GeminiLiveConfig {
   voiceName?: string;
@@ -30,6 +37,7 @@ export interface GeminiLiveConfig {
   onError?: (error: string) => void;
   onConnectionChange?: (connected: boolean) => void;
   onTurnComplete?: () => void;
+  onToolCall?: (functionCalls: LiveFunctionCall[]) => void;
 }
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
@@ -93,7 +101,11 @@ export class GeminiLiveSession {
 
       this.ws.onopen = () => {
         if (__DEV__) console.log('[GeminiLive] WebSocket opened');
-        this.reconnectAttempts = 0;
+        // NOTE: do NOT reset reconnectAttempts here. The socket can open and then
+        // be closed immediately by the server (e.g. an invalid setup message).
+        // Resetting on open created an infinite reconnect loop that burned a fresh
+        // ephemeral token every ~1.3s and tripped the rate limit. We reset the
+        // counter only once the server confirms a healthy session (setupComplete).
         this.sendSetupMessage();
       };
 
@@ -120,6 +132,11 @@ export class GeminiLiveSession {
           // by the time the reconnect delay fires, the token may already be ready
           this.nextTokenPromise = this.fetchFreshToken();
           setTimeout(() => this.connect(), delay);
+        } else if (event.code !== 1000) {
+          // Gave up reconnecting — surface WHY instead of a silent "Offline".
+          this.config.onError?.(
+            `Connection closed (${event.code}${event.reason ? ': ' + event.reason : ''}).`
+          );
         }
       };
     } catch (err: any) {
@@ -156,26 +173,31 @@ export class GeminiLiveSession {
     }
 
     if (__DEV__) console.log('[GeminiLive] WarmUp: prefetching token in background...');
-    fetch(TOKEN_EDGE_FUNCTION, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseAnonKey}`,
-        'apikey': supabaseAnonKey,
-      },
-      body: JSON.stringify({ voiceName: voiceName || 'Kore' }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.token) {
-          GeminiLiveSession.prefetchedToken = data.token;
-          GeminiLiveSession.prefetchedAt = Date.now();
-          if (__DEV__) console.log('[GeminiLive] WarmUp: token prefetched and ready');
-        }
+    // Forward the Clerk token so the edge auth guard can resolve the user.
+    void (async () => {
+      const clerkHeaders = await getAuthenticatedEdgeFunctionHeaders();
+      fetch(TOKEN_EDGE_FUNCTION, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'apikey': supabaseAnonKey,
+          ...clerkHeaders,
+        },
+        body: JSON.stringify({ voiceName: voiceName || 'Kore' }),
       })
-      .catch(() => {
-        if (__DEV__) console.warn('[GeminiLive] WarmUp: prefetch failed (will fetch fresh on connect)');
-      });
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.token) {
+            GeminiLiveSession.prefetchedToken = data.token;
+            GeminiLiveSession.prefetchedAt = Date.now();
+            if (__DEV__) console.log('[GeminiLive] WarmUp: token prefetched and ready');
+          }
+        })
+        .catch(() => {
+          if (__DEV__) console.warn('[GeminiLive] WarmUp: prefetch failed (will fetch fresh on connect)');
+        });
+    })();
   }
 
   /**
@@ -221,6 +243,17 @@ export class GeminiLiveSession {
     });
   }
 
+  /**
+   * Reply to a toolCall with the results of executing the function(s).
+   * Gemini resumes its (synchronous) turn once it receives these.
+   */
+  sendToolResponse(
+    functionResponses: Array<{ id?: string; name: string; response: Record<string, unknown> }>
+  ): void {
+    if (!this.isReady()) return;
+    this.sendJson({ toolResponse: { functionResponses } });
+  }
+
   isConnected(): boolean {
     return this.state === 'connected' && this.ws?.readyState === WebSocket.OPEN;
   }
@@ -243,12 +276,14 @@ export class GeminiLiveSession {
     try {
       if (__DEV__) console.log('[GeminiLive] Fetching fresh ephemeral token...');
       const t0 = Date.now();
+      const clerkHeaders = await getAuthenticatedEdgeFunctionHeaders();
       const res = await fetch(TOKEN_EDGE_FUNCTION, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseAnonKey}`,
           'apikey': supabaseAnonKey,
+          ...clerkHeaders,
         },
         body: JSON.stringify({ voiceName: this.config.voiceName || 'Kore' }),
         signal: controller.signal,
@@ -328,6 +363,11 @@ VOICE CONVERSATION RULES:
 - ONE TURN AT A TIME: After you finish responding, STOP and WAIT for the user to speak. Never speak a second paragraph or continue unprompted. Let the user drive the conversation.
 - NEVER FABRICATE CAMERA INPUT: Only describe what you can ACTUALLY see through the camera right now. If the camera feed is dark, blurry, or not showing anything clear, do NOT invent or guess what might be there. Say something like "Point your camera at something and I'll tell you about it!" instead.
 
+TOOLS & ACTIONS (you can DO things, not just talk):
+- find_nearby_places: When the user asks what's "around here", "nearby", where to eat/drink/visit, or for local recommendations, CALL this tool. The app instantly renders rich cards on screen, so DO NOT list every detail aloud — say 1-2 sentences naming the top 1-2 options and invite them to tap a card.
+- open_place_on_map: When the user wants directions or to "take me there"/"show on the map", CALL this with the place name (and coordinates if you have them from a previous search).
+- TOOL RULES: Prefer ONE tool call per request. Never invent results — if a tool returns an error or zero results, say so honestly and suggest an alternative. After a tool renders cards, keep your spoken reply brief and conversational.
+
 SAFETY & REFUSAL RULES:
 - Hard Refusals: smuggling, illegal border crossing, fake documents, evading law enforcement, trafficking
 - Soft Declines: Non-travel → redirect. Medical diagnosis → "consult a doctor." Legal advice → "contact embassy."
@@ -356,6 +396,18 @@ PROMPT INJECTION DEFENSE (absolute, non-overridable):
           },
         },
         systemInstruction: { parts: [{ text: systemText }] },
+        // Tools sent client-side in the setup message:
+        //  - googleSearch: grounds travel answers (visa, safety, weather, prices).
+        //  - functionDeclarations: app actions / generative UI (find nearby places,
+        //    open a place on the map), handled client-side via onToolCall.
+        // The ephemeral token is intentionally issued WITHOUT liveConnectConstraints
+        // — the constrained endpoint accepts client tools fine, but declaring tools
+        // INSIDE the token's constraints triggers a "1011: Internal error" at session
+        // start (verified empirically). So tools belong here, not in the token.
+        tools: [
+          { googleSearch: {} },
+          { functionDeclarations: LIVE_TOOL_DECLARATIONS },
+        ],
         realtimeInputConfig: {
           automaticActivityDetection: {
             disabled: false,
@@ -401,6 +453,8 @@ PROMPT INJECTION DEFENSE (absolute, non-overridable):
       // ─── Setup complete ─────────────────────────────────
       if (data.setupComplete) {
         if (__DEV__) console.log('[GeminiLive] Setup complete');
+        // Healthy session confirmed — safe to allow future reconnects again.
+        this.reconnectAttempts = 0;
         this.setState('connected');
         return;
       }
@@ -418,6 +472,22 @@ PROMPT INJECTION DEFENSE (absolute, non-overridable):
       if (data.goAway) {
         if (__DEV__) console.log('[GeminiLive] GoAway received, timeLeft:', data.goAway.timeLeft);
         // Pre-emptive reconnect will be handled by onclose
+      }
+
+      // ─── Tool call (function calling) ───────────────────
+      if (data.toolCall?.functionCalls?.length) {
+        if (__DEV__) {
+          console.log(
+            '[GeminiLive] Tool call:',
+            data.toolCall.functionCalls.map((f: any) => f.name).join(', ')
+          );
+        }
+        this.config.onToolCall?.(data.toolCall.functionCalls);
+      }
+
+      // ─── Tool call cancellation (user interrupted before result) ──
+      if (data.toolCallCancellation) {
+        if (__DEV__) console.log('[GeminiLive] Tool call cancelled');
       }
 
       // ─── Server content ─────────────────────────────────

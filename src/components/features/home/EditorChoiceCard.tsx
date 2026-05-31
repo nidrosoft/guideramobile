@@ -23,7 +23,7 @@ export default function EditorChoiceCard({ id, name, location, reason, rating, i
   return (
     <View style={[styles.container, { height: Math.min(420, screenHeight * 0.55), borderColor: colors.borderSubtle }]}>
       {/* Background Image */}
-      <CachedImage uri={imageUrl} style={styles.backgroundImage} />
+      <CachedImage uri={imageUrl} fallbackCityName={location || name} style={styles.backgroundImage} />
       
       {/* Gradient Overlay */}
       <View style={styles.overlay} />
@@ -94,16 +94,21 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.xs,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: 6,
     borderRadius: 20,
+    height: 32,
   },
   badgeText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
     color: '#1a1a1a',
+    lineHeight: 18,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   bookmarkButton: {
     width: 44,

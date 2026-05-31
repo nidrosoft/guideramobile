@@ -10,7 +10,10 @@ try {
   if (__DEV__) console.warn('[useGeminiLive] react-native-live-audio-stream not available (Expo Go?). Voice input disabled — use text input instead.');
 }
 import { GeminiLiveSession } from '../services/geminiLive.service';
+import type { LiveFunctionCall } from '../services/geminiLive.service';
+import { LIVE_TOOL_HANDLERS } from '../services/liveTools';
 import { getVoiceName } from '../services/tts.service';
+import type { LiveToolCard } from '../types/aiVision.types';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -18,6 +21,8 @@ export interface ConversationEntry {
   role: 'user' | 'ai';
   text: string;
   timestamp: number;
+  /** Optional rich UI (generative UI) rendered from a tool call. */
+  card?: LiveToolCard;
 }
 
 export interface UseGeminiLiveReturn {
@@ -244,6 +249,14 @@ export function useGeminiLive(): UseGeminiLiveReturn {
   const [conversations, setConversations] = useState<ConversationEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Auto-dismiss transient error banners (e.g. "voice needs the native build")
+  // after a few seconds so they don't linger over and block the bottom controls.
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 5000);
+    return () => clearTimeout(t);
+  }, [error]);
+
   const sessionRef = useRef<GeminiLiveSession | null>(null);
   const isMutedRef = useRef(false);
   const hasGreetedRef = useRef(false);
@@ -266,6 +279,27 @@ export function useGeminiLive(): UseGeminiLiveReturn {
   // LiveAudioStream bypasses AVAudioSession for recording, so this is safe.
   const audioSessionInitialized = useRef(false);
 
+  // Force audio OUTPUT through the main speaker (not the iOS earpiece).
+  // LiveAudioStream.start() switches the iOS AVAudioSession into a record
+  // category, which routes playback to the quiet earpiece. We must re-assert
+  // allowsRecordingIOS:false before the AI speaks so the voice is loud — this
+  // mirrors what tts.service does before every playback in the other modes.
+  const setOutputToSpeaker = useCallback(async () => {
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false, // false → main speaker; true → earpiece
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        interruptionModeIOS: InterruptionModeIOS.DuckOthers,
+        shouldDuckAndroid: true,
+        interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+        playThroughEarpieceAndroid: false,
+      });
+    } catch (err) {
+      if (__DEV__) console.warn('[useGeminiLive] setOutputToSpeaker error:', err);
+    }
+  }, []);
+
   const configureAudioSession = useCallback(async () => {
     try {
       // First time: enable recording briefly so iOS grants mic access
@@ -281,34 +315,30 @@ export function useGeminiLive(): UseGeminiLiveReturn {
         });
         audioSessionInitialized.current = true;
         // Immediately switch to speaker mode — mic works via LiveAudioStream regardless
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
-          interruptionModeIOS: InterruptionModeIOS.DuckOthers,
-          shouldDuckAndroid: true,
-          interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-          playThroughEarpieceAndroid: false,
-        });
+        await setOutputToSpeaker();
         if (__DEV__) console.log('[useGeminiLive] Audio session: initialized → speaker mode');
       }
     } catch (err) {
       if (__DEV__) console.warn('[useGeminiLive] Audio session error:', err);
     }
-  }, []);
+  }, [setOutputToSpeaker]);
 
   // ─── Speech Recognition (PCM Recording) ──────────────────────
 
   const doStartListening = useCallback(async () => {
     if (isMutedRef.current) return;
     if (!LiveAudioStream) {
+      // Native mic module is missing (Expo Go, or a dev client built before the
+      // dependency was added). Surface it so voice failure isn't silent.
       if (__DEV__) console.warn('[useGeminiLive] No native audio stream available — use text input');
+      setError('Voice input needs the native build. Tap "Aa" to type, or rebuild the dev client to enable the mic.');
       return;
     }
     
     const { granted } = await Audio.requestPermissionsAsync();
     if (!granted) {
       if (__DEV__) console.warn('[useGeminiLive] Microphone permission not granted');
+      setError('Microphone permission denied. Enable it in Settings to talk to Meena.');
       return;
     }
 
@@ -325,7 +355,12 @@ export function useGeminiLive(): UseGeminiLiveReturn {
         wavFile: 'temp.wav',
       });
 
+      let firstChunkLogged = false;
       LiveAudioStream.on('data', (base64Data: string) => {
+        if (__DEV__ && !firstChunkLogged) {
+          firstChunkLogged = true;
+          console.log('[useGeminiLive] Mic capturing — first PCM chunk received');
+        }
         if (sessionRef.current?.isConnected()) {
           sessionRef.current.sendAudio(base64Data);
         }
@@ -333,9 +368,11 @@ export function useGeminiLive(): UseGeminiLiveReturn {
 
       LiveAudioStream.start();
       setIsRecording(true);
+      setError(null); // clear any prior mic error once capture starts
       if (__DEV__) console.log('[useGeminiLive] PCM Audio stream started');
-    } catch (err) {
+    } catch (err: any) {
       if (__DEV__) console.warn('[useGeminiLive] Failed starting PCM input stream:', err);
+      setError(`Microphone failed to start: ${err?.message || 'unknown error'}. Tap "Aa" to type.`);
     }
   }, [configureAudioSession]);
 
@@ -344,6 +381,9 @@ export function useGeminiLive(): UseGeminiLiveReturn {
     try {
       LiveAudioStream.stop();
       setIsRecording(false);
+      // Tell Gemini the user's audio stream paused so it flushes any cached
+      // audio and finalizes the turn (recommended with automatic VAD).
+      sessionRef.current?.sendAudioStreamEnd();
       if (__DEV__) console.log('[useGeminiLive] PCM Audio stream stopped');
     } catch (err) {
       if (__DEV__) console.warn('[useGeminiLive] Failed stopping stream:', err);
@@ -411,6 +451,44 @@ export function useGeminiLive(): UseGeminiLiveReturn {
     ]);
   }, []);
 
+  // Append a generative-UI card (e.g. nearby place results) to the transcript.
+  const addCardMessage = useCallback((card: LiveToolCard) => {
+    setConversations((prev) => [
+      ...prev,
+      { role: 'ai', text: '', timestamp: Date.now(), card },
+    ]);
+  }, []);
+
+  // Execute tool call(s) locally, render any cards, and reply to Gemini.
+  const handleToolCall = useCallback(
+    async (functionCalls: LiveFunctionCall[]) => {
+      const responses: Array<{ id?: string; name: string; response: Record<string, unknown> }> = [];
+
+      for (const fc of functionCalls) {
+        const handler = LIVE_TOOL_HANDLERS[fc.name];
+        if (!handler) {
+          responses.push({ id: fc.id, name: fc.name, response: { error: 'unknown_tool' } });
+          continue;
+        }
+        try {
+          const { result, card } = await handler((fc.args as Record<string, any>) || {});
+          if (card) addCardMessage(card);
+          responses.push({ id: fc.id, name: fc.name, response: result });
+        } catch (err: any) {
+          if (__DEV__) console.warn(`[useGeminiLive] Tool "${fc.name}" failed:`, err);
+          responses.push({
+            id: fc.id,
+            name: fc.name,
+            response: { error: 'tool_failed', message: err?.message || 'unknown error' },
+          });
+        }
+      }
+
+      sessionRef.current?.sendToolResponse(responses);
+    },
+    [addCardMessage]
+  );
+
   const connect = useCallback(async (userLanguage: string) => {
     setIsConnecting(true);
     setError(null);
@@ -430,6 +508,9 @@ export function useGeminiLive(): UseGeminiLiveReturn {
           if (!aiSpeakingRef.current) {
             aiSpeakingRef.current = true;
             doStopListening();
+            // Re-route output to the loud main speaker — LiveAudioStream left the
+            // iOS session in record mode (earpiece), which made the voice barely audible.
+            void setOutputToSpeaker();
             if (__DEV__) console.log('[useGeminiLive] AI started speaking, pausing mic');
           }
           // Accumulate audio chunks
@@ -481,6 +562,9 @@ export function useGeminiLive(): UseGeminiLiveReturn {
           audioPlaybackStarted.current = false;
           audioPcmAccumulator.current = [];
         },
+        onToolCall: (functionCalls) => {
+          void handleToolCall(functionCalls);
+        },
         onError: (errMsg: string) => {
           if (__DEV__) console.error('[useGeminiLive] Session error:', errMsg);
           setError(errMsg);
@@ -513,7 +597,7 @@ export function useGeminiLive(): UseGeminiLiveReturn {
       setIsConnecting(false);
       setError(err.message || 'Failed to connect');
     }
-  }, [addConversation, flushPlaybackChunks, stopPlayback, doStartListening, doStopListening, configureAudioSession]);
+  }, [addConversation, flushPlaybackChunks, stopPlayback, doStartListening, doStopListening, configureAudioSession, setOutputToSpeaker, handleToolCall]);
 
   const disconnect = useCallback(async () => {
     doStopListening();

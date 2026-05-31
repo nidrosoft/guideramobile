@@ -1,10 +1,11 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
 import { useUser, useAuth as useClerkAuth, useClerk } from '@clerk/clerk-expo';
 import { Profile, AuthContextType } from '@/types/auth.types';
 import { 
   syncClerkUserToSupabase, 
   getProfileByClerkId, 
 } from '@/lib/clerk/profileSync';
+import { getCachedProfile, setCachedProfile, clearCachedProfile } from '@/lib/clerk/profileCache';
 import { supabase, setClerkTokenGetter } from '@/lib/supabase/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
@@ -37,6 +38,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { signOut: clerkSignOut } = useClerk();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const profileSyncRef = useRef<{ key: string; promise: Promise<Profile | null> } | null>(null);
 
   const isLoading = !isUserLoaded || !isAuthLoaded || (isSignedIn && isProfileLoading);
   const isAuthenticated = !!isSignedIn && !!clerkUser;
@@ -100,14 +102,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       try {
         if (__DEV__) console.log('[Auth] Syncing Clerk user to Supabase...', clerkUser.id);
-        const profileData = await syncClerkUserToSupabase({
+        const syncPayload = {
           id: clerkUser.id,
           firstName: clerkUser.firstName,
           lastName: clerkUser.lastName,
           emailAddresses: clerkUser.emailAddresses.map(e => ({ emailAddress: e.emailAddress })),
           phoneNumbers: clerkUser.phoneNumbers.map(p => ({ phoneNumber: p.phoneNumber })),
           imageUrl: clerkUser.imageUrl,
-        });
+        };
+        if (profileSyncRef.current?.key !== clerkUser.id) {
+          const syncPromise = syncClerkUserToSupabase(syncPayload).finally(() => {
+            if (profileSyncRef.current?.key === clerkUser.id) {
+              profileSyncRef.current = null;
+            }
+          });
+          profileSyncRef.current = { key: clerkUser.id, promise: syncPromise };
+        }
+        let profileData = await profileSyncRef.current.promise;
+
+        if (!profileData) {
+          const cached = await getCachedProfile(clerkUser.id);
+          if (cached) {
+            if (__DEV__) {
+              console.warn('[Auth] Using cached profile — Supabase sync unavailable', {
+                profileId: cached.id,
+                onboarding: cached.onboarding_completed,
+              });
+            }
+            profileData = cached;
+          }
+        } else {
+          await setCachedProfile(clerkUser.id, profileData);
+        }
 
         if (isMounted) {
           if (profileData) {
@@ -124,9 +150,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       } catch (error) {
         if (__DEV__) console.warn('[Auth] Error syncing profile:', error);
+        const cached = clerkUser ? await getCachedProfile(clerkUser.id) : null;
         // Even on error, stop loading so AuthGuard can proceed
         if (isMounted) {
-          setProfile(null);
+          if (cached) {
+            if (__DEV__) console.warn('[Auth] Recovered profile from local cache after sync error');
+            setProfile(cached);
+            notificationService.setUserId(cached.id);
+            providerManagerService.setUserId(cached.id);
+          } else {
+            setProfile(null);
+            notificationService.setUserId(null);
+            providerManagerService.setUserId(null);
+          }
         }
       } finally {
         if (isMounted) {
@@ -150,6 +186,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const profileData = await getProfileByClerkId(clerkUser.id);
     if (profileData) {
       setProfile(profileData);
+      await setCachedProfile(clerkUser.id, profileData);
     }
   }, [clerkUser?.id]);
 
@@ -186,6 +223,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await AsyncStorage.multiRemove(keysToRemove);
       // Also clear the cache service (memory + @guidera_cache_* storage keys)
       await cacheService.clear();
+      if (clerkUser?.id) {
+        await clearCachedProfile(clerkUser.id);
+      }
 
       setProfile(null);
       setIsProfileLoading(true);
@@ -221,6 +261,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       if (data) {
         setProfile(data as Profile);
+        await setCachedProfile(clerkUser.id, data as Profile);
       }
       return { error: null };
     } catch (error) {
@@ -233,14 +274,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (!clerkUser?.id) return;
     
     try {
-      await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .update({
           onboarding_step: step,
           updated_at: new Date().toISOString(),
         })
-        .eq('clerk_id', clerkUser.id);
+        .eq('clerk_id', clerkUser.id)
+        .select();
 
+      if (error) {
+        if (__DEV__) console.warn('[Auth] updateOnboardingStep failed:', error.message);
+        return;
+      }
+      if (!data || data.length === 0) {
+        if (__DEV__) console.warn('[Auth] updateOnboardingStep affected 0 rows — profile missing! Retrying sync…');
+        // Profile row is missing: re-run sync so the next call finds a row.
+        if (clerkUser) {
+          await syncClerkUserToSupabase({
+            id: clerkUser.id,
+            firstName: clerkUser.firstName,
+            lastName: clerkUser.lastName,
+            emailAddresses: clerkUser.emailAddresses.map(e => ({ emailAddress: e.emailAddress })),
+            phoneNumbers: clerkUser.phoneNumbers.map(p => ({ phoneNumber: p.phoneNumber })),
+            imageUrl: clerkUser.imageUrl,
+          });
+        }
+        return;
+      }
       setProfile(prev => prev ? { ...prev, onboarding_step: step } : null);
     } catch (error) {
       if (__DEV__) console.warn('Error updating onboarding step:', error);
@@ -251,16 +312,53 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (!clerkUser?.id) return;
     
     try {
-      await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .update({
           onboarding_completed: true,
           onboarding_step: 10,
           updated_at: new Date().toISOString(),
         })
-        .eq('clerk_id', clerkUser.id);
+        .eq('clerk_id', clerkUser.id)
+        .select()
+        .single();
 
-      setProfile(prev => prev ? { ...prev, onboarding_completed: true, onboarding_step: 10 } : null);
+      if (error) {
+        if (__DEV__) console.warn('[Auth] completeOnboarding failed:', error.message);
+        // If the row is missing, attempt to recover by creating it with
+        // onboarding_completed=true so the user doesn't loop back.
+        if (error.code === 'PGRST116' && clerkUser) {
+          if (__DEV__) console.warn('[Auth] Profile missing on completeOnboarding — attempting recovery sync');
+          const recovered = await syncClerkUserToSupabase({
+            id: clerkUser.id,
+            firstName: clerkUser.firstName,
+            lastName: clerkUser.lastName,
+            emailAddresses: clerkUser.emailAddresses.map(e => ({ emailAddress: e.emailAddress })),
+            phoneNumbers: clerkUser.phoneNumbers.map(p => ({ phoneNumber: p.phoneNumber })),
+            imageUrl: clerkUser.imageUrl,
+          });
+          if (recovered) {
+            // Retry the update now that the row exists
+            const retry = await supabase
+              .from('profiles')
+              .update({ onboarding_completed: true, onboarding_step: 10, updated_at: new Date().toISOString() })
+              .eq('clerk_id', clerkUser.id)
+              .select()
+              .single();
+            if (retry.data) {
+              setProfile(retry.data as Profile);
+              return;
+            }
+          }
+        }
+        return;
+      }
+      if (data) {
+        setProfile(data as Profile);
+        await setCachedProfile(clerkUser.id, data as Profile);
+      } else {
+        setProfile(prev => prev ? { ...prev, onboarding_completed: true, onboarding_step: 10 } : null);
+      }
     } catch (error) {
       if (__DEV__) console.warn('Error completing onboarding:', error);
     }

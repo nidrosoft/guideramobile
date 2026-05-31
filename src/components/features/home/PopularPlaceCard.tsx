@@ -10,6 +10,7 @@ import { Star1, People } from 'iconsax-react-native';
 interface PopularPlaceCardProps {
   name: string;
   country: string;
+  city?: string;
   visitors: string;
   rating: number;
   imageUrl: string;
@@ -18,6 +19,7 @@ interface PopularPlaceCardProps {
 export default function PopularPlaceCard({ 
   name, 
   country, 
+  city,
   visitors, 
   rating, 
   imageUrl,
@@ -27,7 +29,7 @@ export default function PopularPlaceCard({
   return (
     <View style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
       <View style={styles.imageContainer}>
-        <CachedImage uri={imageUrl} style={styles.image} />
+        <CachedImage uri={imageUrl} fallbackCityName={city || name} style={styles.image} />
         
         {/* Rating Badge */}
         <View style={[styles.ratingBadge, { backgroundColor: colors.bgOverlay }]}>

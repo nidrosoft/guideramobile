@@ -42,7 +42,7 @@ export default function FamilyFriendlyCard({
     <View style={styles.container}>
       <View style={[styles.card, { height: Math.min(480, screenHeight * 0.6), borderColor: colors.borderSubtle }]}>
         {/* Background Image */}
-        <CachedImage uri={imageUrl} style={styles.backgroundImage} />
+        <CachedImage uri={imageUrl} fallbackCityName={location || name} style={styles.backgroundImage} />
         
         {/* Top Section */}
         <View style={styles.topSection}>

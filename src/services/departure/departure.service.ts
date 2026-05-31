@@ -52,6 +52,11 @@ export interface DepartureAdvisory {
     delay?: number;
     gate?: string;
     terminal?: string;
+    aircraft?: string;
+    durationMinutes?: number;
+    arrivalTerminal?: string;
+    baggageBelt?: string;
+    scheduledDeparture?: string;
   };
   confidence: 'high' | 'medium' | 'low';
 }
@@ -343,9 +348,11 @@ class DepartureAdvisorService {
    * Format minutes into human-readable duration
    */
   formatDuration(minutes: number): string {
-    if (minutes < 60) return `${minutes} min`;
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
+    if (!Number.isFinite(minutes) || minutes <= 0) return '0 min';
+    const rounded = Math.round(minutes);
+    if (rounded < 60) return `${rounded} min`;
+    const h = Math.floor(rounded / 60);
+    const m = rounded % 60;
     return m > 0 ? `${h}h ${m}m` : `${h}h`;
   }
 
@@ -354,6 +361,7 @@ class DepartureAdvisorService {
    */
   formatTime(isoString: string): string {
     const date = new Date(isoString);
+    if (isNaN(date.getTime())) return '--:--';
     return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
@@ -366,6 +374,7 @@ class DepartureAdvisorService {
    */
   getTimeUntilLeave(leaveByTime: string): { text: string; urgent: boolean } {
     const leaveBy = new Date(leaveByTime);
+    if (isNaN(leaveBy.getTime())) return { text: '', urgent: false };
     const now = new Date();
     const diffMs = leaveBy.getTime() - now.getTime();
 
@@ -384,6 +393,28 @@ class DepartureAdvisorService {
       text: `Leave in ${hours}h ${mins}m`,
       urgent: false,
     };
+  }
+
+  /**
+   * Persist the user's last-known device location to their profile so the
+   * server-side departure monitor can compute traffic-aware leave-by times
+   * even when the app isn't open.
+   */
+  async persistLastKnownLocation(latitude: number, longitude: number): Promise<void> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase
+        .from('profiles')
+        .update({
+          last_location_lat: latitude,
+          last_location_lng: longitude,
+          last_location_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+    } catch (err) {
+      if (__DEV__) console.warn('persistLastKnownLocation failed:', err);
+    }
   }
 }
 

@@ -12,6 +12,7 @@ import {
   GroupFilters,
   GroupRole,
 } from './types/community.types';
+import { consumeConnectWriteRateLimit } from './connectRateLimit.service';
 
 class GroupService {
   /**
@@ -31,6 +32,8 @@ class GroupService {
    * Create a new group
    */
   async createGroup(userId: string, data: CreateGroupInput): Promise<Group> {
+    await consumeConnectWriteRateLimit(userId, 'connect_group_write');
+
     const slug = this.generateSlug(data.name);
 
     const { data: group, error } = await supabase
@@ -83,6 +86,7 @@ class GroupService {
     coverPhotoUrl?: string;
     groupPhotoUrl?: string;
   }): Promise<Group> {
+    await consumeConnectWriteRateLimit(userId, 'connect_group_write');
     await this.verifyAdmin(groupId, userId);
 
     const dbUpdates: Record<string, any> = { updated_at: new Date().toISOString() };
@@ -134,6 +138,8 @@ class GroupService {
    * Join a group
    */
   async joinGroup(userId: string, groupId: string, message?: string): Promise<{ status: 'joined' | 'pending' }> {
+    await consumeConnectWriteRateLimit(userId, 'connect_group_write');
+
     const group = await this.getGroup(groupId);
     if (!group) throw new Error('Group not found');
 
@@ -195,6 +201,8 @@ class GroupService {
    * Leave a group
    */
   async leaveGroup(userId: string, groupId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(userId, 'connect_group_write');
+
     const { data: member } = await supabase
       .from('group_members')
       .select('role')
@@ -255,6 +263,8 @@ class GroupService {
    * Approve join request
    */
   async approveRequest(adminId: string, requestId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(adminId, 'connect_group_write');
+
     const { data: request, error } = await supabase
       .from('group_join_requests')
       .select('*')
@@ -288,6 +298,8 @@ class GroupService {
    * Reject join request
    */
   async rejectRequest(adminId: string, requestId: string, reason?: string): Promise<void> {
+    await consumeConnectWriteRateLimit(adminId, 'connect_group_write');
+
     const { data: request, error } = await supabase
       .from('group_join_requests')
       .select('*')
@@ -356,6 +368,8 @@ class GroupService {
     }
 
     const { data, error } = await query
+      .order('is_official', { ascending: false })
+      .order('seed_rank', { ascending: false })
       .order('member_count', { ascending: false })
       .range(filters.offset || 0, (filters.offset || 0) + (filters.limit || 20) - 1);
 
@@ -406,6 +420,7 @@ class GroupService {
    * Update member role
    */
   async updateMemberRole(adminId: string, groupId: string, memberId: string, newRole: GroupRole): Promise<void> {
+    await consumeConnectWriteRateLimit(adminId, 'connect_group_write');
     await this.verifyAdmin(groupId, adminId);
 
     if (newRole === 'owner') {
@@ -423,6 +438,7 @@ class GroupService {
    * Remove member from group
    */
   async removeMember(adminId: string, groupId: string, memberId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(adminId, 'connect_group_write');
     await this.verifyAdmin(groupId, adminId);
 
     const { data: member } = await supabase
@@ -453,6 +469,8 @@ class GroupService {
    * Cancel a pending join request (for the requesting user).
    */
   async cancelJoinRequest(userId: string, groupId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(userId, 'connect_group_write');
+
     const { data: request } = await supabase
       .from('group_join_requests')
       .select('id')
@@ -543,23 +561,21 @@ class GroupService {
         alert_type_code: `group_${event}`,
         title,
         body,
-        context: { groupId, groupName, triggerUserId, triggerName, event },
+        context: {
+          groupId,
+          groupName,
+          triggerUserId,
+          triggerName,
+          event,
+          dedupeKey: `group:${event}:${groupId}:${triggerUserId}`,
+        },
         action_url: actionUrl,
-        status: 'delivered',
         channels_requested: ['push', 'in_app'],
+        priority: event === 'join_request' ? 5 : 4,
+        status: 'pending',
       }));
 
       await supabase.from('alerts').insert(alerts);
-
-      // Push via RPC
-      try {
-        await supabase.rpc('send_push_to_users', {
-          user_ids: recipientIds,
-          push_title: title,
-          push_body: body,
-          push_data: { actionUrl, groupId, event },
-        });
-      } catch { /* push is best-effort */ }
     } catch (err) {
       if (__DEV__) console.warn('notifyGroupEvent error:', err);
     }
@@ -596,6 +612,9 @@ class GroupService {
       activeMemberCount: data.active_member_count,
       postCount: data.post_count,
       isVerified: data.is_verified,
+      isOfficial: data.is_official,
+      origin: data.origin,
+      seedRank: data.seed_rank,
       verifiedAt: data.verified_at ? new Date(data.verified_at) : undefined,
       status: data.status,
       createdBy: data.created_by,

@@ -36,7 +36,7 @@ export default function BestDiscoverCard({
     <View style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
       {/* Image Container */}
       <View style={styles.imageContainer}>
-        <CachedImage uri={imageUrl} style={styles.image} />
+        <CachedImage uri={imageUrl} fallbackCityName={location || name} style={styles.image} />
         
         {/* Best For Badge */}
         <View style={styles.bestForBadge}>

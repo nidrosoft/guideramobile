@@ -97,6 +97,7 @@ export const TOPIC_CATEGORIES: TopicCategory[] = [
     id: 'planning',
     title: 'Planning & Experiences',
     modules: [
+      { id: 'whats_happening', label: "What's Happening", icon: ({ size, color }) => <Calendar size={size} color={color} variant="Bold" /> },
       { id: 'weather', label: 'Weather & Packing', icon: ({ size, color }) => <Sun1 size={size} color={color} variant="Bold" /> },
       { id: 'crowds', label: 'Crowds & Reservations', icon: ({ size, color }) => <Calendar size={size} color={color} variant="Bold" /> },
       { id: 'history', label: 'History & Festivals', icon: ({ size, color }) => <Calendar size={size} color={color} variant="Bold" /> },
@@ -112,7 +113,7 @@ export const TOPIC_CATEGORIES: TopicCategory[] = [
   },
 ];
 
-export const DEFAULT_TOPICS = ['safety', 'visa_entry', 'food', 'arrival', 'price_feel', 'customs'];
+export const DEFAULT_TOPICS = ['safety', 'visa_entry', 'food', 'arrival'];
 export const MAX_TOPICS = 10;
 
 // ─── Component ───────────────────────────────────────────
@@ -151,7 +152,7 @@ export default function WhatSection({
     <View style={styles.container}>
       <Text style={[styles.title, { color: tc.textPrimary }]}>{title}</Text>
       <Text style={[styles.subtitle, { color: tc.textSecondary }]}>
-        Select up to {MAX_TOPICS} topics ({selectionCount}/{MAX_TOPICS})
+        Select up to {MAX_TOPICS} topics ({selectionCount}/{MAX_TOPICS}). More topics take longer to load.
       </Text>
 
       {TOPIC_CATEGORIES.map((category) => (

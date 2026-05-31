@@ -7,10 +7,10 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
-import { Alert } from 'react-native';
 import { CommunityPrivacy, MembershipStatus } from '../types/community.types';
 import { groupService } from '@/services/community/group.service';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 
 interface MembershipState {
   status: MembershipStatus | 'none';
@@ -43,6 +43,7 @@ export function useCommunityMembership({
   isPremium = true,
 }: UseCommunityMembershipProps): UseCommunityMembershipReturn {
   const { profile } = useAuth();
+  const { showSuccess, showInfo, showError } = useToast();
   const userId = profile?.id;
 
   const [state, setState] = useState<MembershipState>({
@@ -65,81 +66,54 @@ export function useCommunityMembership({
       if (result.status === 'joined') {
         setState({ status: 'active', isLoading: false });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Joined!', 'You are now a member of this group.');
+        showSuccess('You are now a member of this group.');
       } else if (result.status === 'pending') {
         setState({ status: 'pending', isLoading: false });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert(
-          'Request Sent',
-          'Your request to join has been sent. You\'ll be notified when it\'s approved.'
-        );
+        showInfo('Your request to join has been sent. You\'ll be notified when it\'s approved.');
       }
     } catch (error: any) {
       setState(prev => ({ ...prev, isLoading: false }));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Error', error?.message || 'Failed to join group. Please try again.');
+      showError(error?.message || 'Failed to join group. Please try again.');
     }
-  }, [communityId, userId, state.isLoading]);
+  }, [communityId, showError, showInfo, showSuccess, userId, state.isLoading]);
   
   const leave = useCallback(async () => {
     if (state.isLoading || !userId) return;
-    
-    Alert.alert(
-      'Leave Group',
-      'Are you sure you want to leave this group?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Leave',
-          style: 'destructive',
-          onPress: async () => {
-            setState(prev => ({ ...prev, isLoading: true }));
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            
-            try {
-              await groupService.leaveGroup(userId, communityId);
-              setState({ status: 'none', isLoading: false });
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            } catch (error: any) {
-              setState(prev => ({ ...prev, isLoading: false }));
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-              Alert.alert('Error', error?.message || 'Failed to leave group. Please try again.');
-            }
-          },
-        },
-      ]
-    );
-  }, [communityId, userId, state.isLoading]);
+
+    setState(prev => ({ ...prev, isLoading: true }));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      await groupService.leaveGroup(userId, communityId);
+      setState({ status: 'none', isLoading: false });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showInfo('You left this group.');
+    } catch (error: any) {
+      setState(prev => ({ ...prev, isLoading: false }));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      showError(error?.message || 'Failed to leave group. Please try again.');
+    }
+  }, [communityId, showError, showInfo, userId, state.isLoading]);
   
   const cancelRequest = useCallback(async () => {
     if (state.isLoading || !userId) return;
-    
-    Alert.alert(
-      'Cancel Request',
-      'Are you sure you want to cancel your join request?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            setState(prev => ({ ...prev, isLoading: true }));
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            
-            try {
-              await groupService.cancelJoinRequest(userId, communityId);
-              setState({ status: 'none', isLoading: false });
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            } catch (error: any) {
-              setState(prev => ({ ...prev, isLoading: false }));
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-              Alert.alert('Error', error?.message || 'Failed to cancel request. Please try again.');
-            }
-          },
-        },
-      ]
-    );
-  }, [communityId, userId, state.isLoading]);
+
+    setState(prev => ({ ...prev, isLoading: true }));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      await groupService.cancelJoinRequest(userId, communityId);
+      setState({ status: 'none', isLoading: false });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showInfo('Join request canceled.');
+    } catch (error: any) {
+      setState(prev => ({ ...prev, isLoading: false }));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      showError(error?.message || 'Failed to cancel request. Please try again.');
+    }
+  }, [communityId, showError, showInfo, userId, state.isLoading]);
   
   const getButtonText = useCallback(() => {
     if (state.isLoading) return 'Loading...';
@@ -165,13 +139,13 @@ export function useCommunityMembership({
       case 'pending':
         return cancelRequest;
       case 'banned':
-        return () => Alert.alert('Banned', 'You have been banned from this group.');
+        return () => showError('You have been banned from this group.');
       case 'left':
       case 'none':
       default:
         return join;
     }
-  }, [state.status, join, leave, cancelRequest]);
+  }, [state.status, join, leave, cancelRequest, showError]);
   
   return {
     status: state.status,

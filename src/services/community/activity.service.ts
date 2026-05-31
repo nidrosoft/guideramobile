@@ -5,6 +5,7 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { consumeConnectWriteRateLimit } from './connectRateLimit.service';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
   Activity,
@@ -47,6 +48,8 @@ class ActivityService {
    * Create a new activity (meetup proposal)
    */
   async createActivity(userId: string, data: CreateActivityInput): Promise<Activity> {
+    await consumeConnectWriteRateLimit(userId, 'connect_activity_write');
+
     // C3: Creation cooldown — max 3 activities per hour per user
     const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
     const { count: recentCount } = await supabase
@@ -160,6 +163,8 @@ class ActivityService {
    * Update an activity (creator only)
    */
   async updateActivity(userId: string, activityId: string, updates: UpdateActivityInput): Promise<Activity> {
+    await consumeConnectWriteRateLimit(userId, 'connect_activity_write');
+
     const activity = await this.getActivity(activityId);
     if (!activity) throw new Error('Activity not found');
     if (activity.createdBy !== userId) throw new Error('Only creator can edit');
@@ -199,6 +204,8 @@ class ActivityService {
    * participant_count is auto-updated by DB trigger
    */
   async joinActivity(userId: string, activityId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(userId, 'connect_activity_write');
+
     const activity = await this.getActivity(activityId);
     if (!activity) throw new Error('Activity not found');
 
@@ -242,6 +249,8 @@ class ActivityService {
    * participant_count is auto-updated by DB trigger
    */
   async leaveActivity(userId: string, activityId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(userId, 'connect_activity_write');
+
     const activity = await this.getActivity(activityId);
     if (!activity) throw new Error('Activity not found');
 
@@ -265,6 +274,8 @@ class ActivityService {
    * Cancel an activity (creator only)
    */
   async cancelActivity(userId: string, activityId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(userId, 'connect_activity_write');
+
     const activity = await this.getActivity(activityId);
     if (!activity) throw new Error('Activity not found');
 
@@ -305,6 +316,8 @@ class ActivityService {
    * Invite user to activity
    */
   async inviteToActivity(activityId: string, inviterId: string, invitedUserId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(inviterId, 'connect_activity_write');
+
     await supabase.from('activity_invites').insert({
       activity_id: activityId,
       invited_by: inviterId,
@@ -444,6 +457,8 @@ class ActivityService {
   }
 
   async addComment(activityId: string, userId: string, content: string, parentCommentId?: string): Promise<ActivityComment> {
+    await consumeConnectWriteRateLimit(userId, 'connect_activity_write');
+
     // C1: Rate limit — max 5 comments per minute per user
     const oneMinAgo = new Date(Date.now() - 60000).toISOString();
     const { count } = await supabase
@@ -473,6 +488,8 @@ class ActivityService {
   }
 
   async deleteComment(commentId: string, userId: string): Promise<void> {
+    await consumeConnectWriteRateLimit(userId, 'connect_activity_write');
+
     const { error } = await supabase
       .from('activity_comments')
       .delete()
@@ -725,21 +742,15 @@ class ActivityService {
           triggerUserId,
           triggerName,
           event,
+          dedupeKey: `activity:${event}:${activityId}:${triggerUserId}`,
         },
         action_url: actionUrl,
-        status: 'delivered',
         channels_requested: ['push', 'in_app'],
+        priority: event === 'join' ? 5 : 4,
+        status: 'pending',
       }));
 
-      const { data: insertedAlerts } = await supabase.from('alerts').insert(alerts).select('id, user_id');
-
-      // Fire-and-forget: trigger push delivery for each recipient
-      if (insertedAlerts && insertedAlerts.length > 0) {
-        this.dispatchPushNotifications(insertedAlerts, title, body, actionUrl, {
-          activityId,
-          event,
-        }).catch(() => {});
-      }
+      await supabase.from('alerts').insert(alerts);
     } catch (err) {
       if (__DEV__) console.warn('notifyActivityEvent error:', err);
     }
@@ -791,46 +802,19 @@ class ActivityService {
         alert_type_code: 'activity_milestone',
         title,
         body,
-        context: { activityId, activityTitle, participantCount: newCount },
-        action_url: actionUrl,
-        status: 'delivered',
-        channels_requested: ['push', 'in_app'],
-      }).select('id, user_id');
-
-      if (inserted && inserted.length > 0) {
-        this.dispatchPushNotifications(inserted, title, body, actionUrl, {
+        context: {
           activityId,
-          event: 'milestone',
-        }).catch(() => {});
-      }
-    } catch (err) {
-      if (__DEV__) console.warn('checkMilestone error:', err);
-    }
-  }
-
-  /**
-   * Dispatch push notifications via SECURITY DEFINER RPC.
-   * The RPC reads device tokens server-side (bypasses client RLS restrictions).
-   */
-  private async dispatchPushNotifications(
-    alerts: { id: string; user_id: string }[],
-    title: string,
-    body: string,
-    actionUrl: string,
-    data: Record<string, unknown>
-  ): Promise<void> {
-    try {
-      const userIds = [...new Set(alerts.map(a => a.user_id))];
-      if (userIds.length === 0) return;
-
-      await supabase.rpc('send_push_to_users', {
-        user_ids: userIds,
-        push_title: title,
-        push_body: body,
-        push_data: { actionUrl, ...data },
+          activityTitle,
+          participantCount: newCount,
+          dedupeKey: `activity:milestone:${activityId}:${newCount}`,
+        },
+        action_url: actionUrl,
+        channels_requested: ['push', 'in_app'],
+        priority: 4,
+        status: 'pending',
       });
     } catch (err) {
-      if (__DEV__) console.warn('dispatchPushNotifications error:', err);
+      if (__DEV__) console.warn('checkMilestone error:', err);
     }
   }
 

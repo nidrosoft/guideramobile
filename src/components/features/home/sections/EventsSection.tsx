@@ -6,13 +6,16 @@
  * to fetch real events based on user location.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import StackedEventCards from '@/components/features/home/StackedEventCards';
 import type { EventCardData } from '@/components/features/home/StackedEventCards';
 import { useEvents } from '@/hooks/useEvents';
 import { eventsService, DiscoveredEvent } from '@/services/events.service';
 import { useAuth } from '@/context/AuthContext';
+import { useHomepageDataSafe } from '@/features/homepage';
+import notificationService, { NOTIFICATION_CATEGORIES } from '@/services/notifications/notificationService';
 
 const DEFAULT_CITY = '';
 const DEFAULT_COUNTRY = '';
@@ -112,10 +115,15 @@ function resolveMetroArea(city: string): string | undefined {
   return METRO_AREA_MAP[city];
 }
 
+const EVENTS_LAST_REFRESH_KEY = '@guidera_events_last_refresh';
+const REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
 export default function EventsSection() {
   const { profile } = useAuth();
   const [city, setCity] = useState(DEFAULT_CITY);
   const [country, setCountry] = useState(DEFAULT_COUNTRY);
+  const homepageCtx = useHomepageDataSafe();
+  const refreshKey = homepageCtx?.refreshKey ?? 0;
 
   // Use profile location as primary, GPS as fallback only if profile has no city
   useEffect(() => {
@@ -148,11 +156,63 @@ export default function EventsSection() {
   const metroArea = resolveMetroArea(city);
   const hasCity = city.length > 0;
 
-  const { events: discoveredEvents, loading } = useEvents({
+  const { events: discoveredEvents, loading, refresh, nextEvent } = useEvents({
     city: metroArea || city || 'New York',
     country: country || 'United States',
     enabled: hasCity,
+    refreshKey,
   });
+
+  // Weekly auto-refresh: if 7+ days since last refresh, force a fresh fetch
+  const weeklyRefreshDone = useRef(false);
+  useEffect(() => {
+    if (!hasCity || weeklyRefreshDone.current) return;
+    (async () => {
+      try {
+        const lastRefresh = await AsyncStorage.getItem(EVENTS_LAST_REFRESH_KEY);
+        const now = Date.now();
+        if (!lastRefresh || now - parseInt(lastRefresh, 10) > REFRESH_INTERVAL_MS) {
+          weeklyRefreshDone.current = true;
+          await refresh();
+          await AsyncStorage.setItem(EVENTS_LAST_REFRESH_KEY, String(now));
+        }
+      } catch { /* non-fatal */ }
+    })();
+  }, [hasCity, refresh]);
+
+  // Schedule a local notification for the next upcoming event
+  useEffect(() => {
+    if (!nextEvent || !nextEvent.date_start) return;
+    const eventDate = new Date(nextEvent.date_start + 'T09:00:00');
+    const now = new Date();
+    // Only schedule if the event is in the future (at least 1 hour away)
+    if (eventDate.getTime() - now.getTime() < 3600000) return;
+    // Schedule notification for the morning of the event day
+    notificationService.scheduleLocalNotification(
+      {
+        type: NOTIFICATION_CATEGORIES.TRIP,
+        title: `Upcoming Event: ${nextEvent.event_name}`,
+        body: `${nextEvent.venue ? nextEvent.venue + ' • ' : ''}${eventsService.formatEventDate(nextEvent.date_start)}${nextEvent.is_free ? ' • Free!' : ''}`,
+        data: { eventId: nextEvent.id },
+        deepLink: `/events/${nextEvent.id}`,
+      },
+      { type: 'date', date: eventDate } as any,
+    ).catch(() => { /* non-fatal */ });
+  }, [nextEvent?.id]);
+
+  // Background image repair: if any events have missing images, trigger repair and re-fetch
+  const repairTriggered = useRef(false);
+  useEffect(() => {
+    if (repairTriggered.current || loading || discoveredEvents.length === 0) return;
+    const missing = discoveredEvents.filter(e => !e.image_url || e.image_url.trim().length === 0);
+    if (missing.length === 0) return;
+
+    repairTriggered.current = true;
+    eventsService.repairMissingImages(discoveredEvents).then(() => {
+      // Re-fetch events after repair to pick up new image URLs
+      refresh();
+    }).catch(() => { /* non-fatal */ });
+  }, [discoveredEvents, loading, refresh]);
 
   const eventCards: EventCardData[] = useMemo(() => {
     return discoveredEvents.map((e: DiscoveredEvent) => ({
@@ -162,8 +222,8 @@ export default function EventsSection() {
       venue: e.venue || '',
       city: e.city,
       date: eventsService.formatEventDate(e.date_start),
-      time: e.time_info || 'See details',
-      ticketPrice: e.ticket_price || (e.is_free ? 'Free' : 'See details'),
+      time: e.time_info || '',
+      ticketPrice: e.ticket_price || (e.is_free ? 'Free' : ''),
       attendees: e.estimated_attendees || '',
       rating: e.rating,
       image: e.image_url || '',

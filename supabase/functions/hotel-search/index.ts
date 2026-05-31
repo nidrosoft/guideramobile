@@ -13,6 +13,7 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { getUserIdFromRequest, unauthorizedResponse } from '../_shared/auth.ts';
 
 // Types
 interface HotelSearchRequest {
@@ -368,6 +369,21 @@ serve(async (req: Request) => {
 
   try {
     const request: HotelSearchRequest = await req.json();
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization') || '';
+    const isServiceRoleCall =
+      authHeader.startsWith('Bearer ') &&
+      authHeader.replace('Bearer ', '') === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const userId = await getUserIdFromRequest(
+      req,
+      request as unknown as Record<string, any>,
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_ANON_PUBLIC_KEY') || ''
+    ).catch(() => null);
+
+    if (!userId && !isServiceRoleCall) {
+      return unauthorizedResponse(corsHeaders);
+    }
     
     // Validate request
     if (!request.destination || !request.checkInDate || !request.checkOutDate) {

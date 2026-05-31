@@ -23,6 +23,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useSaveDestination } from '@/hooks/useSaveDestination';
 import * as Haptics from 'expo-haptics';
 import { SearchOverlay } from '@/components/features/search';
+import { useSearchOverlayStore } from '@/stores/useSearchOverlayStore';
 import AIChatSheet from '@/components/features/ai/AIChatSheet';
 import { useAuth } from '@/context/AuthContext';
 
@@ -75,6 +76,7 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
   // Search overlay + AI chat states
   const [showSearchOverlay, setShowSearchOverlay] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
+  const searchResetNonce = useSearchOverlayStore((s) => s.resetNonce);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event: any) => {
@@ -166,7 +168,7 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
       >
         {/* Image Gallery - Parallax effect */}
         <Animated.View style={[styles.imageContainer, imageAnimatedStyle]}>
-          <ImageGallery images={data.images} />
+          <ImageGallery images={data.images} fallbackCityName={data.location || data.name} />
         </Animated.View>
 
         {/* Content Card with Rounded Top - Fixed 32px corners */}
@@ -273,6 +275,7 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
 
       {/* Search Overlay — pre-filled with destination */}
       <SearchOverlay
+        key={searchResetNonce}
         visible={showSearchOverlay}
         query={data.name}
         onSelectSearch={handleSelectSearch}

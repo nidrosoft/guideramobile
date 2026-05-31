@@ -12,9 +12,16 @@
  * - This service is primarily used for ticket scanning (OCR)
  */
 
-import { supabase } from '@/lib/supabase/client';
+import { getAuthenticatedEdgeFunctionHeaders, supabase } from '@/lib/supabase/client';
 import { invokeEdgeFn } from '@/utils/retry';
 import { fetchDestinationCoverImage } from '@/utils/destinationImage';
+import { AI_IMAGE_PAYLOAD_MAX_BYTES, assertAiBase64WithinLimit } from '@/utils/aiPayloadLimits';
+import {
+  buildTripUpdateForScannedBooking,
+  findBestScannedTripMatch,
+  getScannedBookingCategory,
+  type ScannedTripCandidate,
+} from './scannedBookingMerge';
 
 // ============================================
 // TYPES
@@ -129,7 +136,14 @@ class TripImportEngineService {
    * Call the edge function with userId included in every request
    */
   private async callEngine(action: string, params: Record<string, any> = {}): Promise<any> {
-    const { data, error } = await invokeEdgeFn(supabase, this.EDGE_FUNCTION, { action, userId: this._userId, ...params }, 'slow');
+    const headers = await getAuthenticatedEdgeFunctionHeaders();
+    const { data, error } = await invokeEdgeFn(
+      supabase,
+      this.EDGE_FUNCTION,
+      { action, userId: this._userId, ...params },
+      'slow',
+      { headers }
+    );
 
     if (error) {
       throw new Error(error.message || `Import engine error: ${action}`);
@@ -321,9 +335,50 @@ class TripImportEngineService {
     confidence?: number;
     error?: string;
   }> {
-    const { data, error } = await invokeEdgeFn(supabase, 'scan-ticket', { imageBase64, mediaType, userId }, 'slow');
+    assertAiBase64WithinLimit(imageBase64, {
+      label: 'Ticket image',
+      maxBytes: AI_IMAGE_PAYLOAD_MAX_BYTES,
+    });
+    const headers = await getAuthenticatedEdgeFunctionHeaders();
+    const { data, error } = await invokeEdgeFn(
+      supabase,
+      'scan-ticket',
+      { imageBase64, mediaType, userId },
+      'none',
+      { headers }
+    );
 
-    if (error) throw new Error(error.message || 'Scan failed');
+    if (error) {
+      const body = (error as any).body;
+      if ((error as any).status === 429 || body?.error === 'rate_limited') {
+        throw new Error(
+          body?.resetAt
+            ? `Our scanner is doing little stretches from all the action. Give it a breather and try again after ${new Date(body.resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`
+            : "Our scanner is catching its breath from all the action. Please wait a bit and try again."
+        );
+      }
+
+      if ((error as any).status === 413 || body?.error?.includes?.('byte limit')) {
+        throw new Error('Ticket image is too large. Please capture or choose a file under 15 MB.');
+      }
+
+      if ((error as any).status === 401 || body?.error === 'Unauthorized') {
+        throw new Error('Please sign in again, then try scanning your ticket.');
+      }
+
+      const message = error.message || '';
+      if (
+        message.includes('invalid_image_format') ||
+        message.includes('unsupported image') ||
+        message.includes('Could not process image')
+      ) {
+        throw new Error(
+          'That image came through in a format the scanner could not read. Please try again with a screenshot or a fresh photo.'
+        );
+      }
+
+      throw new Error(error.message || 'Scan failed');
+    }
     return data;
   }
 
@@ -334,6 +389,78 @@ class TripImportEngineService {
     booking: NormalizedBooking,
     userId: string,
   ): Promise<{ tripId: string; title: string }> {
+    const { data: candidateTrips } = await supabase
+      .from('trips')
+      .select('*')
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .limit(75);
+    const matchedTrip = findBestScannedTripMatch(
+      booking,
+      (candidateTrips || []) as ScannedTripCandidate[]
+    );
+
+    if (matchedTrip) {
+      const category = getScannedBookingCategory(booking.category);
+      let duplicate = false;
+
+      if (booking.confirmationNumber) {
+        const { data: existingBooking } = await supabase
+          .from('trip_bookings')
+          .select('id')
+          .eq('trip_id', matchedTrip.id)
+          .eq('category', booking.category)
+          .eq('booking_reference', booking.confirmationNumber)
+          .maybeSingle();
+        duplicate = Boolean(existingBooking?.id);
+      }
+
+      if (!duplicate) {
+        const updatePayload = buildTripUpdateForScannedBooking(matchedTrip, booking);
+        const existingTripFields = matchedTrip as any;
+        if (category === 'flight') {
+          if (booking.details?.airline && !existingTripFields.airline_name) {
+            updatePayload.airline_name = booking.details.airline;
+          }
+          if (booking.details?.cabin && !existingTripFields.cabin_class) {
+            updatePayload.cabin_class = booking.details.cabin;
+          }
+          if (booking.details?.route && !existingTripFields.route) {
+            updatePayload.route = booking.details.route;
+          }
+          if (booking.details?.flightNumber && !existingTripFields.flight_number) {
+            updatePayload.flight_number = booking.details.flightNumber;
+          }
+          if (booking.details?.seatNumber && !existingTripFields.seat_number) {
+            updatePayload.seat_number = booking.details.seatNumber;
+          }
+        }
+
+        const { error: updateError } = await supabase
+          .from('trips')
+          .update(updatePayload)
+          .eq('id', matchedTrip.id);
+
+        if (updateError) throw new Error(`Failed to update trip: ${updateError.message}`);
+
+        await supabase.from('trip_bookings').insert({
+          trip_id: matchedTrip.id,
+          booking_id: matchedTrip.id,
+          category: booking.category,
+          booking_reference: booking.confirmationNumber,
+          summary_title: booking.title,
+          summary_subtitle: booking.providerName || '',
+          summary_datetime: booking.startDate,
+          summary_price: booking.pricing?.total,
+          summary_status: 'confirmed',
+          source: 'import_scan',
+          added_by: userId,
+        });
+      }
+
+      return { tripId: matchedTrip.id, title: matchedTrip.title || booking.title };
+    }
+
     const destination = booking.endLocation?.name || booking.startLocation?.name || 'Trip';
     const startDate = booking.startDate?.split('T')[0] || new Date().toISOString().split('T')[0];
     const endDate = booking.endDate?.split('T')[0] || startDate;
@@ -342,7 +469,9 @@ class TripImportEngineService {
 
     // Get destination cover image — Google Places API with multi-strategy retry
     const destCity = (booking.endLocation?.city || booking.endLocation?.name || destination || '').trim();
-    const coverImageUrl = await fetchDestinationCoverImage(destCity);
+    const coverImageUrl = await fetchDestinationCoverImage(destCity, {
+      countryName: booking.endLocation?.country || '',
+    });
 
     // Build insert data with category-specific flags
     const tripData: Record<string, any> = {
@@ -380,6 +509,11 @@ class TripImportEngineService {
     if (booking.details?.route) tripData.route = booking.details.route;
     if (booking.details?.flightNumber) tripData.flight_number = booking.details.flightNumber;
     if (booking.details?.seatNumber) tripData.seat_number = booking.details.seatNumber;
+    // Persist the full departure datetime (ISO) when the scan included a time,
+    // so the departure monitor can compute an accurate "leave by".
+    if (cat === 'flight' && typeof booking.startDate === 'string' && booking.startDate.includes('T')) {
+      tripData.departure_time = booking.startDate;
+    }
 
     const { data: trip, error: tripError } = await supabase
       .from('trips')

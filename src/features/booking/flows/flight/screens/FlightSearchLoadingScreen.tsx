@@ -55,6 +55,7 @@ export default function FlightSearchLoadingScreen({
   const [messageIndex, setMessageIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const hasCompletedRef = useRef(false);
+  const hasStartedLoadingRef = useRef(false);
   
   // Get search params from store
   const { searchParams } = useFlightStore();
@@ -153,6 +154,7 @@ export default function FlightSearchLoadingScreen({
     setLoading(searchState.isLoading);
     
     if (searchState.isLoading) {
+      hasStartedLoadingRef.current = true;
       // Slowly increment progress while loading (max 90%)
       progressInterval = setInterval(() => {
         setProgress((prev) => {
@@ -180,12 +182,37 @@ export default function FlightSearchLoadingScreen({
       setTimeout(() => {
         onComplete();
       }, 500);
+    } else if (hasStartedLoadingRef.current && !hasCompletedRef.current) {
+      // Search finished with no results and no error — save the empty result
+      // set and transition so the results screen can show an empty state
+      // instead of the loading screen hanging forever.
+      setResults([], 0, searchState.source || 'live');
+      setProgress(100);
+      hasCompletedRef.current = true;
+      
+      setTimeout(() => {
+        onComplete();
+      }, 500);
     }
     
     return () => {
       if (progressInterval) clearInterval(progressInterval);
     };
-  }, [searchState.isLoading, searchState.results.length, searchState.error, onComplete, setLoading, setResults, setError]);
+  }, [searchState.isLoading, searchState.results.length, searchState.error, searchState.source, onComplete, setLoading, setResults, setError]);
+
+  // Safety net: never let the loading screen hang indefinitely (e.g. if a
+  // provider request never resolves). Force completion after a max timeout.
+  useEffect(() => {
+    const fallbackTimer = setTimeout(() => {
+      if (!hasCompletedRef.current) {
+        hasCompletedRef.current = true;
+        setProgress(100);
+        onComplete();
+      }
+    }, 20000);
+
+    return () => clearTimeout(fallbackTimer);
+  }, [onComplete]);
   
   // Rotate through loading messages
   useEffect(() => {

@@ -24,6 +24,7 @@ import {
   DollarCircle,
   Star1,
   TickCircle,
+  SearchNormal1,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing } from '@/styles';
@@ -369,10 +370,27 @@ export default function HotelResultsScreen({
         renderItem={renderHotelCard}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[
-          styles.listContent,
+          hotelList.length === 0 ? { flexGrow: 1 } : styles.listContent,
           { paddingBottom: insets.bottom + spacing.lg },
         ]}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl, paddingTop: spacing.xl * 2 }}>
+            <SearchNormal1 size={56} color={tc.textSecondary} variant="Bold" />
+            <Text style={{ fontSize: 18, fontWeight: '700', color: tc.textPrimary, marginTop: spacing.lg, textAlign: 'center' }}>
+              No hotels found
+            </Text>
+            <Text style={{ fontSize: 14, color: tc.textSecondary, marginTop: spacing.sm, textAlign: 'center', lineHeight: 20 }}>
+              We couldn't find any available hotels for these dates right now. Try different dates or another destination.
+            </Text>
+            <TouchableOpacity
+              onPress={onBack}
+              style={{ marginTop: spacing.xl, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: 12, backgroundColor: tc.primary }}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 15 }}>Modify search</Text>
+            </TouchableOpacity>
+          </View>
+        }
       />
     </View>
   );

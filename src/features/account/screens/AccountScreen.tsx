@@ -34,11 +34,29 @@ import ProfileHeader from '../components/ProfileHeader';
 import AccountSection from '../components/AccountSection';
 import { useAuth } from '@/context/AuthContext';
 import { profileService } from '@/services/profile.service';
-import { savedService } from '@/services/saved.service';
-import { partnerService } from '@/services/community/partner.service';
 
 // Scroll threshold for header transition (when stats card reaches top)
 const SCROLL_THRESHOLD = 220;
+
+function derivePartnerStatus(summaryPartner?: {
+  status: string;
+  didit_verification_status: string | null;
+} | null): string | null {
+  if (!summaryPartner) return null;
+  if (summaryPartner.didit_verification_status === 'approved' || summaryPartner.status === 'approved') {
+    return 'verified';
+  }
+  if (
+    ['submitted', 'under_review', 'identity_verification'].includes(summaryPartner.status) ||
+    summaryPartner.didit_verification_status === 'in_progress'
+  ) {
+    return 'pending';
+  }
+  if (summaryPartner.status === 'rejected' || summaryPartner.didit_verification_status === 'declined') {
+    return 'rejected';
+  }
+  return null;
+}
 
 // Default user data for when profile is loading
 const DEFAULT_USER: UserProfile = {
@@ -90,31 +108,19 @@ export default function AccountScreen() {
     },
   }), [colors]);
 
-  // Fetch saved items count and partner status
-  useEffect(() => {
-    const fetchSavedCount = async () => {
-      if (!profile?.id) return;
-      const { total } = await savedService.getSavedItemsCount(profile.id);
-      setSavedItemsCount(total);
-    };
-    const fetchPartnerStatus = async () => {
-      if (!profile?.id) return;
-      try {
-        const data = await partnerService.getApplicationStatus(profile.id);
-        if (data) {
-          if (data.didit_verification_status === 'approved' || data.status === 'approved') {
-            setPartnerStatus('verified');
-          } else if (['submitted', 'under_review', 'identity_verification'].includes(data.status) || data.didit_verification_status === 'in_progress') {
-            setPartnerStatus('pending');
-          } else if (data.status === 'rejected' || data.didit_verification_status === 'declined') {
-            setPartnerStatus('rejected');
-          }
-        }
-      } catch (e) { /* no partner app */ }
-    };
-    fetchSavedCount();
-    fetchPartnerStatus();
+  const loadAccountSummary = useCallback(async (forceRefresh = false) => {
+    if (!profile?.id) return;
+    const summary = await profileService.getAccountSummary(profile.id, { forceRefresh });
+    if (!summary) return;
+
+    setSavedItemsCount(summary.savedItems.total);
+    setPartnerStatus(derivePartnerStatus(summary.partner));
   }, [profile?.id]);
+
+  // Fetch account metadata with one short-TTL RPC instead of multiple account-screen queries.
+  useEffect(() => {
+    loadAccountSummary();
+  }, [loadAccountSummary]);
   
   // Transform Supabase profile to UserProfile type
   const user: UserProfile = useMemo(() => {
@@ -210,12 +216,13 @@ export default function AccountScreen() {
     setRefreshing(true);
     try {
       await refreshProfile();
+      await loadAccountSummary(true);
     } catch (error) {
       console.error('Error refreshing profile:', error);
     } finally {
       setRefreshing(false);
     }
-  }, [refreshProfile]);
+  }, [refreshProfile, loadAccountSummary]);
   
   // Handle edit profile
   const handleEditProfile = useCallback(() => {

@@ -49,9 +49,7 @@ export async function trackDealClick(
   }
 }
 
-export async function confirmBooking(
-  clickId: string
-): Promise<{ error: Error | null }> {
+export async function confirmBooking(clickId: string): Promise<{ error: Error | null }> {
   try {
     const { error } = await supabase
       .from('deal_clicks')
@@ -123,14 +121,9 @@ export async function saveDeal(
   }
 }
 
-export async function unsaveDeal(
-  dealId: string
-): Promise<{ error: Error | null }> {
+export async function unsaveDeal(dealId: string): Promise<{ error: Error | null }> {
   try {
-    const { error } = await supabase
-      .from('saved_deals')
-      .delete()
-      .eq('id', dealId);
+    const { error } = await supabase.from('saved_deals').delete().eq('id', dealId);
 
     if (error) return { error: error as unknown as Error };
     return { error: null };
@@ -163,10 +156,7 @@ export async function getSavedDeals(
   }
 }
 
-export async function isDealSaved(
-  userId: string,
-  routeKey: string
-): Promise<boolean> {
+export async function isDealSaved(userId: string, routeKey: string): Promise<boolean> {
   try {
     const { data } = await supabase
       .from('saved_deals')
@@ -279,7 +269,8 @@ export async function getPersonalizedDeals(
           }));
         }
       } catch (err) {
-        if (__DEV__) console.warn('GIL: user_deal_matches query failed, falling back to deal_cache:', err);
+        if (__DEV__)
+          console.warn('GIL: user_deal_matches query failed, falling back to deal_cache:', err);
       }
     }
 
@@ -314,16 +305,16 @@ export async function getPersonalizedDeals(
             price_amount: Number(d.price_amount) || 0,
             price_currency: d.price_currency || 'USD',
             original_price: snapshot.originalPrice ? Number(snapshot.originalPrice) : null,
-            discount_percent: snapshot.originalPrice && d.price_amount
-              ? Math.round((1 - Number(d.price_amount) / Number(snapshot.originalPrice)) * 100)
-              : null,
+            discount_percent:
+              snapshot.originalPrice && d.price_amount
+                ? Math.round((1 - Number(d.price_amount) / Number(snapshot.originalPrice)) * 100)
+                : null,
             deal_badges: d.deal_badges || [],
             booking_url: snapshot.bookingUrl || snapshot.link || snapshot.productUrl || null,
             provider: d.provider,
             relevance_score: Number(d.deal_score || 50) / 100,
-            match_reasons: (d.deal_badges || []).length > 0
-              ? [(d.deal_badges[0] || '').replace(/_/g, ' ')]
-              : [],
+            match_reasons:
+              (d.deal_badges || []).length > 0 ? [(d.deal_badges[0] || '').replace(/_/g, ' ')] : [],
             deal_cache_id: d.id,
             expires_at: d.expires_at,
             source: 'hot_deals' as const,
@@ -332,36 +323,10 @@ export async function getPersonalizedDeals(
       }
     }
 
-    // 3. If still empty, trigger a background scan and return empty
-    //    The next refresh will have data after the scan completes
-    if (results.length === 0 && userId) {
-      triggerBackgroundScan(userId).catch(() => {});
-    }
-
     return { data: results, error: null };
   } catch (error) {
     if (__DEV__) console.warn('GIL: getPersonalizedDeals failed:', error);
     return { data: [], error: error as Error };
-  }
-}
-
-/**
- * Trigger a background deal scan for a user (fire-and-forget).
- * Called when the deal feed is empty to populate initial data.
- */
-async function triggerBackgroundScan(userId: string): Promise<void> {
-  try {
-    // First ensure the user has a Travel DNA computed
-    await supabase.functions.invoke('compute-travel-dna', {
-      body: { user_id: userId },
-    });
-
-    // Then trigger an explore scan
-    await supabase.functions.invoke('deal-scanner', {
-      body: { scan_type: 'explore', batch_size: 5 },
-    });
-  } catch (err) {
-    if (__DEV__) console.warn('Background scan trigger failed:', err);
   }
 }
 

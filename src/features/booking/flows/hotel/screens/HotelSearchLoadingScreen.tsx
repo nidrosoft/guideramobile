@@ -80,6 +80,7 @@ export default function HotelSearchLoadingScreen({
   const [searchState, { search }] = useHotelSearch();
   const searchInitiated = useRef(false);
   const hasCompletedRef = useRef(false);
+  const hasStartedLoadingRef = useRef(false);
   
   // Animation values
   const iconScale = useSharedValue(1);
@@ -156,6 +157,7 @@ export default function HotelSearchLoadingScreen({
     let progressInterval: ReturnType<typeof setInterval> | undefined;
     
     if (searchState.isLoading) {
+      hasStartedLoadingRef.current = true;
       // Slowly increment progress while loading (max 90%)
       progressInterval = setInterval(() => {
         setProgress((prev) => {
@@ -241,12 +243,36 @@ export default function HotelSearchLoadingScreen({
       setTimeout(() => {
         onComplete();
       }, 500);
+    } else if (hasStartedLoadingRef.current && !hasCompletedRef.current) {
+      // Search finished with no results and no error — navigate to the
+      // results screen so it can show an empty state instead of hanging.
+      setSearchResults([]);
+      setProgress(100);
+      hasCompletedRef.current = true;
+      
+      setTimeout(() => {
+        onComplete();
+      }, 500);
     }
     
     return () => {
       if (progressInterval) clearInterval(progressInterval);
     };
   }, [searchState.isLoading, searchState.results.length, searchState.error, onComplete, setSearchResults, setSearchError]);
+
+  // Safety net: never let the loading screen hang indefinitely (e.g. if a
+  // provider request never resolves). Force completion after a max timeout.
+  useEffect(() => {
+    const fallbackTimer = setTimeout(() => {
+      if (!hasCompletedRef.current) {
+        hasCompletedRef.current = true;
+        setProgress(100);
+        onComplete();
+      }
+    }, 20000);
+
+    return () => clearTimeout(fallbackTimer);
+  }, [onComplete]);
   
   // Rotate through loading messages
   useEffect(() => {

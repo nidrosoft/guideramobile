@@ -31,7 +31,7 @@ import {
   TimePreference,
 } from '@/services/preferences.service';
 
-const MAX_TRIP_STYLES = 4;
+const MAX_TRIP_STYLES = 6;
 
 export default function TravelStylePreferencesScreen() {
   const router = useRouter();
@@ -47,6 +47,7 @@ export default function TravelStylePreferencesScreen() {
   const [tripStyles, setTripStyles] = useState<TripStyle[]>([]);
   const [pace, setPace] = useState<TripPace>('moderate');
   const [timePreference, setTimePreference] = useState<TimePreference>('flexible');
+  const [capHit, setCapHit] = useState(false);
 
   const fetchPreferences = useCallback(async () => {
     if (!profile?.id) return;
@@ -99,14 +100,22 @@ export default function TravelStylePreferencesScreen() {
   };
 
   const toggleTripStyle = (style: TripStyle) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setTripStyles(prev => {
       if (prev.includes(style)) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setCapHit(false);
         return prev.filter(s => s !== style);
       }
       if (prev.length >= MAX_TRIP_STYLES) {
+        // Surface the cap instead of silently rejecting the tap.
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        setCapHit(true);
+        // Auto-clear the warning after a short delay.
+        setTimeout(() => setCapHit(false), 2200);
         return prev;
       }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setCapHit(false);
       return [...prev, style];
     });
   };
@@ -190,7 +199,14 @@ export default function TravelStylePreferencesScreen() {
         {/* Trip Styles */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>What's your travel vibe?</Text>
-          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>Select up to {MAX_TRIP_STYLES} styles</Text>
+          <Text style={[styles.sectionSubtitle, { color: tc.textSecondary }]}>
+            Select up to {MAX_TRIP_STYLES} styles · {tripStyles.length}/{MAX_TRIP_STYLES} selected
+          </Text>
+          {capHit ? (
+            <Text style={[styles.capWarning, { color: tc.warning ?? tc.primary }]}>
+              You've reached the limit. Deselect a style to pick another.
+            </Text>
+          ) : null}
           <View style={styles.stylesGrid}>
             {PREFERENCE_OPTIONS.tripStyles.map(style => (
               <TouchableOpacity
@@ -401,6 +417,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+  },
+  capWarning: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    marginBottom: spacing.sm,
   },
   styleCard: {
     width: '31%',

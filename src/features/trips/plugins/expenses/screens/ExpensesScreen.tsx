@@ -242,7 +242,7 @@ export default function ExpensesScreen() {
     setSummaryLoading(true);
     setSummaryError(null);
     try {
-      const result = await expenseSummaryService.getSummary(tripId, forceRefresh);
+      const result = await expenseSummaryService.getSummary(tripId, forceRefresh, profile?.id);
       if (result.summary) {
         setSummary(result.summary);
       }

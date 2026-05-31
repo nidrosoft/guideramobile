@@ -1,6 +1,6 @@
 /**
  * EVENTS DISCOVERY SERVICE
- * 
+ *
  * Client-side service for discovering and fetching events
  * from the event-discovery Edge Function (backed by Gemini 2.0 Flash
  * with Google Search grounding).
@@ -54,7 +54,7 @@ export const EVENT_CATEGORIES = [
   'Parades & Celebrations',
 ] as const;
 
-export type EventCategory = typeof EVENT_CATEGORIES[number];
+export type EventCategory = (typeof EVENT_CATEGORIES)[number];
 
 interface DiscoverEventsParams {
   city: string;
@@ -79,18 +79,29 @@ interface EventDiscoveryResponse {
 
 class EventsService {
   /**
-   * Discover events for a city. Checks cache first, then fetches via Gemini.
+   * Discover events for a city. Launch-safe path is DB-first and avoids
+   * client-triggered AI discovery in production.
    */
   async discoverEvents(params: DiscoverEventsParams): Promise<DiscoveredEvent[]> {
     try {
-      const data = await invokeWithRetry(supabase, 'event-discovery', {
-          action: params.forceRefresh ? 'refresh' : 'discover',
+      const cached = await this.getEventsFromDB(params.city, params.country, params.category);
+      if (cached.length > 0 || !params.forceRefresh || !__DEV__) {
+        return cached;
+      }
+
+      const data = await invokeWithRetry(
+        supabase,
+        'event-discovery',
+        {
+          action: 'refresh',
           city: params.city,
           country: params.country,
           category: params.category,
           month: params.month,
           metro_area: params.metro_area,
-      }, 'fast');
+        },
+        'fast'
+      );
 
       const response = data as EventDiscoveryResponse;
       if (!response.success) {
@@ -108,27 +119,22 @@ class EventsService {
   /**
    * Get cached events for a city (no AI call, cache only).
    */
-  async getCachedEvents(city: string, country: string, category?: string): Promise<DiscoveredEvent[]> {
-    try {
-      const data = await invokeWithRetry(supabase, 'event-discovery', {
-          action: 'get',
-          city,
-          country,
-          category,
-      }, 'fast');
-
-      const response = data as EventDiscoveryResponse;
-      return response.events || [];
-    } catch (err) {
-      console.error('[EventsService] getCachedEvents error:', err);
-      return [];
-    }
+  async getCachedEvents(
+    city: string,
+    country: string,
+    category?: string
+  ): Promise<DiscoveredEvent[]> {
+    return this.getEventsFromDB(city, country, category);
   }
 
   /**
    * Get events directly from the database (faster, no EF call).
    */
-  async getEventsFromDB(city: string, country: string, category?: string): Promise<DiscoveredEvent[]> {
+  async getEventsFromDB(
+    city: string,
+    country: string,
+    category?: string
+  ): Promise<DiscoveredEvent[]> {
     try {
       let query = supabase
         .from('destination_events')
@@ -178,6 +184,20 @@ class EventsService {
     if (!end || end === start) return startFormatted;
     const endFormatted = this.formatEventDate(end);
     return `${startFormatted} - ${endFormatted}`;
+  }
+
+  /**
+   * Trigger background image repair for events with missing images.
+   * Fires and forgets — doesn't block the UI.
+   */
+  async repairMissingImages(events: DiscoveredEvent[]): Promise<void> {
+    const missing = events.filter((e) => !e.image_url || e.image_url.trim().length === 0);
+    if (missing.length === 0) return;
+
+    if (__DEV__)
+      console.log(
+        `[EventsService] ${missing.length} events missing images; repair is cron/admin controlled.`
+      );
   }
 
   /**

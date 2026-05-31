@@ -37,7 +37,7 @@ export default function TrendingLocationCard({
   return (
     <View style={[styles.container, { height: Math.min(360, screenHeight * 0.5), borderColor: colors.borderSubtle }]}>
       {/* Background Image */}
-      <CachedImage uri={imageUrl} style={styles.backgroundImage} />
+      <CachedImage uri={imageUrl} fallbackCityName={city} style={styles.backgroundImage} />
       
       {/* Top Section */}
       <View style={styles.topSection}>

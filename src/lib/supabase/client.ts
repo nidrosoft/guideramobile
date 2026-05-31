@@ -26,6 +26,26 @@ export function setClerkTokenGetter(getter: (() => Promise<string | null>) | nul
   _clerkTokenGetter = getter;
 }
 
+export function buildClerkEdgeFunctionHeaders(token: string | null | undefined): Record<string, string> {
+  const trimmed = token?.trim();
+  return trimmed ? { 'x-clerk-token': trimmed } : {};
+}
+
+export async function getAuthenticatedEdgeFunctionHeaders(): Promise<Record<string, string>> {
+  if (!_clerkTokenGetter) {
+    if (__DEV__) console.warn('[EdgeAuth] no clerk token getter registered');
+    return {};
+  }
+
+  try {
+    const token = await _clerkTokenGetter();
+    return buildClerkEdgeFunctionHeaders(token);
+  } catch (err) {
+    if (__DEV__) console.warn('[Supabase] Failed to get Clerk edge function token:', err);
+    return {};
+  }
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     fetch: async (input, init) => {

@@ -19,6 +19,7 @@ import { logger } from '@/services/logging';
 import { analytics, EVENTS } from '@/services/analytics';
 import { supabase } from '@/lib/supabase/client';
 import { router } from 'expo-router';
+import { trackCampaignOpened } from '@/services/affiliateTracking';
 
 // Database notification record (from `notifications` table)
 export interface AppNotification {
@@ -56,6 +57,8 @@ export interface NotificationData {
   deepLink?: string;
 }
 
+export type TipsFrequency = 'off' | 'minimal' | 'standard' | 'all';
+
 // User notification preferences
 export interface NotificationPreferences {
   enabled: boolean;
@@ -75,7 +78,90 @@ export interface NotificationPreferences {
   communityEvents: boolean;
   // System
   promotional: boolean;
+  // Trip Tips (engagement drip — one per plugin)
+  tipsPacking: boolean;
+  tipsDocuments: boolean;
+  tipsPhrases: boolean;
+  tipsCultural: boolean;
+  tipsItinerary: boolean;
+  tipsBudget: boolean;
+  tipsJournal: boolean;
+  // How aggressively the Trip Tips feed drips notifications.
+  tipsFrequency: TipsFrequency;
 }
+
+/**
+ * Maps each UI toggle to its coarse category_code and the set of
+ * alert_type_codes it governs. `type_preferences` is authoritative in the
+ * send-notification dispatcher, so this is the single source of truth that
+ * keeps the settings screen wired to real notifications.
+ */
+export type NotificationToggleKey = Exclude<
+  keyof NotificationPreferences,
+  'enabled' | 'tipsFrequency'
+>;
+
+export const NOTIFICATION_TYPE_MAP: Record<
+  NotificationToggleKey,
+  { category: string; types: string[] }
+> = {
+  bookingConfirmations: { category: 'trip', types: ['booking_confirmed'] },
+  tripReminders: {
+    category: 'trip',
+    types: [
+      'trip_reminder',
+      'smart_plan_complete',
+      'trip_review_request',
+      'hotel_checkin_reminder',
+      'documents_check',
+      'dos_donts_review',
+      'budget_warning',
+      'budget_exceeded',
+    ],
+  },
+  packingReminders: { category: 'trip', types: ['packing_reminder', 'packing_incomplete'] },
+  departureAdvisor: {
+    category: 'trip',
+    types: [
+      'departure_prep',
+      'departure_open_plan',
+      'departure_traffic',
+      'departure_gate',
+      'departure_leave_soon',
+      'departure_leave_now',
+    ],
+  },
+  flightTracking: {
+    category: 'trip',
+    types: ['flight_delay', 'flight_cancelled', 'flight_gate_change', 'compensation_eligible', 'checkin_reminder'],
+  },
+  safetyAlerts: { category: 'safety', types: ['safety_alert'] },
+  weatherAlerts: { category: 'safety', types: ['weather_alert'] },
+  priceDrops: { category: 'financial', types: ['price_drop'] },
+  promotional: { category: 'marketing', types: ['promotional'] },
+  communityMessages: { category: 'social', types: ['dm_message', 'group_message'] },
+  communityEvents: {
+    category: 'social',
+    types: [
+      'event_created',
+      'buddy_nearby',
+      'join_request',
+      'join_approved',
+      'join_denied',
+      'new_follower',
+      'post_comment',
+      'comment_reply',
+      'post_reaction',
+    ],
+  },
+  tipsPacking: { category: 'trip_tips', types: ['packing_tip'] },
+  tipsDocuments: { category: 'trip_tips', types: ['document_tip'] },
+  tipsPhrases: { category: 'trip_tips', types: ['phrase_tip'] },
+  tipsCultural: { category: 'trip_tips', types: ['culture_tip'] },
+  tipsItinerary: { category: 'trip_tips', types: ['itinerary_tip'] },
+  tipsBudget: { category: 'trip_tips', types: ['budget_tip'] },
+  tipsJournal: { category: 'trip_tips', types: ['journal_tip'] },
+};
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
   enabled: true,
@@ -90,6 +176,14 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   communityMessages: true,
   communityEvents: true,
   promotional: false,
+  tipsPacking: true,
+  tipsDocuments: true,
+  tipsPhrases: true,
+  tipsCultural: true,
+  tipsItinerary: true,
+  tipsBudget: true,
+  tipsJournal: true,
+  tipsFrequency: 'standard',
 };
 
 const STORAGE_KEYS = {
@@ -501,6 +595,11 @@ class NotificationService {
           deepLink: data?.deepLink,
         });
 
+        // Track campaign notification opens
+        if (data?.campaign_id && this._userId) {
+          trackCampaignOpened(data.campaign_id as string, this._userId).catch(() => {});
+        }
+
         // Handle deep link navigation
         if (data?.deepLink) {
           try {
@@ -660,19 +759,18 @@ class NotificationService {
    */
   async syncPreferencesToDB(userId: string): Promise<void> {
     try {
-      const categoryPrefs = {
-        booking_confirmations: this.preferences.bookingConfirmations,
-        trip_reminders: this.preferences.tripReminders,
-        packing_reminders: this.preferences.packingReminders,
-        departure_advisor: this.preferences.departureAdvisor,
-        flight_tracking: this.preferences.flightTracking,
-        safety_alerts: this.preferences.safetyAlerts,
-        weather_alerts: this.preferences.weatherAlerts,
-        price_drops: this.preferences.priceDrops,
-        community_messages: this.preferences.communityMessages,
-        community_events: this.preferences.communityEvents,
-        promotional: this.preferences.promotional,
-      };
+      // Build authoritative per-type prefs + a permissive (OR) category rollup
+      // from the single NOTIFICATION_TYPE_MAP source of truth.
+      const typePrefs: Record<string, boolean> = {};
+      const categoryPrefs: Record<string, boolean> = {};
+      (Object.keys(NOTIFICATION_TYPE_MAP) as NotificationToggleKey[]).forEach((key) => {
+        const { category, types } = NOTIFICATION_TYPE_MAP[key];
+        const on = this.preferences[key] as boolean;
+        for (const t of types) typePrefs[t] = on;
+        // Category is enabled if ANY of its toggles is on (stays permissive so
+        // it never wrongly suppresses an un-enumerated future type).
+        categoryPrefs[category] = (categoryPrefs[category] ?? false) || on;
+      });
 
       const { error } = await supabase
         .from('user_notification_preferences')
@@ -681,6 +779,8 @@ class NotificationService {
           notifications_enabled: this.preferences.enabled,
           push_enabled: this.preferences.enabled,
           category_preferences: categoryPrefs,
+          type_preferences: typePrefs,
+          frequency_preferences: { trip_tips: this.preferences.tipsFrequency },
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'user_id',
@@ -711,24 +811,23 @@ class NotificationService {
         return;
       }
 
-      const catPrefs = data.category_preferences as Record<string, boolean> | null;
-      if (catPrefs) {
-        this.preferences = {
-          enabled: data.notifications_enabled ?? true,
-          bookingConfirmations: catPrefs.booking_confirmations ?? true,
-          tripReminders: catPrefs.trip_reminders ?? true,
-          packingReminders: catPrefs.packing_reminders ?? true,
-          departureAdvisor: catPrefs.departure_advisor ?? true,
-          flightTracking: catPrefs.flight_tracking ?? true,
-          safetyAlerts: catPrefs.safety_alerts ?? true,
-          weatherAlerts: catPrefs.weather_alerts ?? true,
-          priceDrops: catPrefs.price_drops ?? true,
-          communityMessages: catPrefs.community_messages ?? true,
-          communityEvents: catPrefs.community_events ?? true,
-          promotional: catPrefs.promotional ?? false,
-        };
-        await this.savePreferences();
-      }
+      const typePrefs = (data.type_preferences || {}) as Record<string, boolean>;
+      const freqPrefs = (data.frequency_preferences || {}) as Record<string, string>;
+
+      // A toggle is ON unless EVERY alert_type it governs is explicitly false.
+      const toggleOn = (key: NotificationToggleKey): boolean =>
+        NOTIFICATION_TYPE_MAP[key].types.some((t) => typePrefs[t] !== false);
+
+      const next: NotificationPreferences = {
+        ...DEFAULT_PREFERENCES,
+        enabled: data.notifications_enabled ?? true,
+        tipsFrequency: (freqPrefs.trip_tips as TipsFrequency) || 'standard',
+      };
+      (Object.keys(NOTIFICATION_TYPE_MAP) as NotificationToggleKey[]).forEach((key) => {
+        (next[key] as boolean) = toggleOn(key);
+      });
+      this.preferences = next;
+      await this.savePreferences();
     } catch (error) {
       logger.warn('Failed to load notification preferences from DB', error);
     }

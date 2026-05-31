@@ -1,11 +1,11 @@
 /**
  * PROVIDER MANAGER SERVICE
- * 
+ *
  * Frontend service layer for interacting with the Provider Manager Edge Function.
  * Provides typed methods for search, booking, and provider operations.
  */
 
-import { supabase } from '@/lib/supabase/client';
+import { supabase, getAuthenticatedEdgeFunctionHeaders } from '@/lib/supabase/client';
 import { invokeEdgeFn } from '@/utils/retry';
 import {
   UnifiedFlight,
@@ -18,8 +18,6 @@ import {
   CarSearchParams,
   ExperienceSearchParams,
   PackageSearchParams,
-  BookingRequest,
-  BookingConfirmation,
   PriceVerification,
   ProviderMeta,
   UnifiedPrice,
@@ -85,6 +83,33 @@ export interface ProviderManagerResponse<T> {
   };
 }
 
+export type PackageBundleCategory = 'flights' | 'hotels' | 'cars' | 'experiences';
+
+export interface PackageBundleCategoryResult<T> {
+  items: T[];
+  totalCount: number;
+  responseTimeMs: number;
+  priceRange?: {
+    min: number;
+    max: number;
+  };
+}
+
+export interface PackageBundleSearchResult {
+  bundle: Partial<{
+    flights: PackageBundleCategoryResult<UnifiedFlight>;
+    hotels: PackageBundleCategoryResult<UnifiedHotel>;
+    cars: PackageBundleCategoryResult<UnifiedCarRental>;
+    experiences: PackageBundleCategoryResult<UnifiedExperience>;
+  }>;
+  sessionId: string;
+  source: 'live' | 'cache' | 'mixed';
+  requestId: string;
+  durationMs: number;
+  stale?: boolean;
+  coalesced?: boolean;
+}
+
 // ============================================
 // SERVICE CLASS
 // ============================================
@@ -112,7 +137,12 @@ class ProviderManagerService {
     options?: SearchOptions,
     preferences?: UserSearchPreferences
   ): Promise<SearchResult<UnifiedFlight>> {
-    return this.search<UnifiedFlight>('flights', params as unknown as Record<string, unknown>, options, preferences);
+    return this.search<UnifiedFlight>(
+      'flights',
+      params as unknown as Record<string, unknown>,
+      options,
+      preferences
+    );
   }
 
   /**
@@ -123,7 +153,12 @@ class ProviderManagerService {
     options?: SearchOptions,
     preferences?: UserSearchPreferences
   ): Promise<SearchResult<UnifiedHotel>> {
-    return this.search<UnifiedHotel>('hotels', params as unknown as Record<string, unknown>, options, preferences);
+    return this.search<UnifiedHotel>(
+      'hotels',
+      params as unknown as Record<string, unknown>,
+      options,
+      preferences
+    );
   }
 
   /**
@@ -134,7 +169,12 @@ class ProviderManagerService {
     options?: SearchOptions,
     preferences?: UserSearchPreferences
   ): Promise<SearchResult<UnifiedCarRental>> {
-    return this.search<UnifiedCarRental>('cars', params as unknown as Record<string, unknown>, options, preferences);
+    return this.search<UnifiedCarRental>(
+      'cars',
+      params as unknown as Record<string, unknown>,
+      options,
+      preferences
+    );
   }
 
   /**
@@ -145,7 +185,12 @@ class ProviderManagerService {
     options?: SearchOptions,
     preferences?: UserSearchPreferences
   ): Promise<SearchResult<UnifiedExperience>> {
-    return this.search<UnifiedExperience>('experiences', params as unknown as Record<string, unknown>, options, preferences);
+    return this.search<UnifiedExperience>(
+      'experiences',
+      params as unknown as Record<string, unknown>,
+      options,
+      preferences
+    );
   }
 
   /**
@@ -156,7 +201,67 @@ class ProviderManagerService {
     options?: SearchOptions,
     preferences?: UserSearchPreferences
   ): Promise<SearchResult<UnifiedPackage>> {
-    return this.search<UnifiedPackage>('packages', params as unknown as Record<string, unknown>, options, preferences);
+    return this.search<UnifiedPackage>(
+      'packages',
+      params as unknown as Record<string, unknown>,
+      options,
+      preferences
+    );
+  }
+
+  /**
+   * Search a package bundle with one provider-manager request/cache/rate-limit key.
+   */
+  async searchPackageBundle(
+    params: PackageSearchParams & {
+      includedCategories?: PackageBundleCategory[];
+      destinationCode?: string;
+      cabinClass?: string;
+      driverAge?: number;
+      currency?: string;
+      limit?: number;
+    },
+    options?: SearchOptions,
+    preferences?: UserSearchPreferences
+  ): Promise<PackageBundleSearchResult> {
+    const response = await this.invokeFunction<{
+      success: boolean;
+      data?: {
+        bundle: PackageBundleSearchResult['bundle'];
+        sessionId: string;
+        source: 'live' | 'cache' | 'mixed';
+        stale?: boolean;
+        coalesced?: boolean;
+      };
+      requestId: string;
+      duration: number;
+      error?: { code: string; message: string };
+    }>({
+      action: 'package_search',
+      category: 'packages',
+      params: {
+        ...params,
+        ...options,
+      },
+      preferences,
+    });
+
+    if (!response.success || !response.data) {
+      throw new ProviderManagerError(
+        response.error?.code || 'PACKAGE_SEARCH_FAILED',
+        response.error?.message || 'Package search failed'
+      );
+    }
+
+    return {
+      bundle: response.data.bundle || {},
+      sessionId: response.data.sessionId,
+      source: response.data.source,
+      requestId: response.requestId,
+      durationMs: response.duration,
+      stale: response.data.stale,
+      coalesced: response.data.coalesced,
+    };
   }
 
   /**
@@ -175,7 +280,6 @@ class ProviderManagerService {
         ...params,
         ...options,
       },
-      userId: this._userId ?? undefined,
       preferences,
     });
 
@@ -187,7 +291,10 @@ class ProviderManagerService {
     }
 
     // Log results count for debugging
-    if (__DEV__) console.log(`Provider Manager ${category} search: ${response.data.results?.length || 0} results`);
+    if (__DEV__)
+      console.log(
+        `Provider Manager ${category} search: ${response.data.results?.length || 0} results`
+      );
 
     return {
       results: response.data.results || [],
@@ -195,7 +302,7 @@ class ProviderManagerService {
       providers: response.data.providers,
       sessionId: response.data.sessionId,
       priceRange: response.data.priceRange,
-      source: response.source || 'live',
+      source: (response.data as any).source || response.source || 'live',
       requestId: response.requestId,
       durationMs: response.duration,
     };
@@ -268,73 +375,6 @@ class ProviderManagerService {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // BOOKING METHODS
-  // ═══════════════════════════════════════════════════════════════════
-
-  /**
-   * Create a booking
-   */
-  async createBooking(request: BookingRequest): Promise<BookingConfirmation> {
-    if (!this._userId) {
-      throw new ProviderManagerError('UNAUTHORIZED', 'User must be logged in to book');
-    }
-
-    const response = await this.invokeFunction<{
-      success: boolean;
-      data?: BookingConfirmation;
-      error?: { code: string; message: string };
-    }>({
-      action: 'book',
-      category: request.category,
-      params: request as unknown as Record<string, unknown>,
-      userId: this._userId,
-    });
-
-    if (!response.success || !response.data) {
-      throw new ProviderManagerError(
-        response.error?.code || 'BOOKING_FAILED',
-        response.error?.message || 'Booking failed'
-      );
-    }
-
-    return response.data;
-  }
-
-  /**
-   * Cancel a booking
-   */
-  async cancelBooking(
-    bookingId: string,
-    reason?: string
-  ): Promise<{ success: boolean; refundAmount?: UnifiedPrice; message: string }> {
-    const response = await this.invokeFunction<{
-      success: boolean;
-      data?: { refundAmount?: UnifiedPrice; message: string };
-      error?: { code: string; message: string };
-    }>({
-      action: 'cancel',
-      category: 'flights', // Will be determined from booking
-      params: {
-        bookingId,
-        reason,
-      },
-    });
-
-    if (!response.success) {
-      throw new ProviderManagerError(
-        response.error?.code || 'CANCELLATION_FAILED',
-        response.error?.message || 'Cancellation failed'
-      );
-    }
-
-    return {
-      success: true,
-      refundAmount: response.data?.refundAmount,
-      message: response.data?.message || 'Booking cancelled',
-    };
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
   // HEALTH CHECK
   // ═══════════════════════════════════════════════════════════════════
 
@@ -379,8 +419,12 @@ class ProviderManagerService {
     preferences?: UserSearchPreferences;
   }): Promise<T> {
     if (__DEV__) console.log('Provider Manager Request:', JSON.stringify(body).substring(0, 500));
-    
-    const { data, error } = await invokeEdgeFn(supabase, this.functionName, body, 'fast');
+
+    // Edge functions don't get the Clerk token auto-injected (see supabase
+    // client fetch override), so forward it explicitly — the provider-manager
+    // auth guard resolves the user from this header.
+    const headers = await getAuthenticatedEdgeFunctionHeaders();
+    const { data, error } = await invokeEdgeFn(supabase, this.functionName, body, 'fast', { headers });
 
     if (error) {
       console.error('Provider Manager Error:', error);
@@ -388,7 +432,8 @@ class ProviderManagerService {
       throw new ProviderManagerError('FUNCTION_ERROR', error.message);
     }
 
-    if (__DEV__) console.log('Provider Manager Response received:', data?.success ? 'success' : 'failed');
+    if (__DEV__)
+      console.log('Provider Manager Response received:', data?.success ? 'success' : 'failed');
     if (data?.data?.results) {
       if (__DEV__) console.log('Provider Manager Results count:', data.data.results.length);
     }

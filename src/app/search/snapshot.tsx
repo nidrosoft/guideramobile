@@ -26,9 +26,15 @@ import { useTheme } from '@/context/ThemeContext';
 import { typography, spacing, borderRadius } from '@/styles';
 import {
   tripSnapshotService,
-  TripSnapshot,
+  TripSnapshotLiveData,
+  EventPreview,
   BriefSection,
+  DestinationIntelligence,
+  formatGuideFreshness,
+  normalizeCostEstimate,
 } from '@/services/tripSnapshot.service';
+import { SNAPSHOT_COST_ICONS } from '@/data/snapshotCostIcons';
+import { useSearchOverlayStore } from '@/stores/useSearchOverlayStore';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -101,7 +107,15 @@ const PATIENCE_QUOTES = [
   { text: '"One\'s destination is never a place, but a new way of seeing things."', author: 'Henry Miller' },
 ];
 
-function LoadingAnimation({ destination, tc }: { destination: string; tc: any }) {
+function LoadingAnimation({
+  destination,
+  tc,
+  progressTarget = 0.92,
+}: {
+  destination: string;
+  tc: any;
+  progressTarget?: number;
+}) {
   const [stepIndex, setStepIndex] = useState(0);
   const [quoteIndex, setQuoteIndex] = useState(() => Math.floor(Math.random() * PATIENCE_QUOTES.length));
   const [percentText, setPercentText] = useState(0);
@@ -110,14 +124,14 @@ function LoadingAnimation({ destination, tc }: { destination: string; tc: any })
   const progressAnim = useRef(new Animated.Value(0)).current;
   const quoteFadeAnim = useRef(new Animated.Value(1)).current;
 
-  // Progress bar — fast start, slows down, stalls at ~92%
+  // Progress bar — milestone-driven from parent, with gentle animation
   useEffect(() => {
-    Animated.sequence([
-      Animated.timing(progressAnim, { toValue: 0.4, duration: 8000, useNativeDriver: false }),
-      Animated.timing(progressAnim, { toValue: 0.7, duration: 15000, useNativeDriver: false }),
-      Animated.timing(progressAnim, { toValue: 0.92, duration: 30000, useNativeDriver: false }),
-    ]).start();
-  }, [progressAnim]);
+    Animated.timing(progressAnim, {
+      toValue: progressTarget,
+      duration: 1200,
+      useNativeDriver: false,
+    }).start();
+  }, [progressTarget, progressAnim]);
 
   // Track percentage from animated value
   useEffect(() => {
@@ -232,10 +246,75 @@ const SECTION_ICONS: Record<string, (props: { size: number; color: string }) => 
   language: ({ size, color }) => <LanguageSquare size={size} color={color} variant="Bold" />,
   nightlife: ({ size, color }) => <MusicPlaylist size={size} color={color} variant="Bold" />,
   social: ({ size, color }) => <MusicPlaylist size={size} color={color} variant="Bold" />,
+  calendar: ({ size, color }) => <Calendar size={size} color={color} variant="Bold" />,
 };
 
 function getSectionIcon(iconKey: string, sectionId: string) {
   return SECTION_ICONS[iconKey] || SECTION_ICONS[sectionId] || SECTION_ICONS['map'];
+}
+
+function sanitizeOverviewText(text: string): string {
+  return text
+    .replace(/^#+\s.*(?:\n+|$)/, '')
+    .replace(/\*\*/g, '')
+    .trim();
+}
+
+function splitSentences(text: string): string[] {
+  const matches = text.match(/[^.!?]+[.!?]+["']?/g);
+  return (matches && matches.length > 0 ? matches : [text])
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}
+
+function formatOverviewSections(text?: string) {
+  const clean = sanitizeOverviewText(text || '');
+  if (!clean) return null;
+
+  const sentences = splitSentences(clean);
+  if (sentences.length <= 3) {
+    return { intro: clean, sections: [] as { title: string; body: string }[] };
+  }
+
+  const intro = sentences[0];
+  const bodySentences = sentences.slice(1);
+  const titles = ['Trip feel', 'Local highlights', 'Practical notes'];
+  const chunkSize = Math.ceil(bodySentences.length / Math.min(3, bodySentences.length));
+  const sections = titles
+    .map((title, index) => {
+      const chunk = bodySentences.slice(index * chunkSize, (index + 1) * chunkSize);
+      return chunk.length ? { title, body: chunk.join(' ') } : null;
+    })
+    .filter(Boolean) as { title: string; body: string }[];
+
+  return { intro, sections };
+}
+
+function buildWhatsHappeningSection(events: EventPreview[], cachedAt?: string): BriefSection | null {
+  if (!events.length) return null;
+
+  return {
+    id: 'whats_happening',
+    icon: 'calendar',
+    title: "What's Happening",
+    cachedAt,
+    items: events.slice(0, 5).map((event) => ({
+      label: event.name,
+      detail: [
+        `${event.category} · ${event.dateRange}${event.isFree ? ' · Free' : ''}${event.venue ? ` · ${event.venue}` : ''}.`,
+        event.description,
+      ].filter(Boolean).join(' '),
+    })),
+  };
+}
+
+function orderGuideSections(sections: BriefSection[], selectedTopics: string[]): BriefSection[] {
+  const byId = new globalThis.Map(sections.map((section) => [section.id, section]));
+  const ordered = selectedTopics
+    .map((topicId) => byId.get(topicId))
+    .filter(Boolean) as BriefSection[];
+  const extras = sections.filter((section) => !selectedTopics.includes(section.id));
+  return [...ordered, ...extras];
 }
 
 // ─── Expandable Intelligence Section ───
@@ -243,6 +322,7 @@ function getSectionIcon(iconKey: string, sectionId: string) {
 function IntelligenceSection({ section, tc }: { section: BriefSection; tc: any }) {
   const [expanded, setExpanded] = useState(false);
   const IconComponent = getSectionIcon(section.icon, section.id);
+  const freshness = formatGuideFreshness(section.cachedAt);
 
   const toggle = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -260,7 +340,14 @@ function IntelligenceSection({ section, tc }: { section: BriefSection; tc: any }
         <View style={[styles.intelIconWrap, { backgroundColor: `${tc.primary}12` }]}>
           {IconComponent({ size: 18, color: tc.primary })}
         </View>
-        <Text style={[styles.intelTitle, { color: tc.textPrimary }]}>{section.title}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.intelTitle, { color: tc.textPrimary }]}>{section.title}</Text>
+          {freshness && (
+            <Text style={[styles.intelFreshness, { color: tc.textTertiary }]} numberOfLines={1}>
+              {freshness}
+            </Text>
+          )}
+        </View>
         <View style={[styles.intelChevron, { backgroundColor: `${tc.primary}12` }]}>
           {expanded
             ? <ArrowUp2 size={14} color={tc.primary} />
@@ -288,6 +375,43 @@ function IntelligenceSection({ section, tc }: { section: BriefSection; tc: any }
   );
 }
 
+function GuideSectionPlaceholder({ tc, remainingCount }: { tc: any; remainingCount: number }) {
+  const pulse = useRef(new Animated.Value(0.35)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.35, duration: 900, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
+  return (
+    <View style={[styles.guidePlaceholder, { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle }]}>
+      <View style={styles.guidePlaceholderHeader}>
+        <View style={[styles.guidePlaceholderIcon, { backgroundColor: `${tc.primary}12` }]}>
+          <Magicpen size={16} color={tc.primary} variant="Bold" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.guidePlaceholderTitle, { color: tc.textPrimary }]}>
+            {remainingCount === 1 ? 'Next section is loading' : `${remainingCount} more sections are loading`}
+          </Text>
+          <Text style={[styles.guidePlaceholderSub, { color: tc.textTertiary }]}>
+            Fresh guide content will appear here as soon as it is ready.
+          </Text>
+        </View>
+      </View>
+      <Animated.View style={{ opacity: pulse }}>
+        <View style={[styles.shimmerLine, { width: '86%', backgroundColor: `${tc.primary}12` }]} />
+        <View style={[styles.shimmerLine, { width: '68%', backgroundColor: `${tc.primary}10` }]} />
+      </Animated.View>
+    </View>
+  );
+}
+
 // ─── Main Screen ───
 
 export default function TripSnapshotScreen() {
@@ -302,8 +426,11 @@ export default function TripSnapshotScreen() {
     topics: string;
   }>();
 
-  const [snapshot, setSnapshot] = useState<TripSnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [liveData, setLiveData] = useState<TripSnapshotLiveData | null>(null);
+  const [aiBrief, setAiBrief] = useState<DestinationIntelligence | null>(null);
+  const [loadingLive, setLoadingLive] = useState(true);
+  const [loadingBrief, setLoadingBrief] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0.15);
   const [error, setError] = useState<string | null>(null);
 
   const destination = params.destination || '';
@@ -326,15 +453,35 @@ export default function TripSnapshotScreen() {
     return (parseInt(params.adults || '1') + parseInt(params.children || '0') + parseInt(params.infants || '0'));
   }, [params.adults, params.children, params.infants]);
 
+  const destinationLabel = useMemo(() => {
+    if (params.country) return `${destination}, ${params.country}`;
+    return destination;
+  }, [destination, params.country]);
+
+  const selectedTopics = useMemo(() => (
+    params.topics
+      ? params.topics.split(',').filter(Boolean)
+      : ['safety', 'visa_entry', 'food', 'arrival']
+  ), [params.topics]);
+
+  const aiSelectedTopics = useMemo(
+    () => selectedTopics.filter((topicId) => topicId !== 'whats_happening'),
+    [selectedTopics],
+  );
+
   const fetchSnapshot = useCallback(async () => {
+    let receivedLiveData = false;
     try {
-      setLoading(true);
+      setLoadingLive(true);
+      setLoadingBrief(false);
       setError(null);
-      setSnapshot(null);
-      const selectedTopics = params.topics ? params.topics.split(',').filter(Boolean) : undefined;
-      const data = await tripSnapshotService.generateSnapshot({
+      setLiveData(null);
+      setAiBrief(null);
+      setLoadProgress(0.18);
+
+      const requestBase = {
         destination,
-        country: params.country,
+        country: params.country || undefined,
         startDate: params.startDate!,
         endDate: params.endDate!,
         travelers: {
@@ -346,41 +493,120 @@ export default function TripSnapshotScreen() {
         nationality: params.nationality || 'US citizen',
         currency: 'USD',
         selectedTopics,
-      });
-      setSnapshot(data);
+      };
+
+      const data = await tripSnapshotService.fetchLiveData(requestBase);
+      receivedLiveData = true;
+      setLiveData(data);
+      setLoadingLive(false);
+      setLoadProgress(0.55);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      if (aiSelectedTopics.length > 0) {
+        setLoadingBrief(true);
+        setLoadProgress(0.62);
+
+        await tripSnapshotService.streamBrief(
+          { ...requestBase, selectedTopics: aiSelectedTopics, costEstimate: data.costEstimate },
+          {
+            onOverview: (overview, cachedAt) => {
+              setAiBrief((prev) => ({
+                overview,
+                overviewCachedAt: cachedAt,
+                sections: prev?.sections || [],
+              }));
+              setLoadProgress((p) => Math.max(p, 0.7));
+            },
+            onOverviewDelta: (delta) => {
+              setAiBrief((prev) => ({
+                overview: (prev?.overview || '') + delta,
+                overviewCachedAt: prev?.overviewCachedAt,
+                sections: prev?.sections || [],
+              }));
+              setLoadProgress((p) => Math.max(p, 0.65));
+            },
+            onSection: (section) => {
+              setAiBrief((prev) => {
+                const existing = prev?.sections || [];
+                if (existing.some((s) => s.id === section.id)) return prev!;
+                return {
+                  overview: prev?.overview || '',
+                  overviewCachedAt: prev?.overviewCachedAt,
+                  sections: [...existing, section],
+                };
+              });
+              setLoadProgress((p) => Math.min(0.95, p + 0.06));
+            },
+            onError: (e) => {
+              if (__DEV__) console.warn('[TripSnapshot] Brief stream error:', e.message);
+            },
+            onDone: () => {
+              setLoadingBrief(false);
+              setLoadProgress(1);
+            },
+          },
+        );
+      } else {
+        setLoadingBrief(false);
+        setLoadProgress(1);
+      }
     } catch (e: any) {
-      setError(e.message || "We couldn't generate your trip snapshot. Please try again.");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } finally {
-      setLoading(false);
+      if (!receivedLiveData) {
+        setError(e.message || "We couldn't generate your trip snapshot. Please try again.");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      } else if (__DEV__) {
+        console.warn('[TripSnapshot] Live data loaded but brief failed:', e.message);
+      }
+      setLoadingLive(false);
+      setLoadingBrief(false);
     }
-  }, [destination, params]);
+  }, [destination, params, selectedTopics, aiSelectedTopics]);
 
   useEffect(() => {
     if (!destination || !params.startDate || !params.endDate) return;
     let cancelled = false;
     fetchSnapshot().then(() => { /* done */ });
     return () => { cancelled = true; };
-  }, [destination, params.startDate, params.endDate, params.adults, params.children, params.infants, params.country]);
+  }, [destination, params.startDate, params.endDate, params.adults, params.children, params.infants, params.country, params.topics, params.originCity, params.nationality]);
+
+  useEffect(() => {
+    if (!loadingLive || liveData) return;
+    const interval = setInterval(() => {
+      setLoadProgress((p) => Math.min(0.5, p + 0.04));
+    }, 1200);
+    return () => clearInterval(interval);
+  }, [loadingLive, liveData]);
+
+  const requestSearchReset = useSearchOverlayStore((s) => s.requestReset);
+
+  const dismissSnapshot = useCallback(() => {
+    requestSearchReset();
+    router.dismiss();
+  }, [router, requestSearchReset]);
 
   const handleClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.dismiss();
-  }, [router]);
+    dismissSnapshot();
+  }, [dismissSnapshot]);
 
   const handleSearchFlights = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.dismiss();
-  }, [router]);
+    dismissSnapshot();
+  }, [dismissSnapshot]);
 
   const handleFindHotels = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.dismiss();
-  }, [router]);
+    dismissSnapshot();
+  }, [dismissSnapshot]);
 
-  // ─── Loading State ───
-  if (loading) {
+  const cost = useMemo(
+    () => normalizeCostEstimate(liveData?.costEstimate),
+    [liveData?.costEstimate],
+  );
+  const overviewFreshness = formatGuideFreshness(aiBrief?.overviewCachedAt);
+
+  // ─── Loading State (Phase A only) ───
+  if (loadingLive && !liveData) {
     return (
       <View style={styles.loadingWrapper}>
         <StatusBar style="light" />
@@ -391,13 +617,13 @@ export default function TripSnapshotScreen() {
         >
           <CloseCircle size={28} color="rgba(255,255,255,0.6)" variant="Bold" />
         </TouchableOpacity>
-        <LoadingAnimation destination={destination} tc={tc} />
+        <LoadingAnimation destination={destinationLabel} tc={tc} progressTarget={loadProgress} />
       </View>
     );
   }
 
   // ─── Error State ───
-  if (error || !snapshot) {
+  if (error || !liveData) {
     return (
       <View style={[styles.center, { backgroundColor: tc.background, paddingTop: insets.top }]}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -416,7 +642,21 @@ export default function TripSnapshotScreen() {
     );
   }
 
-  const { costEstimate: cost, flights, hotels, experiences, events, aiBrief } = snapshot;
+  const { flights, hotels, experiences, events } = liveData;
+  const whatsHappeningSection = selectedTopics.includes('whats_happening')
+    ? buildWhatsHappeningSection(events, liveData.generatedAt)
+    : null;
+  const guideSections = orderGuideSections(
+    [
+      ...(aiBrief?.sections || []),
+      ...(whatsHappeningSection ? [whatsHappeningSection] : []),
+    ],
+    selectedTopics,
+  );
+  const streamedAiSectionCount = (aiBrief?.sections || [])
+    .filter((section) => aiSelectedTopics.includes(section.id)).length;
+  const showGuidePlaceholder = loadingBrief && streamedAiSectionCount < aiSelectedTopics.length;
+  const overviewSections = formatOverviewSections(aiBrief?.overview);
 
   // ─── Main Content ───
   return (
@@ -427,7 +667,7 @@ export default function TripSnapshotScreen() {
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, borderBottomColor: tc.borderSubtle }]}>
         <View style={{ width: 44 }} />
         <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: tc.textPrimary }]} numberOfLines={1}>{destination}</Text>
+          <Text style={[styles.headerTitle, { color: tc.textPrimary }]} numberOfLines={1}>{destinationLabel}</Text>
           <Text style={[styles.headerSub, { color: tc.textSecondary }]}>
             {dateLabel} · {nights} nights · {totalGuests} guest{totalGuests !== 1 ? 's' : ''}
           </Text>
@@ -443,15 +683,48 @@ export default function TripSnapshotScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ─── AI Overview Banner ─── */}
-        {aiBrief?.overview && (
+        {(aiBrief?.overview || loadingBrief) && (
           <View style={[styles.overviewCard, { backgroundColor: `${tc.primary}08`, borderColor: `${tc.primary}20` }]}>
             <View style={styles.overviewHeader}>
               <View style={[styles.overviewBadge, { backgroundColor: `${tc.primary}15` }]}>
                 <Magicpen size={14} color={tc.primary} variant="Bold" />
                 <Text style={[styles.overviewBadgeText, { color: tc.primary }]}>AI Intelligence</Text>
               </View>
+              {overviewFreshness && (
+                <Text style={[styles.overviewFreshness, { color: tc.textTertiary }]}>{overviewFreshness}</Text>
+              )}
             </View>
-            <Text style={[styles.overviewText, { color: tc.textPrimary }]}>{aiBrief.overview}</Text>
+            {overviewSections ? (
+              <View style={styles.overviewContent}>
+                <Text style={[styles.overviewText, { color: tc.textPrimary }]}>
+                  {overviewSections.intro}
+                </Text>
+                {overviewSections.sections.map((section) => (
+                  <View key={section.title} style={[styles.overviewMiniSection, { backgroundColor: `${tc.primary}06`, borderColor: `${tc.primary}14` }]}>
+                    <Text style={[styles.overviewMiniTitle, { color: tc.primary }]}>{section.title}</Text>
+                    <Text style={[styles.overviewMiniText, { color: tc.textSecondary }]}>{section.body}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={[styles.overviewText, { color: tc.textPrimary }]}>
+                Analyzing your destination…
+              </Text>
+            )}
+            {loadingBrief && !aiBrief?.overviewCachedAt && (
+              <Text style={[styles.overviewStreamingHint, { color: tc.textTertiary }]}>
+                Writing your guide…
+              </Text>
+            )}
+          </View>
+        )}
+
+        {loadingBrief && (!aiBrief?.sections || aiBrief.sections.length === 0) && (
+          <View style={[styles.card, { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle }]}>
+            <Text style={[styles.cardTitle, { color: tc.textPrimary }]}>Building your destination guide…</Text>
+            <Text style={[{ color: tc.textSecondary, marginTop: spacing.xs, fontSize: typography.fontSize.sm }]}>
+              Cached sections appear instantly; new topics may take a moment.
+            </Text>
           </View>
         )}
 
@@ -464,7 +737,7 @@ export default function TripSnapshotScreen() {
             <Text style={[styles.cardTitle, { color: tc.textPrimary }]}>Estimated Trip Cost</Text>
           </View>
           <Text style={[styles.costRange, { color: tc.textPrimary }]}>
-            ${cost.low.toLocaleString()} – ${cost.high.toLocaleString()}
+            ${(cost.low ?? 0).toLocaleString()} – ${(cost.high ?? 0).toLocaleString()}
           </Text>
           {cost.withinBudget !== undefined && (
             <View style={[styles.budgetBadge, { backgroundColor: cost.withinBudget ? `${tc.success}15` : `${tc.error}15` }]}>
@@ -476,11 +749,11 @@ export default function TripSnapshotScreen() {
           )}
           <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
           <View style={styles.breakdownGrid}>
-            {renderBreakdownRow('✈️  Flights (round trip)', cost.breakdown.flights, tc, true)}
-            {renderBreakdownRow('🏨  Hotels', cost.breakdown.hotels, tc, true)}
-            {renderBreakdownRow('🍜  Food & Dining', cost.breakdown.food, tc)}
-            {renderBreakdownRow('🎯  Experiences', cost.breakdown.experiences, tc)}
-            {renderBreakdownRow('🔧  Transport & Misc', cost.breakdown.miscellaneous, tc)}
+            {renderBreakdownRow('flights', 'Flights (round trip)', cost.breakdown.flights, tc, true)}
+            {renderBreakdownRow('hotels', `Hotels (${nights} nights)`, cost.breakdown.hotels, tc, true, nights, 'night')}
+            {renderBreakdownRow('food', `Food & Dining (${nights} days)`, cost.breakdown.food, tc, false, nights, 'day')}
+            {renderBreakdownRow('experiences', 'Experiences', cost.breakdown.experiences, tc)}
+            {renderBreakdownRow('miscellaneous', `Transport & Misc (${nights} days)`, cost.breakdown.miscellaneous, tc, false, nights, 'day')}
           </View>
           {cost.perDayBudget && (
             <>
@@ -488,7 +761,7 @@ export default function TripSnapshotScreen() {
               <View style={styles.perDayRow}>
                 <Text style={[styles.perDayLabel, { color: tc.textSecondary }]}>Per day (excl. flights)</Text>
                 <Text style={[styles.perDayValue, { color: tc.primary }]}>
-                  ${cost.perDayBudget.low} – ${cost.perDayBudget.high}/day
+                  ${(cost.perDayBudget?.low ?? 0).toLocaleString()} – ${(cost.perDayBudget?.high ?? 0).toLocaleString()}/day
                 </Text>
               </View>
             </>
@@ -507,36 +780,31 @@ export default function TripSnapshotScreen() {
                 <Text style={[styles.cardSubtitle, { color: tc.textTertiary }]}>avg ${flights.avgPrice}</Text>
               )}
             </View>
-            {flights.cheapest && (
-              <View style={[styles.flightRow, { borderColor: tc.borderSubtle }]}>
-                <View style={[styles.flightTag, { backgroundColor: `${tc.success}12` }]}>
-                  <Text style={[styles.flightTagText, { color: tc.success }]}>Cheapest</Text>
-                </View>
-                <View style={styles.flightContent}>
-                  <Text style={[styles.flightPrice, { color: tc.textPrimary }]}>
-                    ${flights.cheapest.price.toLocaleString()}
-                  </Text>
-                  <Text style={[styles.flightMeta, { color: tc.textSecondary }]}>
-                    {flights.cheapest.airline} · {flights.cheapest.stops === 0 ? 'Direct' : `${flights.cheapest.stops} stop${flights.cheapest.stops > 1 ? 's' : ''}`} · {flights.cheapest.duration}
-                  </Text>
-                </View>
-              </View>
-            )}
-            {flights.fastest && (
-              <View style={styles.flightRow}>
-                <View style={[styles.flightTag, { backgroundColor: `${tc.info}12` }]}>
-                  <Text style={[styles.flightTagText, { color: tc.info }]}>Fastest</Text>
-                </View>
-                <View style={styles.flightContent}>
-                  <Text style={[styles.flightPrice, { color: tc.textPrimary }]}>
-                    ${flights.fastest.price.toLocaleString()}
-                  </Text>
-                  <Text style={[styles.flightMeta, { color: tc.textSecondary }]}>
-                    {flights.fastest.airline} · {flights.fastest.stops === 0 ? 'Direct' : `${flights.fastest.stops} stop${flights.fastest.stops > 1 ? 's' : ''}`} · {flights.fastest.duration}
-                  </Text>
-                </View>
-              </View>
-            )}
+            {([
+              { key: 'cheapest', label: 'Cheapest', color: tc.success, flight: flights.cheapest },
+              { key: 'fastest', label: 'Fastest', color: tc.info, flight: flights.fastest },
+              { key: 'premium', label: 'Premium', color: '#8B5CF6', flight: flights.premium },
+            ] as const).map((row, index) => (
+              row.flight ? (
+                <React.Fragment key={row.key}>
+                  {index > 0 && <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />}
+                  <View style={styles.flightRow}>
+                    <View style={[styles.flightTag, { backgroundColor: `${row.color}12` }]}>
+                      <Text style={[styles.flightTagText, { color: row.color }]}>{row.label}</Text>
+                    </View>
+                    <View style={styles.flightContent}>
+                      <Text style={[styles.flightPrice, { color: tc.textPrimary }]}>
+                        ${(row.flight?.price ?? 0).toLocaleString()}
+                      </Text>
+                      <Text style={[styles.flightMeta, { color: tc.textSecondary }]}>
+                        {row.flight.airline} · {row.flight.stops === 0 ? 'Direct' : `${row.flight.stops} stop${row.flight.stops > 1 ? 's' : ''}`} · {row.flight.duration}
+                        {row.flight.cabin ? ` · ${row.flight.cabin}` : ''}
+                      </Text>
+                    </View>
+                  </View>
+                </React.Fragment>
+              ) : null
+            ))}
           </View>
         )}
 
@@ -609,31 +877,8 @@ export default function TripSnapshotScreen() {
           </View>
         )}
 
-        {/* ─── Events Preview ─── */}
-        {events.length > 0 && (
-          <View style={[styles.card, { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle }]}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.cardIconWrap, { backgroundColor: `${tc.primary}12` }]}>
-                <Calendar size={18} color={tc.primary} variant="Bold" />
-              </View>
-              <Text style={[styles.cardTitle, { color: tc.textPrimary }]}>What's Happening</Text>
-            </View>
-            {events.slice(0, 5).map((evt, i) => (
-              <View key={i} style={[styles.eventRow, i < Math.min(events.length, 5) - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: tc.borderSubtle }]}>
-                <View style={[styles.eventDot, { backgroundColor: tc.primary }]} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.eventName, { color: tc.textPrimary }]}>{evt.name}</Text>
-                  <Text style={[styles.eventMeta, { color: tc.textSecondary }]}>
-                    {evt.category} · {evt.dateRange}{evt.isFree ? ' · Free' : ''}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
         {/* ─── Destination Intelligence Sections ─── */}
-        {aiBrief && aiBrief.sections?.length > 0 && (
+        {(guideSections.length > 0 || showGuidePlaceholder) && (
           <View style={styles.intelContainer}>
             <View style={styles.intelSectionHeader}>
               <View style={[styles.intelSectionBadge, { backgroundColor: `${tc.primary}12` }]}>
@@ -646,9 +891,12 @@ export default function TripSnapshotScreen() {
                 </Text>
               </View>
             </View>
-            {aiBrief.sections.map((section) => (
+            {guideSections.map((section) => (
               <IntelligenceSection key={section.id} section={section} tc={tc} />
             ))}
+            {showGuidePlaceholder && (
+              <GuideSectionPlaceholder tc={tc} remainingCount={Math.max(1, aiSelectedTopics.length - streamedAiSectionCount)} />
+            )}
           </View>
         )}
 
@@ -699,14 +947,45 @@ export default function TripSnapshotScreen() {
 
 // ─── Helper Renderers ───
 
-function renderBreakdownRow(label: string, range: { low: number; high: number }, tc: any, alwaysShow = false) {
-  if (!alwaysShow && range.low === 0 && range.high === 0) return null;
+function safeCostRange(range?: { low?: number; high?: number } | null) {
+  const low = typeof range?.low === 'number' && Number.isFinite(range.low) ? range.low : 0;
+  const high = typeof range?.high === 'number' && Number.isFinite(range.high) ? range.high : 0;
+  return { low, high };
+}
+
+function renderBreakdownRow(
+  iconKey: keyof typeof SNAPSHOT_COST_ICONS,
+  label: string,
+  range: { low?: number; high?: number } | null | undefined,
+  tc: any,
+  alwaysShow = false,
+  nightsForPerDay?: number,
+  unit: 'day' | 'night' = 'day',
+) {
+  const safeRange = safeCostRange(range);
+  if (!alwaysShow && safeRange.low === 0 && safeRange.high === 0) return null;
+  const iconDef = SNAPSHOT_COST_ICONS[iconKey];
+  if (!iconDef?.icon) return null;
+  const Icon = iconDef.icon;
+  const perDayHint = nightsForPerDay && nightsForPerDay > 0
+    ? `~$${Math.round(safeRange.low / nightsForPerDay)}–$${Math.round(safeRange.high / nightsForPerDay)}/${unit}`
+    : '';
   return (
-    <View key={label} style={styles.breakdownRow}>
-      <Text style={[styles.breakdownLabel, { color: tc.textSecondary }]}>{label}</Text>
-      <Text style={[styles.breakdownValue, { color: tc.textPrimary }]}>
-        ${range.low.toLocaleString()} – ${range.high.toLocaleString()}
-      </Text>
+    <View key={iconKey} style={styles.breakdownRow}>
+      <View style={styles.breakdownLabelWrap}>
+        <View style={[styles.breakdownIconWrap, { backgroundColor: iconDef.bgColor }]}>
+          <Icon size={16} color={iconDef.color} variant="Bold" />
+        </View>
+        <Text style={[styles.breakdownLabel, { color: tc.textSecondary }]}>{label}</Text>
+      </View>
+      <View style={styles.breakdownValueCol}>
+        <Text style={[styles.breakdownValue, { color: tc.textPrimary }]}>
+          ${safeRange.low.toLocaleString()} – ${safeRange.high.toLocaleString()}
+        </Text>
+        {!!perDayHint && (
+          <Text style={[styles.breakdownPerDayHint, { color: tc.textTertiary }]}>{perDayHint}</Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -740,7 +1019,6 @@ const styles = StyleSheet.create({
     flex: 1, justifyContent: 'center', alignItems: 'center',
     paddingHorizontal: spacing.xl, width: '100%',
   },
-  loadingContainer: { alignItems: 'center', paddingHorizontal: spacing.xl },
   loadingTitle: {
     fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, textAlign: 'center',
     marginBottom: spacing.lg,
@@ -777,7 +1055,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md, paddingBottom: spacing.md, gap: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   closeBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   loadingCloseBtn: { position: 'absolute', right: spacing.md, zIndex: 10, padding: 4 },
   headerCenter: { flex: 1, alignItems: 'center' },
@@ -791,14 +1068,30 @@ const styles = StyleSheet.create({
   overviewCard: {
     borderRadius: borderRadius.xl, padding: spacing.lg, borderWidth: 1.5,
   },
-  overviewHeader: { marginBottom: spacing.sm },
+  overviewHeader: { marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  overviewFreshness: { fontSize: typography.fontSize.caption, flexShrink: 1 },
   overviewBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     alignSelf: 'flex-start',
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
   },
   overviewBadgeText: { fontSize: typography.fontSize.caption, fontWeight: typography.fontWeight.bold, letterSpacing: 0.3 },
-  overviewText: { fontSize: typography.fontSize.sm, lineHeight: 22, fontWeight: typography.fontWeight.medium },
+  overviewContent: { gap: spacing.sm },
+  overviewText: { fontSize: typography.fontSize.sm, lineHeight: 22, fontWeight: typography.fontWeight.medium, flexShrink: 1, width: '100%' },
+  overviewMiniSection: {
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    padding: spacing.sm,
+  },
+  overviewMiniTitle: {
+    fontSize: typography.fontSize.caption,
+    fontWeight: typography.fontWeight.bold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  overviewMiniText: { fontSize: typography.fontSize.sm, lineHeight: 21 },
+  overviewStreamingHint: { fontSize: typography.fontSize.caption, marginTop: spacing.xs, fontStyle: 'italic' },
 
   // Cards
   card: { borderRadius: borderRadius.xl, padding: spacing.lg, borderWidth: 1 },
@@ -821,9 +1114,13 @@ const styles = StyleSheet.create({
   perDayRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4 },
   perDayLabel: { fontSize: typography.fontSize.sm },
   perDayValue: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.bold },
-  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
-  breakdownLabel: { fontSize: typography.fontSize.sm },
-  breakdownValue: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold },
+  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
+  breakdownLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1, paddingRight: spacing.sm },
+  breakdownIconWrap: { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  breakdownLabel: { fontSize: typography.fontSize.sm, flexShrink: 1 },
+  breakdownValueCol: { alignItems: 'flex-end', flexShrink: 0 },
+  breakdownValue: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, textAlign: 'right' },
+  breakdownPerDayHint: { fontSize: typography.fontSize.caption, marginTop: 2, textAlign: 'right' },
 
   // Flights
   flightRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
@@ -860,12 +1157,6 @@ const styles = StyleSheet.create({
   expPrice: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.bold },
   expFreeCancel: { fontSize: typography.fontSize.captionSm, fontWeight: typography.fontWeight.semibold, marginTop: 4 },
 
-  // Events
-  eventRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: spacing.sm },
-  eventDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },
-  eventName: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold },
-  eventMeta: { fontSize: typography.fontSize.xs, marginTop: 2 },
-
   // Intelligence Sections
   intelContainer: { gap: 10 },
   intelSectionHeader: {
@@ -890,7 +1181,8 @@ const styles = StyleSheet.create({
     width: 32, height: 32, borderRadius: 10,
     justifyContent: 'center', alignItems: 'center',
   },
-  intelTitle: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.bold, flex: 1 },
+  intelTitle: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.bold },
+  intelFreshness: { fontSize: typography.fontSize.caption, marginTop: 2 },
   intelChevron: {
     width: 26, height: 26, borderRadius: 13,
     justifyContent: 'center', alignItems: 'center',
@@ -899,6 +1191,23 @@ const styles = StyleSheet.create({
   intelItem: { paddingVertical: 10 },
   intelLabel: { fontSize: typography.fontSize.bodySm, fontWeight: typography.fontWeight.bold, marginBottom: 3, letterSpacing: 0.2 },
   intelDetail: { fontSize: typography.fontSize.sm, lineHeight: 20 },
+  guidePlaceholder: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  guidePlaceholderHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  guidePlaceholderIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  guidePlaceholderTitle: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.bold },
+  guidePlaceholderSub: { fontSize: typography.fontSize.caption, marginTop: 2 },
+  shimmerLine: { height: 9, borderRadius: 999, marginTop: 8 },
 
   // Powered By
   // Trip Import Info Card

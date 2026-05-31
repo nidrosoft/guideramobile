@@ -6,10 +6,11 @@
  * and bulk-inserts parsed items into the expense tracker.
  */
 
-import { supabase } from '@/lib/supabase/client';
+import { supabase, getAuthenticatedEdgeFunctionHeaders } from '@/lib/supabase/client';
 import { invokeWithRetry } from '@/utils/retry';
 import { expenseService } from '@/services/expense.service';
 import { Expense } from '@/features/trips/plugins/expenses/types/expense.types';
+import { AI_IMAGE_PAYLOAD_MAX_BYTES, assertAiBase64WithinLimit } from '@/utils/aiPayloadLimits';
 
 // ─── Types ──────────────────────────────────────
 
@@ -51,8 +52,23 @@ class ReceiptScannerService {
     imageBase64: string,
     mediaType: string = 'image/jpeg',
     currency: string = 'USD',
+    userId?: string,
   ): Promise<ReceiptScanResult> {
-    const data = await invokeWithRetry(supabase, 'scan-receipt', { imageBase64, mediaType, currency }, 'slow');
+    assertAiBase64WithinLimit(imageBase64, {
+      label: 'Receipt image',
+      maxBytes: AI_IMAGE_PAYLOAD_MAX_BYTES,
+    });
+    // Edge functions don't get the Clerk token auto-injected (see supabase
+    // client fetch override), so forward it explicitly — the scan-receipt
+    // auth guard resolves the user from this header. Mirrors scan-ticket.
+    const headers = await getAuthenticatedEdgeFunctionHeaders();
+    const data = await invokeWithRetry(
+      supabase,
+      'scan-receipt',
+      { imageBase64, mediaType, currency, userId },
+      'slow',
+      { headers }
+    );
     if (!data?.success) throw new Error(data?.error || 'Failed to scan receipt');
 
     return data as ReceiptScanResult;
@@ -76,6 +92,7 @@ class ReceiptScannerService {
       imageBase64,
       options?.mediaType || 'image/jpeg',
       options?.currency || 'USD',
+      userId,
     );
 
     if (!scanResult.items || scanResult.items.length === 0) {

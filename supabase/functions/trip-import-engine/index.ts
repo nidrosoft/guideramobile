@@ -21,10 +21,11 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getUserIdFromRequest, unauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-clerk-token',
 };
 
 // ============================================
@@ -630,19 +631,18 @@ serve(async (req: Request) => {
     // POST — Normal API actions
     // ========================================
 
-    // Parse body first to get userId (we use Clerk auth, not Supabase auth)
     const body = await req.json();
-    const { action, provider = 'traxo', userId: bodyUserId, ...params } = body;
+    const { action, provider = 'traxo', ...params } = body;
 
-    // userId comes from the request body (set by frontend via tripImportEngine.setUserId)
-    const userId: string | null = bodyUserId || null;
+    const userId = await getUserIdFromRequest(
+      req,
+      body,
+      supabaseUrl,
+      supabaseServiceKey,
+      Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_ANON_PUBLIC_KEY') || '',
+    );
 
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: 'userId is required. Please sign in.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    if (!userId) return unauthorizedResponse(corsHeaders);
 
     const traxo = new TraxoAdapter(supabase);
     const assembler = new TripAssemblyEngine(supabase);

@@ -1,19 +1,13 @@
 /**
  * SHARED RATE LIMITER
- * 
- * Simple in-memory rate limiter for edge functions.
- * Uses a sliding window approach with configurable limits per user.
- * 
- * Since edge functions are stateless, this uses Supabase DB to persist
- * rate limit counters across invocations.
+ *
+ * Backward-compatible wrapper around the durable edge scale rate limiter.
  */
 
-import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
 interface RateLimitConfig {
-  maxRequests: number;    // Max requests allowed
-  windowMinutes: number;  // Time window in minutes
-  identifier: string;     // Function name for tracking
+  maxRequests: number; // Max requests allowed
+  windowMinutes: number; // Time window in minutes
+  identifier: string; // Function name for tracking
 }
 
 interface RateLimitResult {
@@ -22,57 +16,85 @@ interface RateLimitResult {
   resetAt: string;
 }
 
+interface RpcClient {
+  rpc: (
+    fn: string,
+    args: Record<string, unknown>
+  ) => Promise<{ data: unknown; error: { message?: string } | null }>;
+  from?: (table: string) => unknown;
+}
+
+function normalizeKey(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').toLowerCase().slice(0, 500);
+}
+
+function parseRpcResult(data: unknown, fallbackResetAt: string): RateLimitResult {
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || typeof row !== 'object') {
+    return { allowed: false, remaining: 0, resetAt: fallbackResetAt };
+  }
+
+  const value = row as Record<string, unknown>;
+  return {
+    allowed: Boolean(value.allowed),
+    remaining: typeof value.remaining === 'number' ? value.remaining : Number(value.remaining || 0),
+    resetAt:
+      typeof value.reset_at === 'string'
+        ? value.reset_at
+        : typeof value.resetAt === 'string'
+          ? value.resetAt
+          : fallbackResetAt,
+  };
+}
+
 /**
- * Check rate limit for a user on a specific function.
- * Uses the alerts table with a special rate_limit category to track usage.
+ * Check rate limit for a user on a specific function using edge_rate_limit_buckets.
  */
 export async function checkRateLimit(
-  supabase: SupabaseClient,
+  supabase: RpcClient,
   userId: string,
   config: RateLimitConfig
 ): Promise<RateLimitResult> {
-  const windowStart = new Date(Date.now() - config.windowMinutes * 60 * 1000).toISOString();
-  const resetAt = new Date(Date.now() + config.windowMinutes * 60 * 1000).toISOString();
-
-  // Count recent requests for this user + function
-  const { count, error } = await supabase
-    .from('ai_generation_logs')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('function_name', config.identifier)
-    .gte('created_at', windowStart);
+  const windowSeconds = config.windowMinutes * 60;
+  const fallbackResetAt = new Date(Date.now() + windowSeconds * 1000).toISOString();
+  const { data, error } = await supabase.rpc('edge_consume_rate_limit', {
+    p_namespace: normalizeKey(config.identifier),
+    p_bucket_key: normalizeKey(`user:${userId}`),
+    p_window_seconds: windowSeconds,
+    p_max_requests: config.maxRequests,
+  });
 
   if (error) {
-    // Fail closed — deny the request when rate limiter can't verify the limit.
-    // This prevents abuse during database issues or attack conditions.
-    console.error(`[RateLimiter] Error checking rate limit (denying request): ${error.message}`);
-    return { allowed: false, remaining: 0, resetAt };
+    console.error(
+      `[RateLimiter] Error checking edge rate limit (denying request): ${error.message || 'unknown error'}`
+    );
+    return { allowed: false, remaining: 0, resetAt: fallbackResetAt };
   }
 
-  const used = count || 0;
-  const remaining = Math.max(0, config.maxRequests - used);
-  const allowed = used < config.maxRequests;
-
-  return { allowed, remaining, resetAt };
+  return parseRpcResult(data, fallbackResetAt);
 }
 
 /**
  * Record a rate-limited request.
  */
 export async function recordRequest(
-  supabase: SupabaseClient,
+  supabase: RpcClient,
   userId: string,
   functionName: string,
   metadata?: Record<string, any>
 ): Promise<void> {
-  await supabase.from('ai_generation_logs').insert({
-    user_id: userId,
-    function_name: functionName,
-    status: 'completed',
-    metadata: metadata || {},
-  }).then(({ error }) => {
-    if (error) console.warn(`[RateLimiter] Error recording request: ${error.message}`);
-  });
+  if (!metadata) return;
+  const edgeMetric = metadata.edgeMetric as
+    | ((input: {
+        namespace: string;
+        userId: string;
+        metadata: Record<string, any>;
+      }) => Promise<void>)
+    | undefined;
+
+  if (edgeMetric) {
+    await edgeMetric({ namespace: functionName, userId, metadata });
+  }
 }
 
 /**
@@ -125,7 +147,10 @@ export const RATE_LIMITS = {
 /**
  * Helper to create a 429 Too Many Requests response.
  */
-export function rateLimitResponse(result: RateLimitResult, corsHeaders: Record<string, string>): Response {
+export function rateLimitResponse(
+  result: RateLimitResult,
+  corsHeaders: Record<string, string>
+): Response {
   return new Response(
     JSON.stringify({
       error: 'Rate limit exceeded',

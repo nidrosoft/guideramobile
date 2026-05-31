@@ -5,21 +5,23 @@
  * Supports multiple images with smooth scrolling
  */
 
-import { View, StyleSheet, Dimensions, FlatList, Image, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Dimensions, FlatList, TouchableOpacity } from 'react-native';
 import { useState, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/context/ThemeContext';
+import CachedImage from '@/components/common/CachedImage';
 
 const { width } = Dimensions.get('window');
 const HERO_HEIGHT = width * 1.2; // 1.2 aspect ratio
 
 interface ImageGalleryProps {
   images: string[];
+  fallbackCityName?: string;
   onImagePress?: (index: number) => void;
 }
 
-export default function ImageGallery({ images, onImagePress }: ImageGalleryProps) {
+export default function ImageGallery({ images, fallbackCityName, onImagePress }: ImageGalleryProps) {
   const { colors } = useTheme();
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
@@ -41,13 +43,27 @@ export default function ImageGallery({ images, onImagePress }: ImageGalleryProps
       onPress={handleImagePress}
       style={styles.imageContainer}
     >
-      <Image
-        source={{ uri: item }}
+      <CachedImage
+        uri={item}
         style={styles.image}
-        resizeMode="cover"
+        contentFit="cover"
+        fallbackCityName={fallbackCityName}
+      />
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.15)']}
+        style={styles.gradient}
       />
     </TouchableOpacity>
   );
+
+  if (images.length === 0) {
+    return (
+      <LinearGradient
+        colors={[colors.gray100 || '#F4F6F8', colors.gray200 || '#E9EDF2']}
+        style={styles.container}
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>

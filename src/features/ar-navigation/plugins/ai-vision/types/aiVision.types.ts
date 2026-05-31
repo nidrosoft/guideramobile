@@ -49,6 +49,29 @@ export interface OCRBlock {
   };
 }
 
+// ─── Live Tool / Generative UI Types ─────────────────────────
+/** A single place card rendered in the Live transcript from a tool call. */
+export interface LivePlaceCard {
+  id: string;
+  name: string;
+  category?: string;
+  rating?: number;
+  reviewCount?: number;
+  priceLevel?: number; // 0-4 (Google price_level)
+  distanceMeters?: number;
+  openNow?: boolean;
+  address?: string;
+  lat?: number;
+  lng?: number;
+}
+
+/** Rich UI payload attached to an AI conversation entry. */
+export type LiveToolCard = {
+  type: 'places';
+  title?: string;
+  places: LivePlaceCard[];
+};
+
 // ─── Live Mode Types ──────────────────────────────────────────
 export interface LiveFrameResult {
   translation: string;

@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Linking } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
+import { trackAffiliateClick } from '@/services/affiliateTracking';
 import {
   trackDealClick,
   confirmBooking,
@@ -145,7 +146,14 @@ export function useDealRedirect() {
   const [lastClickId, setLastClickId] = useState<string | null>(null);
 
   const redirect = useCallback(
-    async (input: CreateDealClickInput & GenerateAffiliateLinkParams) => {
+    async (input: CreateDealClickInput & GenerateAffiliateLinkParams & {
+      dealCacheId?: string;
+      dealMatchId?: string;
+      routeKey?: string;
+      dealTitle?: string;
+      campaignId?: string;
+      notificationId?: string;
+    }) => {
       const config = await getProviderConfig(input.provider);
       const affiliateUrl = generateAffiliateLink(
         {
@@ -162,6 +170,27 @@ export function useDealRedirect() {
       );
 
       if (profile?.id) {
+        // New affiliate click tracking
+        trackAffiliateClick({
+          userId: profile.id,
+          dealCacheId: input.dealCacheId,
+          dealMatchId: input.dealMatchId,
+          dealType: input.deal_type,
+          provider: input.provider,
+          routeKey: input.routeKey,
+          priceAmount: input.price_amount,
+          priceCurrency: input.price_currency || 'USD',
+          dealTitle: input.dealTitle,
+          affiliateUrl,
+          source: input.source || 'app',
+          campaignId: input.campaignId,
+          notificationId: input.notificationId,
+          dealSnapshot: input.deal_snapshot as Record<string, any>,
+        }).then(trackingId => {
+          if (trackingId && __DEV__) console.log('[DealRedirect] Tracked:', trackingId);
+        });
+
+        // Legacy deal_clicks tracking (kept for backward compat via trackAffiliateClick)
         const result = await trackDealClick(profile.id, {
           ...input,
           affiliate_url: affiliateUrl,

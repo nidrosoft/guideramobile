@@ -9,6 +9,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import * as Haptics from 'expo-haptics';
+import {
+  isRetryableSyncError,
+  queueSavedToggle,
+  registerSavedToggleSyncHandler,
+} from '@/services/savedToggleQueue';
+
+registerSavedToggleSyncHandler();
 
 export function useSaveDestination(destinationId: string | null) {
   const { profile } = useAuth();
@@ -25,6 +32,7 @@ export function useSaveDestination(destinationId: string | null) {
         .select('id')
         .eq('user_id', profile.id)
         .eq('destination_id', destinationId)
+        .eq('is_archived', false)
         .maybeSingle();
 
       setIsSaved(!!data);
@@ -46,38 +54,33 @@ export function useSaveDestination(destinationId: string | null) {
     );
 
     try {
-      if (wasSaved) {
-        await supabase
-          .from('user_saved_items')
-          .delete()
-          .eq('user_id', profile.id)
-          .eq('destination_id', destinationId);
+      const { data, error } = await supabase.rpc('toggle_saved_content', {
+        p_user_id: profile.id,
+        p_item_type: 'destination',
+        p_item_id: destinationId,
+        p_should_save: !wasSaved,
+        p_source: 'detail_page',
+      });
 
-        try {
-          await supabase.from('user_interactions').insert({
-            user_id: profile.id,
-            destination_id: destinationId,
-            interaction_type: 'unsave',
-            source: 'detail_page',
-          });
-        } catch (e) { if (__DEV__) console.warn('Operation failed:', e); }
-      } else {
-        await supabase.from('user_saved_items').insert({
-          user_id: profile.id,
-          destination_id: destinationId,
-        });
+      if (error) throw error;
 
-        try {
-          await supabase.from('user_interactions').insert({
-            user_id: profile.id,
-            destination_id: destinationId,
-            interaction_type: 'save',
-            source: 'detail_page',
-          });
-        } catch (e) { if (__DEV__) console.warn('Operation failed:', e); }
+      const serverSavedState = (data as { is_saved?: boolean } | null)?.is_saved;
+      if (typeof serverSavedState === 'boolean') {
+        setIsSaved(serverSavedState);
       }
     } catch (error) {
       console.error('Save toggle error:', error);
+      if (isRetryableSyncError(error)) {
+        await queueSavedToggle({
+          userId: profile.id,
+          itemType: 'destination',
+          itemId: destinationId,
+          shouldSave: !wasSaved,
+          source: 'detail_page',
+        });
+        setIsSaved(!wasSaved);
+        return;
+      }
       setIsSaved(wasSaved);
     } finally {
       setIsLoading(false);

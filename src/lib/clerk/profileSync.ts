@@ -1,5 +1,58 @@
-import { supabaseNoAuth as supabase } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/client';
 import { Profile } from '@/types/auth.types';
+
+const SYNC_MAX_ATTEMPTS = 3;
+const SYNC_RETRY_DELAY_MS = 600;
+
+function isNetworkError(error: unknown): boolean {
+  const message =
+    error && typeof error === 'object' && 'message' in error
+      ? String((error as { message: unknown }).message)
+      : String(error);
+  return (
+    message.includes('Network request failed') ||
+    message.includes('Failed to fetch') ||
+    message.includes('Connection terminated') ||
+    message.includes('fetch failed')
+  );
+}
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withNetworkRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= SYNC_MAX_ATTEMPTS; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (!isNetworkError(error) || attempt === SYNC_MAX_ATTEMPTS) {
+        throw error;
+      }
+      if (__DEV__) {
+        console.warn(`[ProfileSync] ${label} failed (attempt ${attempt}/${SYNC_MAX_ATTEMPTS}), retrying…`);
+      }
+      await sleep(SYNC_RETRY_DELAY_MS * attempt);
+    }
+  }
+  throw lastError;
+}
+
+function isNoRowsError(error: { code?: string } | null): boolean {
+  return error?.code === 'PGRST116';
+}
+
+// NOTE: We intentionally use the authenticated `supabase` client (not
+// `supabaseNoAuth`) so every request carries the Clerk session token in the
+// Authorization header. This lets RLS policies on `profiles` authorize the
+// caller via `auth.jwt()->>'sub' = clerk_id`. Without this, INSERTs fail
+// with Postgres 42501 (row-level security policy violation).
+//
+// The Clerk→Supabase bridge is installed in AuthContext's first useEffect
+// before `syncClerkUserToSupabase` runs in the second useEffect, so the
+// token is available on the first call.
 
 /**
  * Generate a deterministic UUID from a Clerk user ID using MurmurHash3-based mixing.
@@ -54,147 +107,33 @@ export async function syncClerkUserToSupabase(clerkUser: {
   const phone = clerkUser.phoneNumbers?.[0]?.phoneNumber || null;
 
   try {
-    // First check if a profile exists with this Clerk ID
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('clerk_id', clerkUser.id)
-      .single();
+    return await withNetworkRetry('syncClerkUserToSupabase', async () => {
+      const { data, error } = await supabase.rpc('bootstrap_profile', {
+        p_profile_id: clerkIdToUuid(clerkUser.id),
+        p_clerk_id: clerkUser.id,
+        p_first_name: clerkUser.firstName || '',
+        p_last_name: clerkUser.lastName || '',
+        p_email: email,
+        p_phone: phone,
+        p_avatar_url: clerkUser.imageUrl || null,
+      });
 
-    if (existingProfile) {
-      // Profile exists — update only auth-related fields, preserve everything else
-      const updates: Record<string, any> = {
-        updated_at: new Date().toISOString(),
-      };
-
-      if (email && !existingProfile.email) updates.email = email;
-      if (phone && !existingProfile.phone) {
-        updates.phone = phone;
-        updates.phone_verified = true;
-      }
-      if (clerkUser.imageUrl && !existingProfile.avatar_url) {
-        updates.avatar_url = clerkUser.imageUrl;
-      }
-      if (clerkUser.firstName && !existingProfile.first_name) {
-        updates.first_name = clerkUser.firstName;
-      }
-      if (clerkUser.lastName && !existingProfile.last_name) {
-        updates.last_name = clerkUser.lastName;
-      }
-
-      if (Object.keys(updates).length > 1) {
-        const { data } = await supabase
-          .from('profiles')
-          .update(updates)
-          .eq('clerk_id', clerkUser.id)
-          .select()
-          .single();
-        return (data as Profile) || existingProfile;
-      }
-
-      return existingProfile as Profile;
-    }
-
-    // Check if there's an orphaned profile by email (migration from old Supabase auth)
-    // SECURITY: Only link if the profile has NO clerk_id — meaning it's a pre-Clerk migration orphan.
-    // If it already has a clerk_id, it belongs to another user — do NOT hijack it.
-    if (email) {
-      const { data: emailProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('email', email)
-        .is('clerk_id', null)
-        .single();
-
-      if (emailProfile) {
-        // Found orphaned profile by email (no clerk_id) — safe to link
-        const { data: updatedProfile, error: updateError } = await supabase
-          .from('profiles')
-          .update({
-            clerk_id: clerkUser.id,
-            phone: phone || emailProfile.phone,
-            first_name: clerkUser.firstName || emailProfile.first_name,
-            last_name: clerkUser.lastName || emailProfile.last_name,
-            avatar_url: clerkUser.imageUrl || emailProfile.avatar_url,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', emailProfile.id)
-          .select()
-          .single();
-
-        if (updateError) {
-          console.error('[ProfileSync] Error migrating profile:', updateError);
-          return emailProfile as Profile;
+      if (error) {
+        if (isNetworkError(error)) {
+          throw error;
         }
-
-        if (__DEV__) console.log('[ProfileSync] Linked existing profile to Clerk user via email');
-        return updatedProfile as Profile;
+        console.error('[ProfileSync] Error bootstrapping profile:', error);
+        return null;
       }
-    }
 
-    // Check if there's an orphaned profile by phone (migration case)
-    // SECURITY: Only link if the profile has NO clerk_id — prevents hijacking another user's profile.
-    if (phone) {
-      const { data: phoneProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('phone', phone)
-        .is('clerk_id', null)
-        .single();
-
-      if (phoneProfile) {
-        const { data: updatedProfile, error: updateError } = await supabase
-          .from('profiles')
-          .update({
-            clerk_id: clerkUser.id,
-            email: email || phoneProfile.email,
-            first_name: clerkUser.firstName || phoneProfile.first_name,
-            last_name: clerkUser.lastName || phoneProfile.last_name,
-            avatar_url: clerkUser.imageUrl || phoneProfile.avatar_url,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', phoneProfile.id)
-          .select()
-          .single();
-
-        if (updateError) {
-          console.error('[ProfileSync] Error migrating profile by phone:', updateError);
-          return phoneProfile as Profile;
-        }
-
-        if (__DEV__) console.log('[ProfileSync] Linked existing profile to Clerk user via phone');
-        return updatedProfile as Profile;
-      }
-    }
-
-    // No existing profile — create new one with generated UUID
-    const profileId = clerkIdToUuid(clerkUser.id);
-    const { data: newProfile, error: createError } = await supabase
-      .from('profiles')
-      .insert({
-        id: profileId,
-        clerk_id: clerkUser.id,
-        first_name: clerkUser.firstName || '',
-        last_name: clerkUser.lastName || '',
-        email: email || '',
-        phone,
-        phone_verified: !!phone,
-        email_verified: !!email,
-        onboarding_completed: false,
-        onboarding_step: 0,
-      })
-      .select()
-      .single();
-
-    if (createError) {
-      console.error('[ProfileSync] Error creating profile:', createError);
-      return null;
-    }
-
-    if (__DEV__) console.log('[ProfileSync] Created new profile for Clerk user');
-    return newProfile as Profile;
+      return data as Profile | null;
+    });
   } catch (error) {
-    console.error('[ProfileSync] Unexpected error:', error);
+    if (isNetworkError(error)) {
+      if (__DEV__) console.warn('[ProfileSync] Supabase unreachable after retries — use cached profile if available');
+    } else {
+      console.error('[ProfileSync] Unexpected error:', error);
+    }
     return null;
   }
 }
@@ -203,18 +142,30 @@ export async function syncClerkUserToSupabase(clerkUser: {
  * Get profile from Supabase by Clerk user ID
  */
 export async function getProfileByClerkId(clerkUserId: string): Promise<Profile | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('clerk_id', clerkUserId)
-    .single();
+  try {
+    return await withNetworkRetry('getProfileByClerkId', async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('clerk_id', clerkUserId)
+        .maybeSingle();
 
-  if (error) {
-    console.error('[ProfileSync] Error fetching profile:', error);
+      if (error && !isNoRowsError(error)) {
+        if (isNetworkError(error)) {
+          throw error;
+        }
+        console.error('[ProfileSync] Error fetching profile:', error);
+        return null;
+      }
+
+      return (data as Profile) ?? null;
+    });
+  } catch (error) {
+    if (__DEV__ && isNetworkError(error)) {
+      console.warn('[ProfileSync] Could not fetch profile — Supabase unreachable');
+    }
     return null;
   }
-
-  return data as Profile;
 }
 
 /**

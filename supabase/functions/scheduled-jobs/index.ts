@@ -11,10 +11,17 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireCronOrServiceAuth } from '../_shared/cronAuth.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, x-cron-secret, apikey, content-type',
+};
 
 interface JobResult {
   job: string;
@@ -24,9 +31,12 @@ interface JobResult {
 }
 
 serve(async (req: Request) => {
-  // Auth: allow pg_cron (no header), service_role Bearer, or CRON_SECRET
-  // Platform JWT verification is disabled for this function (--no-verify-jwt)
-  // so pg_cron can invoke it directly without auth headers
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  const unauthorized = requireCronOrServiceAuth(req, corsHeaders);
+  if (unauthorized) return unauthorized;
 
   const { jobType } = await req.json().catch(() => ({ jobType: 'all' }));
   const results: JobResult[] = [];
@@ -73,6 +83,16 @@ serve(async (req: Request) => {
       case 'gil_dispatch_notifications':
         results.push(await gilDispatchNotifications());
         break;
+      case 'notifications_process_scheduled':
+        results.push(await runNotificationDispatchJob('process_scheduled'));
+        break;
+      case 'notifications_dispatch_pending':
+        results.push(await runNotificationDispatchJob('dispatch_pending'));
+        break;
+      case 'notifications_all':
+        results.push(await runNotificationDispatchJob('process_scheduled'));
+        results.push(await runNotificationDispatchJob('dispatch_pending'));
+        break;
       case 'gil_all':
         results.push(await gilComputeDna());
         results.push(await gilScanDeals('explore'));
@@ -84,11 +104,17 @@ serve(async (req: Request) => {
       case 'monitor_flights':
         results.push(await monitorFlights());
         break;
+      case 'departure_monitor':
+        results.push(await departureMonitor());
+        break;
       case 'expire_activities':
         results.push(await expireActivities());
         break;
       case 'section_refresh_all':
         results.push(await refreshSectionCache());
+        break;
+      case 'destination_details_prewarm':
+        results.push(await prewarmDestinationDetails());
         break;
       case 'classify_new_destinations':
         results.push(await classifyNewDestinations());
@@ -107,6 +133,7 @@ serve(async (req: Request) => {
         results.push(await discoverNewDestinations());
         results.push(await classifyNewDestinations());
         results.push(await refreshSectionCache());
+        results.push(await prewarmDestinationDetails());
         break;
     }
 
@@ -159,11 +186,13 @@ async function scanDeals(): Promise<JobResult> {
           body: {
             action: 'searchFlights',
             params: {
-              segments: [{
-                origin: params.origin,
-                destination: params.destination,
-                departureDate: params.departureDate || getDefaultDate(14),
-              }],
+              segments: [
+                {
+                  origin: params.origin,
+                  destination: params.destination,
+                  departureDate: params.departureDate || getDefaultDate(14),
+                },
+              ],
               travelers: { adults: 1 },
               currency: 'USD',
               limit: 5,
@@ -177,9 +206,11 @@ async function scanDeals(): Promise<JobResult> {
         if (!Array.isArray(flights) || flights.length === 0) continue;
 
         // Find best price
-        const bestFlight = flights.reduce((min: any, f: any) =>
-          (f.price?.amount || Infinity) < (min.price?.amount || Infinity) ? f : min
-        , flights[0]);
+        const bestFlight = flights.reduce(
+          (min: any, f: any) =>
+            (f.price?.amount || Infinity) < (min.price?.amount || Infinity) ? f : min,
+          flights[0]
+        );
 
         const price = bestFlight.price?.amount || 0;
         if (price <= 0) continue;
@@ -193,12 +224,11 @@ async function scanDeals(): Promise<JobResult> {
           .order('recorded_at', { ascending: false })
           .limit(30);
 
-        const scores = scoreDeal(price, history?.map(h => h.price_amount) || []);
+        const scores = scoreDeal(price, history?.map((h) => h.price_amount) || []);
 
         // Upsert into deal_cache
-        await supabase
-          .from('deal_cache')
-          .upsert({
+        await supabase.from('deal_cache').upsert(
+          {
             deal_type: 'flight',
             route_key: routeKey,
             provider: bestFlight.provider?.code || 'unknown',
@@ -219,7 +249,9 @@ async function scanDeals(): Promise<JobResult> {
             deal_badges: scores.badges,
             scanned_at: new Date().toISOString(),
             expires_at: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
-          }, { onConflict: 'deal_type,route_key,provider,date_range' });
+          },
+          { onConflict: 'deal_type,route_key,provider,date_range' }
+        );
 
         // Record price history
         await supabase.from('price_history').insert({
@@ -243,6 +275,42 @@ async function scanDeals(): Promise<JobResult> {
   return { job: 'scan_deals', success: errors.length === 0, processed, errors };
 }
 
+async function runNotificationDispatchJob(
+  action: 'process_scheduled' | 'dispatch_pending'
+): Promise<JobResult> {
+  const errors: string[] = [];
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${supabaseServiceKey}`,
+      },
+      body: JSON.stringify({ action }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload?.success === false) {
+      throw new Error(payload?.error || `send-notification returned HTTP ${response.status}`);
+    }
+
+    return {
+      job: `notifications_${action}`,
+      success: true,
+      processed: payload.processed ?? payload.dispatched ?? 0,
+      errors,
+    };
+  } catch (err: any) {
+    errors.push(err.message || String(err));
+    return {
+      job: `notifications_${action}`,
+      success: false,
+      processed: 0,
+      errors,
+    };
+  }
+}
+
 // ============================================
 // CHECK PRICE ALERTS — Notify users of drops
 // ============================================
@@ -256,7 +324,10 @@ async function checkPriceAlerts(): Promise<JobResult> {
       .from('price_alerts')
       .select('*')
       .eq('is_active', true)
-      .or('last_checked_at.is.null,last_checked_at.lt.' + new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString())
+      .or(
+        'last_checked_at.is.null,last_checked_at.lt.' +
+          new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
+      )
       .limit(50);
 
     for (const alert of alerts || []) {
@@ -312,10 +383,7 @@ async function checkPriceAlerts(): Promise<JobResult> {
           });
         }
 
-        await supabase
-          .from('price_alerts')
-          .update(updateData)
-          .eq('id', alert.id);
+        await supabase.from('price_alerts').update(updateData).eq('id', alert.id);
 
         processed++;
       } catch (err: any) {
@@ -406,12 +474,15 @@ async function processTripTransitions(): Promise<JobResult> {
 
     for (const trip of needUpcoming || []) {
       try {
-        await supabase.from('trips').update({
-          status: 'upcoming',
-          previous_status: 'confirmed',
-          status_changed_at: now,
-          status_change_reason: 'Auto-transition: 30 days before trip',
-        }).eq('id', trip.id);
+        await supabase
+          .from('trips')
+          .update({
+            status: 'upcoming',
+            previous_status: 'confirmed',
+            status_changed_at: now,
+            status_change_reason: 'Auto-transition: 30 days before trip',
+          })
+          .eq('id', trip.id);
         processed++;
       } catch (err: any) {
         errors.push(`Trip ${trip.id} → upcoming: ${err.message}`);
@@ -428,13 +499,16 @@ async function processTripTransitions(): Promise<JobResult> {
 
     for (const trip of needOngoing || []) {
       try {
-        await supabase.from('trips').update({
-          status: 'ongoing',
-          previous_status: trip.status,
-          status_changed_at: now,
-          started_at: now,
-          status_change_reason: 'Auto-transition: trip started',
-        }).eq('id', trip.id);
+        await supabase
+          .from('trips')
+          .update({
+            status: 'ongoing',
+            previous_status: trip.status,
+            status_changed_at: now,
+            started_at: now,
+            status_change_reason: 'Auto-transition: trip started',
+          })
+          .eq('id', trip.id);
         processed++;
       } catch (err: any) {
         errors.push(`Trip ${trip.id} → ongoing: ${err.message}`);
@@ -451,13 +525,16 @@ async function processTripTransitions(): Promise<JobResult> {
 
     for (const trip of needCompleted || []) {
       try {
-        await supabase.from('trips').update({
-          status: 'completed',
-          previous_status: 'ongoing',
-          status_changed_at: now,
-          completed_at: now,
-          status_change_reason: 'Auto-transition: trip ended',
-        }).eq('id', trip.id);
+        await supabase
+          .from('trips')
+          .update({
+            status: 'completed',
+            previous_status: 'ongoing',
+            status_changed_at: now,
+            completed_at: now,
+            status_change_reason: 'Auto-transition: trip ended',
+          })
+          .eq('id', trip.id);
         processed++;
       } catch (err: any) {
         errors.push(`Trip ${trip.id} → completed: ${err.message}`);
@@ -470,7 +547,6 @@ async function processTripTransitions(): Promise<JobResult> {
       .update({ status: 'expired' })
       .eq('status', 'pending')
       .lt('token_expires_at', now);
-
   } catch (err: any) {
     errors.push(`tripTransitions: ${err.message}`);
   }
@@ -558,9 +634,12 @@ async function monitorFlights(): Promise<JobResult> {
         const date = new Date(departureTime).toISOString().split('T')[0];
 
         // Call flight-tracking edge function for status
-        const { data: trackingData, error: trackErr } = await supabase.functions.invoke('flight-tracking', {
-          body: { action: 'status', flightNumber, date },
-        });
+        const { data: trackingData, error: trackErr } = await supabase.functions.invoke(
+          'flight-tracking',
+          {
+            body: { action: 'status', flightNumber, date },
+          }
+        );
 
         if (trackErr || !trackingData?.success) continue;
 
@@ -583,14 +662,21 @@ async function monitorFlights(): Promise<JobResult> {
 
         // Flight delayed
         if (delay && delay > 15 && (!recentAlerts || recentAlerts.length === 0)) {
-          const newTime = flight.departure?.estimatedTime || flight.departure?.scheduledTime || departureTime;
+          const newTime =
+            flight.departure?.estimatedTime || flight.departure?.scheduledTime || departureTime;
           await supabase.from('alerts').insert({
             user_id: userId,
             alert_type_code: 'flight_delay',
             category_code: 'trip',
             title: `⏰ Flight ${flightNumber} Delayed`,
             body: `Your flight is delayed by ${delay} minutes. New departure: ${new Date(newTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}.`,
-            context: { flightNumber, delay, newTime, tripId: booking.trip_id, bookingId: booking.id },
+            context: {
+              flightNumber,
+              delay,
+              newTime,
+              tripId: booking.trip_id,
+              bookingId: booking.id,
+            },
             action_url: `/trip/${booking.trip_id}`,
             priority: 8,
             channels_requested: ['push', 'in_app'],
@@ -601,7 +687,11 @@ async function monitorFlights(): Promise<JobResult> {
         }
 
         // Flight cancelled
-        if (status === 'cancelled' && (!recentAlerts || !recentAlerts.some((a: any) => a.alert_type_code === 'flight_cancelled'))) {
+        if (
+          status === 'cancelled' &&
+          (!recentAlerts ||
+            !recentAlerts.some((a: any) => a.alert_type_code === 'flight_cancelled'))
+        ) {
           await supabase.from('alerts').insert({
             user_id: userId,
             alert_type_code: 'flight_cancelled',
@@ -637,7 +727,11 @@ async function monitorFlights(): Promise<JobResult> {
             if (!existingClaim) {
               const disruptionType = isCancellation ? 'cancellation' : 'delay';
               const claimType = isCancellation ? 'flight_cancellation' : 'flight_delay';
-              const airline = details?.airline?.name || details?.carrier || details?.provider || 'Unknown Airline';
+              const airline =
+                details?.airline?.name ||
+                details?.carrier ||
+                details?.provider ||
+                'Unknown Airline';
               const bookingRef = details?.bookingReference || details?.pnr || '';
               const depAirport = details?.departure?.airport || details?.departure?.iata || '';
               const arrAirport = details?.arrival?.airport || details?.arrival?.iata || '';
@@ -663,7 +757,9 @@ async function monitorFlights(): Promise<JobResult> {
                   estimated_amount: 0,
                   currency: 'EUR',
                   description,
-                  reason: isCancellation ? 'Flight cancelled by airline' : `Flight delayed by ${delay} minutes`,
+                  reason: isCancellation
+                    ? 'Flight cancelled by airline'
+                    : `Flight delayed by ${delay} minutes`,
                   disruption_type: disruptionType,
                   delay_minutes: delay || null,
                   departure_country: depCountry,
@@ -676,14 +772,16 @@ async function monitorFlights(): Promise<JobResult> {
                 errors.push(`Compensation claim insert for ${flightNumber}: ${claimErr.message}`);
               } else if (newClaim) {
                 // Trigger AI analysis asynchronously
-                supabase.functions.invoke('generate-compensation', {
-                  body: { claimId: newClaim.id },
-                }).catch((aiErr: any) => {
-                  console.error(`AI analysis failed for claim ${newClaim.id}:`, aiErr.message);
-                });
+                supabase.functions
+                  .invoke('generate-compensation', {
+                    body: { claimId: newClaim.id },
+                  })
+                  .catch((aiErr: any) => {
+                    console.error(`AI analysis failed for claim ${newClaim.id}:`, aiErr.message);
+                  });
 
                 // Send compensation-specific notification
-                const amountHint = isCancellation ? 'up to €600' : (delay >= 180 ? 'up to €600' : '');
+                const amountHint = isCancellation ? 'up to €600' : delay >= 180 ? 'up to €600' : '';
                 await supabase.from('alerts').insert({
                   user_id: userId,
                   alert_type_code: 'compensation_eligible',
@@ -723,7 +821,12 @@ async function monitorFlights(): Promise<JobResult> {
             category_code: 'trip',
             title: `🚪 Gate Changed: ${flightNumber}`,
             body: `Your gate has changed from ${details.departure.gate} to ${newGate}.`,
-            context: { flightNumber, oldGate: details.departure.gate, newGate, tripId: booking.trip_id },
+            context: {
+              flightNumber,
+              oldGate: details.departure.gate,
+              newGate,
+              tripId: booking.trip_id,
+            },
             action_url: `/trip/${booking.trip_id}`,
             priority: 7,
             channels_requested: ['push', 'in_app'],
@@ -741,6 +844,234 @@ async function monitorFlights(): Promise<JobResult> {
   }
 
   return { job: 'monitor_flights', success: errors.length === 0, processed, errors };
+}
+
+// ============================================
+// DEPARTURE MONITOR — Smart "leave by / leave now" notifications
+// ============================================
+// Cadence ladder as a trip approaches:
+//   72h / 48h / 24h / 12h        → location-free "prep" nudges
+//   <= 6h with a known location  → traffic-aware leave-by; "leave soon" then "leave now"
+//   any time in window           → fire on material change (traffic worsens, gate change)
+
+const MS_PER_HOUR = 3_600_000;
+
+function extractAirportCode(route: string | null): string | null {
+  if (!route) return null;
+  const origin = route.split(/→|->|–/)[0] || '';
+  const codes = origin.toUpperCase().match(/\b[A-Z]{3}\b/g);
+  return codes && codes.length ? codes[codes.length - 1] : null;
+}
+
+function parseDepartureAt(trip: any): { at: Date; hasTime: boolean } | null {
+  // Prefer a full ISO datetime in departure_time; fall back to date-only start_date.
+  const dt = trip.departure_time;
+  if (dt && typeof dt === 'string' && dt.includes('T')) {
+    const d = new Date(dt);
+    if (!isNaN(d.getTime())) return { at: d, hasTime: true };
+  }
+  if (trip.start_date) {
+    const raw = String(trip.start_date);
+    const d = new Date(raw.includes('T') ? raw : `${raw}T00:00:00Z`);
+    if (!isNaN(d.getTime())) return { at: d, hasTime: raw.includes('T') };
+  }
+  return null;
+}
+
+function fmtClock(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+async function insertDepartureAlert(args: {
+  userId: string; tripId: string; typeCode: string; title: string; body: string;
+  priority: number; context: Record<string, unknown>;
+}): Promise<void> {
+  await supabase.from('alerts').insert({
+    user_id: args.userId,
+    alert_type_code: args.typeCode,
+    category_code: 'trip',
+    title: args.title,
+    body: args.body,
+    context: args.context,
+    action_url: `/trip/${args.tripId}`,
+    priority: args.priority,
+    channels_requested: ['push', 'in_app'],
+    trip_id: args.tripId,
+    status: 'pending',
+  });
+}
+
+async function departureMonitor(): Promise<JobResult> {
+  const errors: string[] = [];
+  let processed = 0;
+  const now = new Date();
+
+  try {
+    // start_date is date-only, so widen the window and refine with the parsed datetime.
+    const horizon = new Date(now.getTime() + 80 * MS_PER_HOUR);
+    const since = new Date(now.getTime() - 24 * MS_PER_HOUR);
+
+    const { data: trips } = await supabase
+      .from('trips')
+      .select('id, owner_id, title, destination, start_date, departure_time, flight_number, route, cabin_class, status, has_flights')
+      .eq('has_flights', true)
+      .not('flight_number', 'is', null)
+      .gte('start_date', since.toISOString().split('T')[0])
+      .lte('start_date', horizon.toISOString().split('T')[0])
+      .is('deleted_at', null)
+      .limit(200);
+
+    for (const trip of trips || []) {
+      try {
+        const userId = trip.owner_id;
+        if (!userId) continue;
+
+        const dep = parseDepartureAt(trip);
+        if (!dep) continue;
+
+        const hoursUntil = (dep.at.getTime() - now.getTime()) / MS_PER_HOUR;
+        if (hoursUntil <= -3 || hoursUntil > 72) continue; // outside the active window
+
+        const flightNumber = String(trip.flight_number).replace(/\s+/g, '');
+        const destObj = trip.destination as any;
+        const destCity = (destObj && (destObj.city || destObj.name)) || trip.title || 'your destination';
+
+        // Load (or lazily create) monitoring state for this trip+flight.
+        let { data: state } = await supabase
+          .from('departure_advisories')
+          .select('id, notified_milestones, last_traffic_level, last_gate, last_delay_minutes, last_leave_by_time, user_location_lat, user_location_lng')
+          .eq('trip_id', trip.id)
+          .eq('flight_number', trip.flight_number)
+          .maybeSingle();
+
+        if (!state) {
+          // Seed location from the user's last-known device location, if available.
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('last_location_lat, last_location_lng')
+            .eq('id', userId)
+            .maybeSingle();
+
+          const { data: created } = await supabase
+            .from('departure_advisories')
+            .insert({
+              trip_id: trip.id,
+              flight_number: trip.flight_number,
+              departure_airport: extractAirportCode(trip.route),
+              departure_time: dep.hasTime ? dep.at.toISOString() : null,
+              user_location_lat: profile?.last_location_lat ?? null,
+              user_location_lng: profile?.last_location_lng ?? null,
+            })
+            .select('id, notified_milestones, last_traffic_level, last_gate, last_delay_minutes, last_leave_by_time, user_location_lat, user_location_lng')
+            .single();
+          state = created;
+        }
+        if (!state) continue;
+
+        const sent: string[] = state.notified_milestones || [];
+        const newlySent: string[] = [];
+        const has = (m: string) => sent.includes(m) || newlySent.includes(m);
+
+        // ── 1. Location-free prep ladder (one nudge per run) ──
+        const prep = [
+          { key: '72h', minH: 48, maxH: 72, title: `✈️ ${destCity} in 3 days`, body: `Your trip to ${destCity} is coming up. Start thinking about packing and online check-in.` },
+          { key: '48h', minH: 24, maxH: 48, title: `✈️ ${destCity} in 2 days`, body: `Two days until ${destCity}. A good time to check in online and review your documents.` },
+          { key: '24h', minH: 12, maxH: 24, title: `✈️ ${destCity} tomorrow`, body: `Your flight ${trip.flight_number} to ${destCity} is tomorrow. Make sure you're checked in and packed.` },
+          { key: '12h', minH: 6, maxH: 12, title: `✈️ ${destCity} in 12 hours`, body: `Final prep time. Open your Departure Plan so I can watch traffic and tell you exactly when to leave.` },
+        ];
+        for (const p of prep) {
+          if (hoursUntil <= p.maxH && hoursUntil > p.minH && !has(p.key)) {
+            await insertDepartureAlert({ userId, tripId: trip.id, typeCode: 'departure_prep', title: p.title, body: p.body, priority: 5, context: { flightNumber, tripId: trip.id, milestone: p.key } });
+            newlySent.push(p.key);
+            processed++;
+            break;
+          }
+        }
+
+        // ── 2. Active leave window (<= 6h): traffic-aware compute ──
+        const lat = state.user_location_lat;
+        const lng = state.user_location_lng;
+        const haveLocation = typeof lat === 'number' && typeof lng === 'number';
+
+        if (hoursUntil <= 6 && hoursUntil > -3 && dep.hasTime) {
+          if (!haveLocation) {
+            if (!has('open_plan')) {
+              await insertDepartureAlert({ userId, tripId: trip.id, typeCode: 'departure_open_plan', title: `🚕 ${trip.flight_number}: open your Departure Plan`, body: `Your flight to ${destCity} is in about ${Math.max(1, Math.round(hoursUntil))}h. Open the app so I can use live traffic to tell you exactly when to leave.`, priority: 7, context: { flightNumber, tripId: trip.id, milestone: 'open_plan' } });
+              newlySent.push('open_plan');
+              processed++;
+            }
+          } else {
+            const airport = extractAirportCode(trip.route);
+            if (airport) {
+              const { data: adv } = await supabase.functions.invoke('departure-advisor', {
+                body: { action: 'calculate', tripId: trip.id, flightNumber, departureAirport: airport, departureTime: dep.at.toISOString(), isInternational: true, userLocation: { latitude: lat, longitude: lng } },
+              });
+
+              if (adv?.success) {
+                const leaveBy = new Date(adv.leaveByTime);
+                const minsUntilLeave = (leaveBy.getTime() - now.getTime()) / 60000;
+                const traffic: string | null = adv.transport?.find((t: any) => t.mode === 'drive')?.trafficLevel ?? null;
+                const gate: string | null = adv.flightStatus?.gate ?? null;
+                const delay: number | null = adv.flightStatus?.delay ?? null;
+
+                // Material-change alerts (only when a tracked value actually changes)
+                if (traffic && state.last_traffic_level && traffic !== state.last_traffic_level && (traffic === 'heavy' || traffic === 'moderate')) {
+                  await insertDepartureAlert({ userId, tripId: trip.id, typeCode: 'departure_traffic', title: `🚦 Traffic update: ${trip.flight_number}`, body: traffic === 'heavy' ? `Heavy traffic is building toward ${airport}. Plan to leave by ${fmtClock(adv.leaveByTime)}.` : `Traffic is picking up toward ${airport}. Now plan to leave by ${fmtClock(adv.leaveByTime)}.`, priority: 7, context: { flightNumber, tripId: trip.id, milestone: 'traffic', traffic } });
+                  processed++;
+                }
+                if (gate && state.last_gate && gate !== state.last_gate) {
+                  await insertDepartureAlert({ userId, tripId: trip.id, typeCode: 'departure_gate', title: `🚪 Gate change: ${trip.flight_number}`, body: `Your gate changed from ${state.last_gate} to ${gate}.`, priority: 7, context: { flightNumber, tripId: trip.id, oldGate: state.last_gate, newGate: gate } });
+                  processed++;
+                }
+
+                // Leave heads-up + leave now
+                if (minsUntilLeave <= 60 && minsUntilLeave > 15 && !has('leave_heads_up')) {
+                  await insertDepartureAlert({ userId, tripId: trip.id, typeCode: 'departure_leave_soon', title: `🚕 Leave soon for ${trip.flight_number}`, body: `Leave in about ${Math.round(minsUntilLeave)} min (by ${fmtClock(adv.leaveByTime)}) to reach ${airport} comfortably.${traffic === 'heavy' ? ' Heavy traffic on your route.' : ''}`, priority: 8, context: { flightNumber, tripId: trip.id, milestone: 'leave_heads_up', leaveBy: adv.leaveByTime } });
+                  newlySent.push('leave_heads_up');
+                  processed++;
+                } else if (minsUntilLeave <= 15 && !has('leave_now')) {
+                  await insertDepartureAlert({ userId, tripId: trip.id, typeCode: 'departure_leave_now', title: `⏰ Time to leave for ${trip.flight_number}`, body: `Leave now for ${airport} to make your flight to ${destCity}.${delay ? ` (Flight delayed ${delay}m.)` : ''}`, priority: 10, context: { flightNumber, tripId: trip.id, milestone: 'leave_now', leaveBy: adv.leaveByTime } });
+                  newlySent.push('leave_now');
+                  processed++;
+                }
+
+                // Persist latest computed state for change detection next run.
+                await supabase.from('departure_advisories').update({
+                  leave_by_time: adv.leaveByTime,
+                  last_leave_by_time: adv.leaveByTime,
+                  last_traffic_level: traffic,
+                  last_gate: gate,
+                  last_delay_minutes: delay,
+                  total_minutes_needed: adv.totalMinutesNeeded,
+                  breakdown: adv.breakdown,
+                  flight_status: adv.flightStatus || null,
+                  confidence: adv.confidence,
+                  calculated_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                }).eq('id', state.id);
+              }
+            }
+          }
+        }
+
+        // Persist milestone dedup state.
+        if (newlySent.length) {
+          await supabase.from('departure_advisories').update({
+            notified_milestones: [...sent, ...newlySent],
+            last_notified_milestone: newlySent[newlySent.length - 1],
+            last_notified_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }).eq('id', state.id);
+        }
+      } catch (err: any) {
+        errors.push(`Trip ${trip.id}: ${err.message}`);
+      }
+    }
+  } catch (err: any) {
+    errors.push(`departureMonitor: ${err.message}`);
+  }
+
+  return { job: 'departure_monitor', success: errors.length === 0, processed, errors };
 }
 
 // ============================================
@@ -774,7 +1105,7 @@ function scoreDeal(
   // Score: 0-100 (higher = better deal)
   let score = 50;
   score += Math.min(pctBelowMedian * 2, 30); // Up to 30 pts for being below median
-  score += Math.min(pctBelowAvg, 10);         // Up to 10 pts for being below avg
+  score += Math.min(pctBelowAvg, 10); // Up to 10 pts for being below avg
   if (isRecordLow) score += 10;
   if (isNearLow) score += 5;
   score = Math.max(0, Math.min(100, score));
@@ -893,6 +1224,55 @@ async function refreshSectionCache(): Promise<JobResult> {
 }
 
 // ============================================
+// PREWARM DESTINATION DETAILS — Warm top destination detail cache
+// ============================================
+
+async function prewarmDestinationDetails(): Promise<JobResult> {
+  const errors: string[] = [];
+  let processed = 0;
+
+  try {
+    const { data: destinations, error: destError } = await supabase
+      .from('curated_destinations')
+      .select('id, title')
+      .eq('status', 'published')
+      .order('popularity_score', { ascending: false })
+      .limit(25);
+
+    if (destError) throw destError;
+
+    const ids = (destinations || []).map((destination) => destination.id);
+    const { data: freshCache } = ids.length
+      ? await supabase
+          .from('destination_detail_cache')
+          .select('destination_id, cached_at')
+          .in('destination_id', ids)
+          .gte('cached_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+      : { data: [] };
+    const freshIds = new Set((freshCache || []).map((row) => row.destination_id));
+    const toPrewarm = (destinations || [])
+      .filter((destination) => !freshIds.has(destination.id))
+      .slice(0, 8);
+
+    for (const destination of toPrewarm) {
+      try {
+        const { error } = await supabase.functions.invoke('destination-details', {
+          body: { id: destination.id, prewarm: true },
+        });
+        if (error) throw error;
+        processed++;
+      } catch (err: any) {
+        errors.push(`${destination.title || destination.id}: ${err.message}`);
+      }
+    }
+  } catch (err: any) {
+    errors.push(err.message);
+  }
+
+  return { job: 'destination_details_prewarm', success: errors.length === 0, processed, errors };
+}
+
+// ============================================
 // CLASSIFY NEW DESTINATIONS — Auto-classify unclassified destinations via AI
 // ============================================
 
@@ -950,7 +1330,8 @@ async function discoverNewDestinations(): Promise<JobResult> {
 function shouldSendAlert(alert: any, currentPrice: number): boolean {
   // Don't spam — max once per 24h
   if (alert.last_notified_at) {
-    const hoursSinceNotify = (Date.now() - new Date(alert.last_notified_at).getTime()) / (1000 * 60 * 60);
+    const hoursSinceNotify =
+      (Date.now() - new Date(alert.last_notified_at).getTime()) / (1000 * 60 * 60);
     if (hoursSinceNotify < 24) return false;
   }
 

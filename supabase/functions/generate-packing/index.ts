@@ -11,6 +11,12 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  beginTripModuleWorker,
+  finishTripModuleWorker,
+  type TripModuleWorkerLease,
+} from '../_shared/tripModule/worker.ts';
+import { recordTripModuleMetric } from '../_shared/tripModule/runtime.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,6 +26,7 @@ const corsHeaders = {
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY') || '';
 const TOMORROW_IO_API_KEY = Deno.env.get('TOMORROW_IO_API_KEY') || '';
+const MODULE_KEY = 'packing';
 
 // ─── Helpers ─────────────────────────────────────────────
 
@@ -704,10 +711,30 @@ serve(async (req: Request) => {
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
+  let body: Record<string, any> = {};
+  let workerLease: TripModuleWorkerLease | null = null;
+  const requestStartedAt = Date.now();
 
   try {
-    const { tripId } = await req.json();
+    body = await req.json();
+    const { tripId } = body;
     if (!tripId) throw new Error('tripId is required');
+
+    const worker = await beginTripModuleWorker({
+      req,
+      body,
+      supabase,
+      moduleKey: MODULE_KEY,
+      statusKey: 'packing',
+      corsHeaders,
+      env: {
+        supabaseUrl: Deno.env.get('SUPABASE_URL')!,
+        serviceRoleKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        anonKey: Deno.env.get('SUPABASE_ANON_KEY')!,
+      },
+    });
+    if (worker.response) return worker.response;
+    workerLease = worker.lease ?? null;
 
     console.log(`[generate-packing] Starting for trip ${tripId}`);
 
@@ -784,6 +811,16 @@ serve(async (req: Request) => {
       .eq('id', tripId);
 
     console.log(`[generate-packing] Complete! ${totalInserted} items stored`);
+    await recordTripModuleMetric(supabase, {
+      moduleKey: MODULE_KEY,
+      cacheStatus: 'miss',
+      statusCode: 200,
+      durationMs: Date.now() - requestStartedAt,
+      model: modelUsed,
+      providerSummary: { itemsGenerated: totalInserted },
+    });
+    await finishTripModuleWorker(supabase, workerLease, 'completed');
+    workerLease = null;
 
     return new Response(
       JSON.stringify({
@@ -799,9 +836,15 @@ serve(async (req: Request) => {
     );
   } catch (error: any) {
     console.error('[generate-packing] Error:', error);
+    await recordTripModuleMetric(supabase, {
+      moduleKey: MODULE_KEY,
+      cacheStatus: 'error',
+      statusCode: 500,
+      durationMs: Date.now() - requestStartedAt,
+      errorMessage: error.message,
+    });
 
     try {
-      const body = await req.clone().json().catch(() => ({}));
       if (body.tripId) {
         const { data: trip } = await supabase.from('trips').select('generation_status').eq('id', body.tripId).single();
         const existingStatus = trip?.generation_status || {};
@@ -813,6 +856,7 @@ serve(async (req: Request) => {
           .eq('id', body.tripId);
       }
     } catch (_) { /* ignore cleanup errors */ }
+    await finishTripModuleWorker(supabase, workerLease, 'failed');
 
     return new Response(
       JSON.stringify({ success: false, error: error.message }),

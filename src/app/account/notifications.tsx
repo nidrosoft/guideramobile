@@ -41,7 +41,16 @@ import { useAuth } from '@/context/AuthContext';
 import { 
   notificationService, 
   NotificationPreferences,
+  NotificationToggleKey,
+  TipsFrequency,
 } from '@/services/notifications/notificationService';
+
+const FREQUENCY_OPTIONS: { value: TipsFrequency; label: string }[] = [
+  { value: 'off', label: 'Off' },
+  { value: 'minimal', label: 'Minimal' },
+  { value: 'standard', label: 'Standard' },
+  { value: 'all', label: 'All' },
+];
 
 interface NotificationCategory {
   id: string;
@@ -52,7 +61,7 @@ interface NotificationCategory {
 }
 
 interface NotificationItem {
-  key: keyof NotificationPreferences;
+  key: NotificationToggleKey;
   title: string;
   description: string;
 }
@@ -96,6 +105,21 @@ export default function NotificationsSettingsScreen() {
           title: 'Flight Status',
           description: 'Delays, gate changes, and cancellations for your flights',
         },
+      ],
+    },
+    {
+      id: 'tripTips',
+      title: 'Trip Tips & Reminders',
+      description: 'Smart, bite-size tips before and during your trip',
+      icon: <Calendar size={20} color={tc.info || '#6366F1'} variant="Bold" />,
+      items: [
+        { key: 'tipsPacking', title: 'Packing tips', description: 'Personalized nudges for what to pack' },
+        { key: 'tipsDocuments', title: 'Documents', description: 'Reminders about visas, passports, and paperwork' },
+        { key: 'tipsPhrases', title: 'Phrases to learn', description: 'A handy local phrase before and during your trip' },
+        { key: 'tipsCultural', title: "Do's & Don'ts", description: 'Local etiquette and cultural tips' },
+        { key: 'tipsItinerary', title: 'Daily plan', description: 'Teasers and daily highlights from your itinerary' },
+        { key: 'tipsBudget', title: 'Budget check-ins', description: 'Spending updates while you travel' },
+        { key: 'tipsJournal', title: 'Memory reminders', description: 'Nudges to capture and save memories' },
       ],
     },
     {
@@ -191,6 +215,13 @@ export default function NotificationsSettingsScreen() {
     const newPrefs = { ...preferences, [key]: value };
     setPreferences(newPrefs);
     await notificationService.setPreferences({ [key]: value }, profile?.id);
+  };
+
+  const handleFrequency = async (value: TipsFrequency) => {
+    if (!preferences) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setPreferences({ ...preferences, tipsFrequency: value });
+    await notificationService.setPreferences({ tipsFrequency: value }, profile?.id);
   };
 
   const handleMasterToggle = async (value: boolean) => {
@@ -347,6 +378,47 @@ export default function NotificationsSettingsScreen() {
                 </View>
               ))}
             </View>
+
+            {category.id === 'tripTips' && (
+              <View style={[styles.frequencyContainer, { borderTopColor: tc.borderSubtle }]}>
+                <Text style={[styles.frequencyLabel, { color: tc.textPrimary }]}>Frequency</Text>
+                <Text style={[styles.frequencyHint, { color: tc.textSecondary }]}>
+                  How often you'll receive trip tips
+                </Text>
+                <View style={styles.frequencyRow}>
+                  {FREQUENCY_OPTIONS.map((opt) => {
+                    const active = (preferences?.tipsFrequency ?? 'standard') === opt.value;
+                    const dimmed = !permissionGranted || !preferences?.enabled;
+                    return (
+                      <TouchableOpacity
+                        key={opt.value}
+                        style={[
+                          styles.frequencyPill,
+                          {
+                            borderColor: active ? tc.primary : tc.borderSubtle,
+                            backgroundColor: active ? tc.primary + '15' : 'transparent',
+                          },
+                          dimmed && { opacity: 0.5 },
+                        ]}
+                        disabled={dimmed}
+                        onPress={() => handleFrequency(opt.value)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Trip tips frequency ${opt.label}`}
+                      >
+                        <Text
+                          style={[
+                            styles.frequencyPillText,
+                            { color: active ? tc.primary : tc.textSecondary },
+                          ]}
+                        >
+                          {opt.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
           </View>
         ))}
 
@@ -570,5 +642,38 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: colors.textSecondary,
     lineHeight: 20,
+  },
+  frequencyContainer: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSubtle,
+  },
+  frequencyLabel: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  frequencyHint: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
+    marginBottom: spacing.sm,
+  },
+  frequencyRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  frequencyPill: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  frequencyPillText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
   },
 });

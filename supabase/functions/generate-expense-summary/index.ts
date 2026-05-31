@@ -11,6 +11,17 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  tripModuleUnauthorizedResponse,
+  verifyTripModuleAccess,
+} from '../_shared/tripModule/auth.ts';
+import {
+  acquireTripModuleLock,
+  buildTripModuleResourceKey,
+  consumeTripModuleRateLimits,
+  recordTripModuleMetric,
+  releaseTripModuleLock,
+} from '../_shared/tripModule/runtime.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,6 +32,15 @@ const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY') || '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
+const MODULE_KEY = buildTripModuleResourceKey('expense summary');
+
+function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
 
 // ─── System Prompt ──────────────────────────────────
 
@@ -259,25 +279,30 @@ serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  let lockOwnerId: string | null = null;
+  let tripId: string | null = null;
+  let lockStatus: 'completed' | 'failed' = 'failed';
+  const requestStartedAt = Date.now();
+
   try {
-    const { tripId, forceRefresh = false } = await req.json();
+    const body = await req.json();
+    tripId = body.tripId;
+    const forceRefresh = body.forceRefresh === true;
 
     if (!tripId) {
       throw new Error('tripId is required');
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    // Fetch trip data
-    const { data: trip, error: tripError } = await supabase
-      .from('trips')
-      .select('*')
-      .eq('id', tripId)
-      .single();
-
-    if (tripError || !trip) {
-      throw new Error(`Trip not found: ${tripError?.message || 'unknown'}`);
+    const access = await verifyTripModuleAccess(req, body, supabase, {
+      supabaseUrl: SUPABASE_URL,
+      serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY,
+      anonKey: SUPABASE_ANON_KEY,
+    });
+    if (!access.allowed || !access.trip) {
+      return tripModuleUnauthorizedResponse(corsHeaders);
     }
+    const trip = access.trip;
 
     // Check for cached summary (unless force refresh)
     if (!forceRefresh && trip.expense_summary) {
@@ -292,12 +317,64 @@ serve(async (req: Request) => {
 
       if (!recentExpenses || recentExpenses.length === 0) {
         // Summary is still fresh
-        return new Response(
-          JSON.stringify({ success: true, summary, cached: true }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        await recordTripModuleMetric(supabase, {
+          moduleKey: MODULE_KEY,
+          cacheStatus: 'hit',
+          statusCode: 200,
+          durationMs: Date.now() - requestStartedAt,
+          model: summary.model_used || 'cache',
+        });
+        return jsonResponse({ success: true, summary, cached: true, cacheStatus: 'ready' });
+      }
+    }
+
+    if (!access.isServiceRoleCall) {
+      const rateLimit = await consumeTripModuleRateLimits(supabase, {
+        userId: access.userId || trip.user_id,
+        tripId,
+        moduleKey: MODULE_KEY,
+      });
+      if (!rateLimit.allowed) {
+        await recordTripModuleMetric(supabase, {
+          moduleKey: MODULE_KEY,
+          cacheStatus: 'rate_limited',
+          statusCode: 429,
+          durationMs: Date.now() - requestStartedAt,
+          providerSummary: { blockedKey: rateLimit.blockedKey, resetAt: rateLimit.resetAt },
+        });
+        return jsonResponse(
+          {
+            success: false,
+            error: 'rate_limited',
+            resetAt: rateLimit.resetAt,
+            blockedKey: rateLimit.blockedKey,
+          },
+          429
         );
       }
     }
+
+    const lock = await acquireTripModuleLock(supabase, tripId, MODULE_KEY);
+    if (!lock.acquired) {
+      await recordTripModuleMetric(supabase, {
+        moduleKey: MODULE_KEY,
+        cacheStatus: 'coalesced',
+        statusCode: 202,
+        durationMs: Date.now() - requestStartedAt,
+      });
+      return jsonResponse(
+        {
+          success: true,
+          skipped: true,
+          alreadyRunning: true,
+          moduleKey: MODULE_KEY,
+          status: 'generating',
+          cacheStatus: 'coalesced',
+        },
+        202
+      );
+    }
+    lockOwnerId = lock.ownerId;
 
     // Fetch all expenses for this trip
     const { data: expenses, error: expError } = await supabase
@@ -311,6 +388,14 @@ serve(async (req: Request) => {
     }
 
     if (!expenses || expenses.length === 0) {
+      lockStatus = 'completed';
+      await recordTripModuleMetric(supabase, {
+        moduleKey: MODULE_KEY,
+        cacheStatus: 'skipped',
+        statusCode: 200,
+        durationMs: Date.now() - requestStartedAt,
+        providerSummary: { reason: 'no_expenses' },
+      });
       return new Response(
         JSON.stringify({ success: false, error: 'No expenses found for this trip' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -360,15 +445,35 @@ serve(async (req: Request) => {
       console.warn('Failed to cache summary:', updateError.message);
     }
 
+    lockStatus = 'completed';
+    await recordTripModuleMetric(supabase, {
+      moduleKey: MODULE_KEY,
+      cacheStatus: 'miss',
+      statusCode: 200,
+      durationMs: Date.now() - requestStartedAt,
+      model: modelUsed,
+      providerSummary: { expenseCount: expenses.length },
+    });
     return new Response(
       JSON.stringify({ success: true, summary, cached: false, modelUsed }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
     console.error('Generate expense summary error:', error);
+    await recordTripModuleMetric(supabase, {
+      moduleKey: MODULE_KEY,
+      cacheStatus: 'error',
+      statusCode: 500,
+      durationMs: Date.now() - requestStartedAt,
+      errorMessage: error.message,
+    });
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+  } finally {
+    if (tripId && lockOwnerId) {
+      await releaseTripModuleLock(supabase, tripId, MODULE_KEY, lockOwnerId, lockStatus);
+    }
   }
 });

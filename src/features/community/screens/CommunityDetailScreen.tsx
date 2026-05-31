@@ -111,6 +111,7 @@ export default function CommunityDetailScreen() {
     isVerified: false,
     memberCount: 0,
     activeCount: 0,
+    isOfficial: false,
     isMember: false,
     myRole: 'member' as 'owner' | 'admin' | 'moderator' | 'member',
     postingRule: 'anyone' as const,
@@ -160,6 +161,7 @@ export default function CommunityDetailScreen() {
             isVerified: groupData.isVerified,
             memberCount: groupData.memberCount,
             activeCount: groupData.activeMemberCount,
+            isOfficial: Boolean(groupData.isOfficial),
             isMember,
             myRole,
             postingRule: groupData.whoCanPost === 'anyone' ? 'anyone' : 'admins_only' as any,
@@ -233,6 +235,7 @@ export default function CommunityDetailScreen() {
               bannerImage: groupData.coverPhotoUrl || '',
               memberCount: groupData.memberCount,
               activeCount: groupData.activeMemberCount,
+              isOfficial: Boolean(groupData.isOfficial),
             }));
           }
           let feedPosts = postsData.map(mapServicePostToFeedPost);
@@ -466,6 +469,7 @@ export default function CommunityDetailScreen() {
           <MembersTab
             members={members}
             totalCount={group.memberCount}
+            isProtected={group.isOfficial}
             onMemberPress={handleMemberPress}
           />
         );
@@ -480,6 +484,7 @@ export default function CommunityDetailScreen() {
             privacy={group.privacy}
             createdAt={group.createdAt}
             postingRule={group.postingRule}
+            isOfficial={group.isOfficial}
           />
         );
       default:
@@ -508,6 +513,7 @@ export default function CommunityDetailScreen() {
         privacy={group.privacy}
         memberCount={group.memberCount}
         activeCount={group.activeCount}
+        isOfficial={group.isOfficial}
         isMember={group.isMember}
         myRole={group.myRole}
         paddingTop={insets.top}

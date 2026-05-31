@@ -29,6 +29,7 @@ interface AboutTabProps {
   privacy: 'public' | 'private' | 'invite_only';
   createdAt: string;
   postingRule: string;
+  isOfficial?: boolean;
 }
 
 function AboutTab({
@@ -38,6 +39,7 @@ function AboutTab({
   privacy,
   createdAt,
   postingRule,
+  isOfficial,
 }: AboutTabProps) {
   const { colors: tc } = useTheme();
 
@@ -74,6 +76,14 @@ function AboutTab({
           <ShieldTick size={15} color={tc.textTertiary} variant="Linear" />
           <Text style={[styles.infoText, { color: tc.textSecondary }]}>{postingLabel}</Text>
         </View>
+        {isOfficial ? (
+          <View style={styles.infoRow}>
+            <ShieldTick size={15} color={tc.textTertiary} variant="Linear" />
+            <Text style={[styles.infoText, { color: tc.textSecondary }]}>
+              Member list protected for privacy
+            </Text>
+          </View>
+        ) : null}
         <View style={styles.infoRow}>
           <Calendar size={15} color={tc.textTertiary} variant="Linear" />
           <Text style={[styles.infoText, { color: tc.textSecondary }]}>

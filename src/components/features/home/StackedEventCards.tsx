@@ -17,7 +17,7 @@ import Animated, {
 import { typography, spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useHomepageDataSafe, filterByCategory, useSectionVisibility } from '@/features/homepage';
-import { Clock, Location, People, Ticket, Calendar } from 'iconsax-react-native';
+import { Clock, Location, Ticket, Calendar } from 'iconsax-react-native';
 import { SkeletonStackedEvents } from '@/components/common/SkeletonLoader';
 
 const SWIPE_VELOCITY_THRESHOLD = 500;
@@ -225,10 +225,6 @@ export default function StackedEventCards({ events = [], loading = false }: Stac
               </View>
               
               <View style={styles.bottomInfoRow}>
-                <View style={styles.attendeesContainer}>
-                  <People size={14} color={colors.textSecondary} variant="Bold" />
-                  <Text style={[styles.attendeesText, { color: colors.textSecondary }]}>{event.attendees} expected</Text>
-                </View>
                 <View style={styles.priceContainer}>
                   <Ticket size={14} color={colors.primary} variant="Bold" />
                   <Text style={[styles.priceText, { color: colors.primary }]}>{event.ticketPrice}</Text>
@@ -359,15 +355,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  attendeesContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  attendeesText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
   },
   priceContainer: {
     flexDirection: 'row',

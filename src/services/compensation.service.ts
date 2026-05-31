@@ -296,7 +296,7 @@ class CompensationService {
 
   // ── AI Analysis ─────────────────────────────────────────
 
-  async analyzeCompensation(claimId: string): Promise<{
+  async analyzeCompensation(claimId: string, userId?: string): Promise<{
     success: boolean;
     verdict?: string;
     confidence?: number;
@@ -306,7 +306,7 @@ class CompensationService {
     modelUsed?: string;
     error?: string;
   }> {
-    const data = await invokeWithRetry(supabase, 'generate-compensation', { claimId }, 'fast');
+    const data = await invokeWithRetry(supabase, 'generate-compensation', { claimId, userId }, 'fast');
     if (data?.error) throw new Error(data.error);
     return data;
   }

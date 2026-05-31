@@ -15,6 +15,8 @@ interface UseEventsOptions {
   category?: EventCategory | string;
   enabled?: boolean;
   autoDiscover?: boolean;
+  /** Increment to force a re-fetch (e.g. on pull-to-refresh) */
+  refreshKey?: number;
 }
 
 interface UseEventsReturn {
@@ -26,6 +28,27 @@ interface UseEventsReturn {
   filterByCategory: (category: string | undefined) => void;
   selectedCategory: string | undefined;
   categories: string[];
+  /** The soonest upcoming event (useful for notifications) */
+  nextEvent: DiscoveredEvent | null;
+}
+
+/**
+ * Filters out events whose date_start has already passed (end-of-day).
+ * Recurring events are kept regardless of date.
+ */
+function filterUpcomingEvents(events: DiscoveredEvent[]): DiscoveredEvent[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return events.filter(e => {
+    // Keep recurring events always
+    if (e.is_recurring) return true;
+    // Keep events with no date (can't determine if past)
+    if (!e.date_start) return true;
+    // Use date_end if available (multi-day events), otherwise date_start
+    const relevantDate = e.date_end || e.date_start;
+    const eventDate = new Date(relevantDate + 'T23:59:59');
+    return eventDate >= today;
+  });
 }
 
 export function useEvents({
@@ -34,6 +57,7 @@ export function useEvents({
   category,
   enabled = true,
   autoDiscover = true,
+  refreshKey = 0,
 }: UseEventsOptions): UseEventsReturn {
   const [events, setEvents] = useState<DiscoveredEvent[]>([]);
   const [allEvents, setAllEvents] = useState<DiscoveredEvent[]>([]);
@@ -42,7 +66,7 @@ export function useEvents({
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(category);
   const hasFetched = useRef(false);
 
-  // Fetch events (check cache first, then discover)
+  // Fetch events (check cache first, then discover) — filters out expired events
   const discover = useCallback(async () => {
     if (!city || !country) return;
     setLoading(true);
@@ -53,12 +77,12 @@ export function useEvents({
         country,
         forceRefresh: false,
       });
-      setAllEvents(result);
-      // Apply category filter if set
+      const upcoming = filterUpcomingEvents(result);
+      setAllEvents(upcoming);
       if (selectedCategory) {
-        setEvents(result.filter(e => e.category === selectedCategory));
+        setEvents(upcoming.filter(e => e.category === selectedCategory));
       } else {
-        setEvents(result);
+        setEvents(upcoming);
       }
     } catch (err) {
       setError((err as Error).message);
@@ -67,7 +91,7 @@ export function useEvents({
     }
   }, [city, country, selectedCategory]);
 
-  // Force refresh (bypasses cache)
+  // Force refresh (bypasses cache) — filters out expired events
   const refresh = useCallback(async () => {
     if (!city || !country) return;
     setLoading(true);
@@ -78,11 +102,12 @@ export function useEvents({
         country,
         forceRefresh: true,
       });
-      setAllEvents(result);
+      const upcoming = filterUpcomingEvents(result);
+      setAllEvents(upcoming);
       if (selectedCategory) {
-        setEvents(result.filter(e => e.category === selectedCategory));
+        setEvents(upcoming.filter(e => e.category === selectedCategory));
       } else {
-        setEvents(result);
+        setEvents(upcoming);
       }
     } catch (err) {
       setError((err as Error).message);
@@ -104,6 +129,15 @@ export function useEvents({
   // Get unique categories from fetched events
   const categories = Array.from(new Set(allEvents.map(e => e.category))).sort();
 
+  // Next upcoming event (soonest date_start in the future)
+  const nextEvent = allEvents.length > 0
+    ? allEvents.reduce<DiscoveredEvent | null>((closest, e) => {
+        if (!e.date_start) return closest;
+        if (!closest || !closest.date_start) return e;
+        return e.date_start < closest.date_start ? e : closest;
+      }, null)
+    : null;
+
   // Auto-discover on mount
   useEffect(() => {
     if (enabled && autoDiscover && city && country && !hasFetched.current) {
@@ -111,6 +145,14 @@ export function useEvents({
       discover();
     }
   }, [enabled, autoDiscover, city, country, discover]);
+
+  // Re-fetch when refreshKey changes (pull-to-refresh)
+  useEffect(() => {
+    if (refreshKey > 0 && enabled && city && country) {
+      discover();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
 
   // Reset when city/country changes
   useEffect(() => {
@@ -129,5 +171,6 @@ export function useEvents({
     filterByCategory,
     selectedCategory,
     categories,
+    nextEvent,
   };
 }

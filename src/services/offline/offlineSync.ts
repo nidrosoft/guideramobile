@@ -20,7 +20,8 @@ export type SyncActionType =
   | 'UPDATE_TRIP'
   | 'ADD_EXPENSE'
   | 'UPDATE_PROFILE'
-  | 'SYNC_PREFERENCES';
+  | 'SYNC_PREFERENCES'
+  | 'TOGGLE_SAVE';
 
 export interface SyncAction {
   id: string;

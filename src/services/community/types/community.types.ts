@@ -39,6 +39,9 @@ export interface Group {
   activeMemberCount: number;
   postCount: number;
   isVerified: boolean;
+  isOfficial?: boolean;
+  origin?: 'user' | 'official' | 'seed' | 'staff';
+  seedRank?: number;
   verifiedAt?: Date;
   status: 'active' | 'archived' | 'suspended';
   createdBy: string;

@@ -30,10 +30,11 @@ import * as Location from 'expo-location';
 import * as FileSystem from 'expo-file-system';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import { colors, spacing, typography } from '@/styles';
-import { supabase } from '@/lib/supabase/client';
+import { supabase, getAuthenticatedEdgeFunctionHeaders } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import type { Profile } from '@/types/auth.types';
 import { invokeEdgeFn } from '@/utils/retry';
+import { AI_AUDIO_PAYLOAD_MAX_BYTES, assertAiBase64WithinLimit } from '@/utils/aiPayloadLimits';
 import { useTheme } from '@/context/ThemeContext';
 import { BlockType, BlockSize, ContentBlock, LayoutType } from '../types/journal.types';
 import { useToast } from '@/contexts/ToastContext';
@@ -356,8 +357,20 @@ export default function EntryEditorScreen() {
       const base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: 'base64' as any,
       });
+      assertAiBase64WithinLimit(base64, {
+        label: 'Voice note',
+        maxBytes: AI_AUDIO_PAYLOAD_MAX_BYTES,
+      });
 
-      const { data, error } = await invokeEdgeFn(supabase, 'transcribe-audio', { audioBase64: base64, mimeType: 'audio/m4a' }, 'slow');
+      // Forward the Clerk token so the transcribe-audio auth guard can resolve the user.
+      const headers = await getAuthenticatedEdgeFunctionHeaders();
+      const { data, error } = await invokeEdgeFn(
+        supabase,
+        'transcribe-audio',
+        { audioBase64: base64, mimeType: 'audio/m4a', userId: authProfile?.id },
+        'slow',
+        { headers }
+      );
 
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);

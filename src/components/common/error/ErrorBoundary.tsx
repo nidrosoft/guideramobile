@@ -268,8 +268,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
+    alignItems: 'stretch',
+    padding: spacing.lg,
     paddingTop: 80,
     paddingBottom: 40,
   },
@@ -280,23 +280,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
+    alignSelf: 'center',
   },
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
     textAlign: 'center',
     marginBottom: spacing.sm,
+    alignSelf: 'center',
   },
   description: {
     fontSize: typography.fontSize.sm,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: spacing.xl,
-    maxWidth: 300,
+    alignSelf: 'center',
   },
   buttonContainer: {
     width: '100%',
-    maxWidth: 320,
     marginBottom: spacing.lg,
   },
   primaryButton: {
@@ -307,6 +308,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     borderRadius: borderRadius.lg,
     gap: spacing.sm,
+    width: '100%',
   },
   primaryButtonText: {
     fontSize: typography.fontSize.base,
@@ -314,7 +316,6 @@ const styles = StyleSheet.create({
   },
   detailsContainer: {
     width: '100%',
-    maxWidth: 320,
     borderRadius: borderRadius.xl,
     borderWidth: 1,
     padding: spacing.md,
@@ -347,7 +348,6 @@ const styles = StyleSheet.create({
   },
   reportSection: {
     width: '100%',
-    maxWidth: 320,
     borderRadius: borderRadius.xl,
     borderWidth: 1,
     padding: spacing.lg,
@@ -377,6 +377,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: borderRadius.lg,
     gap: spacing.sm,
+    width: '100%',
   },
   reportButtonText: {
     fontSize: typography.fontSize.base,
@@ -384,7 +385,6 @@ const styles = StyleSheet.create({
   },
   reportSentCard: {
     width: '100%',
-    maxWidth: 320,
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: borderRadius.xl,

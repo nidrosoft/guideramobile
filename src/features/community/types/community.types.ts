@@ -91,6 +91,7 @@ export interface CommunityPreview {
   };
   tags: string[];
   isVerified: boolean;
+  isOfficial?: boolean;
   isMember: boolean;
   lastActivity?: Date;
 }

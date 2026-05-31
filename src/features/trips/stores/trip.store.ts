@@ -41,6 +41,7 @@ interface DbTripRow {
   route?: string;
   flight_number?: string;
   modules_generated?: boolean;
+  generation_status?: Record<string, unknown>;
   published_at?: string;
   started_at?: string;
   completed_at?: string;
@@ -147,6 +148,7 @@ function dbTripToTrip(dbTrip: DbTripRow): Trip {
       flightNumber: dbTrip.flight_number,
       seatNumber: dbTrip.seat_number,
       modulesGenerated: dbTrip.modules_generated || false,
+      generationStatus: dbTrip.generation_status || {},
     },
   };
 }
@@ -325,7 +327,9 @@ export const useTripStore = create<TripStore>((set, get) => ({
         const cityName = data.destination.city || data.destination.name || '';
         if (cityName) {
           try {
-            const placesImage = await fetchDestinationCoverImage(cityName);
+            const placesImage = await fetchDestinationCoverImage(cityName, {
+              countryName: data.destination.country,
+            });
             if (placesImage) {
               insertPayload.cover_image_url = placesImage;
               insertPayload.cover_image_source = 'google_places';
@@ -574,9 +578,25 @@ export const useTripStore = create<TripStore>((set, get) => ({
     }
   },
   
-  // Filter trips by state
+  // Filter trips by state, sorted by date.
+  // Upcoming/Ongoing/Draft: soonest first (the next trip on top).
+  // Past/Cancelled: most recent first.
   filterByState: (state: TripState) => {
-    return get().trips.filter(trip => trip.state === state);
+    const filtered = get().trips.filter(trip => trip.state === state);
+    const descending = state === TripState.PAST || state === TripState.CANCELLED;
+    const getTime = (d: Date | string | null | undefined) => {
+      const t = d ? new Date(d).getTime() : NaN;
+      return Number.isNaN(t) ? null : t;
+    };
+    return filtered.sort((a, b) => {
+      const at = getTime(a.startDate);
+      const bt = getTime(b.startDate);
+      // Trips without a valid start date sink to the bottom.
+      if (at === null && bt === null) return 0;
+      if (at === null) return 1;
+      if (bt === null) return -1;
+      return descending ? bt - at : at - bt;
+    });
   },
   
   // Search trips

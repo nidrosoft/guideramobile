@@ -15,6 +15,8 @@ interface TripReminderProps {
   isInternational?: boolean;
   tripId?: string;
   bookingId?: string;
+  seatNumber?: string;
+  cabinClass?: string;
 }
 
 interface TimeRemaining {
@@ -32,6 +34,8 @@ export default function TripReminder({
   isInternational = false,
   tripId,
   bookingId,
+  seatNumber,
+  cabinClass,
 }: TripReminderProps) {
   const { colors } = useTheme();
   const { showSuccess } = useToast();
@@ -137,6 +141,8 @@ export default function TripReminder({
           isInternational={isInternational}
           tripId={tripId}
           bookingId={bookingId}
+          seatNumber={seatNumber}
+          cabinClass={cabinClass}
         />
       )}
     </>

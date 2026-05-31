@@ -26,10 +26,17 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireCronOrServiceAuth } from '../_shared/cronAuth.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, x-cron-secret, apikey, content-type',
+};
 
 // ─── AI Provider Keys ────────────────────────────────────────────
 const GEMINI_KEY = Deno.env.get('GOOGLE_AI_API_KEY') || '';
@@ -84,15 +91,31 @@ interface GeneratedDestination {
 // ─── Continent Discovery Targets ─────────────────────────────────
 
 const CONTINENT_TARGETS: Record<string, { regions: string[]; targetCount: number }> = {
-  'Europe': {
-    regions: ['Western Europe', 'Eastern Europe', 'Southern Europe', 'Northern Europe', 'Central Europe', 'Balkans', 'Scandinavia', 'Mediterranean'],
+  Europe: {
+    regions: [
+      'Western Europe',
+      'Eastern Europe',
+      'Southern Europe',
+      'Northern Europe',
+      'Central Europe',
+      'Balkans',
+      'Scandinavia',
+      'Mediterranean',
+    ],
     targetCount: 30,
   },
-  'Asia': {
-    regions: ['East Asia', 'Southeast Asia', 'South Asia', 'Central Asia', 'Middle East', 'West Asia'],
+  Asia: {
+    regions: [
+      'East Asia',
+      'Southeast Asia',
+      'South Asia',
+      'Central Asia',
+      'Middle East',
+      'West Asia',
+    ],
     targetCount: 30,
   },
-  'Africa': {
+  Africa: {
     regions: ['North Africa', 'East Africa', 'West Africa', 'Southern Africa', 'Central Africa'],
     targetCount: 25,
   },
@@ -104,7 +127,7 @@ const CONTINENT_TARGETS: Record<string, { regions: string[]; targetCount: number
     regions: ['Andean', 'Southern Cone', 'Brazil', 'Caribbean Coast', 'Amazon'],
     targetCount: 20,
   },
-  'Oceania': {
+  Oceania: {
     regions: ['Australia', 'New Zealand', 'Pacific Islands', 'Melanesia', 'Polynesia'],
     targetCount: 15,
   },
@@ -187,7 +210,7 @@ async function callOpenAI(prompt: string): Promise<string> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENAI_KEY}`,
+      Authorization: `Bearer ${OPENAI_KEY}`,
     },
     body: JSON.stringify({
       model: 'gpt-4o',
@@ -212,7 +235,7 @@ async function callXAI(prompt: string): Promise<string> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${XAI_KEY}`,
+      Authorization: `Bearer ${XAI_KEY}`,
     },
     body: JSON.stringify({
       model: 'grok-3-mini-fast',
@@ -242,10 +265,18 @@ async function generateWithFallback(prompt: string): Promise<ProviderResult> {
     try {
       let text: string;
       switch (provider) {
-        case 'gemini': text = await callGemini(prompt); break;
-        case 'claude': text = await callClaude(prompt); break;
-        case 'openai': text = await callOpenAI(prompt); break;
-        case 'xai': text = await callXAI(prompt); break;
+        case 'gemini':
+          text = await callGemini(prompt);
+          break;
+        case 'claude':
+          text = await callClaude(prompt);
+          break;
+        case 'openai':
+          text = await callOpenAI(prompt);
+          break;
+        case 'xai':
+          text = await callXAI(prompt);
+          break;
       }
       console.log(`[discover] ${provider} succeeded`);
       return { text, provider };
@@ -254,7 +285,7 @@ async function generateWithFallback(prompt: string): Promise<ProviderResult> {
       console.warn(`[discover] ${provider} failed: ${msg.slice(0, 120)}`);
       errors.push(`${provider}: ${msg.slice(0, 100)}`);
       // Short cooldown before trying next provider
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 500));
     }
   }
 
@@ -272,26 +303,36 @@ function parseDestinationJSON(raw: string): GeneratedDestination[] {
     if (parsed.destinations && Array.isArray(parsed.destinations)) return parsed.destinations;
     if (parsed.results && Array.isArray(parsed.results)) return parsed.results;
     throw new Error('Parsed JSON is not an array');
-  } catch { /* continue to cleanup */ }
+  } catch {
+    /* continue to cleanup */
+  }
 
   // Clean common issues
   let cleaned = raw
-    .replace(/```json\s*/gi, '')  // markdown code fences
+    .replace(/```json\s*/gi, '') // markdown code fences
     .replace(/```\s*/g, '')
-    .replace(/,\s*]/g, ']')      // trailing commas in arrays
-    .replace(/,\s*}/g, '}')      // trailing commas in objects
+    .replace(/,\s*]/g, ']') // trailing commas in arrays
+    .replace(/,\s*}/g, '}') // trailing commas in objects
     .replace(/[\x00-\x1f]/g, ' ') // control characters
     .trim();
 
   // Extract JSON array
   const match = cleaned.match(/\[[\s\S]*\]/);
   if (match) {
-    try { return JSON.parse(match[0]); } catch { /* continue */ }
+    try {
+      return JSON.parse(match[0]);
+    } catch {
+      /* continue */
+    }
 
     // Truncate at last complete object
     const lastBrace = match[0].lastIndexOf('}');
     if (lastBrace > 0) {
-      try { return JSON.parse(match[0].slice(0, lastBrace + 1) + ']'); } catch { /* continue */ }
+      try {
+        return JSON.parse(match[0].slice(0, lastBrace + 1) + ']');
+      } catch {
+        /* continue */
+      }
     }
   }
 
@@ -302,7 +343,9 @@ function parseDestinationJSON(raw: string): GeneratedDestination[] {
       const obj = JSON.parse(objMatch[0]);
       if (obj.destinations) return obj.destinations;
       if (obj.results) return obj.results;
-    } catch { /* continue */ }
+    } catch {
+      /* continue */
+    }
   }
 
   throw new Error('Failed to parse AI response as destination JSON');
@@ -403,7 +446,7 @@ async function discoverForContinent(
     const destinations = parseDestinationJSON(text);
 
     // Filter duplicates
-    const filtered = destinations.filter(d => {
+    const filtered = destinations.filter((d) => {
       const key = `${d.city?.toLowerCase()}|${d.country?.toLowerCase()}`;
       if (!d.city || !d.country || existingCities.has(key)) return false;
       existingCities.add(key);
@@ -414,7 +457,7 @@ async function discoverForContinent(
     remaining -= filtered.length;
 
     if (filtered.length === 0) break;
-    if (remaining > 0) await new Promise(r => setTimeout(r, 1000));
+    if (remaining > 0) await new Promise((r) => setTimeout(r, 1000));
   }
 
   return { destinations: allResults, providers: Array.from(providersUsed) };
@@ -449,7 +492,10 @@ async function insertDestinations(
         .eq('slug', dest.slug)
         .limit(1)
         .maybeSingle();
-      if (existing) { skipped++; continue; }
+      if (existing) {
+        skipped++;
+        continue;
+      }
 
       // Dedup by city+country
       const { data: existingCity } = await supabase
@@ -459,51 +505,56 @@ async function insertDestinations(
         .ilike('country', dest.country)
         .limit(1)
         .maybeSingle();
-      if (existingCity) { skipped++; continue; }
+      if (existingCity) {
+        skipped++;
+        continue;
+      }
 
-      const { error: insertErr } = await supabase
-        .from('curated_destinations')
-        .insert({
-          title: dest.title,
-          slug: dest.slug,
-          description: dest.description,
-          short_description: dest.short_description || null,
-          city: dest.city,
-          country: dest.country,
-          country_code: (dest.country_code || 'XX').slice(0, 2),
-          region: dest.region || dest.continent,
-          continent: dest.continent,
-          latitude: dest.latitude || 0,
-          longitude: dest.longitude || 0,
-          timezone: dest.timezone || null,
-          hero_image_url: dest.hero_image_url || 'https://images.unsplash.com/photo-1500835556837-99ac94a94552?w=800&h=600&fit=crop',
-          thumbnail_url: dest.thumbnail_url || 'https://images.unsplash.com/photo-1500835556837-99ac94a94552?w=400&h=300&fit=crop',
-          gallery_urls: [],
-          primary_category: dest.primary_category || 'popular',
-          secondary_categories: dest.secondary_categories || [],
-          tags: dest.tags || [],
-          budget_level: Math.max(1, Math.min(4, dest.budget_level || 2)),
-          travel_style: dest.travel_style || [],
-          best_for: dest.best_for || [],
-          seasons: dest.seasons || [],
-          priority: 50,
-          popularity_score: Math.max(0, Math.min(1000, dest.popularity_score || 500)),
-          editor_rating: Math.max(1, Math.min(5, dest.editor_rating || 3.5)),
-          is_featured: dest.is_featured || false,
-          is_trending: dest.is_trending || false,
-          estimated_daily_budget_usd: dest.estimated_daily_budget_usd || null,
-          estimated_hotel_price_usd: dest.estimated_hotel_price_usd || null,
-          estimated_flight_price_usd: dest.estimated_flight_price_usd || null,
-          currency_code: (dest.currency_code || 'USD').slice(0, 3),
-          language_spoken: dest.language_spoken || [],
-          safety_rating: Math.max(1, Math.min(5, dest.safety_rating || 3)),
-          status: 'published',
-          metadata: {
-            source: 'ai_discovery',
-            generated_by: providerUsed,
-            discovered_at: new Date().toISOString(),
-          },
-        });
+      const { error: insertErr } = await supabase.from('curated_destinations').insert({
+        title: dest.title,
+        slug: dest.slug,
+        description: dest.description,
+        short_description: dest.short_description || null,
+        city: dest.city,
+        country: dest.country,
+        country_code: (dest.country_code || 'XX').slice(0, 2),
+        region: dest.region || dest.continent,
+        continent: dest.continent,
+        latitude: dest.latitude || 0,
+        longitude: dest.longitude || 0,
+        timezone: dest.timezone || null,
+        hero_image_url:
+          dest.hero_image_url ||
+          'https://images.unsplash.com/photo-1500835556837-99ac94a94552?w=800&h=600&fit=crop',
+        thumbnail_url:
+          dest.thumbnail_url ||
+          'https://images.unsplash.com/photo-1500835556837-99ac94a94552?w=400&h=300&fit=crop',
+        gallery_urls: [],
+        primary_category: dest.primary_category || 'popular',
+        secondary_categories: dest.secondary_categories || [],
+        tags: dest.tags || [],
+        budget_level: Math.max(1, Math.min(4, dest.budget_level || 2)),
+        travel_style: dest.travel_style || [],
+        best_for: dest.best_for || [],
+        seasons: dest.seasons || [],
+        priority: 50,
+        popularity_score: Math.max(0, Math.min(1000, dest.popularity_score || 500)),
+        editor_rating: Math.max(1, Math.min(5, dest.editor_rating || 3.5)),
+        is_featured: dest.is_featured || false,
+        is_trending: dest.is_trending || false,
+        estimated_daily_budget_usd: dest.estimated_daily_budget_usd || null,
+        estimated_hotel_price_usd: dest.estimated_hotel_price_usd || null,
+        estimated_flight_price_usd: dest.estimated_flight_price_usd || null,
+        currency_code: (dest.currency_code || 'USD').slice(0, 3),
+        language_spoken: dest.language_spoken || [],
+        safety_rating: Math.max(1, Math.min(5, dest.safety_rating || 3)),
+        status: 'published',
+        metadata: {
+          source: 'ai_discovery',
+          generated_by: providerUsed,
+          discovered_at: new Date().toISOString(),
+        },
+      });
 
       if (insertErr) {
         errors.push(`Insert ${dest.city}: ${insertErr.message}`);
@@ -523,6 +574,13 @@ async function insertDestinations(
 // ─── Main Handler ────────────────────────────────────────────────
 
 serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  const unauthorized = requireCronOrServiceAuth(req, corsHeaders);
+  if (unauthorized) return unauthorized;
+
   const startTime = Date.now();
 
   try {
@@ -548,39 +606,51 @@ serve(async (req: Request) => {
     );
 
     let allDiscovered: GeneratedDestination[] = [];
-    const continentResults: Record<string, { discovered: number; providers: string[]; errors: string[] }> = {};
+    const continentResults: Record<
+      string,
+      { discovered: number; providers: string[]; errors: string[] }
+    > = {};
     const allProvidersUsed: Set<string> = new Set();
 
     if (mode === 'continent') {
       if (!body.continent) {
-        return new Response(JSON.stringify({ success: false, error: 'continent is required for mode=continent' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        return new Response(
+          JSON.stringify({ success: false, error: 'continent is required for mode=continent' }),
+          {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
       }
 
       const result = await discoverForContinent(body.continent, existingCities, countPerContinent);
       allDiscovered = result.destinations;
-      result.providers.forEach(p => allProvidersUsed.add(p));
-      continentResults[body.continent] = { discovered: result.destinations.length, providers: result.providers, errors: [] };
-
+      result.providers.forEach((p) => allProvidersUsed.add(p));
+      continentResults[body.continent] = {
+        discovered: result.destinations.length,
+        providers: result.providers,
+        errors: [],
+      };
     } else if (mode === 'batch') {
       for (const continent of Object.keys(CONTINENT_TARGETS)) {
         try {
           console.log(`[discover] Starting ${continent} (target: ${countPerContinent})...`);
           const result = await discoverForContinent(continent, existingCities, countPerContinent);
-          result.providers.forEach(p => allProvidersUsed.add(p));
+          result.providers.forEach((p) => allProvidersUsed.add(p));
 
           allDiscovered.push(...result.destinations);
-          continentResults[continent] = { discovered: result.destinations.length, providers: result.providers, errors: [] };
+          continentResults[continent] = {
+            discovered: result.destinations.length,
+            providers: result.providers,
+            errors: [],
+          };
 
-          await new Promise(r => setTimeout(r, 2000));
+          await new Promise((r) => setTimeout(r, 2000));
         } catch (err: any) {
           console.error(`[discover] ${continent} failed:`, err.message);
           continentResults[continent] = { discovered: 0, providers: [], errors: [err.message] };
         }
       }
-
     } else if (mode === 'gaps') {
       const { data: continentCounts } = await supabase
         .from('curated_destinations')
@@ -598,13 +668,23 @@ serve(async (req: Request) => {
         if (needed <= 0) continue;
 
         try {
-          console.log(`[discover] Gap fill: ${continent} needs ${needed} more (has ${current}/${config.targetCount})`);
-          const result = await discoverForContinent(continent, existingCities, Math.min(needed, countPerContinent));
-          result.providers.forEach(p => allProvidersUsed.add(p));
+          console.log(
+            `[discover] Gap fill: ${continent} needs ${needed} more (has ${current}/${config.targetCount})`
+          );
+          const result = await discoverForContinent(
+            continent,
+            existingCities,
+            Math.min(needed, countPerContinent)
+          );
+          result.providers.forEach((p) => allProvidersUsed.add(p));
 
           allDiscovered.push(...result.destinations);
-          continentResults[continent] = { discovered: result.destinations.length, providers: result.providers, errors: [] };
-          await new Promise(r => setTimeout(r, 2000));
+          continentResults[continent] = {
+            discovered: result.destinations.length,
+            providers: result.providers,
+            errors: [],
+          };
+          await new Promise((r) => setTimeout(r, 2000));
         } catch (err: any) {
           continentResults[continent] = { discovered: 0, providers: [], errors: [err.message] };
         }
@@ -644,33 +724,38 @@ serve(async (req: Request) => {
       }
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      mode,
-      dryRun,
-      providersUsed: Array.from(allProvidersUsed),
-      totalDiscovered: allDiscovered.length,
-      totalInserted: insertResult.inserted,
-      totalSkipped: insertResult.skipped,
-      continentResults,
-      insertErrors: insertResult.errors.length > 0 ? insertResult.errors : undefined,
-      classifyResult,
-      refreshResult,
-      durationMs: Date.now() - startTime,
-      ...(dryRun ? { preview: allDiscovered.slice(0, 5) } : {}),
-    }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
-
+    return new Response(
+      JSON.stringify({
+        success: true,
+        mode,
+        dryRun,
+        providersUsed: Array.from(allProvidersUsed),
+        totalDiscovered: allDiscovered.length,
+        totalInserted: insertResult.inserted,
+        totalSkipped: insertResult.skipped,
+        continentResults,
+        insertErrors: insertResult.errors.length > 0 ? insertResult.errors : undefined,
+        classifyResult,
+        refreshResult,
+        durationMs: Date.now() - startTime,
+        ...(dryRun ? { preview: allDiscovered.slice(0, 5) } : {}),
+      }),
+      {
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   } catch (error: any) {
     console.error('Discover destinations error:', error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: error.message,
-      durationMs: Date.now() - startTime,
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message,
+        durationMs: Date.now() - startTime,
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
 });

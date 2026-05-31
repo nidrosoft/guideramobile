@@ -1,9 +1,20 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  beginTripModuleWorker,
+  finishTripModuleWorker,
+  type TripModuleWorkerLease,
+} from '../_shared/tripModule/worker.ts';
+import {
+  getTripModuleCachedContent,
+  recordTripModuleMetric,
+  setTripModuleCachedContent,
+} from '../_shared/tripModule/runtime.ts';
 
 const GOOGLE_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY') || '';
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
+const MODULE_KEY = 'language';
 
 // ─── Helpers ────────────────────────────────────────────
 
@@ -265,6 +276,21 @@ function parseJSON(text: string): any {
   try { return JSON.parse(s); } catch { throw new Error('Failed to parse AI JSON'); }
 }
 
+function buildCacheInput(ctx: any) {
+  const dest = ctx.trip.destination || {};
+  const travelerCount = (ctx.travelers?.length || 0) + 1;
+  const composition = ctx.trip.traveler_composition || (travelerCount === 1 ? 'solo' : 'group');
+  return {
+    moduleKey: MODULE_KEY,
+    city: str(dest.city || ctx.trip.primary_destination_name || ctx.trip.title),
+    country: str(dest.country || ctx.trip.primary_destination_country),
+    nationality: str(ctx.profile.nationality || ctx.profile.passport_country),
+    startDate: str(ctx.trip.start_date || ctx.trip.startDate),
+    composition,
+    tripType: str(ctx.trip.trip_type || ctx.trip.trip_purpose),
+  };
+}
+
 // ─── Storage ────────────────────────────────────────────
 
 async function storeKit(sb: any, tripId: string, userId: string, kit: any, modelUsed: string) {
@@ -341,17 +367,63 @@ async function storeKit(sb: any, tripId: string, userId: string, kit: any, model
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
+  const sb = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  );
+  let body: Record<string, any> = {};
+  let workerLease: TripModuleWorkerLease | null = null;
+  const requestStartedAt = Date.now();
+
   try {
-    const { tripId } = await req.json();
+    body = await req.json();
+    const { tripId } = body;
     if (!tripId) return new Response(JSON.stringify({ error: 'tripId required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-    const sb = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
+    const worker = await beginTripModuleWorker({
+      req,
+      body,
+      supabase: sb,
+      moduleKey: MODULE_KEY,
+      statusKey: 'language',
+      corsHeaders,
+      env: {
+        supabaseUrl: Deno.env.get('SUPABASE_URL')!,
+        serviceRoleKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        anonKey: Deno.env.get('SUPABASE_ANON_KEY')!,
+      },
+    });
+    if (worker.response) return worker.response;
+    workerLease = worker.lease ?? null;
 
     console.log(`[generate-language] Starting for trip ${tripId}`);
     const ctx = await buildContext(sb, tripId);
+    const cacheInput = buildCacheInput(ctx);
+    if (body.forceRefresh !== true) {
+      const cached = await getTripModuleCachedContent<any>(sb, cacheInput);
+      if (cached?.content) {
+        const result = await storeKit(sb, tripId, ctx.trip.user_id, cached.content, 'cache');
+        await recordTripModuleMetric(sb, {
+          moduleKey: MODULE_KEY,
+          cacheStatus: 'hit',
+          statusCode: 200,
+          durationMs: Date.now() - requestStartedAt,
+          model: 'cache',
+          providerSummary: { cacheKey: cached.cacheKey, cachedAt: cached.createdAt },
+        });
+        await finishTripModuleWorker(sb, workerLease, 'completed');
+        workerLease = null;
+        return new Response(JSON.stringify({
+          success: true,
+          cached: true,
+          cacheStatus: 'hit',
+          language: result.language,
+          totalPhrases: result.totalPhrases,
+          modelUsed: 'cache',
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
+
     const prompt = buildPrompt(ctx);
     console.log(`[generate-language] Prompt built (${prompt.length} chars)`);
 
@@ -384,7 +456,18 @@ serve(async (req: Request) => {
 
     const parsed = parseJSON(text);
     const result = await storeKit(sb, tripId, ctx.trip.user_id, parsed, modelUsed);
+    await setTripModuleCachedContent(sb, cacheInput, parsed);
+    await recordTripModuleMetric(sb, {
+      moduleKey: MODULE_KEY,
+      cacheStatus: 'miss',
+      statusCode: 200,
+      durationMs: Date.now() - requestStartedAt,
+      model: modelUsed,
+      providerSummary: { totalPhrases: result.totalPhrases },
+    });
     console.log(`[generate-language] Stored ${result.totalPhrases} phrases for ${result.language}`);
+    await finishTripModuleWorker(sb, workerLease, 'completed');
+    workerLease = null;
 
     return new Response(JSON.stringify({
       success: true,
@@ -395,6 +478,14 @@ serve(async (req: Request) => {
 
   } catch (err: any) {
     console.error('[generate-language] Error:', err);
+    await recordTripModuleMetric(sb, {
+      moduleKey: MODULE_KEY,
+      cacheStatus: 'error',
+      statusCode: 500,
+      durationMs: Date.now() - requestStartedAt,
+      errorMessage: err.message,
+    });
+    await finishTripModuleWorker(sb, workerLease, 'failed');
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

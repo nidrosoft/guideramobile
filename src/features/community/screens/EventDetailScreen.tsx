@@ -35,6 +35,7 @@ import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { eventService } from '@/services/community';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
 
 type RSVPStatus = 'going' | 'maybe' | 'not_going' | null;
@@ -44,6 +45,7 @@ export default function EventDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useAuth();
+  const { colors: tc, isDark } = useTheme();
   const { showSuccess, showError } = useToast();
   const [rsvpStatus, setRsvpStatus] = useState<RSVPStatus>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -200,8 +202,8 @@ export default function EventDetailScreen() {
   
   if (isFetching || !event) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, { backgroundColor: tc.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={tc.primary} />
       </View>
     );
   }
@@ -209,7 +211,7 @@ export default function EventDetailScreen() {
   const spotsLeft = event.attendees.limit - event.attendees.going;
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <StatusBar style="light" />
       
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -242,100 +244,100 @@ export default function EventDetailScreen() {
         </View>
         
         {/* Content */}
-        <View style={styles.content}>
+        <View style={[styles.content, { backgroundColor: tc.background }]}>
           {/* Title & Community */}
-          <Text style={styles.title} numberOfLines={3} ellipsizeMode="tail">{event.title}</Text>
+          <Text style={[styles.title, { color: tc.textPrimary }]} numberOfLines={3} ellipsizeMode="tail">{event.title}</Text>
           
           <TouchableOpacity 
             style={styles.communityRow}
             onPress={() => router.push(`/community/${event.community.id}`)}
           >
             <Image source={{ uri: event.community.avatar }} style={styles.communityAvatar} />
-            <Text style={styles.communityName}>{event.community.name}</Text>
+            <Text style={[styles.communityName, { color: tc.primary }]}>{event.community.name}</Text>
           </TouchableOpacity>
           
           {/* Date & Time */}
-          <View style={styles.infoCard}>
+          <View style={[styles.infoCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
             <View style={styles.infoRow}>
-              <View style={[styles.infoIcon, { backgroundColor: colors.primary + '15' }]}>
-                <Calendar size={20} color={colors.primary} />
+              <View style={[styles.infoIcon, { backgroundColor: tc.primarySubtle }]}>
+                <Calendar size={20} color={tc.primary} />
               </View>
               <View>
-                <Text style={styles.infoLabel}>Date</Text>
-                <Text style={styles.infoValue}>{formatDate(event.date)}</Text>
+                <Text style={[styles.infoLabel, { color: tc.textSecondary }]}>Date</Text>
+                <Text style={[styles.infoValue, { color: tc.textPrimary }]}>{formatDate(event.date)}</Text>
               </View>
             </View>
             
-            <View style={styles.infoDivider} />
+            <View style={[styles.infoDivider, { backgroundColor: tc.borderSubtle }]} />
             
             <View style={styles.infoRow}>
               <View style={[styles.infoIcon, { backgroundColor: colors.success + '15' }]}>
                 <Clock size={20} color={colors.success} />
               </View>
               <View>
-                <Text style={styles.infoLabel}>Time</Text>
-                <Text style={styles.infoValue}>
+                <Text style={[styles.infoLabel, { color: tc.textSecondary }]}>Time</Text>
+                <Text style={[styles.infoValue, { color: tc.textPrimary }]}>
                   {formatTime(event.date)} - {formatTime(event.endDate)}
                 </Text>
               </View>
             </View>
             
-            <View style={styles.infoDivider} />
+            <View style={[styles.infoDivider, { backgroundColor: tc.borderSubtle }]} />
             
             <View style={styles.infoRow}>
               <View style={[styles.infoIcon, { backgroundColor: colors.warning + '15' }]}>
                 <Location size={20} color={colors.warning} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.infoLabel}>Location</Text>
-                <Text style={styles.infoValue}>{event.location.name}</Text>
-                <Text style={styles.infoSubvalue}>{event.location.address}</Text>
+                <Text style={[styles.infoLabel, { color: tc.textSecondary }]}>Location</Text>
+                <Text style={[styles.infoValue, { color: tc.textPrimary }]}>{event.location.name}</Text>
+                <Text style={[styles.infoSubvalue, { color: tc.textSecondary }]}>{event.location.address}</Text>
               </View>
             </View>
           </View>
           
           {/* Host */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Hosted by</Text>
+            <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Hosted by</Text>
             <TouchableOpacity 
-              style={styles.hostCard}
+              style={[styles.hostCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
               onPress={() => router.push(`/community/buddy/${event.host.id}`)}
             >
               <Image source={{ uri: event.host.avatar }} style={styles.hostAvatar} />
               <View style={styles.hostInfo}>
                 <View style={styles.hostNameRow}>
-                  <Text style={styles.hostName}>{event.host.name}</Text>
+                  <Text style={[styles.hostName, { color: tc.textPrimary }]}>{event.host.name}</Text>
                   {event.host.isVerified && (
                     <TickCircle size={16} color={colors.primary} variant="Bold" />
                   )}
                 </View>
-                <Text style={styles.hostRole}>Event Organizer</Text>
+                <Text style={[styles.hostRole, { color: tc.textSecondary }]}>Event Organizer</Text>
               </View>
-              <Message size={20} color={colors.primary} />
+              <Message size={20} color={tc.primary} />
             </TouchableOpacity>
           </View>
           
           {/* Attendees */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Attendees</Text>
-              <Text style={styles.spotsText}>
+              <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Attendees</Text>
+              <Text style={[styles.spotsText, { color: colors.warning }]}>
                 {spotsLeft > 0 ? `${spotsLeft} spots left` : 'Full'}
               </Text>
             </View>
             
-            <View style={styles.attendeesCard}>
+            <View style={[styles.attendeesCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
               <View style={styles.attendeeAvatars}>
                 {event.goingUsers.slice(0, 5).map((user, index) => (
                   <Image
                     key={user.id}
                     source={{ uri: user.avatar }}
-                    style={[styles.attendeeAvatar, { marginLeft: index > 0 ? -12 : 0 }]}
+                    style={[styles.attendeeAvatar, { borderColor: tc.bgElevated, marginLeft: index > 0 ? -12 : 0 }]}
                   />
                 ))}
                 {event.attendees.going > 5 && (
-                  <View style={[styles.attendeeAvatar, styles.moreAttendees, { marginLeft: -12 }]}>
-                    <Text style={styles.moreAttendeesText}>+{event.attendees.going - 5}</Text>
+                  <View style={[styles.attendeeAvatar, styles.moreAttendees, { backgroundColor: tc.borderSubtle, borderColor: tc.bgElevated, marginLeft: -12 }]}>
+                    <Text style={[styles.moreAttendeesText, { color: tc.textSecondary }]}>+{event.attendees.going - 5}</Text>
                   </View>
                 )}
               </View>
@@ -343,11 +345,11 @@ export default function EventDetailScreen() {
               <View style={styles.attendeeStats}>
                 <View style={styles.attendeeStat}>
                   <TickCircle size={16} color={colors.success} variant="Bold" />
-                  <Text style={styles.attendeeStatText}>{event.attendees.going} going</Text>
+                  <Text style={[styles.attendeeStatText, { color: tc.textSecondary }]}>{event.attendees.going} going</Text>
                 </View>
                 <View style={styles.attendeeStat}>
                   <Clock size={16} color={colors.warning} />
-                  <Text style={styles.attendeeStatText}>{event.attendees.maybe} maybe</Text>
+                  <Text style={[styles.attendeeStatText, { color: tc.textSecondary }]}>{event.attendees.maybe} maybe</Text>
                 </View>
               </View>
             </View>
@@ -355,17 +357,17 @@ export default function EventDetailScreen() {
           
           {/* Description */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>About</Text>
-            <Text style={styles.description}>{event.description}</Text>
+            <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>About</Text>
+            <Text style={[styles.description, { color: tc.textSecondary }]}>{event.description}</Text>
           </View>
           
           {/* Tags */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tags</Text>
+            <Text style={[styles.sectionTitle, { color: tc.textPrimary }]}>Tags</Text>
             <View style={styles.tagsContainer}>
               {event.tags.map(tag => (
-                <View key={tag} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
+                <View key={tag} style={[styles.tag, { backgroundColor: tc.primarySubtle }]}>
+                  <Text style={[styles.tagText, { color: tc.primary }]}>{tag}</Text>
                 </View>
               ))}
             </View>
@@ -376,12 +378,12 @@ export default function EventDetailScreen() {
       </ScrollView>
       
       {/* RSVP Footer */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom || spacing.md }]}>
+      <View style={[styles.footer, { backgroundColor: tc.bgElevated, borderTopColor: tc.borderSubtle, paddingBottom: insets.bottom || spacing.md }]}>
         <View style={styles.rsvpButtons}>
           <TouchableOpacity
             style={[
               styles.rsvpButton,
-              styles.rsvpGoing,
+              { backgroundColor: colors.success + (isDark ? '25' : '15'), borderColor: colors.success + '35', borderWidth: 1 },
               rsvpStatus === 'going' && styles.rsvpActive,
             ]}
             onPress={() => handleRSVP('going')}
@@ -404,7 +406,7 @@ export default function EventDetailScreen() {
           <TouchableOpacity
             style={[
               styles.rsvpButton,
-              styles.rsvpMaybe,
+              { backgroundColor: colors.warning + (isDark ? '25' : '15'), borderColor: colors.warning + '35', borderWidth: 1 },
               rsvpStatus === 'maybe' && styles.rsvpMaybeActive,
             ]}
             onPress={() => handleRSVP('maybe')}
@@ -427,6 +429,7 @@ export default function EventDetailScreen() {
             style={[
               styles.rsvpButton,
               styles.rsvpNo,
+              { backgroundColor: tc.borderSubtle },
               rsvpStatus === 'not_going' && styles.rsvpNoActive,
             ]}
             onPress={() => handleRSVP('not_going')}
@@ -434,7 +437,7 @@ export default function EventDetailScreen() {
           >
             <CloseCircle 
               size={20} 
-              color={rsvpStatus === 'not_going' ? colors.white : colors.bgElevated} 
+              color={rsvpStatus === 'not_going' ? colors.white : tc.textTertiary} 
             />
           </TouchableOpacity>
         </View>

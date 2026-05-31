@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guidera Mission Control — Admin Panel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#f0fdfa', 100: '#ccfbf1', 200: '#99f6e4', 300: '#5eead4', 400: '#2dd4bf', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 800: '#115e59', 900: '#134e4a' },
+            dark: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8', 500: '#64748b', 600: '#475569', 700: '#334155', 800: '#1e293b', 900: '#0f172a', 950: '#020617' }
+          }
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1e293b; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    .sidebar-item { transition: all 0.15s ease; }
+    .sidebar-item:hover { background: rgba(14, 165, 150, 0.08); }
+    .sidebar-item.active { background: rgba(14, 165, 150, 0.12); border-right: 3px solid #14b8a6; }
+    .stat-card { transition: all 0.2s ease; }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+    .glow { box-shadow: 0 0 20px rgba(20, 184, 166, 0.15); }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .pulse-dot { animation: pulse-dot 2s infinite; }
+    .table-row:hover { background: rgba(14, 165, 150, 0.04); }
+    .chart-bar { transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+    .nav-section-title { font-size: 0.65rem; letter-spacing: 0.08em; }
+  </style>
+</head>
+<body class="bg-dark-950 text-dark-200 min-h-screen flex">
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="w-64 bg-dark-900 border-r border-dark-700/50 flex flex-col fixed h-full z-30">
+    <!-- Logo -->
+    <div class="px-5 py-5 border-b border-dark-700/50">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <div>
+          <h1 class="text-sm font-bold text-white tracking-tight">Mission Control</h1>
+          <p class="text-[10px] text-dark-400 font-medium">Guidera Admin</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="flex-1 overflow-y-auto py-3 px-3">
+      <!-- Main -->
+      <div class="mb-4">
+        <p class="nav-section-title text-dark-500 font-semibold uppercase px-3 mb-1.5">Overview</p>
+        <button onclick="showPage('dashboard')" class="sidebar-item active w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="dashboard">
+          <span class="text-brand-400">📊</span><span class="text-dark-200 font-medium">Dashboard</span>
+        </button>
+      </div>
+
+      <!-- Users -->
+      <div class="mb-4">
+        <p class="nav-section-title text-dark-500 font-semibold uppercase px-3 mb-1.5">People</p>
+        <button onclick="showPage('users')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="users">
+          <span>👥</span><span class="text-dark-300 font-medium">Users</span>
+          <span class="ml-auto bg-brand-500/20 text-brand-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">16</span>
+        </button>
+        <button onclick="showPage('segments')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="segments">
+          <span>🎯</span><span class="text-dark-300 font-medium">Segments</span>
+        </button>
+      </div>
+
+      <!-- Travel -->
+      <div class="mb-4">
+        <p class="nav-section-title text-dark-500 font-semibold uppercase px-3 mb-1.5">Travel</p>
+        <button onclick="showPage('trips')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="trips">
+          <span>✈️</span><span class="text-dark-300 font-medium">Trips</span>
+          <span class="ml-auto text-dark-500 text-[10px] font-medium">22</span>
+        </button>
+        <button onclick="showPage('destinations')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="destinations">
+          <span>🌍</span><span class="text-dark-300 font-medium">Destinations</span>
+          <span class="ml-auto text-dark-500 text-[10px] font-medium">201</span>
+        </button>
+        <button onclick="showPage('events')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="events">
+          <span>🎉</span><span class="text-dark-300 font-medium">Events</span>
+          <span class="ml-auto text-dark-500 text-[10px] font-medium">728</span>
+        </button>
+        <button onclick="showPage('deals')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="deals">
+          <span>💰</span><span class="text-dark-300 font-medium">Deals</span>
+          <span class="ml-auto text-dark-500 text-[10px] font-medium">525</span>
+        </button>
+      </div>
+
+      <!-- Community -->
+      <div class="mb-4">
+        <p class="nav-section-title text-dark-500 font-semibold uppercase px-3 mb-1.5">Community</p>
+        <button onclick="showPage('groups')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="groups">
+          <span>🤝</span><span class="text-dark-300 font-medium">Groups</span>
+          <span class="ml-auto text-dark-500 text-[10px] font-medium">7</span>
+        </button>
+        <button onclick="showPage('posts')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="posts">
+          <span>📝</span><span class="text-dark-300 font-medium">Posts</span>
+        </button>
+        <button onclick="showPage('activities')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="activities">
+          <span>⚡</span><span class="text-dark-300 font-medium">Pulse Activities</span>
+          <span class="ml-auto text-dark-500 text-[10px] font-medium">13</span>
+        </button>
+        <button onclick="showPage('messages')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="messages">
+          <span>💬</span><span class="text-dark-300 font-medium">Messages</span>
+        </button>
+      </div>
+
+      <!-- AI -->
+      <div class="mb-4">
+        <p class="nav-section-title text-dark-500 font-semibold uppercase px-3 mb-1.5">AI & Intelligence</p>
+        <button onclick="showPage('ai-chats')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="ai-chats">
+          <span>🤖</span><span class="text-dark-300 font-medium">Chat Sessions</span>
+          <span class="ml-auto text-dark-500 text-[10px] font-medium">9</span>
+        </button>
+        <button onclick="showPage('ai-gen')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="ai-gen">
+          <span>🧠</span><span class="text-dark-300 font-medium">Generation Logs</span>
+        </button>
+        <button onclick="showPage('snapshots')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="snapshots">
+          <span>📸</span><span class="text-dark-300 font-medium">Trip Snapshots</span>
+        </button>
+      </div>
+
+      <!-- Safety -->
+      <div class="mb-4">
+        <p class="nav-section-title text-dark-500 font-semibold uppercase px-3 mb-1.5">Safety & Ops</p>
+        <button onclick="showPage('sos')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="sos">
+          <span>🛡️</span><span class="text-dark-300 font-medium">SOS Center</span>
+          <span class="w-2 h-2 rounded-full bg-emerald-500 ml-auto pulse-dot"></span>
+        </button>
+        <button onclick="showPage('notifications')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="notifications">
+          <span>🔔</span><span class="text-dark-300 font-medium">Notifications</span>
+          <span class="ml-auto text-dark-500 text-[10px] font-medium">39</span>
+        </button>
+      </div>
+
+      <!-- Partners -->
+      <div class="mb-4">
+        <p class="nav-section-title text-dark-500 font-semibold uppercase px-3 mb-1.5">Partners</p>
+        <button onclick="showPage('partners')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="partners">
+          <span>🧑‍🏫</span><span class="text-dark-300 font-medium">Applications</span>
+          <span class="ml-auto bg-amber-500/20 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">4</span>
+        </button>
+        <button onclick="showPage('guides')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="guides">
+          <span>🗺️</span><span class="text-dark-300 font-medium">Guide Profiles</span>
+        </button>
+      </div>
+
+      <!-- Infrastructure -->
+      <div class="mb-4">
+        <p class="nav-section-title text-dark-500 font-semibold uppercase px-3 mb-1.5">Infrastructure</p>
+        <button onclick="showPage('edge')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="edge">
+          <span>⚡</span><span class="text-dark-300 font-medium">Edge Functions</span>
+          <span class="ml-auto text-dark-500 text-[10px] font-medium">52</span>
+        </button>
+        <button onclick="showPage('providers')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="providers">
+          <span>🔌</span><span class="text-dark-300 font-medium">API Providers</span>
+        </button>
+        <button onclick="showPage('cron')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="cron">
+          <span>⏰</span><span class="text-dark-300 font-medium">Cron Jobs</span>
+        </button>
+      </div>
+
+      <!-- Moderation -->
+      <div class="mb-4">
+        <p class="nav-section-title text-dark-500 font-semibold uppercase px-3 mb-1.5">Moderation</p>
+        <button onclick="showPage('reports')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="reports">
+          <span>🚩</span><span class="text-dark-300 font-medium">Reports</span>
+          <span class="ml-auto bg-red-500/20 text-red-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">1</span>
+        </button>
+        <button onclick="showPage('content-mod')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="content-mod">
+          <span>🔍</span><span class="text-dark-300 font-medium">Content Queue</span>
+        </button>
+      </div>
+
+      <!-- Settings -->
+      <div class="mb-4">
+        <p class="nav-section-title text-dark-500 font-semibold uppercase px-3 mb-1.5">System</p>
+        <button onclick="showPage('sections')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="sections">
+          <span>📄</span><span class="text-dark-300 font-medium">Homepage Sections</span>
+        </button>
+        <button onclick="showPage('settings')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm" data-page="settings">
+          <span>⚙️</span><span class="text-dark-300 font-medium">Settings</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Admin User -->
+    <div class="px-4 py-3 border-t border-dark-700/50">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-xs font-bold">CA</div>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-semibold text-dark-200 truncate">Cyrus Admin</p>
+          <p class="text-[10px] text-dark-500">Super Admin</p>
+        </div>
+        <svg class="w-4 h-4 text-dark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 ml-64">
+    <!-- Top Bar -->
+    <header class="sticky top-0 z-20 bg-dark-950/80 backdrop-blur-xl border-b border-dark-700/50 px-6 py-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 id="page-title" class="text-lg font-bold text-white">Dashboard</h2>
+          <p id="page-subtitle" class="text-xs text-dark-400">Real-time overview of Guidera</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <!-- Search -->
+          <div class="relative">
+            <svg class="w-4 h-4 text-dark-500 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input type="text" placeholder="Search users, trips, events..." class="bg-dark-800 border border-dark-700 rounded-lg pl-9 pr-4 py-2 text-sm text-dark-200 placeholder-dark-500 w-72 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20">
+          </div>
+          <!-- Notification Bell -->
+          <button class="relative p-2 rounded-lg hover:bg-dark-800 transition">
+            <svg class="w-5 h-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+            <span class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[9px] text-white font-bold">3</span>
+          </button>
+          <div class="w-px h-6 bg-dark-700"></div>
+          <span class="text-xs text-dark-500">Apr 6, 2026</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Content Container -->
+    <div class="p-6">
+      <!-- DASHBOARD PAGE -->
+      <div id="page-dashboard" class="page-content fade-in">
+        <!-- KPI Cards Row 1 -->
+        <div class="grid grid-cols-5 gap-4 mb-6">
+          <div class="stat-card bg-dark-900 border border-dark-700/50 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-dark-400 text-xs font-medium">Total Users</span>
+              <span class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 text-sm">👥</span>
+            </div>
+            <p class="text-2xl font-bold text-white">16</p>
+            <p class="text-xs text-emerald-400 mt-1">+3 this week</p>
+          </div>
+          <div class="stat-card bg-dark-900 border border-dark-700/50 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-dark-400 text-xs font-medium">Total Trips</span>
+              <span class="w-8 h-8 rounded-lg bg-brand-500/10 flex items-center justify-center text-brand-400 text-sm">✈️</span>
+            </div>
+            <p class="text-2xl font-bold text-white">22</p>
+            <p class="text-xs text-emerald-400 mt-1">+5 this week</p>
+          </div>
+          <div class="stat-card bg-dark-900 border border-dark-700/50 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-dark-400 text-xs font-medium">AI Conversations</span>
+              <span class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 text-sm">🤖</span>
+            </div>
+            <p class="text-2xl font-bold text-white">74</p>
+            <p class="text-xs text-dark-400 mt-1">9 sessions</p>
+          </div>
+          <div class="stat-card bg-dark-900 border border-dark-700/50 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-dark-400 text-xs font-medium">Deals Cached</span>
+              <span class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 text-sm">💰</span>
+            </div>
+            <p class="text-2xl font-bold text-white">525</p>
+            <p class="text-xs text-emerald-400 mt-1">5 clicks</p>
+          </div>
+          <div class="stat-card bg-dark-900 border border-dark-700/50 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-dark-400 text-xs font-medium">SOS Status</span>
+              <span class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-sm">🛡️</span>
+            </div>
+            <p class="text-2xl font-bold text-emerald-400">All Clear</p>
+            <p class="text-xs text-dark-400 mt-1">0 active events</p>
+          </div>
+        </div>
+
+        <!-- KPI Cards Row 2 -->
+        <div class="grid grid-cols-5 gap-4 mb-6">
+          <div class="stat-card bg-dark-900 border border-dark-700/50 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-dark-400 text-xs font-medium">Destinations</span>
+              <span class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 text-sm">🌍</span>
+            </div>
+            <p class="text-2xl font-bold text-white">201</p>
+            <p class="text-xs text-dark-400 mt-1">All enriched</p>
+          </div>
+          <div class="stat-card bg-dark-900 border border-dark-700/50 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-dark-400 text-xs font-medium">Events</span>
+              <span class="w-8 h-8 rounded-lg bg-pink-500/10 flex items-center justify-center text-pink-400 text-sm">🎉</span>
+            </div>
+            <p class="text-2xl font-bold text-white">728</p>
+            <p class="text-xs text-dark-400 mt-1">Across 48 cities</p>
+          </div>
+          <div class="stat-card bg-dark-900 border border-dark-700/50 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-dark-400 text-xs font-medium">Community</span>
+              <span class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 text-sm">🤝</span>
+            </div>
+            <p class="text-2xl font-bold text-white">7</p>
+            <p class="text-xs text-dark-400 mt-1">groups · 6 posts</p>
+          </div>
+          <div class="stat-card bg-dark-900 border border-dark-700/50 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-dark-400 text-xs font-medium">Partner Apps</span>
+              <span class="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-400 text-sm">🧑‍🏫</span>
+            </div>
+            <p class="text-2xl font-bold text-white">4</p>
+            <p class="text-xs text-amber-400 mt-1">Pending review</p>
+          </div>
+          <div class="stat-card bg-dark-900 border border-dark-700/50 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-dark-400 text-xs font-medium">Edge Functions</span>
+              <span class="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 text-sm">⚡</span>
+            </div>
+            <p class="text-2xl font-bold text-white">52</p>
+            <p class="text-xs text-emerald-400 mt-1">All healthy</p>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid grid-cols-3 gap-4 mb-6">
+          <!-- User Growth Chart -->
+          <div class="bg-dark-900 border border-dark-700/50 rounded-xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-semibold text-white">User Growth</h3>
+              <select class="bg-dark-800 border border-dark-700 text-dark-300 text-xs rounded-lg px-2 py-1"><option>Last 30 days</option><option>Last 90 days</option></select>
+            </div>
+            <div class="flex items-end gap-1.5 h-32">
+              <div class="flex-1 bg-brand-500/20 rounded-t chart-bar" style="height: 20%"></div>
+              <div class="flex-1 bg-brand-500/20 rounded-t chart-bar" style="height: 25%"></div>
+              <div class="flex-1 bg-brand-500/30 rounded-t chart-bar" style="height: 30%"></div>
+              <div class="flex-1 bg-brand-500/30 rounded-t chart-bar" style="height: 28%"></div>
+              <div class="flex-1 bg-brand-500/30 rounded-t chart-bar" style="height: 35%"></div>
+              <div class="flex-1 bg-brand-500/40 rounded-t chart-bar" style="height: 42%"></div>
+              <div class="flex-1 bg-brand-500/40 rounded-t chart-bar" style="height: 40%"></div>
+              <div class="flex-1 bg-brand-500/40 rounded-t chart-bar" style="height: 48%"></div>
+              <div class="flex-1 bg-brand-500/50 rounded-t chart-bar" style="height: 55%"></div>
+              <div class="flex-1 bg-brand-500/50 rounded-t chart-bar" style="height: 60%"></div>
+              <div class="flex-1 bg-brand-500/60 rounded-t chart-bar" style="height: 68%"></div>
+              <div class="flex-1 bg-brand-500/70 rounded-t chart-bar" style="height: 75%"></div>
+              <div class="flex-1 bg-brand-500/80 rounded-t chart-bar" style="height: 82%"></div>
+              <div class="flex-1 bg-brand-500 rounded-t chart-bar" style="height: 100%"></div>
+            </div>
+            <div class="flex justify-between mt-2 text-[10px] text-dark-500"><span>Mar 7</span><span>Mar 21</span><span>Apr 6</span></div>
+          </div>
+
+          <!-- AI Usage Chart -->
+          <div class="bg-dark-900 border border-dark-700/50 rounded-xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-semibold text-white">AI Usage</h3>
+              <div class="flex gap-3 text-[10px]">
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-purple-400"></span>Chat</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-brand-400"></span>Generation</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span>Snapshot</span>
+              </div>
+            </div>
+            <div class="flex items-end gap-1 h-32">
+              <div class="flex-1 flex flex-col gap-0.5 justify-end">
+                <div class="bg-amber-500/50 rounded-t" style="height: 8px"></div>
+                <div class="bg-brand-500/50 rounded-t" style="height: 15px"></div>
+                <div class="bg-purple-500/50 rounded-t" style="height: 20px"></div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 justify-end">
+                <div class="bg-amber-500/50 rounded-t" style="height: 12px"></div>
+                <div class="bg-brand-500/50 rounded-t" style="height: 22px"></div>
+                <div class="bg-purple-500/50 rounded-t" style="height: 30px"></div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 justify-end">
+                <div class="bg-amber-500/60 rounded-t" style="height: 15px"></div>
+                <div class="bg-brand-500/60 rounded-t" style="height: 28px"></div>
+                <div class="bg-purple-500/60 rounded-t" style="height: 35px"></div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 justify-end">
+                <div class="bg-amber-500/60 rounded-t" style="height: 10px"></div>
+                <div class="bg-brand-500/60 rounded-t" style="height: 25px"></div>
+                <div class="bg-purple-500/60 rounded-t" style="height: 40px"></div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 justify-end">
+                <div class="bg-amber-500/70 rounded-t" style="height: 18px"></div>
+                <div class="bg-brand-500/70 rounded-t" style="height: 32px"></div>
+                <div class="bg-purple-500/70 rounded-t" style="height: 45px"></div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 justify-end">
+                <div class="bg-amber-500/80 rounded-t" style="height: 14px"></div>
+                <div class="bg-brand-500/80 rounded-t" style="height: 35px"></div>
+                <div class="bg-purple-500/80 rounded-t" style="height: 55px"></div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 justify-end">
+                <div class="bg-amber-500 rounded-t" style="height: 20px"></div>
+                <div class="bg-brand-500 rounded-t" style="height: 38px"></div>
+                <div class="bg-purple-500 rounded-t" style="height: 60px"></div>
+              </div>
+            </div>
+            <div class="flex justify-between mt-2 text-[10px] text-dark-500"><span>Mon</span><span>Thu</span><span>Sun</span></div>
+          </div>
+
+          <!-- Geographic Distribution -->
+          <div class="bg-dark-900 border border-dark-700/50 rounded-xl p-5">
+            <h3 class="text-sm font-semibold text-white mb-4">Users by Region</h3>
+            <div class="space-y-3">
+              <div>
+                <div class="flex justify-between text-xs mb-1"><span class="text-dark-300">North America</span><span class="text-white font-medium">9</span></div>
+                <div class="h-2 bg-dark-800 rounded-full overflow-hidden"><div class="h-full bg-brand-500 rounded-full" style="width: 56%"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1"><span class="text-dark-300">Europe</span><span class="text-white font-medium">3</span></div>
+                <div class="h-2 bg-dark-800 rounded-full overflow-hidden"><div class="h-full bg-blue-500 rounded-full" style="width: 19%"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1"><span class="text-dark-300">Africa</span><span class="text-white font-medium">2</span></div>
+                <div class="h-2 bg-dark-800 rounded-full overflow-hidden"><div class="h-full bg-amber-500 rounded-full" style="width: 13%"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1"><span class="text-dark-300">Asia Pacific</span><span class="text-white font-medium">1</span></div>
+                <div class="h-2 bg-dark-800 rounded-full overflow-hidden"><div class="h-full bg-pink-500 rounded-full" style="width: 6%"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1"><span class="text-dark-300">Middle East</span><span class="text-white font-medium">1</span></div>
+                <div class="h-2 bg-dark-800 rounded-full overflow-hidden"><div class="h-full bg-purple-500 rounded-full" style="width: 6%"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity + Quick Actions -->
+        <div class="grid grid-cols-3 gap-4">
+          <!-- Recent Activity -->
+          <div class="col-span-2 bg-dark-900 border border-dark-700/50 rounded-xl p-5">
+            <h3 class="text-sm font-semibold text-white mb-4">Recent Activity</h3>
+            <div class="space-y-3">
+              <div class="flex items-start gap-3 p-3 rounded-lg hover:bg-dark-800/50 transition">
+                <div class="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 text-xs flex-shrink-0">👤</div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs text-dark-200"><span class="font-semibold text-white">Cyrus A.</span> created a new trip to <span class="text-brand-400">Cairo, Egypt</span></p>
+                  <p class="text-[10px] text-dark-500 mt-0.5">2 minutes ago</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3 p-3 rounded-lg hover:bg-dark-800/50 transition">
+                <div class="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 text-xs flex-shrink-0">🤖</div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs text-dark-200"><span class="font-semibold text-white">Sarah M.</span> started AI chat session about <span class="text-purple-400">visa requirements for Japan</span></p>
+                  <p class="text-[10px] text-dark-500 mt-0.5">15 minutes ago</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3 p-3 rounded-lg hover:bg-dark-800/50 transition">
+                <div class="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 text-xs flex-shrink-0">💰</div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs text-dark-200"><span class="font-semibold text-white">James K.</span> clicked on deal: <span class="text-amber-400">NYC → London $342 RT</span></p>
+                  <p class="text-[10px] text-dark-500 mt-0.5">28 minutes ago</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3 p-3 rounded-lg hover:bg-dark-800/50 transition">
+                <div class="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-400 text-xs flex-shrink-0">🧑‍🏫</div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs text-dark-200"><span class="font-semibold text-white">Ana L.</span> submitted a <span class="text-orange-400">Local Guide application</span> for Medellín</p>
+                  <p class="text-[10px] text-dark-500 mt-0.5">1 hour ago</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3 p-3 rounded-lg hover:bg-dark-800/50 transition">
+                <div class="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-xs flex-shrink-0">✅</div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs text-dark-200"><span class="font-semibold text-white">deal-scanner</span> completed: <span class="text-emerald-400">33 new experience deals cached</span></p>
+                  <p class="text-[10px] text-dark-500 mt-0.5">3 hours ago</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3 p-3 rounded-lg hover:bg-dark-800/50 transition">
+                <div class="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 text-xs flex-shrink-0">🤝</div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs text-dark-200"><span class="font-semibold text-white">Mike R.</span> created Pulse activity: <span class="text-indigo-400">Food tour in Barcelona</span></p>
+                  <p class="text-[10px] text-dark-500 mt-0.5">5 hours ago</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="bg-dark-900 border border-dark-700/50 rounded-xl p-5">
+            <h3 class="text-sm font-semibold text-white mb-4">Quick Actions</h3>
+            <div class="space-y-2">
+              <button class="w-full flex items-center gap-3 p-3 rounded-lg bg-dark-800 hover:bg-dark-700 transition text-left">
+                <span class="w-8 h-8 rounded-lg bg-brand-500/10 flex items-center justify-center text-brand-400 text-sm">📣</span>
+                <div><p class="text-xs font-medium text-white">Send Broadcast</p><p class="text-[10px] text-dark-400">Push to all users</p></div>
+              </button>
+              <button class="w-full flex items-center gap-3 p-3 rounded-lg bg-dark-800 hover:bg-dark-700 transition text-left">
+                <span class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 text-sm">🔄</span>
+                <div><p class="text-xs font-medium text-white">Refresh Sections</p><p class="text-[10px] text-dark-400">Rebuild homepage cache</p></div>
+              </button>
+              <button class="w-full flex items-center gap-3 p-3 rounded-lg bg-dark-800 hover:bg-dark-700 transition text-left">
+                <span class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 text-sm">🔍</span>
+                <div><p class="text-xs font-medium text-white">Scan Deals</p><p class="text-[10px] text-dark-400">Trigger deal-scanner</p></div>
+              </button>
+              <button class="w-full flex items-center gap-3 p-3 rounded-lg bg-dark-800 hover:bg-dark-700 transition text-left">
+                <span class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 text-sm">🖼️</span>
+                <div><p class="text-xs font-medium text-white">Repair Images</p><p class="text-[10px] text-dark-400">Fix missing event images</p></div>
+              </button>
+              <button class="w-full flex items-center gap-3 p-3 rounded-lg bg-dark-800 hover:bg-dark-700 transition text-left">
+                <span class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-sm">🌍</span>
+                <div><p class="text-xs font-medium text-white">Enrich Destinations</p><p class="text-[10px] text-dark-400">AI enrichment batch</p></div>
+              </button>
+              <button class="w-full flex items-center gap-3 p-3 rounded-lg bg-dark-800 hover:bg-dark-700 transition text-left">
+                <span class="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 text-sm">📋</span>
+                <div><p class="text-xs font-medium text-white">View Reports</p><p class="text-[10px] text-dark-400">1 open issue</p></div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- USERS PAGE -->
+      <div id="page-users" class="page-content hidden fade-in">
+        <!-- Filters -->
+        <div class="bg-dark-900 border border-dark-700/50 rounded-xl p-4 mb-4">
+          <div class="flex items-center gap-3 flex-wrap">
+            <select class="bg-dark-800 border border-dark-700 text-dark-300 text-xs rounded-lg px-3 py-2"><option>All Memberships</option><option>Free</option><option>Premium</option><option>Pro</option></select>
+            <select class="bg-dark-800 border border-dark-700 text-dark-300 text-xs rounded-lg px-3 py-2"><option>All Verification</option><option>Verified</option><option>Unverified</option></select>
+            <select class="bg-dark-800 border border-dark-700 text-dark-300 text-xs rounded-lg px-3 py-2"><option>All Countries</option><option>United States</option><option>United Kingdom</option><option>Egypt</option><option>Nigeria</option></select>
+            <select class="bg-dark-800 border border-dark-700 text-dark-300 text-xs rounded-lg px-3 py-2"><option>Last Active</option><option>Today</option><option>This week</option><option>This month</option><option>Inactive 30d+</option></select>
+            <select class="bg-dark-800 border border-dark-700 text-dark-300 text-xs rounded-lg px-3 py-2"><option>Onboarding</option><option>Completed</option><option>Incomplete</option></select>
+            <div class="ml-auto flex gap-2">
+              <button class="bg-dark-800 border border-dark-700 text-dark-300 text-xs rounded-lg px-3 py-2 hover:bg-dark-700">Export CSV</button>
+              <button class="bg-brand-600 text-white text-xs rounded-lg px-3 py-2 font-medium hover:bg-brand-500">Send Broadcast</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="bg-dark-900 border border-dark-700/50 rounded-xl overflow-hidden">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-dark-700/50">
+                <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">User</th>
+                <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Location</th>
+                <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Membership</th>
+                <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Verified</th>
+                <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Trips</th>
+                <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">AI Chats</th>
+                <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Last Seen</th>
+                <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="table-row border-b border-dark-800/50 cursor-pointer" onclick="showPage('user-detail')">
+                <td class="px-4 py-3"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-[10px] font-bold">CA</div><div><p class="text-xs font-medium text-white">Cyrus Ade</p><p class="text-[10px] text-dark-500">cyrus@guidera.one</p></div></div></td>
+                <td class="px-4 py-3"><span class="text-xs text-dark-300">Dallas, US</span></td>
+                <td class="px-4 py-3"><span class="bg-brand-500/10 text-brand-400 text-[10px] font-medium px-2 py-0.5 rounded-full">Premium</span></td>
+                <td class="px-4 py-3"><span class="text-emerald-400 text-xs">✓ Verified</span></td>
+                <td class="px-4 py-3"><span class="text-xs text-white font-medium">8</span></td>
+                <td class="px-4 py-3"><span class="text-xs text-white font-medium">5</span></td>
+                <td class="px-4 py-3"><span class="text-xs text-emerald-400">Now</span></td>
+                <td class="px-4 py-3"><button class="text-dark-400 hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></td>
+              </tr>
+              <tr class="table-row border-b border-dark-800/50 cursor-pointer">
+                <td class="px-4 py-3"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold">SM</div><div><p class="text-xs font-medium text-white">Sarah Martinez</p><p class="text-[10px] text-dark-500">sarah.m@gmail.com</p></div></div></td>
+                <td class="px-4 py-3"><span class="text-xs text-dark-300">London, UK</span></td>
+                <td class="px-4 py-3"><span class="bg-dark-700 text-dark-300 text-[10px] font-medium px-2 py-0.5 rounded-full">Free</span></td>
+                <td class="px-4 py-3"><span class="text-dark-500 text-xs">—</span></td>
+                <td class="px-4 py-3"><span class="text-xs text-white font-medium">3</span></td>
+                <td class="px-4 py-3"><span class="text-xs text-white font-medium">2</span></td>
+                <td class="px-4 py-3"><span class="text-xs text-dark-400">2h ago</span></td>
+                <td class="px-4 py-3"><button class="text-dark-400 hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></td>
+              </tr>
+              <tr class="table-row border-b border-dark-800/50 cursor-pointer">
+                <td class="px-4 py-3"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white text-[10px] font-bold">JK</div><div><p class="text-xs font-medium text-white">James Koffi</p><p class="text-[10px] text-dark-500">james.k@outlook.com</p></div></div></td>
+                <td class="px-4 py-3"><span class="text-xs text-dark-300">Accra, GH</span></td>
+                <td class="px-4 py-3"><span class="bg-dark-700 text-dark-300 text-[10px] font-medium px-2 py-0.5 rounded-full">Free</span></td>
+                <td class="px-4 py-3"><span class="text-dark-500 text-xs">—</span></td>
+                <td class="px-4 py-3"><span class="text-xs text-white font-medium">2</span></td>
+                <td class="px-4 py-3"><span class="text-xs text-white font-medium">1</span></td>
+                <td class="px-4 py-3"><span class="text-xs text-dark-400">1d ago</span></td>
+                <td class="px-4 py-3"><button class="text-dark-400 hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></td>
+              </tr>
+              <tr class="table-row border-b border-dark-800/50 cursor-pointer">
+                <td class="px-4 py-3"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center text-white text-[10px] font-bold">AL</div><div><p class="text-xs font-medium text-white">Ana Lopez</p><p class="text-[10px] text-dark-500">ana.lopez@icloud.com</p></div></div></td>
+                <td class="px-4 py-3"><span class="text-xs text-dark-300">Medellín, CO</span></td>
+                <td class="px-4 py-3"><span class="bg-dark-700 text-dark-300 text-[10px] font-medium px-2 py-0.5 rounded-full">Free</span></td>
+                <td class="px-4 py-3"><span class="text-amber-400 text-xs">Pending</span></td>
+                <td class="px-4 py-3"><span class="text-xs text-white font-medium">1</span></td>
+                <td class="px-4 py-3"><span class="text-xs text-white font-medium">0</span></td>
+                <td class="px-4 py-3"><span class="text-xs text-dark-400">3d ago</span></td>
+                <td class="px-4 py-3"><button class="text-dark-400 hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></td>
+              </tr>
+              <tr class="table-row border-b border-dark-800/50 cursor-pointer">
+                <td class="px-4 py-3"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center text-white text-[10px] font-bold">MR</div><div><p class="text-xs font-medium text-white">Mike Robinson</p><p class="text-[10px] text-dark-500">mike.r@gmail.com</p></div></div></td>
+                <td class="px-4 py-3"><span class="text-xs text-dark-300">Barcelona, ES</span></td>
+                <td class="px-4 py-3"><span class="bg-amber-500/10 text-amber-400 text-[10px] font-medium px-2 py-0.5 rounded-full">Pro</span></td>
+                <td class="px-4 py-3"><span class="text-emerald-400 text-xs">✓ Verified</span></td>
+                <td class="px-4 py-3"><span class="text-xs text-white font-medium">4</span></td>
+                <td class="px-4 py-3"><span class="text-xs text-white font-medium">1</span></td>
+                <td class="px-4 py-3"><span class="text-xs text-dark-400">5h ago</span></td>
+                <td class="px-4 py-3"><button class="text-dark-400 hover:text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="px-4 py-3 border-t border-dark-700/50 flex items-center justify-between">
+            <p class="text-xs text-dark-500">Showing 5 of 16 users</p>
+            <div class="flex gap-1">
+              <button class="px-3 py-1 text-xs bg-brand-600 text-white rounded-md">1</button>
+              <button class="px-3 py-1 text-xs bg-dark-800 text-dark-400 rounded-md hover:bg-dark-700">2</button>
+              <button class="px-3 py-1 text-xs bg-dark-800 text-dark-400 rounded-md hover:bg-dark-700">3</button>
+              <button class="px-3 py-1 text-xs bg-dark-800 text-dark-400 rounded-md hover:bg-dark-700">4</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- USER DETAIL PAGE (360° View) -->
+      <div id="page-user-detail" class="page-content hidden fade-in">
+        <!-- Profile Header -->
+        <div class="bg-dark-900 border border-dark-700/50 rounded-xl p-6 mb-4">
+          <div class="flex items-start justify-between">
+            <div class="flex items-center gap-5">
+              <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-2xl font-bold">CA</div>
+              <div>
+                <div class="flex items-center gap-3 mb-1">
+                  <h2 class="text-xl font-bold text-white">Cyrus Ade</h2>
+                  <span class="bg-brand-500/10 text-brand-400 text-[10px] font-bold px-2 py-0.5 rounded-full">Premium</span>
+                  <span class="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"></path></svg>Trusted Traveler</span>
+                </div>
+                <p class="text-sm text-dark-400 mb-2">cyrus@guidera.one · +1 (555) 012-3456</p>
+                <p class="text-xs text-dark-500">Dallas, Texas, US · Member since Jan 15, 2026 · Last seen: Just now</p>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button class="bg-dark-800 border border-dark-700 text-dark-300 text-xs rounded-lg px-3 py-2 hover:bg-dark-700">Edit Profile</button>
+              <button class="bg-dark-800 border border-dark-700 text-dark-300 text-xs rounded-lg px-3 py-2 hover:bg-dark-700">Send Notification</button>
+              <button class="bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-lg px-3 py-2 hover:bg-red-500/20">Suspend</button>
+            </div>
+          </div>
+
+          <!-- Stats Row -->
+          <div class="grid grid-cols-8 gap-3 mt-6 pt-5 border-t border-dark-700/50">
+            <div class="text-center"><p class="text-lg font-bold text-white">8</p><p class="text-[10px] text-dark-500">Trips</p></div>
+            <div class="text-center"><p class="text-lg font-bold text-white">12</p><p class="text-[10px] text-dark-500">Countries</p></div>
+            <div class="text-center"><p class="text-lg font-bold text-white">5</p><p class="text-[10px] text-dark-500">AI Chats</p></div>
+            <div class="text-center"><p class="text-lg font-bold text-white">23</p><p class="text-[10px] text-dark-500">AI Messages</p></div>
+            <div class="text-center"><p class="text-lg font-bold text-white">3</p><p class="text-[10px] text-dark-500">Deal Clicks</p></div>
+            <div class="text-center"><p class="text-lg font-bold text-white">2</p><p class="text-[10px] text-dark-500">Groups</p></div>
+            <div class="text-center"><p class="text-lg font-bold text-white">1.2k</p><p class="text-[10px] text-dark-500">Reward Pts</p></div>
+            <div class="text-center"><p class="text-lg font-bold text-white">3</p><p class="text-[10px] text-dark-500">Referrals</p></div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex gap-1 mb-4 bg-dark-900 border border-dark-700/50 rounded-xl p-1">
+          <button class="px-4 py-2 text-xs font-medium rounded-lg bg-brand-600 text-white">Trips</button>
+          <button class="px-4 py-2 text-xs font-medium rounded-lg text-dark-400 hover:text-dark-200 hover:bg-dark-800">AI Activity</button>
+          <button class="px-4 py-2 text-xs font-medium rounded-lg text-dark-400 hover:text-dark-200 hover:bg-dark-800">Community</button>
+          <button class="px-4 py-2 text-xs font-medium rounded-lg text-dark-400 hover:text-dark-200 hover:bg-dark-800">Deals & Saves</button>
+          <button class="px-4 py-2 text-xs font-medium rounded-lg text-dark-400 hover:text-dark-200 hover:bg-dark-800">Safety & SOS</button>
+          <button class="px-4 py-2 text-xs font-medium rounded-lg text-dark-400 hover:text-dark-200 hover:bg-dark-800">Financial</button>
+          <button class="px-4 py-2 text-xs font-medium rounded-lg text-dark-400 hover:text-dark-200 hover:bg-dark-800">Settings</button>
+          <button class="px-4 py-2 text-xs font-medium rounded-lg text-dark-400 hover:text-dark-200 hover:bg-dark-800">Documents</button>
+          <button class="px-4 py-2 text-xs font-medium rounded-lg text-dark-400 hover:text-dark-200 hover:bg-dark-800">Audit Log</button>
+        </div>
+
+        <!-- Trips Tab Content -->
+        <div class="bg-dark-900 border border-dark-700/50 rounded-xl overflow-hidden">
+          <table class="w-full">
+            <thead><tr class="border-b border-dark-700/50">
+              <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Trip</th>
+              <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Destination</th>
+              <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Dates</th>
+              <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Status</th>
+              <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">AI Content</th>
+              <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Travelers</th>
+            </tr></thead>
+            <tbody>
+              <tr class="table-row border-b border-dark-800/50"><td class="px-4 py-3"><span class="text-xs font-medium text-white">Cairo Heritage Trip</span></td><td class="px-4 py-3"><span class="text-xs text-dark-300">Cairo, Egypt</span></td><td class="px-4 py-3"><span class="text-xs text-dark-400">Apr 15 - Apr 22</span></td><td class="px-4 py-3"><span class="bg-brand-500/10 text-brand-400 text-[10px] px-2 py-0.5 rounded-full">Upcoming</span></td><td class="px-4 py-3"><div class="flex gap-1"><span class="text-[10px] bg-dark-700 px-1.5 py-0.5 rounded text-dark-300">Itinerary</span><span class="text-[10px] bg-dark-700 px-1.5 py-0.5 rounded text-dark-300">Packing</span><span class="text-[10px] bg-dark-700 px-1.5 py-0.5 rounded text-dark-300">Safety</span></div></td><td class="px-4 py-3"><span class="text-xs text-white">2</span></td></tr>
+              <tr class="table-row border-b border-dark-800/50"><td class="px-4 py-3"><span class="text-xs font-medium text-white">Tokyo Adventure</span></td><td class="px-4 py-3"><span class="text-xs text-dark-300">Tokyo, Japan</span></td><td class="px-4 py-3"><span class="text-xs text-dark-400">May 1 - May 10</span></td><td class="px-4 py-3"><span class="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-full">Planning</span></td><td class="px-4 py-3"><div class="flex gap-1"><span class="text-[10px] bg-dark-700 px-1.5 py-0.5 rounded text-dark-300">Snapshot</span></div></td><td class="px-4 py-3"><span class="text-xs text-white">1</span></td></tr>
+              <tr class="table-row border-b border-dark-800/50"><td class="px-4 py-3"><span class="text-xs font-medium text-white">London Weekend</span></td><td class="px-4 py-3"><span class="text-xs text-dark-300">London, UK</span></td><td class="px-4 py-3"><span class="text-xs text-dark-400">Mar 1 - Mar 3</span></td><td class="px-4 py-3"><span class="bg-emerald-500/10 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full">Completed</span></td><td class="px-4 py-3"><div class="flex gap-1"><span class="text-[10px] bg-dark-700 px-1.5 py-0.5 rounded text-dark-300">Itinerary</span><span class="text-[10px] bg-dark-700 px-1.5 py-0.5 rounded text-dark-300">Packing</span><span class="text-[10px] bg-dark-700 px-1.5 py-0.5 rounded text-dark-300">Language</span><span class="text-[10px] bg-dark-700 px-1.5 py-0.5 rounded text-dark-300">Dos/Donts</span></div></td><td class="px-4 py-3"><span class="text-xs text-white">4</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DESTINATIONS PAGE -->
+      <div id="page-destinations" class="page-content hidden fade-in">
+        <div class="bg-dark-900 border border-dark-700/50 rounded-xl p-4 mb-4">
+          <div class="flex items-center gap-3 flex-wrap">
+            <select class="bg-dark-800 border border-dark-700 text-dark-300 text-xs rounded-lg px-3 py-2"><option>All Categories</option><option>Popular</option><option>Adventure</option><option>Budget</option><option>Beach</option><option>Cultural</option><option>Hidden Gems</option><option>Romantic</option><option>Family</option><option>Luxury</option></select>
+            <select class="bg-dark-800 border border-dark-700 text-dark-300 text-xs rounded-lg px-3 py-2"><option>All Continents</option><option>North America</option><option>Europe</option><option>Asia</option><option>Africa</option><option>South America</option><option>Oceania</option></select>
+            <select class="bg-dark-800 border border-dark-700 text-dark-300 text-xs rounded-lg px-3 py-2"><option>All Status</option><option>Featured</option><option>Trending</option></select>
+            <div class="ml-auto flex gap-2">
+              <button class="bg-dark-800 border border-dark-700 text-dark-300 text-xs rounded-lg px-3 py-2 hover:bg-dark-700">Batch Enrich</button>
+              <button class="bg-dark-800 border border-dark-700 text-dark-300 text-xs rounded-lg px-3 py-2 hover:bg-dark-700">Repair Images</button>
+              <button class="bg-brand-600 text-white text-xs rounded-lg px-3 py-2 font-medium hover:bg-brand-500">+ Add Destination</button>
+            </div>
+          </div>
+        </div>
+        <div class="bg-dark-900 border border-dark-700/50 rounded-xl overflow-hidden">
+          <table class="w-full">
+            <thead><tr class="border-b border-dark-700/50">
+              <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Destination</th>
+              <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Category</th>
+              <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Budget</th>
+              <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Rating</th>
+              <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Popularity</th>
+              <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Status</th>
+              <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Enriched</th>
+              <th class="text-left text-[10px] font-semibold text-dark-400 uppercase tracking-wider px-4 py-3">Events</th>
+            </tr></thead>
+            <tbody>
+              <tr class="table-row border-b border-dark-800/50"><td class="px-4 py-3"><div class="flex items-center gap-3"><div class="w-10 h-7 rounded bg-dark-700"></div><div><p class="text-xs font-medium text-white">Tokyo</p><p class="text-[10px] text-dark-500">Japan</p></div></div></td><td class="px-4 py-3"><span class="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full">Popular</span></td><td class="px-4 py-3"><span class="text-xs text-dark-300">$$$</span></td><td class="px-4 py-3"><span class="text-xs text-amber-400">4.8</span></td><td class="px-4 py-3"><span class="text-xs text-white">98</span></td><td class="px-4 py-3"><span class="text-emerald-400 text-[10px]">Featured · Trending</span></td><td class="px-4 py-3"><span class="text-emerald-400 text-xs">✓</span></td><td class="px-4 py-3"><span class="text-xs text-white">15</span></td></tr>
+              <tr class="table-row border-b border-dark-800/50"><td class="px-4 py-3"><div class="flex items-center gap-3"><div class="w-10 h-7 rounded bg-dark-700"></div><div><p class="text-xs font-medium text-white">Bali</p><p class="text-[10px] text-dark-500">Indonesia</p></div></div></td><td class="px-4 py-3"><span class="text-[10px] bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded-full">Beach</span></td><td class="px-4 py-3"><span class="text-xs text-dark-300">$$</span></td><td class="px-4 py-3"><span class="text-xs text-amber-400">4.6</span></td><td class="px-4 py-3"><span class="text-xs text-white">92</span></td><td class="px-4 py-3"><span class="text-emerald-400 text-[10px]">Featured</span></td><td class="px-4 py-3"><span class="text-emerald-400 text-xs">✓</span></td><td class="px-4 py-3"><span class="text-xs text-white">12</span></td></tr>
+              <tr class="table-row border-b border-dark-800/50"><td class="px-4 py-3"><div class="flex items-center gap-3"><div class="w-10 h-7 rounded bg-dark-700"></div><div><p class="text-xs font-medium text-white">Cairo</p><p class="text-[10px] text-dark-500">Egypt</p></div></div></td><td class="px-4 py-3"><span class="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full">Cultural</span></td><td class="px-4 py-3"><span class="text-xs text-dark-300">$$</span></td><td class="px-4 py-3"><span class="text-xs text-amber-400">4.3</span></td><td class="px-4 py-3"><span class="text-xs text-white">85</span></td><td class="px-4 py-3"><span class="text-brand-400 text-[10px]">Trending</span></td><td class="px-4 py-3"><span class="text-emerald-400 text-xs">✓</span></td><td class="px-4 py-3"><span class="text-xs text-white">15</span></td></tr>
+              <tr class="table-row border-b border-dark-800/50"><td class="px-4 py-3"><div class="flex items-center gap-3"><div class="w-10 h-7 rounded bg-dark-700"></div><div><p class="text-xs font-medium text-white">Medellín</p><p class="text-[10px] text-dark-500">Colombia</p></div></div></td><td class="px-4 py-3"><span class="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded-full">Hidden Gem</span></td><td class="px-4 py-3"><span class="text-xs text-dark-300">$</span></td><td class="px-4 py-3"><span class="text-xs text-amber-400">4.5</span></td><td class="px-4 py-3"><span class="text-xs text-white">78</span></td><td class="px-4 py-3"><span class="text-dark-500 text-[10px]">—</span></td><td class="px-4 py-3"><span class="text-emerald-400 text-xs">✓</span></td><td class="px-4 py-3"><span class="text-xs text-white">10</span></td></tr>
+            </tbody>
+          </table>
+          <div class="px-4 py-3 border-t border-dark-700/50 flex items-center justify-between">
+            <p class="text-xs text-dark-500">Showing 4 of 201 destinations</p>
+            <div class="flex gap-1">
+              <button class="px-3 py-1 text-xs bg-brand-600 text-white rounded-md">1</button>
+              <button class="px-3 py-1 text-xs bg-dark-800 text-dark-400 rounded-md">2</button>
+              <button class="px-3 py-1 text-xs bg-dark-800 text-dark-400 rounded-md">...</button>
+              <button class="px-3 py-1 text-xs bg-dark-800 text-dark-400 rounded-md">21</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Placeholder pages for other sections -->
+      <div id="page-trips" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">Trip Management — 22 trips across all users</p><p class="text-dark-500 text-xs mt-2">Full CRUD with itinerary, packing, expenses, journal, documents, safety tabs</p></div></div>
+      <div id="page-events" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">Events Management — 728 events across 48 cities</p><p class="text-dark-500 text-xs mt-2">CRUD, image repair, category filtering, city-based discovery triggers</p></div></div>
+      <div id="page-deals" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">Deals Dashboard — 525 cached deals, 5 clicks, 1 save</p><p class="text-dark-500 text-xs mt-2">Deal cache management, click analytics, affiliate config, price history</p></div></div>
+      <div id="page-groups" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">Community Groups — 7 groups, 15 members</p><p class="text-dark-500 text-xs mt-2">Group management, member moderation, join request review</p></div></div>
+      <div id="page-posts" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">Community Posts — 6 posts</p><p class="text-dark-500 text-xs mt-2">Post moderation, reaction analytics, comment threads</p></div></div>
+      <div id="page-activities" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">Pulse Activities — 13 activities</p><p class="text-dark-500 text-xs mt-2">Activity management, participant tracking, comment moderation</p></div></div>
+      <div id="page-messages" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">Direct Messages — 4 conversations, 20 messages</p><p class="text-dark-500 text-xs mt-2">Conversation viewer, message search, content flagging</p></div></div>
+      <div id="page-ai-chats" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">AI Chat Sessions — 9 sessions, 74 messages</p><p class="text-dark-500 text-xs mt-2">Full conversation transcripts, tool call logs, model performance metrics</p></div></div>
+      <div id="page-ai-gen" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">AI Generation Logs</p><p class="text-dark-500 text-xs mt-2">Packing lists, itineraries, safety guides, language kits, dos/donts, cultural tips — all tracked</p></div></div>
+      <div id="page-snapshots" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">Trip Snapshots</p><p class="text-dark-500 text-xs mt-2">24-topic snapshot generation logs with model, latency, and content quality metrics</p></div></div>
+      <div id="page-sos" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><div class="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-2xl mx-auto mb-4">🛡️</div><p class="text-emerald-400 text-lg font-bold">All Clear</p><p class="text-dark-500 text-xs mt-2">No active SOS events. Real-time monitoring with world map, emergency contact notifications.</p></div></div>
+      <div id="page-notifications" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">Notification Center — 39 alerts, 9 registered devices</p><p class="text-dark-500 text-xs mt-2">Push management, scheduled notifications, broadcast, alert templates</p></div></div>
+      <div id="page-partners" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">Partner Applications — 4 pending review</p><p class="text-dark-500 text-xs mt-2">Application review, identity verification status, approve/reject workflow</p></div></div>
+      <div id="page-guides" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">Guide Profiles & Listings</p><p class="text-dark-500 text-xs mt-2">Trust tier management, listing approval, review moderation, vouch verification</p></div></div>
+      <div id="page-edge" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">Edge Functions — 52 deployed functions</p><p class="text-dark-500 text-xs mt-2">Health monitoring, logs viewer, manual invocation, latency tracking</p></div></div>
+      <div id="page-providers" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">API Providers — SerpAPI, Amadeus, Kiwi, Viator, Booking.com</p><p class="text-dark-500 text-xs mt-2">Health checks, response times, error rates, rate limits, cost tracking</p></div></div>
+      <div id="page-cron" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">Cron Jobs — 10 scheduled tasks</p><p class="text-dark-500 text-xs mt-2">Deal scanning, event cleanup, section refresh, notification delivery</p></div></div>
+      <div id="page-reports" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">Issue Reports — 1 open report</p><p class="text-dark-500 text-xs mt-2">Report triage, assignment, status tracking, user communication</p></div></div>
+      <div id="page-content-mod" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">Content Moderation Queue</p><p class="text-dark-500 text-xs mt-2">Flagged posts, messages, users — approve/remove/warn/ban actions</p></div></div>
+      <div id="page-segments" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">User Segmentation Engine</p><p class="text-dark-500 text-xs mt-2">50+ attributes: demographics, behavior, travel profile, engagement, geographic — build cohorts, send campaigns</p></div></div>
+      <div id="page-sections" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">Homepage Sections — 11 cached sections</p><p class="text-dark-500 text-xs mt-2">Section cache viewer, force refresh, strategy editing, cache expiry management</p></div></div>
+      <div id="page-settings" class="page-content hidden fade-in"><div class="bg-dark-900 border border-dark-700/50 rounded-xl p-12 text-center"><p class="text-dark-400 text-sm">System Settings</p><p class="text-dark-500 text-xs mt-2">Admin roles, seasonal promotions, affiliate config, system audit log</p></div></div>
+    </div>
+  </main>
+
+  <script>
+    const pageTitles = {
+      'dashboard': ['Dashboard', 'Real-time overview of Guidera'],
+      'users': ['Users', '16 registered users — filter, search, and manage'],
+      'user-detail': ['User Detail — Cyrus Ade', '360° view of user activity and data'],
+      'segments': ['User Segments', 'Build custom cohorts from 50+ attributes'],
+      'trips': ['Trips', '22 trips — manage itineraries, bookings, expenses'],
+      'destinations': ['Destinations', '201 curated destinations — content management'],
+      'events': ['Events', '728 events across 48 cities'],
+      'deals': ['Deals', '525 cached deals — analytics and curation'],
+      'groups': ['Community Groups', '7 groups — member management and moderation'],
+      'posts': ['Community Posts', '6 posts — content moderation'],
+      'activities': ['Pulse Activities', '13 activities — real-time community'],
+      'messages': ['Messages', 'Direct conversations — monitoring and moderation'],
+      'ai-chats': ['AI Chat Sessions', '9 sessions, 74 messages — conversation logs'],
+      'ai-gen': ['AI Generation Logs', 'All AI content generation tracking'],
+      'snapshots': ['Trip Snapshots', 'Snapshot generation analytics'],
+      'sos': ['SOS Command Center', 'Real-time emergency monitoring'],
+      'notifications': ['Notification Center', 'Push notifications and alert management'],
+      'partners': ['Partner Applications', '4 applications pending review'],
+      'guides': ['Guide Profiles', 'Local guide management and listings'],
+      'edge': ['Edge Functions', '52 deployed functions — health monitoring'],
+      'providers': ['API Providers', 'Provider health, costs, and routing'],
+      'cron': ['Cron Jobs', 'Scheduled task management'],
+      'reports': ['Issue Reports', 'User-reported issues and bugs'],
+      'content-mod': ['Content Moderation', 'Flagged content review queue'],
+      'sections': ['Homepage Sections', '11 cached sections — cache management'],
+      'settings': ['System Settings', 'Admin roles, config, and audit log'],
+    };
+
+    function showPage(pageId) {
+      // Hide all pages
+      document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden'));
+      // Show target
+      const target = document.getElementById('page-' + pageId);
+      if (target) { target.classList.remove('hidden'); }
+      // Update title
+      const titles = pageTitles[pageId] || ['Page', ''];
+      document.getElementById('page-title').textContent = titles[0];
+      document.getElementById('page-subtitle').textContent = titles[1];
+      // Update sidebar active
+      document.querySelectorAll('.sidebar-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.page === pageId) item.classList.add('active');
+      });
+    }
+  </script>
+</body>
+</html>

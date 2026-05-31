@@ -39,6 +39,7 @@ interface MemberItem {
 interface MembersTabProps {
   members: MemberItem[];
   totalCount: number;
+  isProtected?: boolean;
   onMemberPress: (memberId: string) => void;
 }
 
@@ -48,7 +49,7 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; Icon: any }> =
   moderator: { label: 'Mod', color: '#8B5CF6', Icon: Profile2User },
 };
 
-function MembersTab({ members, totalCount, onMemberPress }: MembersTabProps) {
+function MembersTab({ members, totalCount, isProtected = false, onMemberPress }: MembersTabProps) {
   const { colors: tc } = useTheme();
   const [search, setSearch] = useState('');
 
@@ -100,6 +101,20 @@ function MembersTab({ members, totalCount, onMemberPress }: MembersTabProps) {
 
   return (
     <View style={styles.container}>
+      {isProtected ? (
+        <View style={[styles.privacyCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
+          <Profile2User size={22} color={tc.primary} variant="Bold" />
+          <Text style={[styles.privacyTitle, { color: tc.textPrimary }]}>
+            Members are protected
+          </Text>
+          <Text style={[styles.privacyText, { color: tc.textSecondary }]}>
+            Official starter groups keep the full member list private. You can still meet people through posts, comments, events, and the Guidera Assistant.
+          </Text>
+        </View>
+      ) : null}
+
+      {!isProtected ? (
+        <>
       {/* Search */}
       <View style={[styles.searchContainer, { backgroundColor: tc.bgInput, borderColor: tc.borderSubtle }]}>
         <SearchNormal1 size={16} color={tc.textTertiary} />
@@ -115,6 +130,8 @@ function MembersTab({ members, totalCount, onMemberPress }: MembersTabProps) {
       <Text style={[styles.countText, { color: tc.textSecondary }]}>
         {totalCount.toLocaleString()} members
       </Text>
+        </>
+      ) : null}
 
       <FlatList
         data={[]}
@@ -123,7 +140,7 @@ function MembersTab({ members, totalCount, onMemberPress }: MembersTabProps) {
         ListHeaderComponent={
           <View>
             {/* Staff section */}
-            {staff.length > 0 && (
+            {!isProtected && staff.length > 0 && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>
                   ADMINS & MODERATORS
@@ -133,7 +150,7 @@ function MembersTab({ members, totalCount, onMemberPress }: MembersTabProps) {
             )}
 
             {/* Members section */}
-            {regular.length > 0 && (
+            {!isProtected && regular.length > 0 && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: tc.textSecondary }]}>
                   MEMBERS
@@ -174,6 +191,23 @@ const styles = StyleSheet.create({
   countText: {
     ...typography.captionSm,
     marginBottom: spacing.md,
+  },
+  privacyCard: {
+    alignItems: 'center',
+    borderRadius: borderRadius['2xl'],
+    borderWidth: 1,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  privacyTitle: {
+    ...typography.heading3,
+    marginTop: spacing.sm,
+  },
+  privacyText: {
+    ...typography.bodySm,
+    lineHeight: 20,
+    marginTop: spacing.xs,
+    textAlign: 'center',
   },
   listContent: {
     paddingBottom: spacing['3xl'],

@@ -183,7 +183,7 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
     if (!cityName.trim()) return;
     let cancelled = false;
     setIsFetchingImage(true);
-    fetchDestinationCoverImage(cityName).then(url => {
+    fetchDestinationCoverImage(cityName, { countryName: trip?.destination?.country }).then(url => {
       if (cancelled) return;
       setIsFetchingImage(false);
       if (url) {
