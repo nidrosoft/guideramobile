@@ -48,7 +48,7 @@ function openInMaps(place: LivePlaceCard) {
 }
 
 export default function LivePlaceCards({ card }: LivePlaceCardsProps) {
-  if (!card?.places?.length) return null;
+  if (card?.type !== 'places' || !card.places?.length) return null;
 
   return (
     <View style={styles.wrapper}>

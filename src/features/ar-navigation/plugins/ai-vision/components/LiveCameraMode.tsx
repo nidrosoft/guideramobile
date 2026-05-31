@@ -33,11 +33,13 @@ import {
   Send2,
   Eye,
   EyeSlash,
+  VolumeHigh,
+  VolumeSlash,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import LanguagePicker from './LanguagePicker';
-import LivePlaceCards from './LivePlaceCards';
+import LiveCards from './LiveGenerativeCards';
 import { useGeminiLive } from '../hooks/useGeminiLive';
 
 interface LiveCameraModeProps {
@@ -80,6 +82,8 @@ export default function LiveCameraMode({
     connect,
     disconnect,
     toggleMic,
+    isSpeakerOn,
+    toggleSpeaker,
     interruptAI,
     sendVideoFrame,
     sendText,
@@ -267,9 +271,9 @@ export default function LiveCameraMode({
         showsVerticalScrollIndicator={false}
       >
         {conversations.map((entry, i) => {
-          // Generative-UI card message (e.g. nearby places) — render full width.
+          // Generative-UI card message (places / landmark / map / info) — full width.
           if (entry.card) {
-            return <LivePlaceCards key={i} card={entry.card} />;
+            return <LiveCards key={i} card={entry.card} />;
           }
           return (
             <View
@@ -385,6 +389,22 @@ export default function LiveCameraMode({
             )}
           </TouchableOpacity>
 
+          {/* Speaker route toggle — loud bottom speaker (default) vs earpiece (private) */}
+          <TouchableOpacity
+            style={[styles.controlBtn, !isSpeakerOn && styles.controlBtnActive]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              toggleSpeaker();
+            }}
+            activeOpacity={0.7}
+          >
+            {isSpeakerOn ? (
+              <VolumeHigh size={22} color="#3FC39E" variant="Bold" />
+            ) : (
+              <VolumeSlash size={22} color="rgba(255,255,255,0.7)" variant="Bold" />
+            )}
+          </TouchableOpacity>
+
           {/* Text input toggle — fallback for voice */}
           <TouchableOpacity
             style={[styles.controlBtn, showTextInput && styles.controlBtnActive]}
@@ -396,8 +416,6 @@ export default function LiveCameraMode({
           >
             <Text style={{ fontSize: 18, color: showTextInput ? '#FFFFFF' : 'rgba(255,255,255,0.7)' }}>Aa</Text>
           </TouchableOpacity>
-
-
         </View>
       </View>
 

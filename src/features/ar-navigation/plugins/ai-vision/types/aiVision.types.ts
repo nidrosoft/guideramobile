@@ -65,12 +65,38 @@ export interface LivePlaceCard {
   lng?: number;
 }
 
-/** Rich UI payload attached to an AI conversation entry. */
-export type LiveToolCard = {
-  type: 'places';
-  title?: string;
-  places: LivePlaceCard[];
-};
+/** A landmark / point-of-interest the AI recognized or is describing. */
+export interface LiveLandmarkCard {
+  name: string;
+  summary?: string;
+  imageUrl?: string;
+  lat?: number;
+  lng?: number;
+  facts?: string[];
+  url?: string;
+}
+
+/** An interactive mini-map rendered inline in the transcript. */
+export interface LiveMapCard {
+  lat: number;
+  lng: number;
+  label?: string;
+  zoom?: number;
+}
+
+/** A generic visual info card (title + bullet points + optional image). */
+export interface LiveInfoCard {
+  title: string;
+  points: string[];
+  imageUrl?: string;
+}
+
+/** Rich UI payload attached to an AI conversation entry (generative UI). */
+export type LiveToolCard =
+  | { type: 'places'; title?: string; places: LivePlaceCard[] }
+  | { type: 'landmark'; title?: string; landmark: LiveLandmarkCard }
+  | { type: 'map'; title?: string; map: LiveMapCard }
+  | { type: 'info'; title?: string; info: LiveInfoCard };
 
 // ─── Live Mode Types ──────────────────────────────────────────
 export interface LiveFrameResult {

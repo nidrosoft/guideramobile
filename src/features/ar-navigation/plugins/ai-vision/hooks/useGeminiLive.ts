@@ -9,6 +9,15 @@ try {
 } catch {
   if (__DEV__) console.warn('[useGeminiLive] react-native-live-audio-stream not available (Expo Go?). Voice input disabled — use text input instead.');
 }
+// Safe import: react-native-incall-manager owns iOS audio-output routing so the
+// voice plays through the loud bottom speaker (and can toggle to the earpiece for
+// privacy) instead of drifting back to the quiet receiver. Native build only.
+let InCallManager: any = null;
+try {
+  InCallManager = require('react-native-incall-manager').default;
+} catch {
+  if (__DEV__) console.warn('[useGeminiLive] react-native-incall-manager not available — falling back to expo-av routing.');
+}
 import { GeminiLiveSession } from '../services/geminiLive.service';
 import type { LiveFunctionCall } from '../services/geminiLive.service';
 import { LIVE_TOOL_HANDLERS } from '../services/liveTools';
@@ -36,6 +45,8 @@ export interface UseGeminiLiveReturn {
   connect: (userLanguage: string) => Promise<void>;
   disconnect: () => void;
   toggleMic: (shouldMute?: boolean) => Promise<void>;
+  isSpeakerOn: boolean;
+  toggleSpeaker: () => void;
   interruptAI: () => void;
   sendVideoFrame: (base64Jpeg: string) => void;
   sendText: (text: string) => void;
@@ -248,6 +259,8 @@ export function useGeminiLive(): UseGeminiLiveReturn {
   const [streamingText, setStreamingText] = useState('');
   const [conversations, setConversations] = useState<ConversationEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Audio output route: true = loud bottom speaker, false = earpiece (private).
+  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
 
   // Auto-dismiss transient error banners (e.g. "voice needs the native build")
   // after a few seconds so they don't linger over and block the bottom controls.
@@ -261,6 +274,8 @@ export function useGeminiLive(): UseGeminiLiveReturn {
   const isMutedRef = useRef(false);
   const hasGreetedRef = useRef(false);
   const aiSpeakingRef = useRef(false); // true while AI audio is being received/played
+  const isSpeakerOnRef = useRef(true);
+  const incallStartedRef = useRef(false);
 
   // PCM stream buffers
   const audioPcmAccumulator = useRef<string[]>([]);
@@ -279,13 +294,37 @@ export function useGeminiLive(): UseGeminiLiveReturn {
   // LiveAudioStream bypasses AVAudioSession for recording, so this is safe.
   const audioSessionInitialized = useRef(false);
 
-  // Force audio OUTPUT through the main speaker (not the iOS earpiece).
-  // LiveAudioStream.start() switches the iOS AVAudioSession into a record
-  // category, which routes playback to the quiet earpiece. We must re-assert
-  // allowsRecordingIOS:false before the AI speaks so the voice is loud — this
-  // mirrors what tts.service does before every playback in the other modes.
+  // Begin an in-call audio session. InCallManager sets the AVAudioSession to
+  // playAndRecord and lets us force the OUTPUT port (loud speaker vs earpiece)
+  // via overrideOutputAudioPort — which reliably pins the route even though
+  // LiveAudioStream keeps the session in a record category.
+  const startInCallAudio = useCallback(() => {
+    if (!InCallManager || incallStartedRef.current) return;
+    try {
+      InCallManager.start({ media: 'audio' });
+      InCallManager.setForceSpeakerphoneOn(isSpeakerOnRef.current);
+      incallStartedRef.current = true;
+    } catch (err) {
+      if (__DEV__) console.warn('[useGeminiLive] InCallManager start error:', err);
+    }
+  }, []);
+
+  const stopInCallAudio = useCallback(() => {
+    if (!InCallManager || !incallStartedRef.current) return;
+    try { InCallManager.stop(); } catch {}
+    incallStartedRef.current = false;
+  }, []);
+
+  // Re-assert the user's chosen output route. Called before the AI speaks because
+  // expo-av re-applies its audio mode on each Sound, which can otherwise reset the
+  // port. With InCallManager present this just re-pins the route; without it we
+  // fall back to the expo-av allowsRecordingIOS flip (false → main speaker).
   const setOutputToSpeaker = useCallback(async () => {
     try {
+      if (InCallManager) {
+        InCallManager.setForceSpeakerphoneOn(isSpeakerOnRef.current);
+        return;
+      }
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false, // false → main speaker; true → earpiece
         playsInSilentModeIOS: true,
@@ -298,6 +337,14 @@ export function useGeminiLive(): UseGeminiLiveReturn {
     } catch (err) {
       if (__DEV__) console.warn('[useGeminiLive] setOutputToSpeaker error:', err);
     }
+  }, []);
+
+  // User-facing toggle: loud bottom speaker ↔ earpiece (private listening).
+  const toggleSpeaker = useCallback(() => {
+    const next = !isSpeakerOnRef.current;
+    isSpeakerOnRef.current = next;
+    setIsSpeakerOn(next);
+    try { InCallManager?.setForceSpeakerphoneOn(next); } catch {}
   }, []);
 
   const configureAudioSession = useCallback(async () => {
@@ -314,14 +361,14 @@ export function useGeminiLive(): UseGeminiLiveReturn {
           playThroughEarpieceAndroid: false,
         });
         audioSessionInitialized.current = true;
-        // Immediately switch to speaker mode — mic works via LiveAudioStream regardless
-        await setOutputToSpeaker();
-        if (__DEV__) console.log('[useGeminiLive] Audio session: initialized → speaker mode');
+        // InCallManager owns output routing — reliably pins the loud bottom speaker.
+        startInCallAudio();
+        if (__DEV__) console.log('[useGeminiLive] Audio session: initialized → speaker via InCallManager');
       }
     } catch (err) {
       if (__DEV__) console.warn('[useGeminiLive] Audio session error:', err);
     }
-  }, [setOutputToSpeaker]);
+  }, [startInCallAudio]);
 
   // ─── Speech Recognition (PCM Recording) ──────────────────────
 
@@ -582,7 +629,7 @@ export function useGeminiLive(): UseGeminiLiveReturn {
               hasGreetedRef.current = true;
               setTimeout(() => {
                 if (sessionRef.current?.isConnected()) {
-                  sessionRef.current.sendText('Greet the user in 1-2 short sentences. Say hi, your name is Meena, and invite them to point their camera at anything or ask you a travel question. Do NOT describe anything you see — the camera may not be active yet. Keep it brief and warm. Stop after the greeting — wait for the user to respond.');
+                  sessionRef.current.sendText('Greet the user warmly in 1-2 short sentences as Meena, their travel companion. Ask where they are headed today or what they are dreaming of exploring — and that they can point the camera at anything or just ask. Do NOT describe anything you see yet — the camera may not be active. Keep it brief and inviting, then stop and wait for them to respond.');
                 }
               }, 100);
             }
@@ -602,6 +649,7 @@ export function useGeminiLive(): UseGeminiLiveReturn {
   const disconnect = useCallback(async () => {
     doStopListening();
     await stopPlayback();
+    stopInCallAudio();
 
     sessionRef.current?.disconnect();
     sessionRef.current = null;
@@ -612,7 +660,7 @@ export function useGeminiLive(): UseGeminiLiveReturn {
       addConversation('ai', currentAiTranscript.current);
       currentAiTranscript.current = '';
     }
-  }, [doStopListening, stopPlayback, addConversation]);
+  }, [doStopListening, stopPlayback, stopInCallAudio, addConversation]);
 
   const toggleMic = useCallback(async (shouldMute?: boolean) => {
     // Accept explicit mute state from the component — avoids desync
@@ -678,6 +726,7 @@ export function useGeminiLive(): UseGeminiLiveReturn {
     return () => {
       doStopListening();
       stopPlayback();
+      stopInCallAudio();
       sessionRef.current?.disconnect();
     };
   }, []);
@@ -693,6 +742,8 @@ export function useGeminiLive(): UseGeminiLiveReturn {
     connect,
     disconnect,
     toggleMic,
+    isSpeakerOn,
+    toggleSpeaker,
     interruptAI,
     sendVideoFrame,
     sendText,

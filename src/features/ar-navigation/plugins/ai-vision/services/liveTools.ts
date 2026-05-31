@@ -17,7 +17,7 @@
 import * as Location from 'expo-location';
 import { Linking } from 'react-native';
 import { supabase, getAuthenticatedEdgeFunctionHeaders } from '@/lib/supabase/client';
-import type { LivePlaceCard, LiveToolCard } from '../types/aiVision.types';
+import type { LivePlaceCard, LiveToolCard, LiveLandmarkCard } from '../types/aiVision.types';
 
 // ─── Tool declarations (sent to Gemini) ──────────────────────
 
@@ -72,6 +72,48 @@ export const LIVE_TOOL_DECLARATIONS = [
         lng: { type: 'NUMBER', description: 'Longitude of the place, if known.' },
       },
       required: ['name'],
+    },
+  },
+  {
+    name: 'show_landmark_card',
+    description:
+      "Display a rich visual card for a landmark, monument, building, statue, bridge, temple, or notable natural site — ESPECIALLY when you recognize one in the camera or are describing it (e.g. Christ the Redeemer, the Eiffel Tower, a famous temple). The app fetches a real photo and facts and renders the card automatically, so keep your spoken reply to a short, engaging highlight and let the card show the details.",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        name: { type: 'STRING', description: 'The well-known name of the landmark/place, as specific as possible (e.g. "Christ the Redeemer", "Sagrada Familia").' },
+        latitude: { type: 'NUMBER', description: 'Latitude if known.' },
+        longitude: { type: 'NUMBER', description: 'Longitude if known.' },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'show_map',
+    description:
+      'Display an interactive mini-map centered on a location when you mention a place, give directions, or describe where something is. Use it to make locations visual as you speak.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        latitude: { type: 'NUMBER', description: 'Latitude of the location to center the map on.' },
+        longitude: { type: 'NUMBER', description: 'Longitude of the location.' },
+        label: { type: 'STRING', description: 'Short label for the location (e.g. the place name).' },
+        zoom: { type: 'NUMBER', description: 'Optional zoom 1-18 (default 14). ~16 for a single building, ~12 for a neighborhood.' },
+      },
+      required: ['latitude', 'longitude'],
+    },
+  },
+  {
+    name: 'show_info_card',
+    description:
+      'Display a visual card with a title and 2-6 short bullet points to summarize tips, steps, options, or key facts (e.g. "Tips for visiting", "What to try", "Getting there"). Use it to make spoken information scannable. Keep your voice reply brief since the card shows the details.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        title: { type: 'STRING', description: 'Short card title.' },
+        points: { type: 'ARRAY', items: { type: 'STRING' }, description: '2-6 concise bullet points.' },
+      },
+      required: ['title', 'points'],
     },
   },
 ] as const;
@@ -240,6 +282,96 @@ const findNearbyPlaces: ToolHandler = async (args) => {
   };
 };
 
+// Free Wikipedia REST summary — returns text + image + coordinates in one call.
+interface WikiSummary {
+  extract?: string;
+  thumbnail?: string;
+  lat?: number;
+  lng?: number;
+  url?: string;
+}
+
+async function fetchWikiSummary(name: string): Promise<WikiSummary | null> {
+  try {
+    const res = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}?redirect=true`,
+      { headers: { accept: 'application/json' } }
+    );
+    if (!res.ok) return null;
+    const j: any = await res.json();
+    if (j.type === 'disambiguation') return null;
+    return {
+      extract: typeof j.extract === 'string' ? j.extract : undefined,
+      thumbnail: j.thumbnail?.source,
+      lat: j.coordinates?.lat,
+      lng: j.coordinates?.lon,
+      url: j.content_urls?.mobile?.page || j.content_urls?.desktop?.page,
+    };
+  } catch {
+    return null;
+  }
+}
+
+const showLandmarkCard: ToolHandler = async (args) => {
+  const name = String(args.name || '').trim();
+  if (!name) return { result: { error: 'no_name' } };
+  const lat = typeof args.latitude === 'number' ? args.latitude : undefined;
+  const lng = typeof args.longitude === 'number' ? args.longitude : undefined;
+
+  const wiki = await fetchWikiSummary(name);
+  const landmark: LiveLandmarkCard = {
+    name,
+    summary: wiki?.extract,
+    imageUrl: wiki?.thumbnail,
+    lat: lat ?? wiki?.lat,
+    lng: lng ?? wiki?.lng,
+    url: wiki?.url,
+  };
+
+  return {
+    result: {
+      found: !!wiki?.extract,
+      name,
+      display: {
+        rendered: true,
+        instruction:
+          'A landmark card with a photo and summary is already on screen. Share one or two fascinating highlights in a warm sentence — do NOT read the whole summary.',
+      },
+    },
+    card: { type: 'landmark', landmark },
+  };
+};
+
+const showMap: ToolHandler = async (args) => {
+  const lat = typeof args.latitude === 'number' ? args.latitude : undefined;
+  const lng = typeof args.longitude === 'number' ? args.longitude : undefined;
+  if (lat == null || lng == null) {
+    return { result: { error: 'no_coords', message: 'Latitude and longitude are required to show a map.' } };
+  }
+  const label = typeof args.label === 'string' ? args.label : undefined;
+  const zoom = typeof args.zoom === 'number' ? args.zoom : undefined;
+  return {
+    result: {
+      display: { rendered: true, instruction: 'An interactive map is already shown. Briefly say what it points to.' },
+    },
+    card: { type: 'map', map: { lat, lng, label, zoom } },
+  };
+};
+
+const showInfoCard: ToolHandler = async (args) => {
+  const title = String(args.title || '').trim();
+  const points = Array.isArray(args.points)
+    ? args.points.map((p: any) => String(p)).filter((p: string) => p.trim()).slice(0, 6)
+    : [];
+  if (!title || points.length === 0) return { result: { error: 'invalid_info' } };
+  return {
+    result: {
+      display: { rendered: true, instruction: 'An info card with these points is already shown. Keep your spoken reply to a one-line summary.' },
+    },
+    card: { type: 'info', info: { title, points } },
+  };
+};
+
 const openPlaceOnMap: ToolHandler = async (args) => {
   const name = String(args.name || '').trim();
   const lat = typeof args.lat === 'number' ? args.lat : undefined;
@@ -264,4 +396,7 @@ const openPlaceOnMap: ToolHandler = async (args) => {
 export const LIVE_TOOL_HANDLERS: Record<string, ToolHandler> = {
   find_nearby_places: findNearbyPlaces,
   open_place_on_map: openPlaceOnMap,
+  show_landmark_card: showLandmarkCard,
+  show_map: showMap,
+  show_info_card: showInfoCard,
 };
