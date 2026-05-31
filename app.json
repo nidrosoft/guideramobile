@@ -3,7 +3,7 @@
     "name": "Guidera",
     "slug": "Guidera",
     "scheme": "guidera",
-    "version": "0.1.8",
+    "version": "0.1.7",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,7 @@
       "jsEngine": "hermes",
       "supportsTablet": false,
       "bundleIdentifier": "com.guidera.one",
-      "buildNumber": "12",
+      "buildNumber": "13",
       "infoPlist": {
         "NSCameraUsageDescription": "Guidera uses the camera to scan receipts, translate signs, and capture travel moments",
         "NSLocationWhenInUseUsageDescription": "Guidera uses your location to show nearby destinations, provide safety alerts, and navigate to places",
