@@ -44,7 +44,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.guidera.one",
-      "versionCode": 11,
+      "versionCode": 13,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
