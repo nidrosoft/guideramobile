@@ -417,13 +417,14 @@ class EventService {
       if (recipients.length === 0) return;
 
       const actionUrl = `/community/event/${eventId}`;
-      const alerts = recipients.map(uid => ({
-        user_id: uid,
-        category_code: 'social',
-        alert_type_code: `event_${event}`,
-        title,
-        body,
-        context: {
+      // Cross-user alerts via SECURITY DEFINER RPC (alerts RLS blocks direct inserts for others).
+      await supabase.rpc('create_alerts_bulk', {
+        p_user_ids: recipients,
+        p_category_code: 'social',
+        p_alert_type_code: `event_${event}`,
+        p_title: title,
+        p_body: body,
+        p_context: {
           eventId,
           eventTitle,
           triggerUserId,
@@ -431,13 +432,10 @@ class EventService {
           event,
           dedupeKey: `event:${event}:${eventId}:${triggerUserId}`,
         },
-        action_url: actionUrl,
-        channels_requested: ['push', 'in_app'],
-        priority: event === 'waitlist_promoted' ? 5 : 4,
-        status: 'pending',
-      }));
-
-      await supabase.from('alerts').insert(alerts);
+        p_action_url: actionUrl,
+        p_channels_requested: ['push', 'in_app'],
+        p_priority: event === 'waitlist_promoted' ? 5 : 4,
+      });
     } catch (err) {
       if (__DEV__) console.warn('notifyEventAction error:', err);
     }

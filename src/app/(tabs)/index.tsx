@@ -79,6 +79,13 @@ export default function Home() {
   );
 
   const nearestTrip = useMemo(() => {
+    const midnight = (d: Date | string) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); };
+    const todayMid = midnight(new Date());
+    // Prefer a currently-ongoing trip (today within start..end, not cancelled)
+    const ongoing = trips.filter(t => t.state !== TripState.CANCELLED && todayMid >= midnight(t.startDate) && todayMid <= midnight(t.endDate));
+    if (ongoing.length > 0) {
+      return ongoing.sort((a, b) => midnight(a.startDate) - midnight(b.startDate))[0];
+    }
     const upcoming = trips.filter(t => t.state === TripState.UPCOMING);
     if (upcoming.length === 0) return null;
     return upcoming.sort((a, b) => {
@@ -289,17 +296,24 @@ export default function Home() {
           })}
         </ScrollView>
 
-        {/* Trip Reminder — only shows if user has an upcoming trip */}
+        {/* Trip card — Live mode during an ongoing trip, countdown for the nearest upcoming trip */}
         {nearestTrip && (() => {
           // Get flight data directly from trip DB fields (bookings array is not populated at list level)
           const dbFields = (nearestTrip as any)._db;
           const flightNumber = dbFields?.flightNumber;
           const route = dbFields?.route; // e.g. "LAX → CDG"
           const departureAirport = route ? route.split('→')[0]?.trim().split('–')[0]?.trim().split(' ')[0] : undefined;
+          const startDate = nearestTrip.startDate instanceof Date ? nearestTrip.startDate : new Date(nearestTrip.startDate);
+          const endDate = nearestTrip.endDate instanceof Date ? nearestTrip.endDate : new Date(nearestTrip.endDate);
+          const midnight = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); };
+          const todayMid = midnight(new Date());
+          const isOngoing = todayMid >= midnight(startDate) && todayMid <= midnight(endDate);
           return (
             <TripReminder 
               destination={nearestTrip.destination?.city || nearestTrip.title} 
-              tripDate={nearestTrip.startDate instanceof Date ? nearestTrip.startDate : new Date(nearestTrip.startDate)}
+              tripDate={startDate}
+              endDate={endDate}
+              isOngoing={isOngoing}
               flightNumber={flightNumber}
               departureAirport={departureAirport}
               isInternational={true}

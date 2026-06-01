@@ -40,7 +40,6 @@ import {
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
-import { notifyJoinApproved, notifyJoinDenied } from '@/services/notifications/community-notifications';
 import { groupService } from '@/services/community';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -129,13 +128,10 @@ export default function GroupAdminScreen() {
     if (!profile?.id) return;
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      const request = requests.find(r => r.id === requestId);
       await groupService.approveRequest(profile.id, requestId);
       setRequests(prev => prev.filter(r => r.id !== requestId));
       showSuccess('Member has been added to the group.');
-      if (request) {
-        notifyJoinApproved(request.id, groupSettings.name, id || '').catch(() => {});
-      }
+      // Approval notification to the requester is sent inside groupService.approveRequest.
       fetchData();
     } catch (err: any) {
       if (__DEV__) console.warn('Failed to approve request:', err);
@@ -147,12 +143,9 @@ export default function GroupAdminScreen() {
     if (!profile?.id) return;
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      const request = requests.find(r => r.id === requestId);
       await groupService.rejectRequest(profile.id, requestId);
       setRequests(prev => prev.filter(r => r.id !== requestId));
-      if (request) {
-        notifyJoinDenied(request.id, groupSettings.name, id || '').catch(() => {});
-      }
+      // Rejection notification to the requester is sent inside groupService.rejectRequest.
     } catch (err: any) {
       if (__DEV__) console.warn('Failed to deny request:', err);
       showError(err?.message || 'Could not deny request.');

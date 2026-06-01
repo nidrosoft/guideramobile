@@ -358,22 +358,24 @@ class ChatService {
 
       const senderName = senderProfile?.first_name || 'Someone';
 
-      await supabase.from('alerts').insert({
-        user_id: recipientId,
-        category_code: 'social',
-        alert_type_code: 'dm_message',
-        title: `${senderName} sent you a message`,
-        body: content.length > 80 ? content.substring(0, 80) + '...' : content,
-        context: {
+      // Cross-user alert must go through the SECURITY DEFINER RPC — direct
+      // inserts are blocked by the alerts RLS policy (user_id must = caller).
+      await supabase.rpc('create_alert', {
+        p_user_id: recipientId,
+        p_category_code: 'social',
+        p_alert_type_code: 'dm_message',
+        p_title: `${senderName} sent you a message`,
+        p_body: content.length > 80 ? content.substring(0, 80) + '...' : content,
+        p_context: {
           senderId,
           senderName,
           chatType: 'direct',
           dedupeKey: `dm:${senderId}`,
         },
-        action_url: `/community/chat/${senderId}`,
-        channels_requested: ['push', 'in_app'],
-        priority: 5,
-        status: 'pending',
+        p_action_url: `/community/chat/${senderId}`,
+        p_channels_requested: ['push', 'in_app'],
+        p_priority: 5,
+        p_dedupe_unread: true,
       });
     } catch (err) {
       if (__DEV__) console.warn('notifyDmMessage error:', err);
@@ -426,26 +428,24 @@ class ChatService {
         ? `/community/activity-chat/${referenceId}`
         : `/community/${referenceId}`;
 
-      const alerts = participantIds.map((uid: string) => ({
-        user_id: uid,
-        category_code: 'social',
-        alert_type_code: alertType,
-        title: `${senderName} in "${chatName}"`,
-        body: content.length > 80 ? content.substring(0, 80) + '...' : content,
-        context: {
+      await supabase.rpc('create_alerts_bulk', {
+        p_user_ids: participantIds,
+        p_category_code: 'social',
+        p_alert_type_code: alertType,
+        p_title: `${senderName} in "${chatName}"`,
+        p_body: content.length > 80 ? content.substring(0, 80) + '...' : content,
+        p_context: {
           referenceId,
           senderId,
           senderName,
           chatType,
           dedupeKey: `${chatType}:${referenceId}:${senderId}`,
         },
-        action_url: actionUrl,
-        channels_requested: ['push', 'in_app'],
-        priority: chatType === 'activity' ? 4 : 5,
-        status: 'pending',
-      }));
-
-      await supabase.from('alerts').insert(alerts);
+        p_action_url: actionUrl,
+        p_channels_requested: ['push', 'in_app'],
+        p_priority: chatType === 'activity' ? 4 : 5,
+        p_dedupe_unread: true,
+      });
     } catch (err) {
       if (__DEV__) console.warn('notifyGroupChatMessage error:', err);
     }

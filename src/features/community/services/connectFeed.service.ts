@@ -239,6 +239,22 @@ export async function getDiscoverSecondaryFeed({
     })(),
   ]);
 
+  // Proximity: surface connected buddies who are physically nearby. The RPC
+  // does server-side distance + 1h dedup and creates self-targeted alerts.
+  if (userId) {
+    const lat = (profile as any)?.last_location_lat ?? profile?.latitude;
+    const lng = (profile as any)?.last_location_lng ?? profile?.longitude;
+    if (lat != null && lng != null) {
+      supabase
+        .rpc('notify_nearby_buddies', {
+          p_lat: parseFloat(String(lat)),
+          p_lng: parseFloat(String(lng)),
+          p_radius_km: 5,
+        })
+        .then(undefined, () => {});
+    }
+  }
+
   const rawTrip = tripResult.status === 'fulfilled'
     ? (tripResult.value as { groups?: any[]; destination?: string })
     : {};

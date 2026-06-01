@@ -2,8 +2,10 @@
  * COMMUNITY NOTIFICATION TRIGGERS
  *
  * Functions to create alerts when community actions happen.
- * These insert directly into the alerts table — the cron job
- * picks them up and dispatches as push notifications.
+ * Cross-user alerts are created via the `create_alert` / `create_alerts_bulk`
+ * SECURITY DEFINER RPCs because the alerts RLS policy only allows a user to
+ * insert rows for themselves. The 5-min `dispatch-pending-alerts` cron then
+ * sends them as push notifications.
  */
 
 import { supabase } from '@/lib/supabase/client';
@@ -17,17 +19,16 @@ export async function notifyJoinRequest(
   groupName: string,
   groupId: string
 ): Promise<void> {
-  await supabase.from('alerts').insert({
-    user_id: adminUserId,
-    alert_type_code: 'join_request',
-    category_code: 'social',
-    title: `📩 Join Request: ${groupName}`,
-    body: `${requesterName} wants to join your group ${groupName}.`,
-    context: { groupId, groupName, requesterName },
-    action_url: `/community/${groupId}`,
-    priority: 5,
-    channels_requested: ['push', 'in_app'],
-    status: 'pending',
+  await supabase.rpc('create_alert', {
+    p_user_id: adminUserId,
+    p_alert_type_code: 'join_request',
+    p_category_code: 'social',
+    p_title: `📩 Join Request: ${groupName}`,
+    p_body: `${requesterName} wants to join your group ${groupName}.`,
+    p_context: { groupId, groupName, requesterName },
+    p_action_url: `/community/${groupId}`,
+    p_priority: 5,
+    p_channels_requested: ['push', 'in_app'],
   });
 }
 
@@ -39,17 +40,16 @@ export async function notifyJoinApproved(
   groupName: string,
   groupId: string
 ): Promise<void> {
-  await supabase.from('alerts').insert({
-    user_id: userId,
-    alert_type_code: 'join_approved',
-    category_code: 'social',
-    title: `✅ Welcome to ${groupName}!`,
-    body: `Your request to join ${groupName} has been approved. Start connecting with the group!`,
-    context: { groupId, groupName },
-    action_url: `/community/${groupId}`,
-    priority: 5,
-    channels_requested: ['push', 'in_app'],
-    status: 'pending',
+  await supabase.rpc('create_alert', {
+    p_user_id: userId,
+    p_alert_type_code: 'join_approved',
+    p_category_code: 'social',
+    p_title: `✅ Welcome to ${groupName}!`,
+    p_body: `Your request to join ${groupName} has been approved. Start connecting with the group!`,
+    p_context: { groupId, groupName },
+    p_action_url: `/community/${groupId}`,
+    p_priority: 5,
+    p_channels_requested: ['push', 'in_app'],
   });
 }
 
@@ -61,17 +61,16 @@ export async function notifyJoinDenied(
   groupName: string,
   groupId: string
 ): Promise<void> {
-  await supabase.from('alerts').insert({
-    user_id: userId,
-    alert_type_code: 'join_denied',
-    category_code: 'social',
-    title: `Group Request Update`,
-    body: `Your request to join ${groupName} was not approved at this time.`,
-    context: { groupId, groupName },
-    action_url: `/community`,
-    priority: 4,
-    channels_requested: ['in_app'],
-    status: 'pending',
+  await supabase.rpc('create_alert', {
+    p_user_id: userId,
+    p_alert_type_code: 'join_denied',
+    p_category_code: 'social',
+    p_title: `Group Request Update`,
+    p_body: `Your request to join ${groupName} was not approved at this time.`,
+    p_context: { groupId, groupName },
+    p_action_url: `/community`,
+    p_priority: 4,
+    p_channels_requested: ['in_app'],
   });
 }
 
@@ -85,22 +84,18 @@ export async function notifyEventCreated(
   groupId: string,
   eventId: string
 ): Promise<void> {
-  const rows = memberUserIds.map(uid => ({
-    user_id: uid,
-    alert_type_code: 'event_created',
-    category_code: 'social',
-    title: `📅 New Event: ${eventName}`,
-    body: `A new event was created in ${groupName}: ${eventName}`,
-    context: { groupId, groupName, eventId, eventName },
-    action_url: `/community/event/${eventId}`,
-    priority: 4,
-    channels_requested: ['push', 'in_app'],
-    status: 'pending',
-  }));
-
-  if (rows.length > 0) {
-    await supabase.from('alerts').insert(rows);
-  }
+  if (memberUserIds.length === 0) return;
+  await supabase.rpc('create_alerts_bulk', {
+    p_user_ids: memberUserIds,
+    p_alert_type_code: 'event_created',
+    p_category_code: 'social',
+    p_title: `📅 New Event: ${eventName}`,
+    p_body: `A new event was created in ${groupName}: ${eventName}`,
+    p_context: { groupId, groupName, eventId, eventName },
+    p_action_url: `/community/event/${eventId}`,
+    p_priority: 4,
+    p_channels_requested: ['push', 'in_app'],
+  });
 }
 
 /**
@@ -128,17 +123,16 @@ export async function notifyNewMessage(
   // If there's already an unread message notification for this group, skip
   if (existing && existing.length > 0) return;
 
-  await supabase.from('alerts').insert({
-    user_id: userId,
-    alert_type_code: 'group_message',
-    category_code: 'social',
-    title: `💬 New message in ${groupName}`,
-    body: `${senderName}: ${messagePreview.substring(0, 100)}`,
-    context: { groupId, groupName, senderName, chatType: 'group', dedupeKey: `group:${groupId}` },
-    action_url: `/community/chat/${groupId}`,
-    priority: 4,
-    channels_requested: ['push', 'in_app'],
-    status: 'pending',
+  await supabase.rpc('create_alert', {
+    p_user_id: userId,
+    p_alert_type_code: 'group_message',
+    p_category_code: 'social',
+    p_title: `💬 New message in ${groupName}`,
+    p_body: `${senderName}: ${messagePreview.substring(0, 100)}`,
+    p_context: { groupId, groupName, senderName, chatType: 'group', dedupeKey: `group:${groupId}` },
+    p_action_url: `/community/chat/${groupId}`,
+    p_priority: 4,
+    p_channels_requested: ['push', 'in_app'],
   });
 }
 
@@ -150,17 +144,16 @@ export async function notifyNewFollower(
   followerName: string,
   followerAvatar?: string
 ): Promise<void> {
-  await supabase.from('alerts').insert({
-    user_id: userId,
-    alert_type_code: 'new_follower',
-    category_code: 'social',
-    title: `👋 ${followerName} started following you`,
-    body: `${followerName} is now following your travel updates.`,
-    context: { followerName, followerAvatar },
-    action_url: `/account/edit-profile`,
-    priority: 3,
-    channels_requested: ['in_app'],
-    status: 'pending',
+  await supabase.rpc('create_alert', {
+    p_user_id: userId,
+    p_alert_type_code: 'new_follower',
+    p_category_code: 'social',
+    p_title: `👋 ${followerName} started following you`,
+    p_body: `${followerName} is now following your travel updates.`,
+    p_context: { followerName, followerAvatar },
+    p_action_url: `/account/edit-profile`,
+    p_priority: 3,
+    p_channels_requested: ['in_app'],
   });
 }
 
@@ -177,17 +170,16 @@ export async function notifyPostComment(
   postId: string,
   communityId: string
 ): Promise<void> {
-  await supabase.from('alerts').insert({
-    user_id: postAuthorId,
-    alert_type_code: 'post_comment',
-    category_code: 'social',
-    title: `💬 ${commenterName} commented on your post`,
-    body: `New comment on "${postTitle.substring(0, 50)}${postTitle.length > 50 ? '...' : ''}"`,
-    context: { postId, communityId, commenterName },
-    action_url: `/community/post/${postId}`,
-    priority: 4,
-    channels_requested: ['push', 'in_app'],
-    status: 'pending',
+  await supabase.rpc('create_alert', {
+    p_user_id: postAuthorId,
+    p_alert_type_code: 'post_comment',
+    p_category_code: 'social',
+    p_title: `💬 ${commenterName} commented on your post`,
+    p_body: `New comment on "${postTitle.substring(0, 50)}${postTitle.length > 50 ? '...' : ''}"`,
+    p_context: { postId, communityId, commenterName },
+    p_action_url: `/community/post/${postId}`,
+    p_priority: 4,
+    p_channels_requested: ['push', 'in_app'],
   });
 }
 
@@ -200,17 +192,16 @@ export async function notifyCommentReply(
   postId: string,
   communityId: string
 ): Promise<void> {
-  await supabase.from('alerts').insert({
-    user_id: commentAuthorId,
-    alert_type_code: 'comment_reply',
-    category_code: 'social',
-    title: `↩️ ${replierName} replied to your comment`,
-    body: `Tap to see the reply.`,
-    context: { postId, communityId, replierName },
-    action_url: `/community/post/${postId}`,
-    priority: 4,
-    channels_requested: ['push', 'in_app'],
-    status: 'pending',
+  await supabase.rpc('create_alert', {
+    p_user_id: commentAuthorId,
+    p_alert_type_code: 'comment_reply',
+    p_category_code: 'social',
+    p_title: `↩️ ${replierName} replied to your comment`,
+    p_body: `Tap to see the reply.`,
+    p_context: { postId, communityId, replierName },
+    p_action_url: `/community/post/${postId}`,
+    p_priority: 4,
+    p_channels_requested: ['push', 'in_app'],
   });
 }
 
@@ -238,17 +229,16 @@ export async function notifyPostReaction(
   if (existing && existing.length > 0) return;
 
   const emoji = reactionType === 'like' ? '❤️' : reactionType === 'love' ? '😍' : '👍';
-  await supabase.from('alerts').insert({
-    user_id: postAuthorId,
-    alert_type_code: 'post_reaction',
-    category_code: 'social',
-    title: `${emoji} ${reactorName} reacted to your post`,
-    body: `Your post is getting attention!`,
-    context: { postId, communityId, reactorName, reactionType },
-    action_url: `/community/post/${postId}`,
-    priority: 3,
-    channels_requested: ['in_app'],
-    status: 'pending',
+  await supabase.rpc('create_alert', {
+    p_user_id: postAuthorId,
+    p_alert_type_code: 'post_reaction',
+    p_category_code: 'social',
+    p_title: `${emoji} ${reactorName} reacted to your post`,
+    p_body: `Your post is getting attention!`,
+    p_context: { postId, communityId, reactorName, reactionType },
+    p_action_url: `/community/post/${postId}`,
+    p_priority: 3,
+    p_channels_requested: ['in_app'],
   });
 }
 
@@ -274,17 +264,16 @@ export async function notifyDirectMessage(
 
   if (existing && existing.length > 0) return;
 
-  await supabase.from('alerts').insert({
-    user_id: userId,
-    alert_type_code: 'dm_message',
-    category_code: 'social',
-    title: `✉️ ${senderName} sent you a message`,
-    body: messagePreview.substring(0, 100),
-    context: { senderId, senderName, conversationId, chatType: 'direct', dedupeKey: `dm:${senderId}` },
-    action_url: `/community/chat/${conversationId}`,
-    priority: 5,
-    channels_requested: ['push', 'in_app'],
-    status: 'pending',
+  await supabase.rpc('create_alert', {
+    p_user_id: userId,
+    p_alert_type_code: 'dm_message',
+    p_category_code: 'social',
+    p_title: `✉️ ${senderName} sent you a message`,
+    p_body: messagePreview.substring(0, 100),
+    p_context: { senderId, senderName, conversationId, chatType: 'direct', dedupeKey: `dm:${senderId}` },
+    p_action_url: `/community/chat/${conversationId}`,
+    p_priority: 5,
+    p_channels_requested: ['push', 'in_app'],
   });
 }
 
@@ -423,16 +412,15 @@ export async function notifyBuddyNearby(
 
   if (existing && existing.length > 0) return;
 
-  await supabase.from('alerts').insert({
-    user_id: userId,
-    alert_type_code: 'buddy_nearby',
-    category_code: 'social',
-    title: `🎉 ${buddyName} is nearby!`,
-    body: `Your travel buddy is ${distance} away in ${location}.`,
-    context: { buddyId, buddyName, distance, location },
-    action_url: `/community/buddy/${buddyId}`,
-    priority: 5,
-    channels_requested: ['push', 'in_app'],
-    status: 'pending',
+  await supabase.rpc('create_alert', {
+    p_user_id: userId,
+    p_alert_type_code: 'buddy_nearby',
+    p_category_code: 'social',
+    p_title: `🎉 ${buddyName} is nearby!`,
+    p_body: `Your travel buddy is ${distance} away in ${location}.`,
+    p_context: { buddyId, buddyName, distance, location },
+    p_action_url: `/community/buddy/${buddyId}`,
+    p_priority: 5,
+    p_channels_requested: ['push', 'in_app'],
   });
 }

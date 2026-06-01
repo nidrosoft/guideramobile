@@ -273,25 +273,15 @@ class GroupService {
 
     if (error || !request) throw new Error('Request not found');
 
-    // Verify admin
-    await this.verifyAdmin(request.group_id, adminId);
+    // Approve via SECURITY DEFINER RPC: validates admin, marks request approved,
+    // inserts the requester's membership (cross-user write blocked under plain RLS),
+    // and increments the member count — all atomically.
+    const { error: rpcError } = await supabase.rpc('approve_group_request', { p_request_id: requestId });
+    if (rpcError) throw new Error(rpcError.message);
 
-    // Update request
-    await supabase
-      .from('group_join_requests')
-      .update({
-        status: 'approved',
-        responded_by: adminId,
-        responded_at: new Date().toISOString(),
-      })
-      .eq('id', requestId);
-
-    // Add member
-    await this.addMember(request.group_id, request.user_id, 'member');
-
-    // Notify the user that their request was approved
+    // Notify the requester that their request was approved
     const group = await this.getGroup(request.group_id);
-    this.notifyGroupEvent(request.group_id, request.user_id, 'approved', group?.name || 'a group', request.user_id).catch(() => {});
+    this.notifyGroupEvent(request.group_id, adminId, 'approved', group?.name || 'a group', request.user_id).catch(() => {});
   }
 
   /**
@@ -308,21 +298,13 @@ class GroupService {
 
     if (error || !request) throw new Error('Request not found');
 
-    await this.verifyAdmin(request.group_id, adminId);
-
-    await supabase
-      .from('group_join_requests')
-      .update({
-        status: 'rejected',
-        responded_by: adminId,
-        responded_at: new Date().toISOString(),
-        rejection_reason: reason,
-      })
-      .eq('id', requestId);
+    // Reject via SECURITY DEFINER RPC (validates admin + updates another user's request row).
+    const { error: rpcError } = await supabase.rpc('reject_group_request', { p_request_id: requestId, p_reason: reason ?? null });
+    if (rpcError) throw new Error(rpcError.message);
 
     // Notify the user that their request was rejected
     const group = await this.getGroup(request.group_id);
-    this.notifyGroupEvent(request.group_id, request.user_id, 'rejected', group?.name || 'a group', request.user_id).catch(() => {});
+    this.notifyGroupEvent(request.group_id, adminId, 'rejected', group?.name || 'a group', request.user_id).catch(() => {});
   }
 
   /**
@@ -427,11 +409,13 @@ class GroupService {
       throw new Error('Use transferOwnership to change owner');
     }
 
-    await supabase
-      .from('group_members')
-      .update({ role: newRole })
-      .eq('group_id', groupId)
-      .eq('user_id', memberId);
+    // Cross-user update is blocked by RLS; use the SECURITY DEFINER RPC (validates admin).
+    const { error } = await supabase.rpc('update_group_member_role', {
+      p_group_id: groupId,
+      p_member_id: memberId,
+      p_new_role: newRole,
+    });
+    if (error) throw new Error(error.message);
   }
 
   /**
@@ -441,24 +425,13 @@ class GroupService {
     await consumeConnectWriteRateLimit(adminId, 'connect_group_write');
     await this.verifyAdmin(groupId, adminId);
 
-    const { data: member } = await supabase
-      .from('group_members')
-      .select('role')
-      .eq('group_id', groupId)
-      .eq('user_id', memberId)
-      .single();
-
-    if (member?.role === 'owner') {
-      throw new Error('Cannot remove owner');
-    }
-
-    await supabase
-      .from('group_members')
-      .delete()
-      .eq('group_id', groupId)
-      .eq('user_id', memberId);
-
-    await supabase.rpc('decrement_group_member_count', { group_id: groupId });
+    // Cross-user delete is blocked by RLS; the SECURITY DEFINER RPC validates the
+    // admin, guards against removing the owner, and decrements the member count.
+    const { error } = await supabase.rpc('remove_group_member', {
+      p_group_id: groupId,
+      p_member_id: memberId,
+    });
+    if (error) throw new Error(error.message);
   }
 
   // ============================================
@@ -555,13 +528,14 @@ class GroupService {
       if (recipientIds.length === 0) return;
 
       const actionUrl = `/community/group/${groupId}`;
-      const alerts = recipientIds.map(uid => ({
-        user_id: uid,
-        category_code: 'social',
-        alert_type_code: `group_${event}`,
-        title,
-        body,
-        context: {
+      // Cross-user alerts via SECURITY DEFINER RPC (alerts RLS blocks direct inserts for others).
+      await supabase.rpc('create_alerts_bulk', {
+        p_user_ids: recipientIds,
+        p_category_code: 'social',
+        p_alert_type_code: `group_${event}`,
+        p_title: title,
+        p_body: body,
+        p_context: {
           groupId,
           groupName,
           triggerUserId,
@@ -569,13 +543,10 @@ class GroupService {
           event,
           dedupeKey: `group:${event}:${groupId}:${triggerUserId}`,
         },
-        action_url: actionUrl,
-        channels_requested: ['push', 'in_app'],
-        priority: event === 'join_request' ? 5 : 4,
-        status: 'pending',
-      }));
-
-      await supabase.from('alerts').insert(alerts);
+        p_action_url: actionUrl,
+        p_channels_requested: ['push', 'in_app'],
+        p_priority: event === 'join_request' ? 5 : 4,
+      });
     } catch (err) {
       if (__DEV__) console.warn('notifyGroupEvent error:', err);
     }

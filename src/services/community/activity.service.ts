@@ -135,6 +135,12 @@ class ActivityService {
       }
     }
 
+    // Proximity notification: alert travelers in the same city about the new
+    // public meetup. Server-side RPC handles target selection + block filtering.
+    if ((data.visibility || 'everyone') === 'everyone') {
+      supabase.rpc('create_activity_proximity_alerts', { p_activity_id: activity.id }).then(undefined, () => {});
+    }
+
     return this.mapActivity(activity);
   }
 
@@ -728,15 +734,15 @@ class ActivityService {
       // De-duplicate recipient IDs
       recipientIds = [...new Set(recipientIds)];
 
-      // Insert alerts for each recipient
+      // Insert alerts via SECURITY DEFINER RPC (alerts RLS blocks direct cross-user inserts).
       const actionUrl = `/community/activity/${activityId}`;
-      const alerts = recipientIds.map(uid => ({
-        user_id: uid,
-        category_code: 'social',
-        alert_type_code: `activity_${event}`,
-        title,
-        body,
-        context: {
+      await supabase.rpc('create_alerts_bulk', {
+        p_user_ids: recipientIds,
+        p_category_code: 'social',
+        p_alert_type_code: `activity_${event}`,
+        p_title: title,
+        p_body: body,
+        p_context: {
           activityId,
           activityTitle: activity.title,
           triggerUserId,
@@ -744,13 +750,10 @@ class ActivityService {
           event,
           dedupeKey: `activity:${event}:${activityId}:${triggerUserId}`,
         },
-        action_url: actionUrl,
-        channels_requested: ['push', 'in_app'],
-        priority: event === 'join' ? 5 : 4,
-        status: 'pending',
-      }));
-
-      await supabase.from('alerts').insert(alerts);
+        p_action_url: actionUrl,
+        p_channels_requested: ['push', 'in_app'],
+        p_priority: event === 'join' ? 5 : 4,
+      });
     } catch (err) {
       if (__DEV__) console.warn('notifyActivityEvent error:', err);
     }
@@ -796,22 +799,21 @@ class ActivityService {
       if (!title) return;
 
       const actionUrl = `/community/activity/${activityId}`;
-      const { data: inserted } = await supabase.from('alerts').insert({
-        user_id: creatorId,
-        category_code: 'social',
-        alert_type_code: 'activity_milestone',
-        title,
-        body,
-        context: {
+      await supabase.rpc('create_alert', {
+        p_user_id: creatorId,
+        p_category_code: 'social',
+        p_alert_type_code: 'activity_milestone',
+        p_title: title,
+        p_body: body,
+        p_context: {
           activityId,
           activityTitle,
           participantCount: newCount,
           dedupeKey: `activity:milestone:${activityId}:${newCount}`,
         },
-        action_url: actionUrl,
-        channels_requested: ['push', 'in_app'],
-        priority: 4,
-        status: 'pending',
+        p_action_url: actionUrl,
+        p_channels_requested: ['push', 'in_app'],
+        p_priority: 4,
       });
     } catch (err) {
       if (__DEV__) console.warn('checkMilestone error:', err);

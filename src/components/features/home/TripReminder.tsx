@@ -1,15 +1,31 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useEffect, useState } from 'react';
-import { Airplane } from 'iconsax-react-native';
+import { useRouter } from 'expo-router';
+import { Airplane, Location, ArrowRight2 } from 'iconsax-react-native';
 import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { departureAdvisorService } from '@/services/departure/departure.service';
+import { plannerService } from '@/services/planner.service';
 import DepartureAdvisorSheet from '@/features/trips/components/DepartureAdvisor/DepartureAdvisorSheet';
 import { useToast } from '@/contexts/ToastContext';
+
+// Format a "HH:MM" time string to a 12-hour clock label (e.g. "2:00 PM").
+function formatClock(time?: string): string {
+  if (!time) return '';
+  const [h, m] = time.split(':').map(Number);
+  if (!Number.isFinite(h)) return '';
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hh = h % 12 === 0 ? 12 : h % 12;
+  return `${hh}:${String(m || 0).padStart(2, '0')} ${period}`;
+}
+
+const midnight = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); };
 
 interface TripReminderProps {
   destination: string;
   tripDate: Date;
+  endDate?: Date;
+  isOngoing?: boolean;
   flightNumber?: string;
   departureAirport?: string;
   isInternational?: boolean;
@@ -29,6 +45,8 @@ interface TimeRemaining {
 export default function TripReminder({
   destination,
   tripDate,
+  endDate,
+  isOngoing = false,
   flightNumber,
   departureAirport,
   isInternational = false,
@@ -39,6 +57,8 @@ export default function TripReminder({
 }: TripReminderProps) {
   const { colors } = useTheme();
   const { showSuccess } = useToast();
+  const router = useRouter();
+  const [nextActivity, setNextActivity] = useState<{ title: string; time: string; sub: string } | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining>({
     days: 0,
     hours: 0,
@@ -49,6 +69,36 @@ export default function TripReminder({
 
   const isDepartureDay = departureAdvisorService.isDepartureDay(tripDate);
   const hasFlightData = !!flightNumber && !!departureAirport;
+
+  // Live mode: load today's next upcoming activity from the itinerary.
+  useEffect(() => {
+    if (!isOngoing || !tripId) return;
+    let cancelled = false;
+    plannerService.getDays(tripId).then((days) => {
+      if (cancelled) return;
+      if (!days || days.length === 0) { setNextActivity(null); return; }
+      const todayStr = new Date().toLocaleDateString('en-CA');
+      const day = days.find((d) => d.date === todayStr) || days.find((d) => (d.date || '') >= todayStr) || days[0];
+      const acts = day?.activities || [];
+      if (!day || acts.length === 0) { setNextActivity(null); return; }
+      const isToday = day.date === todayStr;
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      const upcoming = isToday
+        ? acts.find((a) => { const [h, m] = (a.startTime || '').split(':').map(Number); return Number.isFinite(h) && (h * 60 + m) > nowMin; })
+        : null;
+      const next = upcoming || acts[0];
+      const time = formatClock(next.startTime);
+      let sub = '';
+      if (isToday && next.startTime) {
+        const [h, m] = next.startTime.split(':').map(Number);
+        const diff = (h * 60 + m) - nowMin;
+        if (diff > 0) { const hh = Math.floor(diff / 60); const mm = diff % 60; sub = hh > 0 ? `in ${hh}h ${mm}m` : `in ${mm} min`; }
+      }
+      setNextActivity({ title: next.title, time, sub });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [isOngoing, tripId]);
 
   useEffect(() => {
     const calculateTimeRemaining = () => {
@@ -75,6 +125,63 @@ export default function TripReminder({
   const handlePress = () => {
     setShowAdvisor(true);
   };
+
+  // ── Live mode: trip is currently happening ──
+  if (isOngoing && endDate) {
+    const totalDays = Math.max(1, Math.round((midnight(endDate) - midnight(tripDate)) / 86400000) + 1);
+    const dayNumber = Math.min(totalDays, Math.max(1, Math.round((midnight(new Date()) - midnight(tripDate)) / 86400000) + 1));
+    const pct = Math.round((dayNumber / totalDays) * 100);
+    const daysLeft = Math.max(0, totalDays - dayNumber);
+    return (
+      <TouchableOpacity
+        style={[styles.container, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}
+        activeOpacity={0.85}
+        onPress={() => tripId && router.push(`/planner/${tripId}` as any)}
+      >
+        <View style={styles.liveHeaderRow}>
+          <View style={styles.liveTitleWrap}>
+            <View style={[styles.liveDot, { backgroundColor: colors.primary }]} />
+            <Text style={[styles.liveTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+              You're in <Text style={[styles.destination, { color: colors.primary }]}>{destination}</Text>
+            </Text>
+          </View>
+          <View style={[styles.liveBadge, { backgroundColor: `${colors.primary}15` }]}>
+            <Text style={[styles.liveBadgeText, { color: colors.primary }]}>Day {dayNumber} of {totalDays}</Text>
+          </View>
+        </View>
+
+        <View style={[styles.progressTrack, { backgroundColor: colors.bgElevated }]}>
+          <View style={[styles.progressFill, { backgroundColor: colors.primary, width: `${pct}%` }]} />
+        </View>
+        <View style={styles.progressMetaRow}>
+          <Text style={[styles.progressMeta, { color: colors.textSecondary }]}>{pct}% complete</Text>
+          <Text style={[styles.progressMeta, { color: colors.textSecondary }]}>{daysLeft === 0 ? 'Last day' : `${daysLeft} day${daysLeft > 1 ? 's' : ''} left`}</Text>
+        </View>
+
+        <View style={[styles.liveNextRow, { borderTopColor: colors.borderSubtle }]}>
+          <Location size={18} color={colors.primary} variant="Bold" />
+          <View style={{ flex: 1 }}>
+            {nextActivity ? (
+              <>
+                <Text style={[styles.liveNextTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                  Up next · {nextActivity.title}{nextActivity.time ? ` · ${nextActivity.time}` : ''}
+                </Text>
+                <Text style={[styles.liveNextSub, { color: colors.textTertiary }]} numberOfLines={1}>
+                  {nextActivity.sub || "Tap to view today's plan"}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.liveNextTitle, { color: colors.textPrimary }]} numberOfLines={1}>View today's plan</Text>
+                <Text style={[styles.liveNextSub, { color: colors.textTertiary }]} numberOfLines={1}>Build your day-by-day itinerary</Text>
+              </>
+            )}
+          </View>
+          <ArrowRight2 size={18} color={colors.textTertiary} />
+        </View>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <>
@@ -218,5 +325,71 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xs,
     textAlign: 'center',
     marginTop: spacing.md,
+  },
+  liveHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  liveTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: spacing.sm,
+    gap: spacing.xs,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  liveTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    flexShrink: 1,
+  },
+  liveBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+  },
+  liveBadgeText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.bold,
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  progressMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.xs,
+  },
+  progressMeta: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+  },
+  liveNextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+  },
+  liveNextTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.bold,
+  },
+  liveNextSub: {
+    fontSize: typography.fontSize.xs,
+    marginTop: 1,
   },
 });

@@ -444,17 +444,17 @@ class BuddyService {
       }
 
       const actionUrl = '/community/buddies';
-      await supabase.from('alerts').insert({
-        user_id: recipientId,
-        category_code: 'social',
-        alert_type_code: `buddy_${event}`,
-        title,
-        body,
-        context: { triggerUserId, triggerName, event, dedupeKey: `buddy:${event}:${triggerUserId}` },
-        action_url: actionUrl,
-        channels_requested: ['push', 'in_app'],
-        priority: event === 'request' ? 5 : 4,
-        status: 'pending',
+      // Cross-user alert via SECURITY DEFINER RPC (alerts RLS blocks direct inserts for others).
+      await supabase.rpc('create_alert', {
+        p_user_id: recipientId,
+        p_category_code: 'social',
+        p_alert_type_code: `buddy_${event}`,
+        p_title: title,
+        p_body: body,
+        p_context: { triggerUserId, triggerName, event, dedupeKey: `buddy:${event}:${triggerUserId}` },
+        p_action_url: actionUrl,
+        p_channels_requested: ['push', 'in_app'],
+        p_priority: event === 'request' ? 5 : 4,
       });
     } catch (err) {
       if (__DEV__) console.warn('notifyBuddyEvent error:', err);
