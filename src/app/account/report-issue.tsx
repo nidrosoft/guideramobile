@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius['2xl'],
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
   categoryIcon: {
     width: 48,
     height: 48,
-    borderRadius: 14,
+    borderRadius: borderRadius.full,
     backgroundColor: colors.primary + '10',
     justifyContent: 'center',
     alignItems: 'center',
@@ -582,7 +582,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     paddingVertical: spacing.md,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
   },
   titleInput: {
     backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: typography.fontSize.base,
@@ -609,7 +609,7 @@ const styles = StyleSheet.create({
   },
   descriptionInput: {
     backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: typography.fontSize.base,
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
   attachmentPreview: {
     width: 80,
     height: 80,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
   addAttachmentButton: {
     width: 80,
     height: 80,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     borderWidth: 2,
     borderColor: colors.primary,
     borderStyle: 'dashed',
@@ -666,7 +666,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.full,
     height: 52,
     justifyContent: 'center',
     alignItems: 'center',

@@ -6,7 +6,7 @@
  */
 
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, SafeAreaView, RefreshControl } from 'react-native';
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { Fragment, useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
@@ -28,6 +28,7 @@ import { useHomepageData } from '@/features/homepage';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import { TripState } from '@/features/trips/types/trip.types';
 import { useSearchOverlayStore } from '@/stores/useSearchOverlayStore';
+import { JourneysHomeSection } from '@/modules/journeys';
 
 export default function Home() {
   const router = useRouter();
@@ -324,9 +325,15 @@ export default function Home() {
           );
         })()}
 
-        {/* Sections - Now using modular SectionRenderer */}
+        {/* Sections - Now using modular SectionRenderer.
+            The independent Journeys module is rendered as the FIRST section
+            (above Deals) so users see purpose-driven travel right after login
+            (rendered, not coupled — host only uses the module's public API). */}
         {SECTIONS_CONFIG.map((section) => (
-          <SectionRenderer key={section.id} section={section} />
+          <Fragment key={section.id}>
+            {section.componentType === 'deals' ? <JourneysHomeSection /> : null}
+            <SectionRenderer section={section} />
+          </Fragment>
         ))}
       </ScrollView>
       </View>

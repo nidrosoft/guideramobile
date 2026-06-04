@@ -244,14 +244,14 @@ export default function HelpCenterScreen() {
                 return (
                   <TouchableOpacity
                     key={category.id}
-                    style={[styles.categoryCard, { backgroundColor: tc.bgElevated, borderRadius: borderRadius.md }]}
+                    style={[styles.categoryCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
                     onPress={() => handleCategoryPress(category.id)}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.categoryIcon, { backgroundColor: category.color + '15' }]}>
+                    <View style={[styles.categoryIcon, { backgroundColor: category.color + '1A' }]}>
                       <Icon size={24} color={category.color} variant="Bold" />
                     </View>
-                    <Text style={[styles.categoryTitle, { color: tc.textPrimary }]}>{category.title}</Text>
+                    <Text style={[styles.categoryTitle, { color: tc.textPrimary }]} numberOfLines={2}>{category.title}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -389,9 +389,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     marginBottom: spacing.lg,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
@@ -414,23 +414,28 @@ const styles = StyleSheet.create({
   categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -spacing.xs,
+    gap: spacing.sm,
   },
   categoryCard: {
-    width: '50%',
-    padding: spacing.xs,
+    width: '47%',
+    flexGrow: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.sm,
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
   },
   categoryIcon: {
-    width: '100%',
-    aspectRatio: 2,
-    borderRadius: borderRadius.md,
+    width: 52,
+    height: 52,
+    borderRadius: borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   categoryTitle: {
     fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
     textAlign: 'center',
   },
@@ -444,7 +449,7 @@ const styles = StyleSheet.create({
   },
   faqCard: {
     backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
@@ -491,7 +496,7 @@ const styles = StyleSheet.create({
   },
   contactSection: {
     backgroundColor: colors.primary + '10',
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.xl,
     padding: spacing.lg,
     alignItems: 'center',
   },
@@ -514,7 +519,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.full,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },

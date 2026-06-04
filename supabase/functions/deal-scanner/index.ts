@@ -25,6 +25,18 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const SERPAPI_KEY = Deno.env.get('SERPAPI_KEY') || '';
 const SERPAPI_BASE = 'https://serpapi.com/search.json';
 
+// Explore scan tuning — caps SerpAPI usage per run.
+// Worst case per run: MAX_EXPLORE_AIRPORTS * (1 discover + DESTS_PER_AIRPORT flight calls).
+const MAX_EXPLORE_AIRPORTS = 8;
+const DESTS_PER_AIRPORT = 3;
+const DISCOVER_PER_AIRPORT = 2;
+
+// Curated popular destinations (IATA) used to guarantee priced flight deals when
+// Google Travel Explore discovery returns nothing for a home airport.
+const CURATED_DESTINATIONS = [
+  'LHR', 'CDG', 'FCO', 'BCN', 'AMS', 'NRT', 'DXB', 'SIN', 'BKK', 'IST', 'MEX', 'CUN', 'MIA', 'JFK', 'LAX',
+];
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
@@ -133,10 +145,9 @@ async function scanExplore(batchSize: number): Promise<ScanResult> {
       .select('home_airport_code')
       .not('home_airport_code', 'is', null);
 
-    const uniqueAirports = [...new Set((airports || []).map((a) => a.home_airport_code))].slice(
-      0,
-      batchSize
-    );
+    const uniqueAirports = [
+      ...new Set((airports || []).map((a: any) => a.home_airport_code).filter(Boolean) as string[]),
+    ].slice(0, Math.min(batchSize, MAX_EXPLORE_AIRPORTS));
 
     if (uniqueAirports.length === 0) {
       return {
@@ -152,32 +163,88 @@ async function scanExplore(batchSize: number): Promise<ScanResult> {
 
     console.log(`Explore scan: ${uniqueAirports.length} airports: ${uniqueAirports.join(', ')}`);
 
-    // Scan each airport
+    // Scan each airport: discover destinations, then price real round trips via Google Flights
     for (const airport of uniqueAirports) {
       try {
-        const deals = await callSerpApiExplore(airport);
-        dealsFound += deals.length;
-
-        for (const deal of deals) {
-          const routeKey = `${deal.origin}-${deal.destination}`;
-          const cached = await cacheDeal({
-            deal_type: 'flight',
-            route_key: routeKey,
-            provider: 'google_flights',
-            date_range: deal.departureDate || getDefaultDate(30),
-            deal_data: deal,
-            price_amount: deal.price,
-            price_currency: deal.currency || 'USD',
-          });
-          if (cached) dealsCached++;
+        // 1. Discover cheapest destinations via Google Travel Explore.
+        //    NOTE: Explore returns destinations only (no prices), so we still need
+        //    a Google Flights lookup per destination to get an actual fare.
+        let discovered: { arrivalId: string; name?: string; image?: string }[] = [];
+        try {
+          const dest = await callSerpApiTravelExplore(airport);
+          discovered = dest
+            .slice(0, DISCOVER_PER_AIRPORT)
+            .map((d) => ({ arrivalId: d.destinationId, name: d.name, image: d.thumbnail }));
+        } catch (e: any) {
+          errors.push(`Explore-discover ${airport}: ${e.message}`);
         }
 
-        // Match deals from this airport to users with this home airport
-        const matched = await matchDealsToUsers(airport, 'explore');
-        usersMatched += matched;
+        // 2. Build target list: discovered + curated fallback, deduped, excluding home airport.
+        const targets: { arrivalId: string; name?: string; image?: string }[] = [...discovered];
+        for (const code of CURATED_DESTINATIONS) {
+          if (targets.length >= DESTS_PER_AIRPORT) break;
+          if (code === airport) continue;
+          if (targets.some((t) => t.arrivalId === code)) continue;
+          targets.push({ arrivalId: code });
+        }
+        const finalTargets = targets.slice(0, DESTS_PER_AIRPORT);
 
-        // Rate limit
-        await delay(600);
+        // 3. Price each target route via Google Flights (real fares).
+        for (const target of finalTargets) {
+          try {
+            const flights = await callSerpApiFlights(airport, target.arrivalId);
+            dealsFound += flights.length;
+            if (flights.length === 0) {
+              await delay(500);
+              continue;
+            }
+
+            const best = flights[0]; // sorted cheapest-first
+            const lastSeg = best.flights?.[best.flights.length - 1];
+            const arrIata: string =
+              lastSeg?.arrival_airport?.id ||
+              (target.arrivalId.startsWith('/') ? '' : target.arrivalId);
+            const destCode = arrIata || target.arrivalId;
+            const destName = lastSeg?.arrival_airport?.name || target.name || destCode;
+            const price = best.price?.amount || 0;
+
+            const cached = await cacheDeal({
+              deal_type: 'flight',
+              route_key: `${airport}-${destCode}`,
+              provider: 'google_flights',
+              date_range: getDefaultDate(30),
+              deal_data: {
+                title: `${airport} → ${destCode}`,
+                origin: airport,
+                destination: destCode,
+                destinationName: destName,
+                price,
+                currency: 'USD',
+                tripType: 'one_way',
+                airline: best.airline,
+                airlineLogo: best.airlineLogo,
+                heroImage: target.image || null,
+                departureTime: best.departureTime,
+                arrivalTime: best.arrivalTime,
+                totalStops: best.totalStops,
+                totalDuration: best.totalDuration,
+                link: `https://www.google.com/travel/flights?q=${encodeURIComponent(
+                  `Flights from ${airport} to ${destCode}`
+                )}`,
+              },
+              price_amount: price,
+              price_currency: 'USD',
+            });
+            if (cached) dealsCached++;
+
+            await delay(600);
+          } catch (err: any) {
+            errors.push(`Explore ${airport}-${target.arrivalId}: ${err.message}`);
+          }
+        }
+
+        // 4. Match deals from this airport to users with this home airport
+        usersMatched += await matchDealsToUsers(airport, 'explore');
       } catch (err: any) {
         errors.push(`Explore ${airport}: ${err.message}`);
       }
@@ -871,10 +938,18 @@ async function scanPriceAlerts(batchSize: number): Promise<ScanResult> {
 // SERPAPI CALLERS
 // ============================================
 
-async function callSerpApiExplore(airport: string): Promise<any[]> {
+/**
+ * Discover cheapest destinations from a departure airport using the dedicated
+ * Google Travel Explore engine. Returns destinations only (kgmid + name + image);
+ * Explore does NOT include fares, so callers must price each destination via
+ * callSerpApiFlights. The returned destination_id (kgmid) is a valid arrival_id
+ * for the Google Flights engine.
+ */
+async function callSerpApiTravelExplore(
+  airport: string
+): Promise<Array<{ destinationId: string; name?: string; country?: string; thumbnail?: string }>> {
   const params = new URLSearchParams({
-    engine: 'google_flights',
-    type: '2',
+    engine: 'google_travel_explore',
     departure_id: airport,
     currency: 'USD',
     hl: 'en',
@@ -882,34 +957,20 @@ async function callSerpApiExplore(airport: string): Promise<any[]> {
   });
 
   const resp = await fetch(`${SERPAPI_BASE}?${params}`);
-  if (!resp.ok) throw new Error(`SerpAPI Explore HTTP ${resp.status}`);
+  if (!resp.ok) throw new Error(`SerpAPI Travel Explore HTTP ${resp.status}`);
 
   const data = await resp.json();
   if (data.error) throw new Error(`SerpAPI: ${data.error}`);
 
-  const allResults = [...(data.best_flights || []), ...(data.other_flights || [])];
-
-  return allResults
-    .map((result: any, idx: number) => {
-      const flights = result.flights || [];
-      const lastFlight = flights[flights.length - 1];
-      const firstFlight = flights[0];
-      return {
-        id: `explore-${airport}-${lastFlight?.arrival_airport?.id || idx}`,
-        origin: airport,
-        destination: lastFlight?.arrival_airport?.id || '',
-        destinationName: lastFlight?.arrival_airport?.name || '',
-        price: result.price || 0,
-        currency: 'USD',
-        tripType: 'round_trip',
-        departureDate: firstFlight?.departure_airport?.time?.split(' ')[0],
-        airline: firstFlight?.airline,
-        airlineLogo: firstFlight?.airline_logo,
-        totalStops: flights.length - 1,
-        totalDuration: result.total_duration,
-      };
-    })
-    .filter((d: any) => d.price > 0 && d.destination);
+  const destinations = data.destinations || [];
+  return destinations
+    .filter((d: any) => d && d.destination_id)
+    .map((d: any) => ({
+      destinationId: d.destination_id,
+      name: d.name,
+      country: d.country,
+      thumbnail: d.thumbnail,
+    }));
 }
 
 async function callSerpApiFlights(origin: string, destination: string): Promise<any[]> {

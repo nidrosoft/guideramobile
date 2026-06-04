@@ -152,7 +152,7 @@ const FAQ_ITEMS: FAQItem[] = [
 export default function HelpTopicScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: tc } = useTheme();
+  const { colors: tc, isDark } = useTheme();
   const { category } = useLocalSearchParams<{ category: string }>();
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
 
@@ -176,14 +176,14 @@ export default function HelpTopicScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
-      <StatusBar style={tc.textPrimary === colors.textPrimary ? "light" : "dark"} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, backgroundColor: isDark ? '#1A1A1A' : tc.bgElevated, borderBottomColor: tc.borderSubtle }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft2 size={24} color={tc.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{categoryConfig.title}</Text>
+        <Text style={[styles.headerTitle, { color: tc.textPrimary }]}>{categoryConfig.title}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -197,8 +197,8 @@ export default function HelpTopicScreen() {
           <View style={[styles.categoryIcon, { backgroundColor: categoryConfig.color + '20' }]}>
             <Icon size={28} color={categoryConfig.color} variant="Bold" />
           </View>
-          <Text style={styles.categoryTitle}>{categoryConfig.title}</Text>
-          <Text style={styles.categoryCount}>{filteredFAQs.length} articles</Text>
+          <Text style={[styles.categoryTitle, { color: tc.textPrimary }]}>{categoryConfig.title}</Text>
+          <Text style={[styles.categoryCount, { color: tc.textSecondary }]}>{filteredFAQs.length} articles</Text>
         </View>
 
         {/* FAQ List */}
@@ -206,21 +206,21 @@ export default function HelpTopicScreen() {
           {filteredFAQs.map((faq) => (
             <TouchableOpacity
               key={faq.id}
-              style={styles.faqCard}
+              style={[styles.faqCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
               onPress={() => handleFAQPress(faq.id)}
               activeOpacity={0.7}
             >
               <View style={styles.faqHeader}>
-                <MessageQuestion size={20} color={colors.primary} variant="Bold" />
-                <Text style={styles.faqQuestion}>{faq.question}</Text>
+                <MessageQuestion size={20} color={tc.primary} variant="Bold" />
+                <Text style={[styles.faqQuestion, { color: tc.textPrimary }]}>{faq.question}</Text>
                 {expandedFAQ === faq.id ? (
-                  <ArrowUp2 size={18} color={colors.gray400} />
+                  <ArrowUp2 size={18} color={tc.textTertiary} />
                 ) : (
-                  <ArrowDown2 size={18} color={colors.gray400} />
+                  <ArrowDown2 size={18} color={tc.textTertiary} />
                 )}
               </View>
               {expandedFAQ === faq.id && (
-                <Text style={styles.faqAnswer}>{faq.answer}</Text>
+                <Text style={[styles.faqAnswer, { color: tc.textSecondary, borderTopColor: tc.borderSubtle }]}>{faq.answer}</Text>
               )}
             </TouchableOpacity>
           ))}
@@ -229,9 +229,9 @@ export default function HelpTopicScreen() {
         {/* Empty State */}
         {filteredFAQs.length === 0 && (
           <View style={styles.emptyState}>
-            <MessageQuestion size={48} color={colors.gray300} variant="Bulk" />
-            <Text style={styles.emptyTitle}>No articles yet</Text>
-            <Text style={styles.emptyText}>
+            <MessageQuestion size={48} color={tc.textTertiary} variant="Bulk" />
+            <Text style={[styles.emptyTitle, { color: tc.textPrimary }]}>No articles yet</Text>
+            <Text style={[styles.emptyText, { color: tc.textSecondary }]}>
               We're working on adding more help articles for this topic.
             </Text>
           </View>
@@ -304,11 +304,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   faqCard: {
-    backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
   },
   faqHeader: {
     flexDirection: 'row',

@@ -44,6 +44,7 @@ import DiscoverFeed from '../components/DiscoverFeed';
 import GroupsTabContent from '../components/GroupsTabContent';
 import EventsTabContent from '../components/EventsTabContent';
 import GuidesTabContent from './GuidesTabContent';
+import { JourneysCommunityEntry } from '@/modules/journeys';
 import GroupExplainerSheet from '../components/GroupExplainerSheet';
 import EventExplainerSheet from '../components/EventExplainerSheet';
 import { styles } from './CommunityHubScreen.styles';
@@ -374,6 +375,9 @@ export default function CommunityHubScreen() {
           })}
         </ScrollView>
       </View>
+
+      {/* Journeys doorway (spec §3.1B) — independent module, public API only */}
+      <JourneysCommunityEntry />
 
       {/* Tab Content */}
       <View style={styles.content}>

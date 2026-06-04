@@ -17,6 +17,51 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+// Forwarded on internal function invocations so downstream functions guarded by
+// requireCronOrServiceAuth authorize the request. supabase.functions.invoke does not
+// reliably carry these credentials, so cron-guarded functions are called via fetch.
+const CRON_SECRET = Deno.env.get('CRON_SECRET') || '';
+// Bearer used only to satisfy the platform's verify_jwt gateway check. The anon key is
+// a JWT; the service role key may be a non-JWT (sb_secret_*) which the gateway rejects.
+// Actual authorization is performed by the function via the x-cron-secret header.
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
+
+async function invokeEdgeFunction(
+  name: string,
+  body: unknown
+): Promise<{ data: any; error: any }> {
+  try {
+    const resp = await fetch(`${supabaseUrl}/functions/v1/${name}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'x-cron-secret': CRON_SECRET,
+      },
+      body: JSON.stringify(body),
+    });
+    const text = await resp.text();
+    let data: any = null;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = text;
+    }
+    if (!resp.ok) {
+      return {
+        data,
+        error: new Error(
+          `${name} HTTP ${resp.status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`
+        ),
+      };
+    }
+    return { data, error: null };
+  } catch (e) {
+    return { data: null, error: e };
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
@@ -1126,9 +1171,7 @@ function scoreDeal(
 async function gilComputeDna(): Promise<JobResult> {
   const errors: string[] = [];
   try {
-    const { data, error } = await supabase.functions.invoke('compute-travel-dna', {
-      body: { batch: true },
-    });
+    const { data, error } = await invokeEdgeFunction('compute-travel-dna', { batch: true });
     if (error) throw error;
     return { job: 'gil_compute_dna', success: true, processed: data?.processed || 0, errors };
   } catch (err: any) {
@@ -1140,8 +1183,9 @@ async function gilComputeDna(): Promise<JobResult> {
 async function gilScanDeals(scanType: string): Promise<JobResult> {
   const errors: string[] = [];
   try {
-    const { data, error } = await supabase.functions.invoke('deal-scanner', {
-      body: { scan_type: scanType, batch_size: 20 },
+    const { data, error } = await invokeEdgeFunction('deal-scanner', {
+      scan_type: scanType,
+      batch_size: 20,
     });
     if (error) throw error;
     return {
@@ -1159,9 +1203,7 @@ async function gilScanDeals(scanType: string): Promise<JobResult> {
 async function gilDispatchNotifications(): Promise<JobResult> {
   const errors: string[] = [];
   try {
-    const { data, error } = await supabase.functions.invoke('deal-notifier', {
-      body: { limit: 50 },
-    });
+    const { data, error } = await invokeEdgeFunction('deal-notifier', { limit: 50 });
     if (error) throw error;
     return {
       job: 'gil_dispatch_notifications',

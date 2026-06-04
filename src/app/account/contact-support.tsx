@@ -14,9 +14,9 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   Linking,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
@@ -33,7 +33,8 @@ import {
   Warning2,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, typography, borderRadius } from '@/styles';
+import * as Clipboard from 'expo-clipboard';
+import { colors, spacing, typography, borderRadius, shadows } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -80,6 +81,8 @@ export default function ContactSupportScreen() {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -96,36 +99,32 @@ export default function ContactSupportScreen() {
   };
 
   const handleSendFeedback = () => {
-    Alert.prompt(
-      'Send Feedback',
-      'Share your thoughts on how we can improve Guidera:',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Send',
-          onPress: async (feedback: string | undefined) => {
-            if (feedback?.trim()) {
-              try {
-                await supabase.from('support_messages').insert({
-                  user_id: profile?.id,
-                  type: 'feedback',
-                  message: feedback,
-                  status: 'pending',
-                });
-                showSuccess('Your feedback has been submitted. Thank you!');
-              } catch (error) {
-                console.error('Error sending feedback:', error);
-                showError('Failed to send feedback. Please try again.');
-              }
-            }
-          },
-        },
-      ],
-      'plain-text'
-    );
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setFeedbackText('');
+    setFeedbackVisible(true);
   };
 
-  const handleEmailSupport = () => {
+  const submitFeedback = async () => {
+    const text = feedbackText.trim();
+    if (!text) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      await supabase.from('support_messages').insert({
+        user_id: profile?.id,
+        type: 'feedback',
+        message: text,
+        status: 'pending',
+      });
+      setFeedbackVisible(false);
+      setFeedbackText('');
+      showSuccess('Your feedback has been submitted. Thank you!');
+    } catch (error) {
+      if (__DEV__) console.error('Error sending feedback:', error);
+      showError('Failed to send feedback. Please try again.');
+    }
+  };
+
+  const handleEmailSupport = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const email = 'support@guidera.one';
     const subject = encodeURIComponent('Support Request');
@@ -139,8 +138,20 @@ User ID: ${user?.id || 'Not logged in'}
 App Version: 1.0.0
 Device: ${Platform.OS} ${Platform.Version}
     `);
-    
-    Linking.openURL(`mailto:${email}?subject=${subject}&body=${body}`);
+    const url = `mailto:${email}?subject=${subject}&body=${body}`;
+
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+        return;
+      }
+    } catch (err) {
+      if (__DEV__) console.warn('Unable to open mail app:', err);
+    }
+    // No mail app available (e.g. simulator) — copy the address instead.
+    await Clipboard.setStringAsync(email);
+    showSuccess(`No mail app found. ${email} copied to clipboard.`);
   };
 
   const getAutoResponse = (message: string): string => {
@@ -319,11 +330,11 @@ Device: ${Platform.OS} ${Platform.Version}
             
             {/* Typing Indicator */}
             {isTyping && (
-              <View style={[styles.messageBubble, styles.botMessage, styles.typingBubble]}>
+              <View style={[styles.messageBubble, styles.botMessage, styles.typingBubble, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}>
                 <View style={styles.typingDots}>
-                  <View style={[styles.typingDot, styles.typingDot1]} />
-                  <View style={[styles.typingDot, styles.typingDot2]} />
-                  <View style={[styles.typingDot, styles.typingDot3]} />
+                  <View style={[styles.typingDot, styles.typingDot1, { backgroundColor: tc.textTertiary }]} />
+                  <View style={[styles.typingDot, styles.typingDot2, { backgroundColor: tc.textTertiary }]} />
+                  <View style={[styles.typingDot, styles.typingDot3, { backgroundColor: tc.textTertiary }]} />
                 </View>
               </View>
             )}
@@ -355,6 +366,51 @@ Device: ${Platform.OS} ${Platform.Version}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Send Feedback Modal — uses the app card modal style */}
+      <Modal
+        visible={feedbackVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFeedbackVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: isDark ? tc.bgElevated : tc.white }]}>
+            <Text style={[styles.modalTitle, { color: tc.textPrimary }]}>Send Feedback</Text>
+            <Text style={[styles.modalSubtitle, { color: tc.textSecondary }]}>
+              Share your thoughts on how we can improve Guidera.
+            </Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : tc.gray50, color: tc.textPrimary, borderColor: tc.borderSubtle }]}
+              placeholder="Your feedback..."
+              placeholderTextColor={tc.textTertiary}
+              value={feedbackText}
+              onChangeText={setFeedbackText}
+              multiline
+              textAlignVertical="top"
+              maxLength={1000}
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButtonSecondary, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : tc.gray100 }]}
+                onPress={() => setFeedbackVisible(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.modalButtonSecondaryText, { color: tc.textPrimary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButtonPrimary, { backgroundColor: tc.primary }, !feedbackText.trim() && { opacity: 0.5 }]}
+                onPress={submitFeedback}
+                disabled={!feedbackText.trim()}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalButtonPrimaryText}>Send</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -434,7 +490,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
@@ -452,7 +508,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.bgElevated,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
@@ -460,7 +516,7 @@ const styles = StyleSheet.create({
   contactOptionIcon: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: borderRadius.full,
     backgroundColor: colors.primary + '10',
     justifyContent: 'center',
     alignItems: 'center',
@@ -483,7 +539,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.info + '10',
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
@@ -579,7 +635,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     maxHeight: 100,
     backgroundColor: colors.gray50,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     fontSize: typography.fontSize.base,
@@ -596,5 +652,62 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: colors.gray300,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    ...shadows.lg,
+  },
+  modalTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    marginBottom: spacing.xs,
+  },
+  modalSubtitle: {
+    fontSize: typography.fontSize.sm,
+    lineHeight: 20,
+    marginBottom: spacing.md,
+  },
+  modalInput: {
+    minHeight: 100,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    padding: spacing.md,
+    fontSize: typography.fontSize.base,
+    marginBottom: spacing.lg,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  modalButtonSecondary: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.full,
+    alignItems: 'center',
+  },
+  modalButtonSecondaryText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  modalButtonPrimary: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.full,
+    alignItems: 'center',
+  },
+  modalButtonPrimaryText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.white,
   },
 });
