@@ -4,6 +4,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import Anthropic from 'https://esm.sh/@anthropic-ai/sdk@0.24.3';
 import { corsHeaders } from '../_shared/cors.ts';
+import { guardAiRequest, AI_LIMITS } from '../_shared/aiRateGuard.ts';
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 
 const MODEL = Deno.env.get('JOURNEYS_CLAUDE_MODEL') || 'claude-sonnet-4-20250514';
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') || '' });
@@ -43,10 +48,18 @@ ${facts || '(No full guide is cached yet; answer from general knowledge with app
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const { threadId, message } = await req.json();
+    const body = await req.json();
+    const { threadId, message } = body;
     if (!threadId || !message) return json(400, { error: 'missing_params' });
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+    const __rl = await guardAiRequest({
+      req, body, supabase: admin, config: AI_LIMITS.journeysChat,
+      corsHeaders, supabaseUrl: SUPABASE_URL,
+      serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY, anonKey: SUPABASE_ANON_KEY,
+    });
+    if (__rl) return __rl;
 
     const { data: thread } = await admin
       .from('journey_chat_threads')

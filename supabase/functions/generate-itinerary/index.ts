@@ -17,6 +17,7 @@ import {
   type TripModuleWorkerLease,
 } from '../_shared/tripModule/worker.ts';
 import { recordTripModuleMetric } from '../_shared/tripModule/runtime.ts';
+import { guardAiRequest, AI_LIMITS } from '../_shared/aiRateGuard.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,6 +28,9 @@ const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY') || '';
 const INCEPTION_API_KEY = Deno.env.get('INCEPTION_API_KEY') || '';
 const TOMORROW_IO_API_KEY = Deno.env.get('TOMORROW_IO_API_KEY') || '';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const MODULE_KEY = 'itinerary';
 
 // ─── Weather Forecast (Tomorrow.io) ──────────────────────
@@ -696,6 +700,13 @@ serve(async (req: Request) => {
     body = await req.json();
     const { tripId } = body;
     if (!tripId) throw new Error('tripId is required');
+
+    const __rl = await guardAiRequest({
+      req, body, supabase, config: AI_LIMITS.generate,
+      corsHeaders, supabaseUrl: SUPABASE_URL,
+      serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY, anonKey: SUPABASE_ANON_KEY,
+    });
+    if (__rl) return __rl;
 
     const worker = await beginTripModuleWorker({
       req,

@@ -7,16 +7,18 @@
  */
 
 import React, { useCallback, useMemo } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useHotelStore } from '../../../stores/useHotelStore';
-import { 
-  UnifiedSearchOverlay, 
+import {
+  UnifiedSearchOverlay,
   type HotelSearchData,
   type SearchData,
   type HotelDestination,
 } from '@/components/features/search/unified';
 import { Location } from '../../../types/booking.types';
+import { TourAnchor, useGuidance } from '@/features/guidance';
 
 interface HotelSearchScreenProps {
   onSearch: () => void;
@@ -55,13 +57,21 @@ export default function HotelSearchScreen({
   onBack,
 }: HotelSearchScreenProps) {
   const { colors } = useTheme();
-  const { 
-    searchParams, 
-    setDestination, 
-    setCheckInDate, 
-    setCheckOutDate, 
+  const guidance = useGuidance();
+  const {
+    searchParams,
+    setDestination,
+    setCheckInDate,
+    setCheckOutDate,
     setGuests,
   } = useHotelStore();
+
+  useFocusEffect(
+    useCallback(() => {
+      const id = setTimeout(() => guidance.maybeShowTip('tip.hotelForm'), 1000);
+      return () => clearTimeout(id);
+    }, [guidance])
+  );
 
   const handleSearch = useCallback((data: SearchData) => {
     // Type guard to ensure we have hotel data
@@ -113,7 +123,7 @@ export default function HotelSearchScreen({
   }, [searchParams]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <TourAnchor id="booking.hotelForm" style={[styles.container, { backgroundColor: colors.background }]}>
       <UnifiedSearchOverlay
         serviceType="hotel"
         title="Find a Hotel"
@@ -123,7 +133,7 @@ export default function HotelSearchScreen({
         onSearch={handleSearch}
         initialHotelData={initialData}
       />
-    </View>
+    </TourAnchor>
   );
 }
 

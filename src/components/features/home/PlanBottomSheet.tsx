@@ -8,6 +8,7 @@ import { Global, Briefcase, SearchNormal1 } from 'iconsax-react-native';
 import ImportTripFlow from '@/features/trip-import/components/ImportTripFlow';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import { useAuth } from '@/context/AuthContext';
+import { captureTripCreated } from '@/features/guidance';
 
 interface PlanBottomSheetProps {
   visible: boolean;
@@ -156,6 +157,11 @@ export default function PlanBottomSheet({ visible, onClose }: PlanBottomSheetPro
         // Refresh trips from DB and navigate to Trips tab with scrollTo
         if (profile?.id) fetchTrips(profile.id);
         const tripId = tripData?.importResult?.tripId || tripData?.importResult?.trips?.[0]?.id;
+        // Profile-capture: the import flow only reliably surfaces a booking currency,
+        // so pass just that (the helper drops undefined for everything else).
+        captureTripCreated({
+          currency: tripData?.importResult?.price?.currency,
+        });
         setTimeout(() => {
           router.push(tripId
             ? { pathname: '/(tabs)/trips', params: { scrollToTripId: tripId } } as any

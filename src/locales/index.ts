@@ -11,13 +11,22 @@ import de from './de.json';
 import it from './it.json';
 import pt from './pt.json';
 
+// Guidance System copy lives in dedicated modules and is merged under the
+// `guidance` namespace, keeping the large base JSON files untouched.
+import guidanceEn from './guidance/en';
+import guidanceFr from './guidance/fr';
+import guidanceEs from './guidance/es';
+import guidanceDe from './guidance/de';
+import guidanceIt from './guidance/it';
+import guidancePt from './guidance/pt';
+
 export const resources = {
-  en: { translation: en },
-  fr: { translation: fr },
-  es: { translation: es },
-  de: { translation: de },
-  it: { translation: it },
-  pt: { translation: pt },
+  en: { translation: { ...en, guidance: guidanceEn } },
+  fr: { translation: { ...fr, guidance: guidanceFr } },
+  es: { translation: { ...es, guidance: guidanceEs } },
+  de: { translation: { ...de, guidance: guidanceDe } },
+  it: { translation: { ...it, guidance: guidanceIt } },
+  pt: { translation: { ...pt, guidance: guidancePt } },
 };
 
 export const SUPPORTED_LANGUAGES = [

@@ -1,23 +1,29 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  getRequestAuthTokens,
+  getUserIdFromRequest,
+  isServiceRoleToken,
+  unauthorizedResponse,
+} from "../_shared/auth.ts";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 const DIDIT_API_URL = "https://verification.didit.me/v3/session/";
 const DIDIT_API_KEY = Deno.env.get("DIDIT_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
 Deno.serve(async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { application_id } = await req.json();
+    const body = await req.json();
+    const { application_id } = body;
 
     if (!application_id) {
       return Response.json(
@@ -26,16 +32,45 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // SECURITY: require an authenticated caller. This function uses the
+    // service_role key (bypasses RLS) and returns KYC PII, so identity and
+    // ownership must be enforced here.
+    const { bearerToken } = getRequestAuthTokens(req.headers);
+    const isService = isServiceRoleToken(bearerToken, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL);
+    let requesterId: string | null = null;
+
+    if (!isService) {
+      requesterId = await getUserIdFromRequest(
+        req,
+        body,
+        SUPABASE_URL,
+        SUPABASE_SERVICE_ROLE_KEY,
+        SUPABASE_ANON_KEY
+      );
+      if (!requesterId) {
+        return unauthorizedResponse(corsHeaders);
+      }
+    }
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Get the application to find the Didit session ID
     const { data: app, error: appError } = await supabase
       .from("partner_applications")
-      .select("didit_session_id, didit_verification_status, status")
+      .select("user_id, didit_session_id, didit_verification_status, status")
       .eq("id", application_id)
       .single();
 
     if (appError || !app) {
+      return Response.json(
+        { error: "Application not found" },
+        { status: 404, headers: corsHeaders }
+      );
+    }
+
+    // SECURITY: ownership check — return 404 (not 403) so callers can't
+    // probe which application IDs exist.
+    if (!isService && app.user_id !== requesterId) {
       return Response.json(
         { error: "Application not found" },
         { status: 404, headers: corsHeaders }

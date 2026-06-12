@@ -7,9 +7,11 @@
  */
 
 import React, { useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { StatusBar } from 'react-native';
 import { useCarStore } from '../../../stores/useCarStore';
 import { UnifiedSearchOverlay, CarSearchData } from '@/components/features/search/unified';
+import { TourAnchor, useGuidance } from '@/features/guidance';
 
 interface CarSearchScreenProps {
   onSearch: () => void;
@@ -18,6 +20,7 @@ interface CarSearchScreenProps {
 }
 
 export default function CarSearchScreen({ onSearch, onBack, onClose }: CarSearchScreenProps) {
+  const guidance = useGuidance();
   const {
     searchParams,
     setPickupLocation,
@@ -46,27 +49,36 @@ export default function CarSearchScreen({ onSearch, onBack, onClose }: CarSearch
     onSearch();
   }, [onSearch, setPickupLocation, setReturnLocation, setSameReturnLocation, setPickupDate, setPickupTime, setReturnDate, setReturnTime, setDriverAge]);
 
+  useFocusEffect(
+    useCallback(() => {
+      const id = setTimeout(() => guidance.maybeShowTip('tip.carForm'), 1000);
+      return () => clearTimeout(id);
+    }, [guidance])
+  );
+
   return (
     <>
       <StatusBar barStyle="light-content" />
-      <UnifiedSearchOverlay
-        serviceType="car"
-        title="Find Your Car"
-        searchButtonLabel="Search Cars"
-        backgroundImage={require('../../../../../../assets/images/carbg.jpg')}
-        onClose={onClose}
-        onSearch={handleSearch}
-        initialCarData={{
-          pickupLocation: searchParams.pickupLocation,
-          returnLocation: searchParams.returnLocation,
-          sameReturnLocation: searchParams.sameReturnLocation,
-          pickupDate: searchParams.pickupDate ? new Date(searchParams.pickupDate) : null,
-          pickupTime: searchParams.pickupTime,
-          returnDate: searchParams.returnDate ? new Date(searchParams.returnDate) : null,
-          returnTime: searchParams.returnTime,
-          driverAge: searchParams.driverAge,
-        }}
-      />
+      <TourAnchor id="booking.carForm" style={{ flex: 1 }}>
+        <UnifiedSearchOverlay
+          serviceType="car"
+          title="Find Your Car"
+          searchButtonLabel="Search Cars"
+          backgroundImage={require('../../../../../../assets/images/carbg.jpg')}
+          onClose={onClose}
+          onSearch={handleSearch}
+          initialCarData={{
+            pickupLocation: searchParams.pickupLocation,
+            returnLocation: searchParams.returnLocation,
+            sameReturnLocation: searchParams.sameReturnLocation,
+            pickupDate: searchParams.pickupDate ? new Date(searchParams.pickupDate) : null,
+            pickupTime: searchParams.pickupTime,
+            returnDate: searchParams.returnDate ? new Date(searchParams.returnDate) : null,
+            returnTime: searchParams.returnTime,
+            driverAge: searchParams.driverAge,
+          }}
+        />
+      </TourAnchor>
     </>
   );
 }

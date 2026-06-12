@@ -19,7 +19,8 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { TourAnchor, useGuidance } from '@/features/guidance';
 import {
   SearchNormal1,
   People,
@@ -65,6 +66,13 @@ export default function CommunityHubScreen() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const userId = profile?.id;
+  const guidance = useGuidance();
+
+  useFocusEffect(
+    useCallback(() => {
+      guidance.maybeStartTour('connect');
+    }, [guidance])
+  );
 
   const [activeTab, setActiveTab] = useState<TabType>('discover');
 
@@ -278,23 +286,25 @@ export default function CommunityHubScreen() {
             </TouchableOpacity>
 
             {/* Live Map / Pulse Icon */}
-            <TouchableOpacity
-              style={[styles.headerIconButton, { backgroundColor: tc.bgElevated }]}
-              onPress={handleLiveMap}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Live map"
-              accessibilityHint="View nearby travelers on a map"
-            >
-              <Map1 size={20} color={tc.textPrimary} />
-              {pulseCount > 0 && (
-                <View style={styles.notificationBadge}>
-                  <Text style={styles.notificationBadgeText}>
-                    {pulseCount > 9 ? '9+' : pulseCount}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
+            <TourAnchor id="connect.pulse">
+              <TouchableOpacity
+                style={[styles.headerIconButton, { backgroundColor: tc.bgElevated }]}
+                onPress={handleLiveMap}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Live map"
+                accessibilityHint="View nearby travelers on a map"
+              >
+                <Map1 size={20} color={tc.textPrimary} />
+                {pulseCount > 0 && (
+                  <View style={styles.notificationBadge}>
+                    <Text style={styles.notificationBadgeText}>
+                      {pulseCount > 9 ? '9+' : pulseCount}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </TourAnchor>
 
             {/* Messages */}
             <TouchableOpacity
@@ -336,7 +346,7 @@ export default function CommunityHubScreen() {
       </View>
 
       {/* Tab Bar */}
-      <View style={[styles.tabsContainer, { backgroundColor: tc.background, borderBottomColor: tc.borderSubtle }]}>
+      <TourAnchor id="connect.tabs" style={[styles.tabsContainer, { backgroundColor: tc.background, borderBottomColor: tc.borderSubtle }]}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -345,7 +355,7 @@ export default function CommunityHubScreen() {
           {TAB_KEYS.map(tab => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
-            return (
+            const tabButton = (
               <TouchableOpacity
                 key={tab.id}
                 style={[
@@ -372,9 +382,12 @@ export default function CommunityHubScreen() {
                 </Text>
               </TouchableOpacity>
             );
+            return tab.id === 'guides' ? (
+              <TourAnchor key={tab.id} id="connect.guides">{tabButton}</TourAnchor>
+            ) : tabButton;
           })}
         </ScrollView>
-      </View>
+      </TourAnchor>
 
       {/* Journeys doorway (spec §3.1B) — independent module, public API only */}
       <JourneysCommunityEntry />

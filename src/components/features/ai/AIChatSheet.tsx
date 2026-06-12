@@ -27,6 +27,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase, getAuthenticatedEdgeFunctionHeaders } from '@/lib/supabase/client';
 import { invokeEdgeFn } from '@/utils/retry';
 import { spacing, borderRadius, typography, fontFamily } from '@/styles';
+import { TourAnchor, useGuidance } from '@/features/guidance';
 
 export interface AIChatContext {
   id?: string;
@@ -331,6 +332,15 @@ export default function AIChatSheet({
   const { colors, isDark } = useTheme();
   const { profile } = useAuth();
   const insets = useSafeAreaInsets();
+  const guidance = useGuidance();
+
+  // Intro tip when the sheet opens (useFocusEffect doesn't fire inside a Modal).
+  useEffect(() => {
+    if (visible) {
+      const id = setTimeout(() => guidance.maybeShowTip('tip.aiAssistant'), 900);
+      return () => clearTimeout(id);
+    }
+  }, [visible, guidance]);
 
   // View state: 'lobby' or 'chat'
   const [view, setView] = useState<'lobby' | 'chat'>('lobby');
@@ -851,6 +861,7 @@ export default function AIChatSheet({
       {/* Input bar */}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={[styles.inputBar, dynamicStyles.inputBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+          <TourAnchor id="ai.assistantInput" style={{ flex: 1 }}>
           <View style={[styles.inputContainer, dynamicStyles.inputContainer]}>
             <TextInput
               style={[styles.input, dynamicStyles.inputText]}
@@ -867,6 +878,7 @@ export default function AIChatSheet({
               onSubmitEditing={() => sendMessage(inputText)}
             />
           </View>
+          </TourAnchor>
           <TouchableOpacity
             style={[
               styles.sendBtn,

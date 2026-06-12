@@ -28,6 +28,7 @@ import { languageService } from '@/services/language.service';
 import { documentService } from '@/services/document.service';
 import { plannerService } from '@/services/planner.service';
 import { useAuth } from '@/context/AuthContext';
+import { TourAnchor, useGuidance } from '@/features/guidance';
 
 // IMAGE_HEIGHT computed inside components using useWindowDimensions
 
@@ -278,6 +279,7 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
   const { t } = useTranslation();
   const { showSuccess } = useToast();
   const { profile } = useAuth();
+  const guidance = useGuidance();
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
   const isLoading = useTripStore(state => state.isLoading);
   const [inviteSheetVisible, setInviteSheetVisible] = useState(false);
@@ -393,6 +395,13 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
     useCallback(() => {
       loadTripData();
     }, [tripId])
+  );
+
+  // Offer the Trip Detail tour once (self-gates: fires once, only after the hero tour is seen)
+  useFocusEffect(
+    useCallback(() => {
+      guidance.maybeStartTour('tripDetail');
+    }, [guidance])
   );
 
   // Lazy-fetch cover image from Google Places if missing
@@ -589,7 +598,7 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
             </View>
           </View>
 
-          <View style={[styles.statsSection, { backgroundColor: isDark ? colors.bgSecondary : colors.bgCard }]}>
+          <TourAnchor id="trip.snapshot" style={[styles.statsSection, { backgroundColor: isDark ? colors.bgSecondary : colors.bgCard }]}>
             <View style={styles.statItem}>
               <View style={[styles.statIcon, { backgroundColor: `${colors.info}15` }]}>
                 <Calendar size={18} color={colors.info} variant="Bold" />
@@ -613,7 +622,7 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('trips.detail.packingList')}</Text>
               <Text style={[styles.statValue, { color: colors.textPrimary }]}>{packingProgress.total > 0 ? `${packingProgress.percentage}%` : t('trips.detail.noItems')}</Text>
             </View>
-          </View>
+          </TourAnchor>
 
           {/* Trip Summary — Flighty-style navy gradient hero */}
           {totalBookings > 0 && (
@@ -676,7 +685,7 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{t('trips.detail.tripHub')}</Text>
             
             {/* 1. Trip Planner - Gradient hero with Up-next glance + day pills */}
-            <View style={styles.hubListContainer}>
+            <TourAnchor id="trip.smartPlan" style={styles.hubListContainer}>
               <TouchableOpacity
                 style={styles.hubCompCard}
                 activeOpacity={0.85}
@@ -733,10 +742,10 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
                   </View>
                 </LinearGradient>
               </TouchableOpacity>
-            </View>
-            
+            </TourAnchor>
+
             {/* 2. Packing + Expenses - Stat Cards (live data + progress ring) */}
-            <View style={styles.hubGridContainer}>
+            <TourAnchor id="trip.moduleGrid" style={styles.hubGridContainer}>
               <TouchableOpacity
                 style={[styles.hubStatCard, { borderColor: colors.borderSubtle, backgroundColor: isDark ? colors.bgElevated : colors.bgCard }]}
                 activeOpacity={0.7}
@@ -782,8 +791,8 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
                 </Text>
                 <Text style={[styles.hubStatLabel, { color: colors.textPrimary }]}>{t('trips.detail.expenses', 'Expenses')}</Text>
               </TouchableOpacity>
-            </View>
-            
+            </TourAnchor>
+
             {/* 3. Travel Journal - Blue gradient hero with entry-count ring */}
             <View style={styles.hubListContainer}>
               <TouchableOpacity
@@ -975,12 +984,14 @@ export default function TripDetailScreen({ tripId }: TripDetailScreenProps) {
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
                 Travelers ({trip.travelers.length + invitations.length})
               </Text>
-              <TouchableOpacity
-                style={[styles.inviteButtonContainer, { backgroundColor: `${colors.primary}15` }]}
-                onPress={() => setInviteSheetVisible(true)}
-              >
-                <Text style={[styles.inviteButton, { color: colors.primary }]}>{t('trips.detail.invite')}</Text>
-              </TouchableOpacity>
+              <TourAnchor id="trip.invite">
+                <TouchableOpacity
+                  style={[styles.inviteButtonContainer, { backgroundColor: `${colors.primary}15` }]}
+                  onPress={() => setInviteSheetVisible(true)}
+                >
+                  <Text style={[styles.inviteButton, { color: colors.primary }]}>{t('trips.detail.invite')}</Text>
+                </TouchableOpacity>
+              </TourAnchor>
             </View>
 
             {/* Trip owner / existing travelers */}

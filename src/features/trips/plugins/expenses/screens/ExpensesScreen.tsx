@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PieChart, BarChart } from 'react-native-chart-kit';
 import {
@@ -43,6 +43,7 @@ import { expenseSummaryService, ExpenseSummary } from '@/services/expenseSummary
 import { useAuth } from '@/context/AuthContext';
 import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
 import PluginErrorState from '@/features/trips/components/PluginErrorState';
+import { TourAnchor, useGuidance, captureExpenseCurrency } from '@/features/guidance';
 
 // Category configuration
 const CATEGORIES: CategoryInfo[] = [
@@ -80,6 +81,23 @@ export default function ExpensesScreen() {
   const [summary, setSummary] = useState<ExpenseSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  const guidance = useGuidance();
+
+  // Smart Tip: highlight the scan-receipt button.
+  useFocusEffect(
+    useCallback(() => {
+      const tid = setTimeout(() => guidance.maybeShowTip('tip.expenseScan'), 1200);
+      return () => clearTimeout(tid);
+    }, [guidance])
+  );
+
+  // Smart Tip: introduce the Expenses module.
+  useFocusEffect(
+    useCallback(() => {
+      const tid = setTimeout(() => guidance.maybeShowTip('tip.expensesModule'), 1000);
+      return () => clearTimeout(tid);
+    }, [guidance])
+  );
 
   const fetchExpenses = async () => {
     try {
@@ -206,6 +224,7 @@ export default function ExpensesScreen() {
         });
         setExpenses([newExpense, ...expenses]);
       }
+      if (expense.currency) captureExpenseCurrency(expense.currency);
     } catch (err) {
       showError(editingExpense ? 'Failed to update expense.' : 'Failed to add expense. Please try again.');
       if (__DEV__) console.warn('Failed to save expense:', err);
@@ -364,18 +383,20 @@ export default function ExpensesScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgPrimary} />
       <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgPrimary }]}>
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
+        <TourAnchor id="plugin.expenses" style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <ArrowLeft2 size={24} color={colors.textPrimary} variant="Linear" />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Expenses</Text>
           <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.scanButton}
-              onPress={() => router.push({ pathname: '/expenses/scan-receipt', params: { tripId } })}
-            >
-              <Receipt1 size={20} color={colors.primary} variant="Bold" />
-            </TouchableOpacity>
+            <TourAnchor id="expenses.scanButton">
+              <TouchableOpacity
+                style={styles.scanButton}
+                onPress={() => router.push({ pathname: '/expenses/scan-receipt', params: { tripId } })}
+              >
+                <Receipt1 size={20} color={colors.primary} variant="Bold" />
+              </TouchableOpacity>
+            </TourAnchor>
             <TouchableOpacity
               style={styles.addButton}
               onPress={() => setAddExpenseVisible(true)}
@@ -383,7 +404,7 @@ export default function ExpensesScreen() {
               <Add size={24} color={colors.primary} variant="Bold" />
             </TouchableOpacity>
           </View>
-        </View>
+        </TourAnchor>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Budget Progress Card */}

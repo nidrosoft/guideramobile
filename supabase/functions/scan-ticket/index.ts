@@ -21,6 +21,7 @@ import {
   setAiInputDedupeCache,
   validateBase64Payload,
 } from '../_shared/aiInputGuard.ts';
+import { guardAiRequest, AI_LIMITS } from '../_shared/aiRateGuard.ts';
 import { resolveCityAndCountry } from '../_shared/airportCity.ts';
 import {
   SCAN_TICKET_GEMINI_MEDIA_RESOLUTION,
@@ -453,6 +454,13 @@ serve(async (req: Request) => {
         );
       }
     }
+
+    const __rl = await guardAiRequest({
+      req, body, supabase, config: AI_LIMITS.ocr,
+      corsHeaders, supabaseUrl: SUPABASE_URL,
+      serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY, anonKey: SUPABASE_ANON_KEY,
+    });
+    if (__rl) return __rl;
 
     const guard = await beginAiInputGuard({
       req,

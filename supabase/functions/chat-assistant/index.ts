@@ -4,6 +4,7 @@ import { buildSystemPrompt } from './system-prompt.ts';
 import { TOOL_DEFINITIONS } from './tool-defs.ts';
 import { executeTool } from './tool-exec.ts';
 import { getUserIdFromRequest, unauthorizedResponse } from '../_shared/auth.ts';
+import { guardAiRequest, AI_LIMITS } from '../_shared/aiRateGuard.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '',
@@ -48,6 +49,13 @@ Deno.serve(async (req: Request) => {
       });
 
     const sb = createClient(supabaseUrl, supabaseServiceKey);
+
+    // SECURITY: per-user rate limit (caps cost / abuse of the multi-round tool loop).
+    const limited = await guardAiRequest({
+      req, body, supabase: sb, config: AI_LIMITS.chat, corsHeaders: cors,
+      supabaseUrl, serviceRoleKey: supabaseServiceKey, anonKey: supabaseAnonKey,
+    });
+    if (limited) return limited;
 
     let sid = sessionId;
     if (!sid) {

@@ -17,7 +17,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -27,6 +27,7 @@ import { spacing, typography, fontFamily, colors as staticColors } from '@/style
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
+import { TourAnchor, useGuidance } from '@/features/guidance';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PRIMARY = staticColors.primary;
@@ -47,6 +48,7 @@ export default function SavedDealsScreen() {
   const { profile } = useAuth();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const guidance = useGuidance();
 
   const [savedDeals, setSavedDeals] = useState<any[]>([]);
   const [savedItems, setSavedItems] = useState<any[]>([]);
@@ -83,6 +85,16 @@ export default function SavedDealsScreen() {
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  // Smart Tip: guide users with an empty saved list.
+  const hasNoSaved = !isLoading && savedDeals.length === 0 && savedItems.length === 0;
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasNoSaved) return;
+      const id = setTimeout(() => guidance.maybeShowTip('tip.savedEmpty'), 1000);
+      return () => clearTimeout(id);
+    }, [guidance, hasNoSaved])
+  );
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -210,7 +222,7 @@ export default function SavedDealsScreen() {
           <ActivityIndicator size="large" color={PRIMARY} />
         </View>
       ) : filteredList.length === 0 ? (
-        <View style={styles.center}>
+        <TourAnchor id="saved.empty" style={styles.center}>
           <Archive size={48} color={colors.textSecondary} variant="Bulk" />
           <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
             {activeTab === 'all' ? 'No saved items yet' : `No saved ${getTypeLabel(activeTab).toLowerCase()}s`}
@@ -218,7 +230,7 @@ export default function SavedDealsScreen() {
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
             Tap the heart icon on any item to save it here
           </Text>
-        </View>
+        </TourAnchor>
       ) : (
         <ScrollView
           contentContainerStyle={styles.listContent}

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator, TextInput, Keyboard } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { TourAnchor, useGuidance } from '@/features/guidance';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -16,7 +17,10 @@ import { ContinentChips } from '../components/ContinentChips';
 import { SubHubChips } from '../components/SubHubChips';
 import { CountryCard } from '../components/CountryCard';
 import { ProUpsellSheet } from '../components/ProUpsellSheet';
+import { BriefingSheet } from '../components/briefing/BriefingSheet';
+import { useBriefingDraft } from '../hooks/useBriefingDraft';
 import { getIcon } from '../config/icons';
+import { MagicStar, Archive } from 'iconsax-react-native';
 import { openGuide, openToolkit } from '../navigation/routes';
 import { JOURNEYS_CONFIG } from '../config/journeys.config';
 import { resolveQuery, resolveSearchIntent, logSearch } from '../services/journeySearch.service';
@@ -32,10 +36,48 @@ export function JourneysHubScreen({
 }) {
   const { colors, isDark } = useTheme();
   const router = useRouter();
+  const guidance = useGuidance();
   const { data: categories = [] } = useJourneyCatalog();
+
+  useFocusEffect(
+    useCallback(() => {
+      guidance.maybeStartTour('journeys');
+    }, [guidance])
+  );
   const { data: pro } = useIsPro();
   const [showUpsell, setShowUpsell] = useState(false);
+  const [showBriefing, setShowBriefing] = useState(false);
+  const [briefingTab, setBriefingTab] = useState<'build' | 'recent' | 'saved'>('build');
   const { filter, results, isLoading, setCategory, setContinent, setSubhub } = useJourneyFilter();
+
+  const openSaved = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (pro || __DEV__) {
+      setBriefingTab('saved');
+      setShowBriefing(true);
+    } else {
+      emitJourneyEvent('briefing_pro_gate_view', { categorySlug: filter.categorySlug });
+      setShowUpsell(true);
+    }
+  };
+
+  const openBriefingBuilder = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // seed the draft with the hub's current journey/sub-hub
+    const d = useBriefingDraft.getState();
+    if (d.categorySlug !== filter.categorySlug || d.subhubSlug !== (filter.subhubSlug !== 'all' ? filter.subhubSlug : undefined)) {
+      d.reset(filter.categorySlug, filter.subhubSlug !== 'all' ? filter.subhubSlug : undefined);
+    }
+    // spec §11: payment not wired — allow through in dev, gate in prod
+    if (pro || __DEV__) {
+      setBriefingTab('build');
+      emitJourneyEvent('briefing_sheet_open', { categorySlug: filter.categorySlug });
+      setShowBriefing(true);
+    } else {
+      emitJourneyEvent('briefing_pro_gate_view', { categorySlug: filter.categorySlug });
+      setShowUpsell(true);
+    }
+  };
 
   const handleBack = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)' as any));
   const handleToolkit = () => {
@@ -146,6 +188,14 @@ export function JourneysHubScreen({
         >
           <ArrowLeft2 size={20} color={colors.textPrimary} />
         </TouchableOpacity>
+        <TouchableOpacity
+          onPress={openSaved}
+          style={[styles.backBtn, { backgroundColor: colors.bgCard }]}
+          accessibilityRole="button"
+          accessibilityLabel="Saved briefings"
+        >
+          <Archive size={20} color={colors.textPrimary} variant="Outline" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -199,6 +249,23 @@ export function JourneysHubScreen({
               Figuring out your search…
             </Text>
           ) : null}
+          {/* Custom briefing builder (Premium) — Trip-Snapshot-style sheet */}
+          <TourAnchor id="journeys.briefing">
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={openBriefingBuilder}
+              style={[styles.briefingCta, { borderColor: `${colors.primary}55`, backgroundColor: `${colors.primary}0F` }]}
+              accessibilityRole="button"
+              accessibilityLabel="Build a custom briefing"
+            >
+              <MagicStar size={18} color={colors.primary} variant="Bold" />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.briefingCtaTitle, { color: colors.textPrimary }]}>Build a custom briefing</Text>
+                <Text style={[styles.briefingCtaSub, { color: colors.textSecondary }]}>Pick country, stage, who & topics — streamed in</Text>
+              </View>
+              {!pro ? <Lock1 size={15} color="#B98A34" variant="Bold" /> : <ArrowRight2 size={16} color={colors.textSecondary} />}
+            </TouchableOpacity>
+          </TourAnchor>
           </>
         ) : null}
 
@@ -238,7 +305,9 @@ export function JourneysHubScreen({
         {/* Pick a journey — rail in the middle, separating the two chip rows */}
         <View style={styles.spacerSm} />
         <Text style={[styles.railLabel, { color: colors.textPrimary }]}>Pick a journey</Text>
-        <JourneyPickerRail categories={categories} selectedSlug={filter.categorySlug} onSelect={handleSelectJourney} />
+        <TourAnchor id="journeys.categories">
+          <JourneyPickerRail categories={categories} selectedSlug={filter.categorySlug} onSelect={handleSelectJourney} />
+        </TourAnchor>
 
         {/* Sub-hub (focus) chips — below the rail */}
         {selectedCategory?.hasSubhubs && selectedCategory.subhubs?.length ? (
@@ -338,13 +407,19 @@ export function JourneysHubScreen({
       </ScrollView>
 
       <ProUpsellSheet visible={showUpsell} onClose={() => setShowUpsell(false)} />
+      <BriefingSheet
+        visible={showBriefing}
+        initialTab={briefingTab}
+        onClose={() => setShowBriefing(false)}
+        onOpenResult={() => router.push('/journeys/briefing' as any)}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  topBar: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   headerBlock: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: 4 },
   h1: { fontSize: typography.fontSize['3xl'], fontWeight: typography.fontWeight.bold },
@@ -363,6 +438,9 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: typography.fontSize.sm, paddingVertical: 0 },
   searchSubmit: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   searchHint: { fontSize: typography.fontSize.xs, paddingHorizontal: spacing.lg, marginTop: spacing.xs },
+  briefingCta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderRadius: borderRadius.xl, borderWidth: 1 },
+  briefingCtaTitle: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.bold },
+  briefingCtaSub: { fontSize: typography.fontSize.xs, marginTop: 1 },
   proPromoWrap: {
     marginHorizontal: spacing.lg,
     marginTop: spacing.md,

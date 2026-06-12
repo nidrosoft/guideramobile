@@ -15,6 +15,7 @@ import ImportTripFlow from '@/features/trip-import/components/ImportTripFlow';
 import { useTripStore } from '@/features/trips/stores/trip.store';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
+import { TourAnchor, registerActionHandler } from '@/features/guidance';
 
 // Custom Tab Bar with launcher button and bottom sheet
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
@@ -51,6 +52,19 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const launcherAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${launcherRotation.value}deg` }],
   }));
+
+  // Guidance tour preActions: open/close the launcher sheet imperatively.
+  useEffect(() => {
+    const offOpen = registerActionHandler('openLauncher', () => {
+      setShowScanSheet(true);
+      return new Promise<void>((resolve) => setTimeout(resolve, 350));
+    });
+    const offClose = registerActionHandler('closeLauncher', () => {
+      setShowScanSheet(false);
+      return new Promise<void>((resolve) => setTimeout(resolve, 300));
+    });
+    return () => { offOpen(); offClose(); };
+  }, []);
 
   // Dynamic styles based on theme
   const dynamicStyles = useMemo(() => ({
@@ -205,27 +219,53 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 style={styles.tabItem}
                 onLayout={(e) => handleTabLayout(index, e)}
               >
-                <TouchableOpacity
-                  style={styles.tabItemInner}
-                  onPress={onPress}
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Open actions menu"
-                  accessibilityHint="Opens scan, AI, and navigation options"
-                >
-                  <View style={styles.launcherContainer}>
-                    <View style={[styles.launcherButton, dynamicStyles.launcherButton]}>
-                      <Animated.View style={launcherAnimatedStyle}>
-                        <Category size={24} color={staticColors.white} variant="Bold" />
-                      </Animated.View>
+                <TourAnchor id="tabbar.launcher">
+                  <TouchableOpacity
+                    style={styles.tabItemInner}
+                    onPress={onPress}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Open actions menu"
+                    accessibilityHint="Opens scan, AI, and navigation options"
+                  >
+                    <View style={styles.launcherContainer}>
+                      <View style={[styles.launcherButton, dynamicStyles.launcherButton]}>
+                        <Animated.View style={launcherAnimatedStyle}>
+                          <Category size={24} color={staticColors.white} variant="Bold" />
+                        </Animated.View>
+                      </View>
                     </View>
-                  </View>
-                </TouchableOpacity>
+                  </TouchableOpacity>
+                </TourAnchor>
               </View>
             );
           }
 
           const color = isFocused ? colors.primary : colors.gray400;
+
+          const tabInner = (
+            <TouchableOpacity
+              style={styles.tabItemInner}
+              onPress={onPress}
+              activeOpacity={0.7}
+              accessibilityRole="tab"
+              accessibilityLabel={labels[route.name]}
+              accessibilityState={{ selected: isFocused }}
+            >
+              <View style={styles.iconContainer}>
+                {icons[route.name]?.(color, isFocused)}
+                {route.name === 'community' && communityUnread > 0 && (
+                  <View style={[styles.badge, { backgroundColor: colors.error }]}>
+                    <Text style={styles.badgeText}>{communityUnread > 9 ? '9+' : communityUnread}</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={[styles.tabLabel, { color }]}>{labels[route.name]}</Text>
+            </TouchableOpacity>
+          );
+
+          // Anchor the Trips tab for the hero/trips tours.
+          const anchorId = route.name === 'trips' ? 'tabbar.trips' : null;
 
           return (
             <View
@@ -233,24 +273,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               style={styles.tabItem}
               onLayout={(e) => handleTabLayout(index, e)}
             >
-              <TouchableOpacity
-                style={styles.tabItemInner}
-                onPress={onPress}
-                activeOpacity={0.7}
-                accessibilityRole="tab"
-                accessibilityLabel={labels[route.name]}
-                accessibilityState={{ selected: isFocused }}
-              >
-                <View style={styles.iconContainer}>
-                  {icons[route.name]?.(color, isFocused)}
-                  {route.name === 'community' && communityUnread > 0 && (
-                    <View style={[styles.badge, { backgroundColor: colors.error }]}>
-                      <Text style={styles.badgeText}>{communityUnread > 9 ? '9+' : communityUnread}</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={[styles.tabLabel, { color }]}>{labels[route.name]}</Text>
-              </TouchableOpacity>
+              {anchorId ? <TourAnchor id={anchorId}>{tabInner}</TourAnchor> : tabInner}
             </View>
           );
         })}

@@ -7,8 +7,46 @@ const DIDIT_WEBHOOK_SECRET = Deno.env.get("DIDIT_WEBHOOK_SECRET") ?? "";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-signature-v2, x-signature-simple",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-timestamp, x-signature, x-signature-v2, x-signature-simple",
 };
+
+const TIMESTAMP_TOLERANCE_SECONDS = 300; // per Didit docs: reject if older than 5 minutes
+
+async function hmacHex(secret: string, content: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(content));
+  return Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  const encoder = new TextEncoder();
+  const ab = encoder.encode(a);
+  const bb = encoder.encode(b);
+  if (ab.length !== bb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ab.length; i++) diff |= ab[i] ^ bb[i];
+  return diff === 0;
+}
+
+// Didit's X-Signature-V2 signs the canonical JSON form: keys sorted,
+// compact separators, Unicode preserved.
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  const obj = value as Record<string, unknown>;
+  const keys = Object.keys(obj).sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalJson(obj[k])}`).join(",")}}`;
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -22,50 +60,70 @@ Deno.serve(async (req: Request) => {
     let payload: Record<string, any> = {};
 
     // SECURITY: Only accept POST requests — GET is not a valid webhook method
-    if (req.method === "GET") {
+    if (req.method !== "POST") {
       return Response.json(
-        { error: "GET not allowed. Webhooks must use POST." },
+        { error: "Webhooks must use POST." },
         { status: 405, headers: corsHeaders }
+      );
+    }
+
+    // SECURITY: fail closed — without a secret every request would be trusted.
+    if (!DIDIT_WEBHOOK_SECRET) {
+      console.error("[didit-webhook] DIDIT_WEBHOOK_SECRET not configured — rejecting webhook");
+      return Response.json(
+        { error: "Webhook not configured" },
+        { status: 503, headers: corsHeaders }
       );
     }
 
     const body = await req.text();
     payload = JSON.parse(body);
 
-    // SECURITY: Verify webhook signature — reject unsigned requests
-    if (DIDIT_WEBHOOK_SECRET) {
-      const signatureSimple = req.headers.get("x-signature-simple");
-      const signatureV2 = req.headers.get("x-signature-v2");
+    // SECURITY: reject stale or missing timestamps (replay protection)
+    const timestampHeader = req.headers.get("x-timestamp");
+    const timestamp = timestampHeader ? parseInt(timestampHeader, 10) : NaN;
+    if (
+      !Number.isFinite(timestamp) ||
+      Math.abs(Math.floor(Date.now() / 1000) - timestamp) > TIMESTAMP_TOLERANCE_SECONDS
+    ) {
+      console.error("[didit-webhook] Missing or stale x-timestamp — rejecting");
+      return Response.json(
+        { error: "Invalid timestamp" },
+        { status: 401, headers: corsHeaders }
+      );
+    }
 
-      if (signatureSimple) {
-        const encoder = new TextEncoder();
-        const key = await crypto.subtle.importKey(
-          "raw",
-          encoder.encode(DIDIT_WEBHOOK_SECRET),
-          { name: "HMAC", hash: "SHA-256" },
-          false,
-          ["sign"]
-        );
-        const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(body));
-        const expected = Array.from(new Uint8Array(signature))
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("");
+    // SECURITY: verify the HMAC signature. Didit sends three variants;
+    // accept whichever verifies, preferring the ones that sign the full body.
+    const signatureRaw = req.headers.get("x-signature");
+    const signatureV2 = req.headers.get("x-signature-v2");
+    const signatureSimple = req.headers.get("x-signature-simple");
 
-        if (expected !== signatureSimple) {
-          console.error("[didit-webhook] Invalid simple signature");
-          return Response.json(
-            { error: "Invalid signature" },
-            { status: 401, headers: corsHeaders }
-          );
-        }
-      } else if (!signatureV2) {
-        // SECURITY: Reject unsigned requests instead of proceeding
-        console.error("[didit-webhook] No signature header present — rejecting");
-        return Response.json(
-          { error: "Missing signature" },
-          { status: 401, headers: corsHeaders }
-        );
-      }
+    let verified = false;
+
+    if (signatureRaw) {
+      verified = timingSafeEqual(await hmacHex(DIDIT_WEBHOOK_SECRET, body), signatureRaw);
+    }
+    if (!verified && signatureV2) {
+      verified = timingSafeEqual(
+        await hmacHex(DIDIT_WEBHOOK_SECRET, canonicalJson(payload)),
+        signatureV2
+      );
+    }
+    if (!verified && signatureSimple) {
+      const envelope = `${timestampHeader}:${payload.session_id ?? ""}:${payload.status ?? ""}:${payload.webhook_type ?? ""}`;
+      verified = timingSafeEqual(
+        await hmacHex(DIDIT_WEBHOOK_SECRET, envelope),
+        signatureSimple
+      );
+    }
+
+    if (!verified) {
+      console.error("[didit-webhook] Signature verification failed — rejecting");
+      return Response.json(
+        { error: "Invalid signature" },
+        { status: 401, headers: corsHeaders }
+      );
     }
 
     sessionId = payload.session_id;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import {
   ArrowLeft2,
   Add,
@@ -30,6 +30,7 @@ import { journalService } from '@/services/journal.service';
 import { useAuth } from '@/context/AuthContext';
 import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
 import PluginErrorState from '@/features/trips/components/PluginErrorState';
+import { TourAnchor, useGuidance } from '@/features/guidance';
 
 export default function JournalScreen() {
   const router = useRouter();
@@ -37,8 +38,16 @@ export default function JournalScreen() {
   const tripId = params.tripId as string;
   const { colors, isDark } = useTheme();
   const { profile } = useAuth();
+  const guidance = useGuidance();
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
-  
+
+  useFocusEffect(
+    useCallback(() => {
+      const id = setTimeout(() => guidance.maybeShowTip('tip.journalModule'), 1000);
+      return () => clearTimeout(id);
+    }, [guidance])
+  );
+
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -181,18 +190,18 @@ export default function JournalScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgPrimary} />
       <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgPrimary }]}>
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
+        <TourAnchor id="plugin.journal" style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <ArrowLeft2 size={24} color={colors.textPrimary} variant="Linear" />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Journal</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.addButton}
             onPress={() => setCreateEntryVisible(true)}
           >
             <Add size={24} color={colors.primary} variant="Bold" />
           </TouchableOpacity>
-        </View>
+        </TourAnchor>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Progress Card */}

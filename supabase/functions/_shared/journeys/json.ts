@@ -121,6 +121,64 @@ export function validateIntent(obj: any): {
   };
 }
 
+const BLOCK_TYPES = new Set(['intro', 'bullets', 'table', 'callout']);
+
+// Strip markdown + inline citation markers so the UI renders clean prose.
+function stripMd(v: any): string {
+  if (typeof v !== 'string') return '';
+  return v
+    .replace(/\[\d+\](?:\s*\[\d+\])*/g, '') // [1], [1][2]
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // **bold**
+    .replace(/__([^_]+)__/g, '$1') // __bold__
+    .replace(/(^|\s)[*_]([^*_\n]+)[*_](?=\s|$|[.,;:!?])/g, '$1$2') // *italic*
+    .replace(/`([^`]+)`/g, '$1') // `code`
+    .replace(/^#{1,6}\s+/gm, '') // # headers
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\s+([.,;:!?])/g, '$1')
+    .trim();
+}
+function stripMdArr(v: any): string[] {
+  return (Array.isArray(v) ? v : []).map(stripMd).filter((s) => s.length > 0);
+}
+
+export function validateBriefingTopic(obj: any, topicKey: string): any {
+  if (!obj || typeof obj !== 'object') throw new Error('briefing topic: not an object');
+  const blocksIn = Array.isArray(obj.blocks) ? obj.blocks : [];
+  const blocks = blocksIn
+    .filter((b: any) => b && BLOCK_TYPES.has(b.type))
+    .map((b: any) => {
+      switch (b.type) {
+        case 'intro':
+          return { type: 'intro', text: stripMd(b.text) };
+        case 'bullets':
+          return { type: 'bullets', items: stripMdArr(b.items) };
+        case 'table':
+          return {
+            type: 'table',
+            columns: stripMdArr(b.columns),
+            rows: (Array.isArray(b.rows) ? b.rows : []).map((r: any) =>
+              (Array.isArray(r) ? r : []).map((c: any) => stripMd(c))
+            ),
+          };
+        case 'callout':
+          return { type: 'callout', tone: b.tone === 'warning' ? 'warning' : 'tip', text: stripMd(b.text) };
+        default:
+          return null;
+      }
+    })
+    .filter(Boolean);
+
+  if (blocks.length === 0) throw new Error('briefing topic: no valid blocks');
+
+  return {
+    topicKey: asString(obj.topicKey) || topicKey,
+    title: stripMd(obj.title) || topicKey,
+    summary: stripMd(obj.summary),
+    blocks,
+    confidence: clamp01(obj.confidence),
+  };
+}
+
 export function validateSearch(obj: any): any {
   if (!obj || typeof obj !== 'object') throw new Error('search: not an object');
   const matched = (Array.isArray(obj.matched) ? obj.matched : [])

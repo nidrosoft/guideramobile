@@ -15,7 +15,12 @@ export type JourneyEventType =
   | 'provider_view' | 'provider_lead_captured'
   | 'pro_gate_view' | 'pro_upsell_view' | 'pro_subscribe_tap'
   | 'toolkit_view' | 'cost_estimate_saved' | 'checklist_item_toggled' | 'visa_watch_created'
-  | 'community_join_tap' | 'peer_match_requested' | 'guide_feedback_submitted' | 'guide_saved';
+  | 'community_join_tap' | 'peer_match_requested' | 'guide_feedback_submitted' | 'guide_saved'
+  // Briefing engine (amendment spec §13)
+  | 'briefing_sheet_open' | 'briefing_reason_change' | 'briefing_where_select' | 'briefing_recommend_countries'
+  | 'briefing_stage_select' | 'briefing_who_select' | 'briefing_topic_toggle' | 'briefing_custom_topic_added'
+  | 'briefing_generate' | 'topic_generated' | 'topic_cache_hit'
+  | 'briefing_saved' | 'briefing_recent_open' | 'briefing_pro_gate_view';
 
 export interface JourneyEventInput {
   categorySlug?: string;

@@ -446,6 +446,7 @@ export default function PrivacySettingsScreen() {
               />
             </View>
 
+
             <View style={[styles.divider, { backgroundColor: tc.borderSubtle }]} />
 
             {/* Download Data */}

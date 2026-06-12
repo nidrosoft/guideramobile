@@ -15,6 +15,7 @@ import {
   beginAiInputGuard,
   setAiInputDedupeCache,
 } from '../_shared/aiInputGuard.ts';
+import { guardAiRequest, AI_LIMITS } from '../_shared/aiRateGuard.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -279,6 +280,14 @@ serve(async (req: Request) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const __rl = await guardAiRequest({
+      req, body, supabase, config: AI_LIMITS.ocr,
+      corsHeaders, supabaseUrl: SUPABASE_URL,
+      serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY, anonKey: SUPABASE_ANON_KEY,
+    });
+    if (__rl) return __rl;
+
     const guard = await beginAiInputGuard({
       req,
       body,

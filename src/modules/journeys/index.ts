@@ -8,6 +8,8 @@ export { JourneyGuideScreen } from './screens/JourneyGuideScreen';
 export { JourneySearchResultsScreen } from './screens/JourneySearchResultsScreen';
 export { ToolkitScreen } from './screens/ToolkitScreen';
 export { JourneyChatScreen } from './screens/JourneyChatScreen';
+export { BriefingResultScreen } from './screens/BriefingResultScreen';
+export { BriefingSheet } from './components/briefing/BriefingSheet';
 export { JourneysCommunityEntry } from './screens/JourneysCommunityEntry';
 
 export { JOURNEYS_ROUTES, openJourney, openGuide, openJourneysHub, openToolkit, openChat } from './navigation/routes';

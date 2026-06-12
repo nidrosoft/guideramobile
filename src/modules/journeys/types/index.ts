@@ -163,6 +163,78 @@ export interface JourneyGroupLink {
   memberCount: number;
 }
 
+// ── Briefing engine (amendment spec) ───────────────────────────────
+export type BriefingStage = 'exploring' | 'soon' | 'decided';
+export type BriefingWho = 'solo' | 'couple' | 'family' | 'elderly_parent';
+
+export interface JourneyTopic {
+  key: string;
+  label: string;
+  icon: string;
+  topicGroup: string;
+  isUniversal: boolean;
+  appliesTo: string[];
+  subhubScope: string[];
+  needsResearch: boolean;
+  defaultFor: string[];
+  sortWeight: number;
+  researchBasis?: string;
+}
+
+export type BriefingBlock =
+  | { type: 'intro'; text: string }
+  | { type: 'bullets'; items: string[] }
+  | { type: 'table'; columns: string[]; rows: string[][] }
+  | { type: 'callout'; tone: 'tip' | 'warning'; text: string };
+
+export interface TopicSection {
+  topicKey: string;
+  title: string;
+  summary?: string;
+  blocks: BriefingBlock[];
+  confidence?: number;
+  sources?: Array<{ label?: string; url: string }>;
+  engine?: string;
+  status?: string;
+}
+
+export interface BriefingDraft {
+  categorySlug: string;
+  countryCode?: string;
+  countryName?: string;
+  flagEmoji?: string;
+  subhubSlug?: string;
+  stage?: BriefingStage;
+  who?: BriefingWho;
+  whoDetail?: { childrenAges?: number[] };
+  topicKeys: string[];
+  customTopics?: string[];
+}
+
+export interface JourneyBriefingRow {
+  id: string;
+  categorySlug: string;
+  categoryName?: string;
+  countryCode: string;
+  countryName?: string;
+  flagEmoji?: string;
+  subhubSlug?: string;
+  topicKeys: string[];
+  stage?: BriefingStage;
+  who?: BriefingWho;
+  title?: string;
+  isSaved: boolean;
+  lastOpenedAt?: string;
+}
+
+export interface CountryRecommendation {
+  countryCode: string;
+  countryName?: string;
+  flagEmoji?: string;
+  headline: string;
+  why: string;
+}
+
 export interface CountryProfileMatch {
   categorySlug: string;
   relevance: number;

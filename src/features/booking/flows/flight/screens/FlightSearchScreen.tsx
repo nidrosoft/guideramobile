@@ -6,16 +6,18 @@
  */
 
 import React, { useCallback, useMemo } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useFlightStore } from '../../../stores/useFlightStore';
-import { 
-  UnifiedSearchOverlay, 
+import {
+  UnifiedSearchOverlay,
   type FlightSearchData,
   type SearchData,
   type Airport as UnifiedAirport,
 } from '@/components/features/search/unified';
 import { Airport as FlightAirport } from '../../../types/flight.types';
+import { captureFlightSearch, TourAnchor, useGuidance } from '@/features/guidance';
 
 interface FlightSearchScreenProps {
   onSearch: () => void;
@@ -50,7 +52,15 @@ export default function FlightSearchScreen({
   onBack,
 }: FlightSearchScreenProps) {
   const { colors } = useTheme();
+  const guidance = useGuidance();
   const { searchParams, setSearchParams } = useFlightStore();
+
+  useFocusEffect(
+    useCallback(() => {
+      const id = setTimeout(() => guidance.maybeShowTip('tip.flightForm'), 1000);
+      return () => clearTimeout(id);
+    }, [guidance])
+  );
 
   const handleSearch = useCallback((data: SearchData) => {
     // Type guard to ensure we have flight data
@@ -68,8 +78,14 @@ export default function FlightSearchScreen({
       },
     });
 
+    const cabin = searchParams.cabinClass;
+    captureFlightSearch({
+      originCode: flightData.origin?.code,
+      cabinClass: cabin === 'economy' || cabin === 'business' || cabin === 'first' ? cabin : undefined,
+    });
+
     onSearch();
-  }, [setSearchParams, onSearch]);
+  }, [setSearchParams, onSearch, searchParams.cabinClass]);
 
   // Map current store data to unified format for initial values
   const initialData = useMemo((): Partial<FlightSearchData> => ({
@@ -95,7 +111,7 @@ export default function FlightSearchScreen({
   }), [searchParams]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <TourAnchor id="booking.flightForm" style={[styles.container, { backgroundColor: colors.background }]}>
       <UnifiedSearchOverlay
         serviceType="flight"
         title="Find a Flight"
@@ -105,7 +121,7 @@ export default function FlightSearchScreen({
         onSearch={handleSearch}
         initialFlightData={initialData}
       />
-    </View>
+    </TourAnchor>
   );
 }
 

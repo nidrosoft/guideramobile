@@ -11,7 +11,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Animated, Image, Linking, LayoutAnimation, Platform, UIManager, Dimensions,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AnimatedGradientBackground } from '@/components/common/AnimatedGradientBackground';
@@ -35,6 +35,7 @@ import {
 } from '@/services/tripSnapshot.service';
 import { SNAPSHOT_COST_ICONS } from '@/data/snapshotCostIcons';
 import { useSearchOverlayStore } from '@/stores/useSearchOverlayStore';
+import { captureTripSnapshot, TourAnchor, useGuidance, registerActionHandler } from '@/features/guidance';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -418,6 +419,33 @@ export default function TripSnapshotScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const guidance = useGuidance();
+
+  // Snapshot tour: scroll the page to a section anchor before it's spotlighted.
+  const scrollViewRef = useRef<ScrollView>(null);
+  const contentCardY = useRef(0);
+  const sectionY = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    const off = registerActionHandler('scrollToAnchor', async (anchorId: string) => {
+      const rel = sectionY.current[anchorId];
+      if (rel === undefined) return; // above the fold (overview) — no scroll
+      const y = Math.max(0, contentCardY.current + rel - 90);
+      scrollViewRef.current?.scrollTo({ y, animated: true });
+      await new Promise<void>((r) => setTimeout(r, 450));
+    });
+    return () => { off(); };
+  }, []);
+
+  const onSectionLayout = (anchorId: string) => (e: any) => {
+    sectionY.current[anchorId] = e.nativeEvent.layout.y;
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      guidance.maybeStartTour('snapshot');
+    }, [guidance])
+  );
   const params = useLocalSearchParams<{
     destination: string; country: string;
     startDate: string; endDate: string;
@@ -470,6 +498,11 @@ export default function TripSnapshotScreen() {
   );
 
   const fetchSnapshot = useCallback(async () => {
+    captureTripSnapshot({
+      originCity: params.originCity || undefined,
+      passportCountry: params.nationality || undefined,
+      interests: selectedTopics.length ? selectedTopics : undefined,
+    });
     let receivedLiveData = false;
     try {
       setLoadingLive(true);
@@ -678,12 +711,14 @@ export default function TripSnapshotScreen() {
       </View>
 
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* ─── AI Overview Banner ─── */}
         {(aiBrief?.overview || loadingBrief) && (
+          <TourAnchor id="snapshot.overview">
           <View style={[styles.overviewCard, { backgroundColor: `${tc.primary}08`, borderColor: `${tc.primary}20` }]}>
             <View style={styles.overviewHeader}>
               <View style={[styles.overviewBadge, { backgroundColor: `${tc.primary}15` }]}>
@@ -717,6 +752,7 @@ export default function TripSnapshotScreen() {
               </Text>
             )}
           </View>
+          </TourAnchor>
         )}
 
         {loadingBrief && (!aiBrief?.sections || aiBrief.sections.length === 0) && (
@@ -729,7 +765,7 @@ export default function TripSnapshotScreen() {
         )}
 
         {/* ─── Cost Estimate Hero ─── */}
-        <View style={[styles.card, { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle }]}>
+        <TourAnchor id="snapshot.cost" onLayout={onSectionLayout('snapshot.cost')} style={[styles.card, { backgroundColor: tc.bgCard, borderColor: tc.borderSubtle }]}>
           <View style={styles.cardHeader}>
             <View style={[styles.cardIconWrap, { backgroundColor: `${tc.primary}12` }]}>
               <MoneyRecive size={18} color={tc.primary} variant="Bold" />
@@ -766,7 +802,7 @@ export default function TripSnapshotScreen() {
               </View>
             </>
           )}
-        </View>
+        </TourAnchor>
 
         {/* ─── Flights Preview ─── */}
         {flights && (
@@ -924,14 +960,16 @@ export default function TripSnapshotScreen() {
 
       {/* ─── Quick Actions ─── */}
       <View style={[styles.quickActions, { backgroundColor: tc.background, borderTopColor: tc.borderSubtle, paddingBottom: insets.bottom + spacing.sm }]}>
-        <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: tc.primary }]}
-          activeOpacity={0.8}
-          onPress={handleSearchFlights}
-        >
-          <Airplane size={18} color={tc.white} />
-          <Text style={styles.actionBtnText}>Search Flights</Text>
-        </TouchableOpacity>
+        <TourAnchor id="snapshot.cta" style={{ flex: 1 }}>
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: tc.primary }]}
+            activeOpacity={0.8}
+            onPress={handleSearchFlights}
+          >
+            <Airplane size={18} color={tc.white} />
+            <Text style={styles.actionBtnText}>Search Flights</Text>
+          </TouchableOpacity>
+        </TourAnchor>
         <TouchableOpacity
           style={[styles.actionBtn, styles.actionBtnOutline, { borderColor: tc.borderSubtle, backgroundColor: tc.bgCard }]}
           activeOpacity={0.8}

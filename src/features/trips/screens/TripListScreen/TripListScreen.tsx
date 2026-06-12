@@ -18,6 +18,7 @@ import { Add, Airplane } from 'iconsax-react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import DSButton from '@/components/ds/DSButton';
+import { TourAnchor, useGuidance } from '@/features/guidance';
 
 // Tab labels will be translated in the component
 const TAB_IDS = [
@@ -39,6 +40,7 @@ export default function TripListScreen() {
   
   const { profile } = useAuth();
   const { trips, fetchTrips, filterByState, isLoading, error } = useTripStore();
+  const guidance = useGuidance();
   
   // Dynamic styles based on theme
   const dynamicStyles = useMemo(() => ({
@@ -65,6 +67,22 @@ export default function TripListScreen() {
         fetchTrips(profile.id);
       }
     }, [profile?.id])
+  );
+
+  // Offer the Trips tour once (self-gates: fires once, only after the hero tour is seen)
+  useFocusEffect(
+    useCallback(() => {
+      guidance.maybeStartTour('trips');
+    }, [guidance])
+  );
+
+  // Smart Tip: nudge first-time users with no trips toward creating one.
+  useFocusEffect(
+    useCallback(() => {
+      if (trips.length > 0) return;
+      const id = setTimeout(() => guidance.maybeShowTip('tip.tripsEmpty'), 1000);
+      return () => clearTimeout(id);
+    }, [guidance, trips.length])
   );
 
   // Auto-scroll to specific trip when navigated with scrollToTripId
@@ -120,19 +138,21 @@ export default function TripListScreen() {
       {/* Header */}
       <View style={[styles.header, dynamicStyles.header]}>
         <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>{t('trips.title')}</Text>
-        <TouchableOpacity
-          style={[styles.createButton, dynamicStyles.createButton]}
-          onPress={handleCreateTrip}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Create new trip"
-        >
-          <Add size={20} color={colors.primary} variant="Bold" />
-        </TouchableOpacity>
+        <TourAnchor id="trips.createButton">
+          <TouchableOpacity
+            style={[styles.createButton, dynamicStyles.createButton]}
+            onPress={handleCreateTrip}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Create new trip"
+          >
+            <Add size={20} color={colors.primary} variant="Bold" />
+          </TouchableOpacity>
+        </TourAnchor>
       </View>
       
       {/* Inline Tabs */}
-      <View style={[styles.tabsContainer, dynamicStyles.tabsContainer]}>
+      <TourAnchor id="trips.stateTabs" style={[styles.tabsContainer, dynamicStyles.tabsContainer]}>
         {TAB_IDS.map((tabId) => {
           const count = filterByState(tabId).length;
           const isActive = activeTab === tabId;
@@ -155,8 +175,8 @@ export default function TripListScreen() {
             </TouchableOpacity>
           );
         })}
-      </View>
-      
+      </TourAnchor>
+
       {/* Error Banner */}
       {error && (
         <View style={{ padding: 16, backgroundColor: 'rgba(239, 68, 68, 0.1)', marginHorizontal: 16, marginTop: 8, borderRadius: 12 }}>

@@ -4,7 +4,12 @@
  * Didit identity verification, and status tracking.
  */
 
-import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase/client';
+import {
+  supabase,
+  supabaseUrl,
+  supabaseAnonKey,
+  getAuthenticatedEdgeFunctionHeaders,
+} from '@/lib/supabase/client';
 
 export interface PartnerApplicationData {
   // Step 1: Personal Info
@@ -185,6 +190,7 @@ class PartnerService {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${supabaseAnonKey}`,
           apikey: supabaseAnonKey,
+          ...(await getAuthenticatedEdgeFunctionHeaders()),
         },
         body: JSON.stringify({
           application_id: applicationId,
@@ -215,6 +221,7 @@ class PartnerService {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${supabaseAnonKey}`,
           apikey: supabaseAnonKey,
+          ...(await getAuthenticatedEdgeFunctionHeaders()),
         },
         body: JSON.stringify({ application_id: applicationId }),
       },

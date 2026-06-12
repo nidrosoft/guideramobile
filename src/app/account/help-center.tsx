@@ -33,10 +33,13 @@ import {
   ArrowUp2,
   Message,
   Call,
+  Routing,
 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, typography, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { useGuidanceStore } from '@/features/guidance';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -155,6 +158,7 @@ export default function HelpCenterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: tc, isDark } = useTheme();
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
 
@@ -187,6 +191,12 @@ export default function HelpCenterScreen() {
   const handleContactSupport = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push('/account/contact-support');
+  };
+
+  const handleReplayWalkthrough = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    useGuidanceStore.getState().resetTourForReplay('hero');
+    router.push('/(tabs)');
   };
 
   // Filter FAQs based on search
@@ -256,6 +266,22 @@ export default function HelpCenterScreen() {
                 );
               })}
             </View>
+
+            {/* App walkthrough replay */}
+            <TouchableOpacity
+              style={[styles.walkthroughCard, { backgroundColor: tc.bgElevated, borderColor: tc.borderSubtle }]}
+              onPress={handleReplayWalkthrough}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.categoryIcon, { width: 44, height: 44, marginBottom: 0, backgroundColor: tc.primary + '1A' }]}>
+                <Routing size={22} color={tc.primary} variant="Bold" />
+              </View>
+              <View style={styles.walkthroughContent}>
+                <Text style={[styles.categoryTitle, { color: tc.textPrimary, textAlign: 'left' }]}>{t('guidance.settings.walkthrough')}</Text>
+                <Text style={[styles.walkthroughDesc, { color: tc.textSecondary }]}>{t('guidance.settings.walkthroughDesc')}</Text>
+              </View>
+              <ArrowLeft2 size={18} color={tc.textTertiary} style={{ transform: [{ rotate: '180deg' }] }} />
+            </TouchableOpacity>
           </View>
         )}
 
@@ -438,6 +464,23 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
     textAlign: 'center',
+  },
+  walkthroughCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+  },
+  walkthroughContent: {
+    flex: 1,
+    marginLeft: spacing.md,
+  },
+  walkthroughDesc: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   faqSection: {
     marginBottom: spacing.lg,

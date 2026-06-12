@@ -19,7 +19,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import {
   ArrowLeft2,
   Star1,
@@ -51,6 +51,7 @@ import ListingCard from '../components/ListingCard';
 import ReviewCard from '../components/ReviewCard';
 import VouchCard from '../components/VouchCard';
 import { supabase } from '@/lib/supabase/client';
+import { TourAnchor, useGuidance } from '@/features/guidance';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -76,6 +77,15 @@ export default function GuideProfileScreen() {
   const [reviews, setReviews] = useState<GuideReview[]>([]);
   const [vouches, setVouches] = useState<GuideVouch[]>([]);
   const [isFetching, setIsFetching] = useState(true);
+  const guidance = useGuidance();
+
+  // Smart Tip: highlight the Message button to encourage DMing guides.
+  useFocusEffect(
+    useCallback(() => {
+      const tid = setTimeout(() => guidance.maybeShowTip('tip.dmGuides'), 1200);
+      return () => clearTimeout(tid);
+    }, [guidance])
+  );
 
   const fetchGuide = useCallback(async () => {
     if (!id) return;
@@ -415,10 +425,12 @@ export default function GuideProfileScreen() {
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
-              <Message size={18} color={colors.white} variant="Bold" />
-              <Text style={styles.messageButtonText}>Message {guide.firstName}</Text>
-            </TouchableOpacity>
+            <TourAnchor id="guide.message" style={styles.messageAnchor}>
+              <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
+                <Message size={18} color={colors.white} variant="Bold" />
+                <Text style={styles.messageButtonText}>Message {guide.firstName}</Text>
+              </TouchableOpacity>
+            </TourAnchor>
             <TouchableOpacity style={[styles.saveButton, { backgroundColor: themeColors.bgCard, borderColor: themeColors.borderSubtle }]} onPress={handleSave}>
               <Heart size={18} color={isSaved ? '#EF4444' : themeColors.textSecondary} variant={isSaved ? 'Bold' : 'Linear'} />
             </TouchableOpacity>
@@ -603,6 +615,9 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 14,
     width: '100%',
+  },
+  messageAnchor: {
+    flex: 1,
   },
   messageButton: {
     flex: 1,

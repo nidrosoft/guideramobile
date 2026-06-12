@@ -12,8 +12,14 @@
  */
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { getUserIdFromRequest, unauthorizedResponse } from '../_shared/auth.ts';
+import { guardAiRequest, AI_LIMITS } from '../_shared/aiRateGuard.ts';
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_ANON_PUBLIC_KEY') || '';
 
 // Types
 interface HotelSearchRequest {
@@ -369,6 +375,7 @@ serve(async (req: Request) => {
 
   try {
     const request: HotelSearchRequest = await req.json();
+    const body = request as unknown as Record<string, any>;
     const authHeader = req.headers.get('authorization') || req.headers.get('Authorization') || '';
     const isServiceRoleCall =
       authHeader.startsWith('Bearer ') &&
@@ -389,6 +396,14 @@ serve(async (req: Request) => {
     if (!request.destination || !request.checkInDate || !request.checkOutDate) {
       throw new Error('Destination and dates are required');
     }
+
+    const __rlClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const __rl = await guardAiRequest({
+      req, body, supabase: __rlClient, config: AI_LIMITS.search,
+      corsHeaders, supabaseUrl: SUPABASE_URL,
+      serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY, anonKey: SUPABASE_ANON_KEY,
+    });
+    if (__rl) return __rl;
 
     let results: unknown[] = [];
     const providers: { code: string; responseTime: number; resultCount: number }[] = [];

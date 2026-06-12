@@ -1,23 +1,18 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rateLimiter.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const FEEDBACK_EMAIL = "feedback@guidera.one";
 
-// SEC-05: Simple in-memory rate limiter (per IP, resets on cold start)
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const MAX_REPORTS_PER_HOUR = 5;
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + 3600000 });
-    return false;
-  }
-  entry.count++;
-  if (entry.count > MAX_REPORTS_PER_HOUR) return true;
-  return false;
-}
+// SEC-05: Durable rate limiter (DB-backed, survives cold starts/redeploys)
+const RATE_LIMIT = {
+  maxRequests: 5,
+  windowMinutes: 60,
+  identifier: "send-crash-report",
+};
 
 Deno.serve(async (req: Request) => {
   const corsH = {
@@ -30,15 +25,14 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // SEC-05: Rate limit by IP — 5 reports per hour max
-    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() 
-      || req.headers.get("cf-connecting-ip") 
+    // SEC-05: Rate limit by IP — 5 reports per hour max, persisted in the DB
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || req.headers.get("cf-connecting-ip")
       || "unknown";
-    if (isRateLimited(clientIp)) {
-      return new Response(JSON.stringify({ error: "Rate limit exceeded. Max 5 crash reports per hour." }), {
-        status: 429,
-        headers: { ...corsH, "Content-Type": "application/json", "Retry-After": "3600" },
-      });
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const limit = await checkRateLimit(supabase, `ip:${clientIp}`, RATE_LIMIT);
+    if (!limit.allowed) {
+      return rateLimitResponse(limit, corsH);
     }
 
     const body = await req.json();

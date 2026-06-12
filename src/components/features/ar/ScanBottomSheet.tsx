@@ -10,6 +10,7 @@ import { useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { typography, spacing, borderRadius } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { TourAnchor } from '@/features/guidance';
 import { 
   Scan, 
   LanguageSquare, 
@@ -163,7 +164,7 @@ export default function ScanBottomSheet({
           </View>
 
           {/* Actions List */}
-          <View style={styles.actionsList}>
+          <TourAnchor id="launcher.sheet" style={styles.actionsList}>
             {SCAN_ACTIONS.map((action) => (
               <TouchableOpacity
                 key={action.id}
@@ -210,7 +211,7 @@ export default function ScanBottomSheet({
                 </View>
               </TouchableOpacity>
             ))}
-          </View>
+          </TourAnchor>
         </View>
       </View>
     </Modal>

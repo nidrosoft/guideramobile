@@ -6,10 +6,30 @@
  * Only retries on network/timeout errors — validation errors fail immediately.
  */
 
+import { getAuthenticatedEdgeFunctionHeaders } from '@/lib/supabase/client';
+
 export type RetryTier = 'none' | 'fast' | 'slow';
 
 export interface EdgeFunctionInvokeOptions {
   headers?: Record<string, string>;
+}
+
+/**
+ * Merge the caller's headers with the Clerk session token so edge functions can
+ * resolve the authenticated user (used for per-user rate limiting / auth).
+ * Best-effort: if no token is available (signed out), falls back to whatever the
+ * caller passed — functions then rate-limit by IP.
+ */
+async function withAuthHeaders(
+  options: EdgeFunctionInvokeOptions
+): Promise<Record<string, string> | undefined> {
+  try {
+    const clerk = await getAuthenticatedEdgeFunctionHeaders();
+    const merged = { ...(options.headers || {}), ...clerk };
+    return Object.keys(merged).length > 0 ? merged : undefined;
+  } catch {
+    return options.headers;
+  }
 }
 
 const BACKOFF_SCHEDULES: Record<RetryTier, number[]> = {
@@ -170,9 +190,10 @@ export async function invokeWithRetry(
 ): Promise<any> {
   return retryWithBackoff(
     async () => {
+      const headers = await withAuthHeaders(options);
       const { data, error } = await supabase.functions.invoke(functionName, {
         body,
-        ...(options.headers ? { headers: options.headers } : {}),
+        ...(headers ? { headers } : {}),
       });
 
       if (error) {
@@ -212,9 +233,10 @@ export async function invokeEdgeFn(
   try {
     const data = await retryWithBackoff(
       async () => {
+        const headers = await withAuthHeaders(options);
         const result = await supabase.functions.invoke(functionName, {
           body,
-          ...(options.headers ? { headers: options.headers } : {}),
+          ...(headers ? { headers } : {}),
         });
         if (result.error) {
           throw await buildEdgeFunctionError(functionName, result.error);

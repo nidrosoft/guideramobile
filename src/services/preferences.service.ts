@@ -94,7 +94,12 @@ export interface TravelPreferences {
   photographyLevel: PhotographyLevel;
   sustainabilityPreference: SustainabilityPreference;
   childrenDefaultAges: number[];
-  
+
+  // Travel logistics (captured progressively by the Guidance System)
+  homeAirport: string | null;
+  originCity: string | null;
+  passportCountry: string | null;
+
   // Metadata
   preferencesCompleted: boolean;
   createdAt: string;
@@ -140,6 +145,9 @@ interface TravelPreferencesRow {
   photography_level: string;
   sustainability_preference: string;
   children_default_ages: number[];
+  home_airport: string | null;
+  origin_city: string | null;
+  passport_country: string | null;
   preferences_completed: boolean;
   created_at: string;
   updated_at: string;
@@ -182,6 +190,9 @@ export interface UpdateTravelPreferencesPayload {
   photographyLevel?: PhotographyLevel;
   sustainabilityPreference?: SustainabilityPreference;
   childrenDefaultAges?: number[];
+  homeAirport?: string | null;
+  originCity?: string | null;
+  passportCountry?: string | null;
   preferencesCompleted?: boolean;
 }
 
@@ -225,6 +236,9 @@ function transformRow(row: TravelPreferencesRow): TravelPreferences {
     photographyLevel: (row.photography_level || 'phone_only') as PhotographyLevel,
     sustainabilityPreference: (row.sustainability_preference || 'moderate') as SustainabilityPreference,
     childrenDefaultAges: row.children_default_ages || [],
+    homeAirport: row.home_airport ?? null,
+    originCity: row.origin_city ?? null,
+    passportCountry: row.passport_country ?? null,
     preferencesCompleted: row.preferences_completed,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -270,8 +284,11 @@ function transformPayloadToRow(payload: UpdateTravelPreferencesPayload): Record<
   if (payload.photographyLevel !== undefined) row.photography_level = payload.photographyLevel;
   if (payload.sustainabilityPreference !== undefined) row.sustainability_preference = payload.sustainabilityPreference;
   if (payload.childrenDefaultAges !== undefined) row.children_default_ages = payload.childrenDefaultAges;
+  if (payload.homeAirport !== undefined) row.home_airport = payload.homeAirport;
+  if (payload.originCity !== undefined) row.origin_city = payload.originCity;
+  if (payload.passportCountry !== undefined) row.passport_country = payload.passportCountry;
   if (payload.preferencesCompleted !== undefined) row.preferences_completed = payload.preferencesCompleted;
-  
+
   return row;
 }
 
@@ -323,6 +340,9 @@ export const DEFAULT_PREFERENCES: Omit<TravelPreferences, 'id' | 'userId' | 'cre
   photographyLevel: 'phone_only',
   sustainabilityPreference: 'moderate',
   childrenDefaultAges: [],
+  homeAirport: null,
+  originCity: null,
+  passportCountry: null,
   preferencesCompleted: false,
 };
 

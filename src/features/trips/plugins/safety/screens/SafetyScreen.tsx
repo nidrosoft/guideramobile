@@ -20,7 +20,7 @@
  * 13. Survival phrases
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -33,7 +33,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import {
   ArrowLeft2,
   Danger,
@@ -55,6 +55,7 @@ import {
   EmergencyType,
 } from '../types/safety.types';
 import { safetyService } from '@/services/safety.service';
+import { TourAnchor, useGuidance } from '@/features/guidance';
 import PluginErrorState from '@/features/trips/components/PluginErrorState';
 // useAuth available if needed for user-specific rendering
 
@@ -148,6 +149,15 @@ export default function SafetyScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [checklistState, setChecklistState] = useState<Record<string, boolean>>({});
+  const guidance = useGuidance();
+
+  // Smart Tip: highlight the Emergency SOS button
+  useFocusEffect(
+    useCallback(() => {
+      const tid = setTimeout(() => guidance.maybeShowTip('tip.sos'), 1200);
+      return () => clearTimeout(tid);
+    }, [guidance])
+  );
 
   const fetchData = async () => {
     try {
@@ -943,10 +953,12 @@ export default function SafetyScreen() {
           </View>
 
           {/* SOS Button — Always visible */}
-          <TouchableOpacity style={s.sosButton} onPress={handleSOS}>
-            <Danger size={24} color="#FFFFFF" variant="Bold" />
-            <Text style={s.sosButtonText}>Emergency SOS</Text>
-          </TouchableOpacity>
+          <TourAnchor id="safety.sos">
+            <TouchableOpacity style={s.sosButton} onPress={handleSOS}>
+              <Danger size={24} color="#FFFFFF" variant="Bold" />
+              <Text style={s.sosButtonText}>Emergency SOS</Text>
+            </TouchableOpacity>
+          </TourAnchor>
 
           {/* Tabs */}
           <View style={[s.tabsContainer, { backgroundColor: themeColors.bgSecondary, borderColor: themeColors.borderSubtle }]}>

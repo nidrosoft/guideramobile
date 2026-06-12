@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   ArrowLeft2,
@@ -35,6 +35,7 @@ import { packingService } from '@/services/packing.service';
 import { useAuth } from '@/context/AuthContext';
 import PluginEmptyState from '@/features/trips/components/PluginEmptyState';
 import PluginErrorState from '@/features/trips/components/PluginErrorState';
+import { TourAnchor, useGuidance } from '@/features/guidance';
 
 const CATEGORY_INFO = [
   { id: PackingCategory.ESSENTIALS, name: 'Essentials', icon: 'bag', color: '#EF4444' },
@@ -54,8 +55,16 @@ export default function PackingScreen() {
   const { colors, isDark } = useTheme();
   const { showError } = useToast();
   const { profile } = useAuth();
+  const guidance = useGuidance();
   const trip = useTripStore(state => state.trips.find(t => t.id === tripId));
-  
+
+  useFocusEffect(
+    useCallback(() => {
+      const id = setTimeout(() => guidance.maybeShowTip('tip.packingModule'), 1000);
+      return () => clearTimeout(id);
+    }, [guidance])
+  );
+
   const [items, setItems] = useState<PackingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -203,18 +212,18 @@ export default function PackingScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgPrimary} />
       <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgPrimary }]}>
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
+        <TourAnchor id="plugin.packing" style={[styles.header, { backgroundColor: colors.bgPrimary, borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <ArrowLeft2 size={24} color={colors.textPrimary} variant="Linear" />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Packing List</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.addButton}
             onPress={() => setAddItemVisible(true)}
           >
             <Add size={24} color={colors.primary} variant="Bold" />
           </TouchableOpacity>
-        </View>
+        </TourAnchor>
 
         {items.length === 0 ? (
           <PluginEmptyState

@@ -24,7 +24,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
-import { spacing, typography, borderRadius } from '@/styles';
+import { spacing, typography, borderRadius, colors as staticColors } from '@/styles';
 import { Logout } from 'iconsax-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import DSButton from '@/components/ds/DSButton';
@@ -34,6 +34,10 @@ import ProfileHeader from '../components/ProfileHeader';
 import AccountSection from '../components/AccountSection';
 import { useAuth } from '@/context/AuthContext';
 import { profileService } from '@/services/profile.service';
+import { preferencesService, type TravelPreferences } from '@/services/preferences.service';
+import { ProfileStrengthRing, profileStrength, strengthTier, TourAnchor, useGuidance } from '@/features/guidance';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ArrowRight2 } from 'iconsax-react-native';
 
 // Scroll threshold for header transition (when stats card reaches top)
 const SCROLL_THRESHOLD = 220;
@@ -100,7 +104,29 @@ export default function AccountScreen() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [partnerStatus, setPartnerStatus] = useState<string | null>(null);
-  
+  const [travelPrefs, setTravelPrefs] = useState<TravelPreferences | null>(null);
+  const guidance = useGuidance();
+
+  // Load travel preferences to compute Profile Strength
+  useEffect(() => {
+    if (!profile?.id) return;
+    let active = true;
+    preferencesService.getPreferences(profile.id).then(({ data }) => {
+      if (active) setTravelPrefs(data);
+    });
+    return () => { active = false; };
+  }, [profile?.id]);
+
+  const strength = useMemo(
+    () => profileStrength(travelPrefs, profile ?? null),
+    [travelPrefs, profile]
+  );
+
+  const handleProfileStrengthPress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/account/profile-strength' as any);
+  }, [router]);
+
   // Dynamic styles based on theme
   const dynamicStyles = useMemo(() => ({
     screen: {
@@ -191,6 +217,14 @@ export default function AccountScreen() {
         setStatusBarStyle('dark');
       };
     }, [])
+  );
+
+  // Smart Tip: highlight the Rewards section
+  useFocusEffect(
+    useCallback(() => {
+      const tid = setTimeout(() => guidance.maybeShowTip('tip.rewards'), 1200);
+      return () => clearTimeout(tid);
+    }, [guidance])
   );
   
   // Handle scroll to update status bar
@@ -341,9 +375,47 @@ export default function AccountScreen() {
             onAvatarPress={handleAvatarPress}
           />
           
+          {/* Travel Profile strength */}
+          <TouchableOpacity
+            style={styles.strengthCard}
+            onPress={handleProfileStrengthPress}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t('guidance.hub.title')}
+          >
+            <LinearGradient
+              colors={[staticColors.gradientStart, staticColors.gradientEnd]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.strengthGradient}
+            >
+              <ProfileStrengthRing
+                value={strength}
+                size={56}
+                strokeWidth={5}
+                trackColor="rgba(255,255,255,0.28)"
+                progressColor="#FFFFFF"
+                textColor="#FFFFFF"
+              />
+              <View style={styles.strengthContent}>
+                <Text style={styles.strengthTitle}>{t('guidance.hub.title')}</Text>
+                <Text style={styles.strengthSubtitle}>
+                  {strength >= 100 ? t('guidance.hub.tierTravelReady') : t('guidance.hub.cardCta')}
+                </Text>
+              </View>
+              <ArrowRight2 size={20} color="rgba(255,255,255,0.9)" variant="Linear" />
+            </LinearGradient>
+          </TouchableOpacity>
+
           {/* Menu Sections */}
           {processedSections.map(section => (
-            <AccountSection key={section.id} section={section} />
+            section.id === 'rewards' ? (
+              <TourAnchor key={section.id} id="account.rewards">
+                <AccountSection section={section} />
+              </TourAnchor>
+            ) : (
+              <AccountSection key={section.id} section={section} />
+            )
           ))}
           
           {/* Bottom spacing */}
@@ -422,6 +494,37 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  strengthCard: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
+    borderRadius: borderRadius.xl,
+    overflow: 'hidden',
+    shadowColor: staticColors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  strengthGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+  },
+  strengthContent: {
+    flex: 1,
+    marginLeft: spacing.md,
+  },
+  strengthTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: '#FFFFFF',
+  },
+  strengthSubtitle: {
+    fontSize: typography.fontSize.sm,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 2,
   },
   // Modal styles
   modalOverlay: {

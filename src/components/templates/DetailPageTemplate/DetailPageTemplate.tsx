@@ -5,7 +5,7 @@
  * Handles destinations, events, places, etc.
  */
 
-import { useState } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Share } from 'react-native';
 import Animated, { 
   useAnimatedScrollHandler, 
@@ -17,8 +17,9 @@ import Animated, {
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MessageQuestion, Eye } from 'iconsax-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { spacing } from '@/styles';
+import { TourAnchor, useGuidance, registerActionHandler } from '@/features/guidance';
 import { useTheme } from '@/context/ThemeContext';
 import { useSaveDestination } from '@/hooks/useSaveDestination';
 import * as Haptics from 'expo-haptics';
@@ -71,7 +72,34 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
   const { isSaved, toggleSave } = useSaveDestination(id);
   const { profile } = useAuth();
   const router = useRouter();
+  const guidance = useGuidance();
   const scrollOffset = useSharedValue(0);
+
+  // Detail tour: scroll the page to a section anchor before it's spotlighted.
+  const scrollViewRef = useRef<any>(null);
+  const contentCardY = useRef(0);
+  const sectionY = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    const off = registerActionHandler('scrollToAnchor', async (anchorId: string) => {
+      const rel = sectionY.current[anchorId];
+      if (rel === undefined) return; // above the fold (header/save/share) — no scroll
+      const y = Math.max(0, contentCardY.current + rel - 90);
+      scrollViewRef.current?.scrollTo({ y, animated: true });
+      await new Promise<void>((r) => setTimeout(r, 450));
+    });
+    return () => { off(); };
+  }, []);
+
+  const onSectionLayout = (anchorId: string) => (e: any) => {
+    sectionY.current[anchorId] = e.nativeEvent.layout.y;
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      guidance.maybeStartTour('detail');
+    }, [guidance])
+  );
   
   // Search overlay + AI chat states
   const [showSearchOverlay, setShowSearchOverlay] = useState(false);
@@ -159,7 +187,8 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} translucent={false} />
       
-      <Animated.ScrollView 
+      <Animated.ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -167,12 +196,17 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
         onScroll={scrollHandler}
       >
         {/* Image Gallery - Parallax effect */}
-        <Animated.View style={[styles.imageContainer, imageAnimatedStyle]}>
-          <ImageGallery images={data.images} fallbackCityName={data.location || data.name} />
-        </Animated.View>
+        <TourAnchor id="detail.header">
+          <Animated.View style={[styles.imageContainer, imageAnimatedStyle]}>
+            <ImageGallery images={data.images} fallbackCityName={data.location || data.name} />
+          </Animated.View>
+        </TourAnchor>
 
         {/* Content Card with Rounded Top - Fixed 32px corners */}
-        <View style={[styles.contentCard, { backgroundColor: colors.background, shadowColor: colors.black }]}>
+        <View
+          style={[styles.contentCard, { backgroundColor: colors.background, shadowColor: colors.black }]}
+          onLayout={(e) => { contentCardY.current = e.nativeEvent.layout.y; }}
+        >
           {/* Basic Info Section */}
           <BasicInfoSection
           name={data.name}
@@ -185,10 +219,12 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
         />
 
         {/* Insight Section */}
-        <DescriptionSection 
-          description={data.description}
-          images={data.images}
-        />
+        <TourAnchor id="detail.insights" onLayout={onSectionLayout('detail.insights')}>
+          <DescriptionSection
+            description={data.description}
+            images={data.images}
+          />
+        </TourAnchor>
 
         {/* Places to Visit Section - Right after Insight */}
         {data.places && data.places.length > 0 && (
@@ -196,22 +232,30 @@ export default function DetailPageTemplate({ type, id, data }: DetailPageTemplat
         )}
 
         {/* Practical Info Section */}
-        <PracticalInfoSection items={data.practicalInfo} />
+        <TourAnchor id="detail.practical" onLayout={onSectionLayout('detail.practical')}>
+          <PracticalInfoSection items={data.practicalInfo} />
+        </TourAnchor>
 
         {/* Safety Information Section */}
         {data.safetyInfo && data.safetyInfo.length > 0 && (
-          <SafetyInfoSection safetyInfo={data.safetyInfo} />
+          <TourAnchor id="detail.safety" onLayout={onSectionLayout('detail.safety')}>
+            <SafetyInfoSection safetyInfo={data.safetyInfo} />
+          </TourAnchor>
         )}
 
         {/* Creators Content Section — Live TikTok videos */}
-        <CreatorsContentSection
-          content={data.creatorContent}
-          destinationName={data.name}
-        />
+        <TourAnchor id="detail.creators" onLayout={onSectionLayout('detail.creators')}>
+          <CreatorsContentSection
+            content={data.creatorContent}
+            destinationName={data.name}
+          />
+        </TourAnchor>
 
         {/* Vibes Around Here Section */}
         {data.vibes && data.vibes.length > 0 && (
-          <VibesAroundSection vibes={data.vibes} />
+          <TourAnchor id="detail.vibes" onLayout={onSectionLayout('detail.vibes')}>
+            <VibesAroundSection vibes={data.vibes} />
+          </TourAnchor>
         )}
 
         {/* Local Event Section */}

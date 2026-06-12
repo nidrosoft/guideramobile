@@ -3,7 +3,7 @@
  * (RLS via requesting_user_id); the assistant reply is produced and persisted
  * by the journeys-chat edge function (service role).
  */
-import { supabase } from '@/lib/supabase/client';
+import { supabase, getAuthenticatedEdgeFunctionHeaders } from '@/lib/supabase/client';
 
 export interface ChatMessage {
   id: string;
@@ -60,6 +60,7 @@ export async function sendMessage(threadId: string, text: string): Promise<strin
   // the edge function generates + persists the assistant reply
   const { data, error } = await supabase.functions.invoke('journeys-chat', {
     body: { threadId, message: text },
+    headers: await getAuthenticatedEdgeFunctionHeaders(),
   });
   if (error) throw error;
   return (data as any)?.reply ?? '';

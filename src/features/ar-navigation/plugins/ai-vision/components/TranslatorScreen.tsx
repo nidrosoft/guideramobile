@@ -11,12 +11,14 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { View, StyleSheet, StatusBar, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Add } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import * as Localization from 'expo-localization';
 import { useTheme } from '@/context/ThemeContext';
+import { useGuidance } from '@/features/guidance';
 
 import ModeSelector from './ModeSelector';
 import LiveCameraMode from './LiveCameraMode';
@@ -55,6 +57,16 @@ export default function TranslatorScreen({ onClose, initialMode }: TranslatorScr
   const [localLanguage, setLocalLanguage] = useState('en');
   const [destinationCountry, setDestinationCountry] = useState('');
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+  const guidance = useGuidance();
+
+  // Suppress guidance prompts/tips while the immersive camera surface is visible,
+  // so guidance never covers the live camera.
+  useFocusEffect(
+    useCallback(() => {
+      guidance.setSuppressed(true);
+      return () => guidance.setSuppressed(false);
+    }, [guidance])
+  );
 
   useEffect(() => {
     GeminiLiveSession.warmUp();

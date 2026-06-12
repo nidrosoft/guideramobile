@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Eye, Camera, Receipt21, VolumeHigh, Translate, Setting2 } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
 import type { VisionMode } from '../types/aiVision.types';
+import { TourAnchor } from '@/features/guidance';
 
 interface ModeSelectorProps {
   activeMode: VisionMode;
@@ -63,7 +64,7 @@ export default function ModeSelector({ activeMode, onModeChange, onVoiceSettings
       <View style={styles.tabRow}>
         {MODES.map((mode) => {
           const isActive = activeMode === mode.id;
-          return (
+          const tab = (
             <TouchableOpacity
               key={mode.id}
               style={[styles.tab, isActive && styles.tabActive]}
@@ -78,6 +79,9 @@ export default function ModeSelector({ activeMode, onModeChange, onVoiceSettings
               )}
             </TouchableOpacity>
           );
+          return mode.id === 'live' ? (
+            <TourAnchor key={mode.id} id="aivision.liveMode">{tab}</TourAnchor>
+          ) : tab;
         })}
 
         {/* Voice settings — gear icon */}

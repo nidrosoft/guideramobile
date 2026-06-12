@@ -6,7 +6,7 @@
  */
 
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, SafeAreaView, RefreshControl } from 'react-native';
-import { Fragment, useState, useMemo, useCallback, useEffect } from 'react';
+import { Fragment, useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
@@ -29,6 +29,7 @@ import { useTripStore } from '@/features/trips/stores/trip.store';
 import { TripState } from '@/features/trips/types/trip.types';
 import { useSearchOverlayStore } from '@/stores/useSearchOverlayStore';
 import { JourneysHomeSection } from '@/modules/journeys';
+import { TourAnchor, registerActionHandler, useGuidance, TravelProfileHomeCard } from '@/features/guidance';
 
 export default function Home() {
   const router = useRouter();
@@ -49,12 +50,46 @@ export default function Home() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchResetNonce = useSearchOverlayStore((s) => s.resetNonce);
 
+  // Guidance: scroll registry + action handlers for tour preActions
+  const guidance = useGuidance();
+  const scrollRef = useRef<ScrollView>(null);
+  const sectionY = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+    const offScroll = registerActionHandler('scrollHomeToSection', async (sectionId: string) => {
+      const y = sectionY.current[sectionId] ?? 0;
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - 80), animated: true });
+      await wait(450);
+    });
+    const offTop = registerActionHandler('scrollHomeToTop', async () => {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      await wait(350);
+    });
+    return () => { offScroll(); offTop(); };
+  }, []);
+
   useEffect(() => {
     if (searchResetNonce > 0) {
       setSearchQuery('');
       setIsSearchFocused(false);
     }
   }, [searchResetNonce]);
+
+  // Guidance: start the hero tour on first home landing, then surface
+  // home-level tips. maybeStartTour / maybeShowTip self-gate (once + caps).
+  useFocusEffect(
+    useCallback(() => {
+      guidance.maybeStartTour('hero');
+      const tid = setTimeout(() => {
+        guidance.maybeShowTip('tip.tripReminder');
+        guidance.maybeShowTip('tip.categoryPills');
+        guidance.maybeShowTip('tip.savedItems');
+        guidance.maybeShowTip('tip.inbox');
+      }, 1500);
+      return () => clearTimeout(tid);
+    }, [guidance])
+  );
 
   // Handle openSearch param (from PlanBottomSheet "Explore a Destination")
   const { openSearch } = useLocalSearchParams<{ openSearch?: string }>();
@@ -194,7 +229,8 @@ export default function Home() {
       <StatusBar style={isDark ? 'light' : 'dark'} translucent={false} backgroundColor={colors.background} />
       <View style={styles.container}>
       
-      <ScrollView 
+      <ScrollView
+        ref={scrollRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -208,7 +244,7 @@ export default function Home() {
         }
       >
         {/* Header */}
-        <View style={styles.header}>
+        <TourAnchor id="home.header" style={styles.header}>
           {profile?.avatar_url ? (
             <Image
               source={{ uri: profile.avatar_url }}
@@ -240,37 +276,44 @@ export default function Home() {
             </TouchableOpacity>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={[styles.headerActionBtn, { backgroundColor: colors.bgCard }]}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/deals/saved' as any); }}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Saved deals"
-            >
-              <Archive size={20} color={colors.textPrimary} variant="Bold" />
-            </TouchableOpacity>
-            <View style={[styles.notificationIcon, dynamicStyles.notificationIcon]}>
-              <NotificationBell size={20} />
-            </View>
+            <TourAnchor id="home.savedButton">
+              <TouchableOpacity
+                style={[styles.headerActionBtn, { backgroundColor: colors.bgCard }]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/deals/saved' as any); }}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Saved deals"
+              >
+                <Archive size={20} color={colors.textPrimary} variant="Bold" />
+              </TouchableOpacity>
+            </TourAnchor>
+            <TourAnchor id="home.notifButton">
+              <View style={[styles.notificationIcon, dynamicStyles.notificationIcon]}>
+                <NotificationBell size={20} />
+              </View>
+            </TourAnchor>
           </View>
-        </View>
+        </TourAnchor>
 
         {/* Search Bar - Tapping opens full-screen search overlay */}
-        <TouchableOpacity
-          style={[styles.searchBarFull, dynamicStyles.searchBar]}
-          activeOpacity={0.8}
-          onPress={handleSearchPress}
-          accessibilityRole="search"
-          accessibilityLabel="Search destinations"
-          accessibilityHint="Opens the search overlay"
-        >
-          <SearchNormal1 size={20} color={colors.textSecondary} />
-          <AnimatedSearchPlaceholder style={[styles.searchPlaceholder, { color: colors.textSecondary }]} userCity={profile?.city} userCountry={profile?.country} />
-        </TouchableOpacity>
+        <TourAnchor id="home.search">
+          <TouchableOpacity
+            style={[styles.searchBarFull, dynamicStyles.searchBar]}
+            activeOpacity={0.8}
+            onPress={handleSearchPress}
+            accessibilityRole="search"
+            accessibilityLabel="Search destinations"
+            accessibilityHint="Opens the search overlay"
+          >
+            <SearchNormal1 size={20} color={colors.textSecondary} />
+            <AnimatedSearchPlaceholder style={[styles.searchPlaceholder, { color: colors.textSecondary }]} userCity={profile?.city} userCountry={profile?.country} />
+          </TouchableOpacity>
+        </TourAnchor>
 
         {/* Categories */}
-        <ScrollView 
-          horizontal 
+        <TourAnchor id="home.categoryPills">
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.categoriesScroll}
           contentContainerStyle={styles.categoriesContent}
@@ -296,6 +339,7 @@ export default function Home() {
             );
           })}
         </ScrollView>
+        </TourAnchor>
 
         {/* Trip card — Live mode during an ongoing trip, countdown for the nearest upcoming trip */}
         {nearestTrip && (() => {
@@ -310,20 +354,30 @@ export default function Home() {
           const todayMid = midnight(new Date());
           const isOngoing = todayMid >= midnight(startDate) && todayMid <= midnight(endDate);
           return (
-            <TripReminder 
-              destination={nearestTrip.destination?.city || nearestTrip.title} 
-              tripDate={startDate}
-              endDate={endDate}
-              isOngoing={isOngoing}
-              flightNumber={flightNumber}
-              departureAirport={departureAirport}
-              isInternational={true}
-              tripId={nearestTrip.id}
-              seatNumber={dbFields?.seatNumber}
-              cabinClass={dbFields?.cabinClass}
-            />
+            <TourAnchor id="home.tripReminder">
+              <TripReminder
+                destination={nearestTrip.destination?.city || nearestTrip.title}
+                tripDate={startDate}
+                endDate={endDate}
+                isOngoing={isOngoing}
+                flightNumber={flightNumber}
+                departureAirport={departureAirport}
+                isInternational={true}
+                tripId={nearestTrip.id}
+                seatNumber={dbFields?.seatNumber}
+                cabinClass={dbFields?.cabinClass}
+              />
+            </TourAnchor>
           );
         })()}
+
+        {/* No trip yet → keep travel-profile progress visible so the user is
+            nudged to complete it every session (until it's essentially done). */}
+        {!nearestTrip && guidance.strength > 0 && guidance.strength < 100 && (
+          <TourAnchor id="home.tripReminder">
+            <TravelProfileHomeCard strength={guidance.strength} />
+          </TourAnchor>
+        )}
 
         {/* Sections - Now using modular SectionRenderer.
             The independent Journeys module is rendered as the FIRST section
@@ -331,8 +385,24 @@ export default function Home() {
             (rendered, not coupled — host only uses the module's public API). */}
         {SECTIONS_CONFIG.map((section) => (
           <Fragment key={section.id}>
-            {section.componentType === 'deals' ? <JourneysHomeSection /> : null}
-            <SectionRenderer section={section} />
+            {section.componentType === 'deals' ? (
+              <TourAnchor
+                id="home.section.journeys"
+                onLayout={(e) => { sectionY.current['journeys'] = e.nativeEvent.layout.y; }}
+              >
+                <JourneysHomeSection />
+              </TourAnchor>
+            ) : null}
+            {section.componentType === 'deals' ? (
+              <TourAnchor
+                id="home.section.deals"
+                onLayout={(e) => { sectionY.current['deals'] = e.nativeEvent.layout.y; }}
+              >
+                <SectionRenderer section={section} />
+              </TourAnchor>
+            ) : (
+              <SectionRenderer section={section} />
+            )}
           </Fragment>
         ))}
       </ScrollView>

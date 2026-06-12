@@ -2,6 +2,11 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import Anthropic from 'https://esm.sh/@anthropic-ai/sdk@0.24.3';
 import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.21.0';
+import { guardAiRequest, AI_LIMITS } from '../_shared/aiRateGuard.ts';
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -322,7 +327,18 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { action, moduleType, context } = await req.json();
+    const body = await req.json();
+    const { action, moduleType, context } = body;
+
+    // SECURITY: this legacy endpoint is orphaned (no live client flow uses it).
+    // Require authentication and rate-limit so it can never be abused anonymously.
+    const guardClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const blocked = await guardAiRequest({
+      req, body, supabase: guardClient, config: AI_LIMITS.aiGenerationLegacy,
+      corsHeaders, supabaseUrl: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY,
+      anonKey: SUPABASE_ANON_KEY, requireAuth: true,
+    });
+    if (blocked) return blocked;
 
     if (action !== 'generate') {
       return new Response(

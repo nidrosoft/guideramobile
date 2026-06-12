@@ -21,6 +21,7 @@ import * as Haptics from 'expo-haptics';
 import { Add, SearchNormal1 } from 'iconsax-react-native';
 import { colors, spacing, typography } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
+import { TourAnchor, useGuidance } from '@/features/guidance';
 import { searchService } from '@/services/search.service';
 import { parseDestinationInput } from '@/lib/tripSnapshot/destinationParse';
 import { tripSnapshotService } from '@/services/tripSnapshot.service';
@@ -63,6 +64,7 @@ export default function SearchOverlay({
 }: SearchOverlayProps) {
   const insets = useSafeAreaInsets();
   const { colors: themeColors } = useTheme();
+  const guidance = useGuidance();
 
   // State
   const [activeSection, setActiveSection] = useState<ActiveSection>('where');
@@ -101,8 +103,9 @@ export default function SearchOverlay({
     if (visible) {
       setDestination(initialQuery || '');
       setActiveSection('where');
+      guidance.maybeStartTour('search');
     }
-  }, [visible, initialQuery]);
+  }, [visible, initialQuery, guidance]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Computed values for collapsed states
@@ -226,18 +229,20 @@ export default function SearchOverlay({
           keyboardShouldPersistTaps="handled"
         >
           {/* WHERE Section */}
-          <SearchSectionCard
-            title="Where"
-            collapsedValue={destination || "I'm flexible"}
-            isExpanded={activeSection === 'where'}
-            onPress={() => handleSectionPress('where')}
-          >
-            <WhereSection
-              value={destination}
-              onSelect={handleDestinationSelect}
-              autoFocus={activeSection === 'where'}
-            />
-          </SearchSectionCard>
+          <TourAnchor id="search.input">
+            <SearchSectionCard
+              title="Where"
+              collapsedValue={destination || "I'm flexible"}
+              isExpanded={activeSection === 'where'}
+              onPress={() => handleSectionPress('where')}
+            >
+              <WhereSection
+                value={destination}
+                onSelect={handleDestinationSelect}
+                autoFocus={activeSection === 'where'}
+              />
+            </SearchSectionCard>
+          </TourAnchor>
 
           {/* WHEN Section */}
           <SearchSectionCard
@@ -290,14 +295,16 @@ export default function SearchOverlay({
             <Text style={[styles.clearText, dynamicStyles.clearText]}>Clear all</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.searchButton, dynamicStyles.searchButton]}
-            onPress={handleSearch}
-            activeOpacity={0.8}
-          >
-            <SearchNormal1 size={18} color={themeColors.white} />
-            <Text style={[styles.searchButtonText, dynamicStyles.searchButtonText]}>Search</Text>
-          </TouchableOpacity>
+          <TourAnchor id="search.snapshotHint">
+            <TouchableOpacity
+              style={[styles.searchButton, dynamicStyles.searchButton]}
+              onPress={handleSearch}
+              activeOpacity={0.8}
+            >
+              <SearchNormal1 size={18} color={themeColors.white} />
+              <Text style={[styles.searchButtonText, dynamicStyles.searchButtonText]}>Search</Text>
+            </TouchableOpacity>
+          </TourAnchor>
         </View>
       </KeyboardAvoidingView>
     </Modal>

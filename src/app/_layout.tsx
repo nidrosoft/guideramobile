@@ -21,6 +21,7 @@ import { AuthGuard } from '@/components/auth';
 import { ErrorBoundary } from '@/components/common/error';
 import { OfflineBanner } from '@/components/common/network';
 import { HomepageDataProvider } from '@/features/homepage';
+import { GuidanceProvider } from '@/features/guidance';
 import { startHealthChecks, stopHealthChecks } from '@/services/health';
 import { logger } from '@/services/logging';
 import { initSentry } from '@/services/sentry';
@@ -121,16 +122,18 @@ export default function RootLayout() {
                   <AuthGuard>
                   <HomepageDataProvider>
                     <ToastProvider>
-                      <View style={styles.container}>
-                        <Stack
-                          screenOptions={{
-                            headerShown: false,
-                            animation: 'slide_from_right',
-                            animationDuration: 300,
-                          }}
-                        />
-                        <OfflineBanner />
-                      </View>
+                      <GuidanceProvider>
+                        <View style={styles.container}>
+                          <Stack
+                            screenOptions={{
+                              headerShown: false,
+                              animation: 'slide_from_right',
+                              animationDuration: 300,
+                            }}
+                          />
+                          <OfflineBanner />
+                        </View>
+                      </GuidanceProvider>
                     </ToastProvider>
                   </HomepageDataProvider>
                   </AuthGuard>

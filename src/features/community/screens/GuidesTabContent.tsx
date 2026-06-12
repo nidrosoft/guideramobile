@@ -22,7 +22,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import {
   SearchNormal1,
   Filter,
@@ -52,6 +52,7 @@ import PartnerInviteCard from '../components/PartnerInviteCard';
 import PartnerProgramSheet from '../components/PartnerProgramSheet';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase/client';
+import { TourAnchor, useGuidance } from '@/features/guidance';
 
 type FilterCategory = 'all' | ListingCategory;
 
@@ -68,6 +69,16 @@ export default function GuidesTabContent() {
   const [communities, setCommunities] = useState<any[]>([]);
   const [isFetching, setIsFetching] = useState(true);
   const [isPartner, setIsPartner] = useState(false);
+  const guidance = useGuidance();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isPartner) {
+        const id = setTimeout(() => guidance.maybeShowTip('tip.becomeGuide'), 1200);
+        return () => clearTimeout(id);
+      }
+    }, [guidance, isPartner])
+  );
 
   // Check if user is an approved partner
   useEffect(() => {
@@ -211,7 +222,9 @@ export default function GuidesTabContent() {
       {/* Partner Program Banner — always show */}
       {!isPartner && (
         <View style={styles.sectionPadded}>
-          <PartnerInviteCard onPress={() => setShowPartnerSheet(true)} />
+          <TourAnchor id="guides.become_guide">
+            <PartnerInviteCard onPress={() => setShowPartnerSheet(true)} />
+          </TourAnchor>
         </View>
       )}
 

@@ -19,7 +19,7 @@ export function getCorsHeaders(request?: Request): Record<string, string> {
 
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-clerk-token',
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
   };
 }
@@ -28,6 +28,6 @@ export function getCorsHeaders(request?: Request): Record<string, string> {
 // These will still work but with an empty origin (mobile requests don't need CORS)
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-clerk-token',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 }

@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft2, Heart } from 'iconsax-react-native';
 import CircleButton from '@/components/atoms/CircleButton/CircleButton';
+import { TourAnchor } from '@/features/guidance';
 import ShareIcon from '@/components/atoms/ShareIcon/ShareIcon';
 import { typography, spacing } from '@/styles';
 import { useTheme } from '@/context/ThemeContext';
@@ -58,21 +59,25 @@ export default function DetailHeader({
 
       {/* Action Buttons */}
       <View style={styles.actions}>
-        <CircleButton
-          icon={<ShareIcon size={22} color={colors.textPrimary} />}
-          onPress={handleShare}
-          style={styles.actionButton}
-        />
-        <CircleButton
-          icon={
-            <Heart 
-              size={22} 
-              color={isSaved ? colors.error : colors.textPrimary} 
-              variant={isSaved ? "Bold" : "Outline"}
-            />
-          }
-          onPress={handleSave}
-        />
+        <TourAnchor id="detail.share">
+          <CircleButton
+            icon={<ShareIcon size={22} color={colors.textPrimary} />}
+            onPress={handleShare}
+            style={styles.actionButton}
+          />
+        </TourAnchor>
+        <TourAnchor id="detail.save">
+          <CircleButton
+            icon={
+              <Heart
+                size={22}
+                color={isSaved ? colors.error : colors.textPrimary}
+                variant={isSaved ? "Bold" : "Outline"}
+              />
+            }
+            onPress={handleSave}
+          />
+        </TourAnchor>
       </View>
     </View>
   );
